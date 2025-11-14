@@ -1,0 +1,49 @@
+# Node modules
+node_modules/
+package-lock.json
+
+# Build outputs
+dist/
+build/
+*.log
+
+# Android build files
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/.DS_Store
+
+# iOS build files (if added later)
+ios/App/Pods/
+ios/App/build/
+ios/App/*.xcworkspace
+ios/App/.DS_Store
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Capacitor
+capacitor.config.ts
+.capacitor/
+
+# Temporary files
+*.tmp
+*.temp
+
+# User-specific data (optional - comment out if you want to commit test data)
+# www/js/core/database.js
+
+# Environment files
+.env
+.env.local

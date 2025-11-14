@@ -1,0 +1,33 @@
+/**
+ * Database Module
+ * Central data store for the application
+ */
+
+const DB = {
+    credentials: [],
+    cards: [],
+    expenses: [],
+    investments: [],
+    chatHistory: [],
+    exchangeRate: {
+        rate: 83, // Default USD to INR rate
+        lastUpdated: null
+    },
+    settings: {
+        aiProvider: 'gemini',
+        geminiApiKey: '',
+        chatGptApiKey: '',
+        perplexityApiKey: ''
+    },
+    security: {
+        pinHash: null, // SHA-256 hash of PIN
+        biometricEnabled: false, // Whether biometric is enabled
+        isSetup: false // Whether security is set up
+    }
+};
+
+// Export for use in other modules
+if (typeof window !== 'undefined') {
+    window.DB = DB;
+}
+

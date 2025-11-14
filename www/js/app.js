@@ -1,0 +1,177 @@
+/**
+ * Main Application Module
+ * Initializes the app and sets up event handlers
+ */
+
+const App = {
+    /**
+     * Initialize the application
+     */
+    async init() {
+        try {
+            // Configure status bar for mobile
+            await this.configureStatusBar();
+            
+            // Load data from storage
+            window.Storage.load();
+            
+            // Check security status FIRST
+            const isSecuritySetup = window.Security && window.Security.isSetup();
+            
+            // Hide splash screen
+            setTimeout(() => {
+                const splash = document.getElementById('splash-screen');
+                if (splash) {
+                    splash.style.opacity = '0';
+                    splash.style.transition = 'opacity 0.5s ease-out';
+                    setTimeout(() => {
+                        splash.style.display = 'none';
+                    }, 500);
+                }
+            }, 800);
+            
+            // Security flow
+            if (!isSecuritySetup) {
+                // First time: Show security setup
+                console.log('🔒 First launch - showing security setup');
+                setTimeout(() => {
+                    document.getElementById('security-setup-modal').classList.remove('hidden');
+                    // Check biometric availability
+                    if (window.checkBiometricAvailability) {
+                        window.checkBiometricAvailability();
+                    }
+                }, 1000);
+                return; // Stop here, will continue after setup
+            }
+            
+            // Security is set up, check if already unlocked
+            if (!window.Security.isUnlocked) {
+                // Show unlock screen
+                console.log('🔒 App locked - showing unlock screen');
+                setTimeout(() => {
+                    const unlockModal = document.getElementById('security-unlock-modal');
+                    unlockModal.classList.remove('hidden');
+                    
+                    // Auto-focus PIN input
+                    const pinInput = document.getElementById('unlock-pin');
+                    if (pinInput) {
+                        setTimeout(() => pinInput.focus(), 300);
+                    }
+                    
+                    // Show biometric button if enabled
+                    if (window.DB.security.biometricEnabled) {
+                        document.getElementById('biometric-unlock-btn').classList.remove('hidden');
+                        
+                        // Auto-trigger biometric if available
+                        if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+                            setTimeout(() => {
+                                if (window.unlockWithBiometric) {
+                                    window.unlockWithBiometric().catch(() => {
+                                        // Silently fail, user can use PIN
+                                    });
+                                }
+                            }, 500);
+                        }
+                    }
+                }, 1000);
+                return; // Stop here, will continue after unlock
+            }
+            
+            // App is unlocked, continue normal initialization
+            console.log('✅ App unlocked - continuing initialization');
+            
+            // Navigate to default view
+            window.Navigation.navigateTo('chat');
+            
+            // Load chat history if exists
+            if (window.Chat) {
+                window.Chat.loadHistory();
+            }
+            
+            // Check if API key is configured
+            if (!window.DB.settings.geminiApiKey && !window.DB.settings.chatGptApiKey && !window.DB.settings.perplexityApiKey) {
+                setTimeout(() => {
+                    if (window.Toast) {
+                        window.Toast.info('Welcome! Please configure your AI settings.');
+                    }
+                    setTimeout(() => {
+                        window.Navigation.openSettings();
+                    }, 1000);
+                }, 500);
+            }
+            
+            // Setup global event handlers
+            this.setupEventHandlers();
+            
+            console.log('✅ App initialized successfully');
+        } catch (error) {
+            console.error('Initialization error:', error);
+            if (window.Toast) {
+                window.Toast.show('App initialization error', 'error');
+            }
+            // Hide splash even on error
+            const splash = document.getElementById('splash-screen');
+            if (splash) splash.style.display = 'none';
+        }
+    },
+
+    /**
+     * Configure status bar for mobile devices
+     */
+    async configureStatusBar() {
+        try {
+            // Check if running on native platform
+            if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+                const { StatusBar } = window.Capacitor.Plugins;
+                
+                if (StatusBar) {
+                    // Set status bar style to LIGHT (dark/black text/icons)
+                    // This works well with our light background
+                    await StatusBar.setStyle({ style: 'LIGHT' });
+                    
+                    // Set background color to white/light to match app
+                    await StatusBar.setBackgroundColor({ color: '#ffffff' });
+                    
+                    // Show the status bar
+                    await StatusBar.show();
+                    
+                    // Make content appear under status bar (we handle padding in CSS)
+                    await StatusBar.setOverlaysWebView({ overlay: false });
+                    
+                    console.log('✅ Status bar configured with light background and dark text');
+                }
+            }
+        } catch (error) {
+            console.warn('Status bar configuration skipped (web environment or error):', error.message);
+        }
+    },
+
+    /**
+     * Setup global event handlers
+     */
+    setupEventHandlers() {
+        // Global error handler
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            console.error('Global error:', { msg, url, lineNo, columnNo, error });
+            window.Toast.show('An error occurred. Check console for details.', 'error');
+            return false;
+        };
+        
+        // Unhandled promise rejection handler
+        window.onunhandledrejection = function(event) {
+            console.error('Unhandled promise rejection:', event.reason);
+            window.Toast.show('An error occurred. Check console for details.', 'error');
+        };
+    }
+};
+
+// Start the app when DOM is ready
+window.addEventListener('DOMContentLoaded', () => {
+    App.init();
+});
+
+// Export for use in other modules
+if (typeof window !== 'undefined') {
+    window.App = App;
+}
+

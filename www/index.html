@@ -1,0 +1,2282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>My Assistant - Smart Credit Card Advisor</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- Capacitor Core (for native features) -->
+    <script type="module">
+        import { Capacitor } from 'https://cdn.jsdelivr.net/npm/@capacitor/core@latest/dist/index.js';
+        import { StatusBar } from 'https://cdn.jsdelivr.net/npm/@capacitor/status-bar@latest/dist/index.js';
+        import { CapacitorHttp } from 'https://cdn.jsdelivr.net/npm/@capacitor/core@latest/dist/index.js';
+        window.Capacitor = { ...Capacitor, Plugins: { StatusBar, Http: CapacitorHttp } };
+    </script>
+</head>
+<body class="flex flex-col items-center">
+    
+    <!-- SPLASH SCREEN -->
+    <div id="splash-screen" class="fixed inset-0 z-[1000] flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600">
+        <div class="text-center">
+            <svg class="w-32 h-32 mx-auto mb-4 animate-pulse" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="splashGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.95" />
+                        <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0.85" />
+                    </linearGradient>
+                </defs>
+                
+                <!-- Background Circle -->
+                <circle cx="50" cy="50" r="45" fill="url(#splashGrad)"/>
+                
+                <!-- Robot with Headphones -->
+                <g transform="translate(50, 50)">
+                    <!-- Neck -->
+                    <rect x="-4" y="15" width="8" height="5" rx="1" fill="#818cf8"/>
+                    
+                    <!-- Shoulders -->
+                    <ellipse cx="0" cy="26" rx="20" ry="10" fill="#818cf8" opacity="0.9"/>
+                    
+                    <!-- Head/Face (Round) -->
+                    <ellipse cx="0" cy="0" rx="14" ry="16" fill="#818cf8"/>
+                    
+                    <!-- Antenna -->
+                    <rect x="-3" y="-16" width="6" height="3" fill="#f0f0f0"/>
+                    <circle cx="0" cy="-22" r="1.5" fill="#4CAF50"/>
+                    
+                    <!-- Headphone Band -->
+                    <path d="M -14 -8 Q -14 -18, 0 -20 Q 14 -18, 14 -8" 
+                          stroke="#4f46e5" 
+                          stroke-width="2.5" 
+                          fill="none" 
+                          stroke-linecap="round"/>
+                    
+                    <!-- Left Ear Cup -->
+                    <g transform="translate(-17, 0)">
+                        <ellipse cx="0" cy="0" rx="5" ry="7" fill="#4f46e5"/>
+                        <ellipse cx="0" cy="0" rx="3.5" ry="5" fill="#6366f1"/>
+                        <ellipse cx="0" cy="0" rx="2" ry="3" fill="#818cf8"/>
+                    </g>
+                    
+                    <!-- Right Ear Cup -->
+                    <g transform="translate(17, 0)">
+                        <ellipse cx="0" cy="0" rx="5" ry="7" fill="#4f46e5"/>
+                        <ellipse cx="0" cy="0" rx="3.5" ry="5" fill="#6366f1"/>
+                        <ellipse cx="0" cy="0" rx="2" ry="3" fill="#818cf8"/>
+                    </g>
+                    
+                    <!-- Robot Eyes -->
+                    <ellipse cx="-5" cy="-2" rx="3.5" ry="4.5" fill="#4f46e5"/>
+                    <ellipse cx="-5" cy="-2" rx="2" ry="2.5" fill="#3730a3"/>
+                    <circle cx="-6" cy="-3" r="1" fill="#ffffff"/>
+                    
+                    <ellipse cx="5" cy="-2" rx="3.5" ry="4.5" fill="#4f46e5"/>
+                    <ellipse cx="5" cy="-2" rx="2" ry="2.5" fill="#3730a3"/>
+                    <circle cx="4" cy="-3" r="1" fill="#ffffff"/>
+                    
+                    <!-- Robot Smile -->
+                    <path d="M -6 6 Q 0 10 6 6" stroke="#4f46e5" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                    
+                    <!-- Microphone -->
+                    <path d="M 17 5 L 22 8" stroke="#4f46e5" stroke-width="1.2" stroke-linecap="round"/>
+                    <circle cx="23" cy="9" r="2" fill="#4f46e5"/>
+                    
+                    <!-- Chest Panel -->
+                    <rect x="-5" y="16" width="10" height="2" fill="#f8f9ff"/>
+                    <circle cx="-3" cy="17" r="0.5" fill="#4f46e5"/>
+                    <circle cx="0" cy="17" r="0.5" fill="#4CAF50"/>
+                    <circle cx="3" cy="17" r="0.5" fill="#4f46e5"/>
+                </g>
+            </svg>
+            <h1 class="text-3xl font-bold text-white mb-2">My Assistant</h1>
+            <p class="text-white/80 text-sm">Loading your personal assistant...</p>
+        </div>
+    </div>
+    
+    <!-- GLOBAL LOADING OVERLAY -->
+    <div id="loading-overlay" class="hidden fixed inset-0 z-[999] bg-gray-900/40 backdrop-blur-sm flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 flex flex-col items-center">
+            <div class="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+            <p id="loading-text" class="text-gray-700 font-semibold">Processing...</p>
+        </div>
+    </div>
+    
+    <!-- HEADER -->
+    <header class="fixed top-0 left-0 right-0 z-40 w-full py-4 px-4 flex items-center bg-white shadow-lg" style="padding-top: max(1rem, env(safe-area-inset-top))">
+        <!-- Menu Button -->
+        <button onclick="Navigation.openMenu()" class="p-2 text-gray-600 hover:text-white hover:bg-gradient-to-r hover:from-purple-600 hover:to-pink-600 rounded-lg transition-all duration-200 shadow-sm hover:shadow-lg transform hover:scale-110 mr-3" title="Menu">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+        </button>
+        
+            <!-- App Icon and Name -->
+            <div class="flex items-center">
+                <svg class="w-10 h-10 mr-3" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    
+                    <!-- Background Circle -->
+                    <circle cx="50" cy="50" r="45" fill="url(#iconGrad)"/>
+                    
+                    <!-- Robot with Headphones -->
+                    <g transform="translate(50, 50)">
+                        <!-- Neck -->
+                        <rect x="-4" y="15" width="8" height="5" rx="1" fill="#ffffff"/>
+                        
+                        <!-- Shoulders -->
+                        <ellipse cx="0" cy="26" rx="20" ry="10" fill="#ffffff" opacity="0.9"/>
+                        
+                        <!-- Head/Face (Round) -->
+                        <ellipse cx="0" cy="0" rx="14" ry="16" fill="#ffffff"/>
+                        
+                        <!-- Antenna -->
+                        <rect x="-3" y="-16" width="6" height="3" fill="#f0f0f0"/>
+                        <circle cx="0" cy="-22" r="1.5" fill="#4CAF50"/>
+                        
+                        <!-- Headphone Band -->
+                        <path d="M -14 -8 Q -14 -18, 0 -20 Q 14 -18, 14 -8" 
+                              stroke="#ffffff" 
+                              stroke-width="2.5" 
+                              fill="none" 
+                              stroke-linecap="round"/>
+                        
+                        <!-- Left Ear Cup -->
+                        <g transform="translate(-17, 0)">
+                            <ellipse cx="0" cy="0" rx="5" ry="7" fill="#ffffff"/>
+                            <ellipse cx="0" cy="0" rx="3.5" ry="5" fill="#e0e7ff"/>
+                            <ellipse cx="0" cy="0" rx="2" ry="3" fill="#c7d2fe"/>
+                        </g>
+                        
+                        <!-- Right Ear Cup -->
+                        <g transform="translate(17, 0)">
+                            <ellipse cx="0" cy="0" rx="5" ry="7" fill="#ffffff"/>
+                            <ellipse cx="0" cy="0" rx="3.5" ry="5" fill="#e0e7ff"/>
+                            <ellipse cx="0" cy="0" rx="2" ry="3" fill="#c7d2fe"/>
+                        </g>
+                        
+                        <!-- Robot Eyes -->
+                        <ellipse cx="-5" cy="-2" rx="3.5" ry="4.5" fill="#667eea"/>
+                        <ellipse cx="-5" cy="-2" rx="2" ry="2.5" fill="#4f46e5"/>
+                        <circle cx="-6" cy="-3" r="1" fill="#ffffff"/>
+                        
+                        <ellipse cx="5" cy="-2" rx="3.5" ry="4.5" fill="#667eea"/>
+                        <ellipse cx="5" cy="-2" rx="2" ry="2.5" fill="#4f46e5"/>
+                        <circle cx="4" cy="-3" r="1" fill="#ffffff"/>
+                        
+                        <!-- Robot Smile -->
+                        <path d="M -6 6 Q 0 10 6 6" stroke="#667eea" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                        
+                        <!-- Microphone -->
+                        <path d="M 17 5 L 22 8" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round"/>
+                        <circle cx="23" cy="9" r="2" fill="#ffffff"/>
+                        
+                        <!-- Chest Panel -->
+                        <rect x="-5" y="16" width="10" height="2" fill="#f8f9ff"/>
+                        <circle cx="-3" cy="17" r="0.5" fill="#667eea"/>
+                        <circle cx="0" cy="17" r="0.5" fill="#4CAF50"/>
+                        <circle cx="3" cy="17" r="0.5" fill="#667eea"/>
+                    </g>
+                </svg>
+                <h1 class="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">My Assistant</h1>
+            </div>
+    </header>
+    
+    <!-- SIDE MENU -->
+    <div id="side-menu" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50" onclick="Navigation.closeMenu()">
+        <div class="bg-gradient-to-br from-white to-purple-50 w-80 h-full shadow-2xl overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="menu-header p-6 bg-gradient-to-r from-purple-600 to-pink-600">
+                <div class="flex items-center mb-2">
+                    <svg class="w-12 h-12 flex-shrink-0 mr-3" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="menuIconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        
+                        <!-- Background Circle -->
+                        <circle cx="50" cy="50" r="45" fill="url(#menuIconGrad)"/>
+                        
+                        <!-- Robot with Headphones -->
+                        <g transform="translate(50, 50)">
+                            <!-- Neck -->
+                            <rect x="-4" y="15" width="8" height="5" rx="1" fill="#ffffff"/>
+                            
+                            <!-- Shoulders -->
+                            <ellipse cx="0" cy="26" rx="20" ry="10" fill="#ffffff" opacity="0.9"/>
+                            
+                            <!-- Head/Face (Round) -->
+                            <ellipse cx="0" cy="0" rx="14" ry="16" fill="#ffffff"/>
+                            
+                            <!-- Antenna -->
+                            <rect x="-3" y="-16" width="6" height="3" fill="#f0f0f0"/>
+                            <circle cx="0" cy="-22" r="1.5" fill="#4CAF50"/>
+                            
+                            <!-- Headphone Band -->
+                            <path d="M -14 -8 Q -14 -18, 0 -20 Q 14 -18, 14 -8" 
+                                  stroke="#ffffff" 
+                                  stroke-width="2.5" 
+                                  fill="none" 
+                                  stroke-linecap="round"/>
+                            
+                            <!-- Left Ear Cup -->
+                            <g transform="translate(-17, 0)">
+                                <ellipse cx="0" cy="0" rx="5" ry="7" fill="#ffffff"/>
+                                <ellipse cx="0" cy="0" rx="3.5" ry="5" fill="#e0e7ff"/>
+                                <ellipse cx="0" cy="0" rx="2" ry="3" fill="#c7d2fe"/>
+                            </g>
+                            
+                            <!-- Right Ear Cup -->
+                            <g transform="translate(17, 0)">
+                                <ellipse cx="0" cy="0" rx="5" ry="7" fill="#ffffff"/>
+                                <ellipse cx="0" cy="0" rx="3.5" ry="5" fill="#e0e7ff"/>
+                                <ellipse cx="0" cy="0" rx="2" ry="3" fill="#c7d2fe"/>
+                            </g>
+                            
+                            <!-- Robot Eyes -->
+                            <ellipse cx="-5" cy="-2" rx="3.5" ry="4.5" fill="#667eea"/>
+                            <ellipse cx="-5" cy="-2" rx="2" ry="2.5" fill="#4f46e5"/>
+                            <circle cx="-6" cy="-3" r="1" fill="#ffffff"/>
+                            
+                            <ellipse cx="5" cy="-2" rx="3.5" ry="4.5" fill="#667eea"/>
+                            <ellipse cx="5" cy="-2" rx="2" ry="2.5" fill="#4f46e5"/>
+                            <circle cx="4" cy="-3" r="1" fill="#ffffff"/>
+                            
+                            <!-- Robot Smile -->
+                            <path d="M -6 6 Q 0 10 6 6" stroke="#667eea" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                            
+                            <!-- Microphone -->
+                            <path d="M 17 5 L 22 8" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round"/>
+                            <circle cx="23" cy="9" r="2" fill="#ffffff"/>
+                            
+                            <!-- Chest Panel -->
+                            <rect x="-5" y="16" width="10" height="2" fill="#f8f9ff"/>
+                            <circle cx="-3" cy="17" r="0.5" fill="#667eea"/>
+                            <circle cx="0" cy="17" r="0.5" fill="#4CAF50"/>
+                            <circle cx="3" cy="17" r="0.5" fill="#667eea"/>
+                        </g>
+                    </svg>
+                    <div>
+                        <h2 class="text-2xl font-bold text-white drop-shadow-md">My Assistant</h2>
+                        <p class="text-sm text-purple-100">Smart Financial Advisor</p>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="p-4 space-y-1">
+                <!-- AI Advisor -->
+                <button onclick="Navigation.navigateTo('chat')" class="group w-full flex items-center p-2.5 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-400 to-pink-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2.5 transition-all duration-300 shadow-md">
+                        <svg class="w-4 h-4 text-white group-hover:text-purple-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"/>
+                            <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <span class="font-bold text-sm">AI Advisor</span>
+                        <p class="text-xs opacity-70 group-hover:opacity-90">Smart recommendations</p>
+                    </div>
+                </button>
+                
+                <!-- Section Header -->
+                <div class="pt-3 pb-1">
+                    <div class="flex items-center px-3">
+                        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                        <p class="text-xs text-gray-500 font-bold uppercase px-3 tracking-wider">Financial</p>
+                        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                    </div>
+                </div>
+                
+                <!-- Expenses -->
+                <button onclick="Navigation.navigateTo('expenses')" class="group w-full flex items-center p-2.5 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-400 to-pink-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2.5 transition-all duration-300 shadow-md">
+                        <span class="text-base font-bold text-white group-hover:text-purple-500 transition-colors">₹</span>
+                    </div>
+                    <div class="flex-1">
+                        <span class="font-bold text-sm">Expenses</span>
+                        <p class="text-xs opacity-70 group-hover:opacity-90">Track spending</p>
+                    </div>
+                </button>
+                
+                <!-- Credit Cards -->
+                <button onclick="Navigation.navigateTo('cards')" class="group w-full flex items-center p-2.5 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-green-500 hover:to-emerald-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-green-400 to-emerald-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2.5 transition-all duration-300 shadow-md">
+                        <svg class="w-4 h-4 text-white group-hover:text-green-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
+                            <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <span class="font-bold text-sm">Credit Cards</span>
+                        <p class="text-xs opacity-70 group-hover:opacity-90">Manage cards</p>
+                    </div>
+                </button>
+                
+                <!-- Investments -->
+                <button onclick="Navigation.navigateTo('investments')" class="group w-full flex items-center p-2.5 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-yellow-500 hover:to-orange-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2.5 transition-all duration-300 shadow-md">
+                        <svg class="w-4 h-4 text-white group-hover:text-yellow-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <span class="font-bold text-sm">Investments</span>
+                        <p class="text-xs opacity-70 group-hover:opacity-90">Portfolio tracker</p>
+                    </div>
+                </button>
+                
+                <!-- Section Header -->
+                <div class="pt-3 pb-1">
+                    <div class="flex items-center px-3">
+                        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                        <p class="text-xs text-gray-500 font-bold uppercase px-3 tracking-wider">Security</p>
+                        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                    </div>
+                </div>
+                
+                <!-- Credentials -->
+                <button onclick="Navigation.navigateTo('credentials')" class="group w-full flex items-center p-2.5 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-blue-500 hover:to-cyan-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2.5 transition-all duration-300 shadow-md">
+                        <svg class="w-4 h-4 text-white group-hover:text-blue-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <span class="font-bold text-sm">Credentials</span>
+                        <p class="text-xs opacity-70 group-hover:opacity-90">Secure passwords</p>
+                    </div>
+                </button>
+                
+                <!-- Section Header -->
+                <div class="pt-3 pb-1">
+                    <div class="flex items-center px-3">
+                        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                        <p class="text-xs text-gray-500 font-bold uppercase px-3 tracking-wider">System</p>
+                        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                    </div>
+                </div>
+                
+                <!-- Settings -->
+                <button onclick="Navigation.openSettings(); Navigation.closeMenu();" class="group w-full flex items-center p-2.5 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-indigo-500 hover:to-purple-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2.5 transition-all duration-300 shadow-md">
+                        <svg class="w-4 h-4 text-white group-hover:text-indigo-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <span class="font-bold text-sm">Settings</span>
+                        <p class="text-xs opacity-70 group-hover:opacity-90">Configure app</p>
+                    </div>
+                </button>
+                
+                <!-- Data Management -->
+                <div class="pt-3 pb-1">
+                    <div class="flex items-center px-3">
+                        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                        <p class="text-xs text-gray-500 font-bold uppercase px-3 tracking-wider">Data</p>
+                        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                    </div>
+                </div>
+                
+                <div class="space-y-1">
+                    <!-- Export Data -->
+                    <button onclick="Navigation.openExportModal(); Navigation.closeMenu();" class="group w-full flex items-center p-2.5 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-gray-600 hover:to-gray-700 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-gray-400 to-gray-600 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2.5 transition-all duration-300 shadow-md">
+                            <svg class="w-4 h-4 text-white group-hover:text-gray-600 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <span class="font-bold text-sm">Export Data</span>
+                            <p class="text-xs opacity-70 group-hover:opacity-90">Backup your data</p>
+                        </div>
+                    </button>
+                    
+                    <!-- Import Data -->
+                    <button onclick="Navigation.openImportModal(); Navigation.closeMenu();" class="group w-full flex items-center p-2.5 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-gray-600 hover:to-gray-700 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-gray-400 to-gray-600 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2.5 transition-all duration-300 shadow-md">
+                            <svg class="w-4 h-4 text-white group-hover:text-gray-600 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <span class="font-bold text-sm">Import Data</span>
+                            <p class="text-xs opacity-70 group-hover:opacity-90">Restore from backup</p>
+                        </div>
+                    </button>
+                    
+                    <!-- Reset App -->
+                    <button onclick="Navigation.openResetModal(); Navigation.closeMenu();" class="group w-full flex items-center p-2.5 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-red-600 hover:to-red-700 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-red-400 to-red-600 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2.5 transition-all duration-300 shadow-md">
+                            <svg class="w-4 h-4 text-white group-hover:text-red-600 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <span class="font-bold text-sm">Reset App</span>
+                            <p class="text-xs opacity-70 group-hover:opacity-90">Clear all data</p>
+                        </div>
+                    </button>
+                </div>
+            </nav>
+        </div>
+    </div>
+    
+    <!-- MAIN CONTENT -->
+    <div class="container" style="margin-top: calc(3.5rem + env(safe-area-inset-top)); padding-bottom: env(safe-area-inset-bottom);">
+        
+        <!-- AI ADVISOR VIEW -->
+        <div id="chat-view" class="hidden">
+            <div class="bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">AI Advisor</h2>
+                        <select id="chat-mode" onchange="Chat.updateWelcomeMessage(); Chat.clear();" class="px-3 py-1.5 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-800 rounded-lg text-sm font-semibold border-2 border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                            <option value="cards">💳 Credit Cards</option>
+                            <option value="expenses">📊 Expenses</option>
+                            <option value="investments">💰 Investments</option>
+                        </select>
+                    </div>
+                    <button onclick="Chat.clear()" class="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 rounded-lg transition-all duration-200 text-sm font-medium flex items-center gap-1.5" title="Clear chat history">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        Clear
+                    </button>
+                </div>
+                
+                <!-- Chat Messages -->
+                <div id="chat-messages" class="chat-container mb-4 p-4 bg-gray-50 rounded-xl">
+                    <div class="text-center text-gray-500 text-sm px-4">
+                        <p class="text-lg mb-3">💳 <strong>AI Credit Card Advisor</strong></p>
+                        <p class="mb-2">I'll help you choose the best credit card for your spending!</p>
+                        <p class="text-xs mb-3">I search online for current card benefits and offers from bank websites.</p>
+                        
+                        <div class="bg-blue-50 p-3 rounded-lg text-left mb-3">
+                            <p class="text-xs font-semibold text-blue-800 mb-2">💡 Try asking:</p>
+                            <ul class="text-xs space-y-1 text-blue-700">
+                                <li>• "₹5000 on groceries at BigBasket"</li>
+                                <li>• "₹10,000 for flight tickets"</li>
+                                <li>• "₹2000 for dining at restaurants"</li>
+                                <li>• "₹15,000 for online shopping"</li>
+                            </ul>
+                        </div>
+                        
+                        <p class="text-xs text-gray-400 mt-2">
+                            🔒 Secure: Only card names are shared, never numbers or CVV
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Chat Input -->
+                <div class="flex space-x-2">
+                    <textarea id="chat-input" placeholder="Describe your spending plan... (e.g., ₹5000 on groceries at BigBasket)" class="flex-1 p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none" rows="2" onkeypress="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); Chat.send(); }"></textarea>
+                    <button onclick="Chat.send()" class="p-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center" title="Ask AI">
+                        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+                            <path d="M2 17L12 22L22 17" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M2 12L12 17L22 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="12" cy="7" r="2" fill="#667eea"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- EXPENSES VIEW -->
+        <div id="expenses-view" class="hidden">
+            <div class="bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent flex items-center">
+                        <span class="text-3xl mr-2 text-purple-600">₹</span>
+                        Expenses Tracker
+                    </h2>
+                    <button onclick="openExpenseModal()" class="px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Search and Filter Box -->
+                <div class="mb-3 flex gap-2">
+                    <input type="text" id="expenses-search" placeholder="🔍 Search expenses..." class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" oninput="searchExpenses()">
+                    <button onclick="openDateFilterModal()" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all duration-200 flex items-center gap-2" title="Filter by date">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Filter Info -->
+                <div id="filter-info" class="mb-3 px-3 py-2 bg-purple-50 rounded-lg border border-purple-200 text-sm text-purple-800 font-semibold">
+                    📅 <span id="date-filter-label">Current Month</span>
+                </div>
+                
+                <!-- Expenses List -->
+                <div id="expenses-list" class="space-y-3">
+                    <!-- Expenses will be listed here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- CARDS VIEW -->
+        <div id="cards-view" class="hidden">
+            <div class="bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent flex items-center">
+                        <svg class="w-8 h-8 mr-2 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
+                            <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/>
+                        </svg>
+                        Credit Cards
+                    </h2>
+                    <button onclick="openCardModal()" class="px-3 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Search Box -->
+                <div class="mb-4">
+                    <input type="text" id="cards-search" placeholder="🔍 Search cards..." class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" oninput="searchCards()">
+                </div>
+                
+                <!-- Cards List -->
+                <div id="cards-list" class="space-y-3">
+                    <!-- Cards will be listed here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- INVESTMENTS VIEW -->
+        <div id="investments-view" class="hidden">
+            <div class="bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent flex items-center">
+                        <svg class="w-8 h-8 mr-2 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/>
+                        </svg>
+                        Investments Portfolio
+                    </h2>
+                    <button onclick="openInvestmentModal()" class="px-3 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Filter and Search -->
+                <div class="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <select id="investments-filter" class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" onchange="filterInvestments()">
+                        <option value="all">All Types</option>
+                        <option value="stock">Stocks Only</option>
+                        <option value="mutual_fund">Mutual Funds</option>
+                        <option value="fd">Fixed Deposits</option>
+                        <option value="pf">Provident Fund</option>
+                        <option value="gold">Gold</option>
+                        <option value="real_estate">Real Estate</option>
+                        <option value="crypto">Cryptocurrency</option>
+                        <option value="general">General</option>
+                    </select>
+                    <input type="text" id="investments-search" placeholder="🔍 Search investments..." class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" oninput="searchInvestments()">
+                </div>
+                
+                <!-- Investments List -->
+                <div id="investments-list" class="space-y-3">
+                    <!-- Investments will be listed here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- CREDENTIALS VIEW -->
+        <div id="credentials-view" class="hidden">
+            <div class="bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent flex items-center">
+                        <svg class="w-8 h-8 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                        </svg>
+                        Secure Credentials
+                    </h2>
+                    <button onclick="openCredentialModal()" class="px-3 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Search Box -->
+                <div class="mb-4">
+                    <input type="text" id="credentials-search" placeholder="🔍 Search credentials..." class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="searchCredentials()">
+                </div>
+                
+                <!-- Credentials List -->
+                <div id="credentials-list" class="space-y-3">
+                    <!-- Credentials will be listed here -->
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Navigation.closeSettings()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">AI Settings</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">AI Provider</label>
+                    <select id="ai-provider" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="gemini">Google Gemini</option>
+                        <option value="chatgpt">OpenAI ChatGPT</option>
+                        <option value="perplexity">Perplexity AI</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Gemini API Key</label>
+                    <input type="password" id="gemini-api-key" placeholder="Enter your Gemini API key" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <p class="text-xs text-gray-500 mt-1">Get your API key from <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-purple-600 underline">Google AI Studio</a></p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">ChatGPT API Key</label>
+                    <input type="password" id="chatgpt-api-key" placeholder="Enter your ChatGPT API key" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <p class="text-xs text-gray-500 mt-1">Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-purple-600 underline">OpenAI Platform</a></p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Perplexity API Key</label>
+                    <input type="password" id="perplexity-api-key" placeholder="Enter your Perplexity API key" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <p class="text-xs text-gray-500 mt-1">Get your API key from <a href="https://www.perplexity.ai/settings/api" target="_blank" class="text-purple-600 underline">Perplexity Settings</a></p>
+                </div>
+                
+                <div class="flex space-x-3 pt-4">
+                    <button onclick="Navigation.saveSettings()" class="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                        Save
+                    </button>
+                    <button onclick="Navigation.closeSettings()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- INVESTMENT ADD/EDIT MODAL -->
+    <div id="investment-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeInvestmentModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 id="investment-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">Add Investment</h2>
+            
+            <input type="hidden" id="investment-modal-id">
+            <input type="text" id="investment-modal-name" placeholder="Name (e.g., HDFC Bank, Apple Inc)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+            
+            <select id="investment-modal-type" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" onchange="toggleInvestmentFields()">
+                <option value="">Select Type</option>
+                <option value="stock">Stock</option>
+                <option value="mutual_fund">Mutual Fund</option>
+                <option value="fd">Fixed Deposit</option>
+                <option value="pf">Provident Fund</option>
+                <option value="gold">Gold</option>
+                <option value="real_estate">Real Estate</option>
+                <option value="crypto">Cryptocurrency</option>
+                <option value="general">General</option>
+            </select>
+            
+            <select id="investment-modal-term" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                <option value="">Select Term</option>
+                <option value="long">Long Term (>3 years)</option>
+                <option value="short">Short Term (<3 years)</option>
+            </select>
+            
+            <!-- Stock-specific fields -->
+            <div id="stock-fields" class="hidden mb-3">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Stock Price</label>
+                <div class="flex gap-2">
+                    <input type="number" id="investment-modal-stock-price" placeholder="Price" step="0.01" class="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" oninput="calculateStockAmount()">
+                    <select id="investment-modal-currency" class="w-24 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" onchange="calculateStockAmount()">
+                        <option value="INR">₹ INR</option>
+                        <option value="USD">$ USD</option>
+                    </select>
+                </div>
+                <input type="number" id="investment-modal-quantity" placeholder="Quantity" step="0.01" class="w-full p-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" oninput="calculateStockAmount()">
+                <p id="calculated-amount" class="text-sm text-gray-600 mt-1"></p>
+            </div>
+            
+            <!-- Non-stock amount field -->
+            <div id="amount-field" class="mb-3">
+                <input type="number" id="investment-modal-amount" placeholder="Amount (₹)" step="0.01" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+            </div>
+            
+            <textarea id="investment-modal-notes" placeholder="Notes (optional)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" rows="2"></textarea>
+            
+            <div class="flex space-x-3">
+                <button onclick="saveInvestmentModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                    Save
+                </button>
+                <button onclick="closeInvestmentModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- EXPENSE MODAL -->
+    <div id="expense-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeExpenseModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 id="expense-modal-title-header" class="text-2xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Add Expense</h2>
+            
+            <input type="hidden" id="expense-modal-id">
+            <input type="text" id="expense-modal-title" placeholder="Title (e.g., Grocery Shopping)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+            
+            <input type="number" id="expense-modal-amount" placeholder="Amount (₹)" step="0.01" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+            
+            <select id="expense-modal-category" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                <option value="">Select Category</option>
+                <option value="Food & Dining">Food & Dining</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Transportation">Transportation</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Bills & Utilities">Bills & Utilities</option>
+                <option value="Healthcare">Healthcare</option>
+                <option value="Travel">Travel</option>
+                <option value="Education">Education</option>
+                <option value="Groceries">Groceries</option>
+                <option value="Other">Other</option>
+            </select>
+            
+            <input type="date" id="expense-modal-date" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+            
+            <textarea id="expense-modal-description" placeholder="Description (optional - additional details)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" rows="2"></textarea>
+            
+            <div class="flex space-x-3">
+                <button id="expense-modal-save-btn" onclick="saveExpenseModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                    Add
+                </button>
+                <button onclick="closeExpenseModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- DATE FILTER MODAL -->
+    <div id="date-filter-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeDateFilterModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Filter by Date</h2>
+            
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <button onclick="applyQuickFilter('today')" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all font-semibold">
+                    Today
+                </button>
+                <button onclick="applyQuickFilter('week')" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all font-semibold">
+                    This Week
+                </button>
+                <button onclick="applyQuickFilter('month')" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all font-semibold">
+                    This Month
+                </button>
+                <button onclick="applyQuickFilter('year')" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all font-semibold">
+                    This Year
+                </button>
+            </div>
+            
+            <div class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <label class="text-sm font-semibold text-gray-700 mb-2 block">Custom Range</label>
+                <div class="grid grid-cols-1 gap-2">
+                    <div>
+                        <label class="text-xs text-gray-600 block mb-1">Start Date</label>
+                        <input type="date" id="filter-start-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-600 block mb-1">End Date</label>
+                        <input type="date" id="filter-end-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button onclick="applyCustomDateFilter()" class="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                    Apply
+                </button>
+                <button onclick="applyQuickFilter('all')" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    All Time
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- EXCHANGE RATE MODAL -->
+    <div id="exchange-rate-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeExchangeRateModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">Exchange Rate</h2>
+            
+            <div class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <p class="text-sm text-gray-600 mb-1">Current Rate</p>
+                <p id="current-rate-display" class="text-2xl font-bold text-gray-800">₹83.00</p>
+                <p class="text-xs text-gray-500 mt-1">Last updated: <span id="rate-last-updated">Never</span></p>
+            </div>
+            
+            <label class="block text-sm font-semibold text-gray-700 mb-2">New USD to INR Rate</label>
+            <input type="number" id="exchange-rate-input" placeholder="Enter new rate (e.g., 83.50)" step="0.01" class="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+            
+            <p class="text-xs text-gray-600 mb-4">💡 This rate will be used to convert USD stock prices to INR</p>
+            
+            <div class="flex space-x-3">
+                <button onclick="saveExchangeRate()" class="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                    Update
+                </button>
+                <button onclick="closeExchangeRateModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- EDIT STOCK PRICE MODAL -->
+    <div id="edit-stock-price-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeEditStockPriceModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 id="edit-stock-name-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">Edit Stock Price</h2>
+            
+            <input type="hidden" id="edit-stock-id">
+            
+            <div class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <p class="text-sm text-gray-600 mb-1">Current Price</p>
+                <p id="current-stock-price-display" class="text-xl font-bold text-gray-800">-</p>
+            </div>
+            
+            <label class="block text-sm font-semibold text-gray-700 mb-2">New Stock Price</label>
+            <div class="flex gap-2 mb-3">
+                <input type="number" id="edit-stock-price-input" placeholder="Enter price" step="0.01" class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                <select id="edit-stock-currency-input" class="w-28 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                    <option value="INR">₹ INR</option>
+                    <option value="USD">$ USD</option>
+                </select>
+            </div>
+            
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Quantity</label>
+            <input type="number" id="edit-stock-quantity-input" placeholder="Enter quantity" step="0.01" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+            
+            <p class="text-xs text-gray-600 mb-4">💡 Manually entered prices will be stored until next live update</p>
+            
+            <div class="flex space-x-3">
+                <button onclick="saveEditStockPrice()" class="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                    Save
+                </button>
+                <button onclick="closeEditStockPriceModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- CREDENTIAL ADD/EDIT MODAL -->
+    <div id="credential-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeCredentialModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 id="credential-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Add Credential</h2>
+            
+            <input type="hidden" id="credential-modal-id">
+            <input type="text" id="credential-modal-service" placeholder="Service Name" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <input type="text" id="credential-modal-tag" placeholder="Tag (e.g., Work, Personal, Bank)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <input type="text" id="credential-modal-username" placeholder="Username" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <input type="password" id="credential-modal-password" placeholder="Password" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <textarea id="credential-modal-description" placeholder="Description (shown in list)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="2"></textarea>
+            <textarea id="credential-modal-additional-details" placeholder="Additional Details (optional)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="3"></textarea>
+            
+            <div class="flex space-x-3">
+                <button onclick="saveCredentialModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                    Save
+                </button>
+                <button onclick="closeCredentialModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+        <!-- CREDENTIAL VIEW MODAL -->
+        <div id="credential-view-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeCredentialViewModal()">
+            <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+                <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Credential Details</h2>
+                
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-xs text-gray-500 font-semibold">Service</label>
+                        <p id="view-service" class="text-base font-medium text-gray-800"></p>
+                    </div>
+                    <div id="view-tag-container" class="hidden">
+                        <label class="text-xs text-gray-500 font-semibold">Tag</label>
+                        <p id="view-tag" class="text-sm text-blue-600"></p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 font-semibold">Username</label>
+                        <p id="view-username" class="text-base font-medium text-gray-800"></p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 font-semibold">Password</label>
+                        <div class="flex items-center gap-2">
+                            <p id="view-password" class="text-base font-mono text-gray-800 flex-1">••••••••</p>
+                            <button onclick="toggleViewPassword()" class="text-indigo-600 hover:text-indigo-800">
+                                <svg id="view-password-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="view-description-container" class="hidden">
+                        <label class="text-xs text-gray-500 font-semibold">Description</label>
+                        <p id="view-description" class="text-sm text-gray-600"></p>
+                    </div>
+                    <div id="view-additional-details-container" class="hidden">
+                        <label class="text-xs text-gray-500 font-semibold">Additional Details</label>
+                        <p id="view-additional-details" class="text-sm text-gray-600"></p>
+                    </div>
+            </div>
+            
+            <div class="flex space-x-3 mt-6">
+                <button onclick="editCredentialFromView()" class="flex-1 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                    Edit
+                </button>
+                <button onclick="closeCredentialViewModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- CARD ADD/EDIT MODAL -->
+    <div id="card-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeCardModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 id="card-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Add Card</h2>
+            
+            <input type="hidden" id="card-modal-id">
+            <input type="text" id="card-modal-name" placeholder="Card Name (e.g., HDFC Regalia)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+            <input type="text" id="card-modal-number" placeholder="Card Number (16 digits)" maxlength="19" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+            <div class="flex gap-2">
+                <input type="text" id="card-modal-expiry" placeholder="MM/YY" maxlength="5" class="flex-1 p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" oninput="formatCardExpiry(this)">
+                <input type="text" id="card-modal-cvv" placeholder="CVV" maxlength="4" class="w-24 p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            
+            <div class="flex space-x-3">
+                <button onclick="saveCardModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                    Save
+                </button>
+                <button onclick="closeCardModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- EXPORT MODAL -->
+    <div id="export-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Navigation.closeExportModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-gray-600 to-gray-800 bg-clip-text text-transparent">Export Data</h2>
+            <p class="text-gray-600 mb-4">Download all your data as an encrypted file for backup or device migration.</p>
+            
+            <button onclick="Navigation.exportData()" class="w-full px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-800 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold mb-3">
+                📥 Download Backup File
+            </button>
+            
+            <button onclick="Navigation.closeExportModal()" class="w-full px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                Cancel
+            </button>
+        </div>
+    </div>
+    
+    <!-- IMPORT MODAL -->
+    <div id="import-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Navigation.closeImportModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-gray-600 to-gray-800 bg-clip-text text-transparent">Import Data</h2>
+            <p class="text-gray-600 mb-4">Upload your backup file to restore data.</p>
+            
+            <input type="file" id="import-file" accept=".myassistant" class="w-full p-2 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500">
+            
+            <button onclick="Navigation.importData()" class="w-full px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-800 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold mb-3">
+                📤 Import Backup
+            </button>
+            
+            <button onclick="Navigation.closeImportModal()" class="w-full px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                Cancel
+            </button>
+        </div>
+    </div>
+    
+    <!-- SECURITY SETUP MODAL -->
+    <div id="security-setup-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-90 z-[1001] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+            <div class="text-center mb-6">
+                <div class="w-20 h-20 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    Secure Your App
+                </h2>
+                <p class="text-gray-600 text-sm mt-2">Set up PIN to protect your data</p>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Create PIN (4-6 digits)</label>
+                    <input type="password" id="setup-pin" inputmode="numeric" maxlength="6" 
+                           class="w-full px-4 py-3 border-2 border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-center text-2xl tracking-widest font-bold"
+                           placeholder="••••">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Confirm PIN</label>
+                    <input type="password" id="setup-pin-confirm" inputmode="numeric" maxlength="6"
+                           class="w-full px-4 py-3 border-2 border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-center text-2xl tracking-widest font-bold"
+                           placeholder="••••">
+                </div>
+                
+                <div id="biometric-setup-option" class="hidden bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" id="enable-biometric-checkbox" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                        <span class="ml-3 flex-1">
+                            <span class="text-sm font-semibold text-purple-900">Enable Fingerprint</span>
+                            <span class="block text-xs text-purple-600">Quick unlock with biometric</span>
+                        </span>
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
+                        </svg>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex gap-3">
+                <button onclick="setupSecurity()" 
+                        class="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 font-bold">
+                    Setup Security
+                </button>
+            </div>
+            
+            <p class="text-xs text-gray-500 text-center mt-4">
+                🔒 Your PIN is stored securely and cannot be recovered. Please remember it!
+            </p>
+        </div>
+    </div>
+    
+    <!-- SECURITY UNLOCK MODAL -->
+    <div id="security-unlock-modal" class="hidden fixed inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 z-[1001] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+            <div class="text-center mb-6">
+                <div class="w-24 h-24 mx-auto mb-4">
+                    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="unlockIconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="50" cy="50" r="45" fill="url(#unlockIconGrad)"/>
+                        <g transform="translate(50, 50)">
+                            <rect x="-4" y="15" width="8" height="5" rx="1" fill="#ffffff"/>
+                            <ellipse cx="0" cy="26" rx="20" ry="10" fill="#ffffff" opacity="0.9"/>
+                            <ellipse cx="0" cy="0" rx="14" ry="16" fill="#ffffff"/>
+                            <rect x="-3" y="-16" width="6" height="3" fill="#f0f0f0"/>
+                            <circle cx="0" cy="-22" r="1.5" fill="#4CAF50"/>
+                            <path d="M -14 -8 Q -14 -18, 0 -20 Q 14 -18, 14 -8" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                            <g transform="translate(-17, 0)">
+                                <ellipse cx="0" cy="0" rx="5" ry="7" fill="#ffffff"/>
+                                <ellipse cx="0" cy="0" rx="3.5" ry="5" fill="#e0e7ff"/>
+                                <ellipse cx="0" cy="0" rx="2" ry="3" fill="#c7d2fe"/>
+                            </g>
+                            <g transform="translate(17, 0)">
+                                <ellipse cx="0" cy="0" rx="5" ry="7" fill="#ffffff"/>
+                                <ellipse cx="0" cy="0" rx="3.5" ry="5" fill="#e0e7ff"/>
+                                <ellipse cx="0" cy="0" rx="2" ry="3" fill="#c7d2fe"/>
+                            </g>
+                            <ellipse cx="-5" cy="-2" rx="3.5" ry="4.5" fill="#667eea"/>
+                            <ellipse cx="-5" cy="-2" rx="2" ry="2.5" fill="#4f46e5"/>
+                            <circle cx="-6" cy="-3" r="1" fill="#ffffff"/>
+                            <ellipse cx="5" cy="-2" rx="3.5" ry="4.5" fill="#667eea"/>
+                            <ellipse cx="5" cy="-2" rx="2" ry="2.5" fill="#4f46e5"/>
+                            <circle cx="4" cy="-3" r="1" fill="#ffffff"/>
+                            <path d="M -6 6 Q 0 10 6 6" stroke="#667eea" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                            <path d="M 17 5 L 22 8" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round"/>
+                            <circle cx="23" cy="9" r="2" fill="#ffffff"/>
+                            <rect x="-5" y="16" width="10" height="2" fill="#f8f9ff"/>
+                            <circle cx="-3" cy="17" r="0.5" fill="#667eea"/>
+                            <circle cx="0" cy="17" r="0.5" fill="#4CAF50"/>
+                            <circle cx="3" cy="17" r="0.5" fill="#667eea"/>
+                        </g>
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    My Assistant
+                </h2>
+                <p class="text-gray-600 text-sm mt-2">Enter PIN to unlock</p>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <input type="password" id="unlock-pin" inputmode="numeric" maxlength="6"
+                           class="w-full px-4 py-4 border-2 border-purple-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-center text-3xl tracking-widest font-bold"
+                           placeholder="••••"
+                           onkeypress="if(event.key === 'Enter') unlockWithPin()">
+                </div>
+                
+                <button onclick="unlockWithPin()" 
+                        class="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:shadow-xl transition-all duration-200 transform hover:scale-105 font-bold text-lg">
+                    Unlock
+                </button>
+                
+                <button id="biometric-unlock-btn" onclick="unlockWithBiometric()" 
+                        class="hidden w-full px-6 py-3 bg-white border-2 border-purple-300 text-purple-700 rounded-xl hover:bg-purple-50 transition-all duration-200 font-semibold flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
+                    </svg>
+                    Use Fingerprint
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- RESET APP MODAL -->
+    <div id="reset-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full border-4 border-red-500">
+            <div class="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mx-auto mb-4">
+                <svg class="w-8 h-8 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+            </div>
+            
+            <h2 class="text-2xl font-bold mb-3 text-center text-red-600">⚠️ Reset App Data</h2>
+            <p class="text-gray-700 mb-4 text-center font-semibold">This will delete ALL your data:</p>
+            
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <ul class="text-sm text-red-800 space-y-2">
+                    <li class="flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                        All Expenses
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                        All Credit Cards
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                        All Investments
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                        All Credentials
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                        All Settings & AI Keys
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                        Chat History
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                <p class="text-sm text-green-800 flex items-center">
+                    <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    <span>Your data will be auto-exported as backup before reset</span>
+                </p>
+            </div>
+            
+            <p class="text-gray-600 text-sm mb-6 text-center italic">This action cannot be undone!</p>
+            
+            <div class="flex space-x-3">
+                <button onclick="Navigation.closeResetModal()" class="flex-1 px-4 py-2.5 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+                <button onclick="Navigation.resetApp()" class="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 font-bold">
+                    Reset Everything
+                </button>
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- Toast Notification -->
+    <div id="toast" class="hidden fixed bottom-4 right-4 bg-gray-900 text-white px-6 py-3 rounded-lg shadow-lg z-50"></div>
+    
+    <!-- JavaScript Modules (Load in specific order) -->
+    <!-- Core modules first -->
+    <script src="js/core/database.js"></script>
+    <script src="js/core/utils.js"></script>
+    <script src="js/core/storage.js"></script>
+    <script src="js/core/security.js"></script>
+    <script src="js/core/loading.js"></script>
+    <script src="js/core/stockapi.js"></script>
+    
+    <!-- AI modules -->
+    <script src="js/ai/gemini.js"></script>
+    <script src="js/ai/chatgpt.js"></script>
+    <script src="js/ai/perplexity.js"></script>
+    <script src="js/ai/provider.js"></script>
+    
+    <!-- Data modules -->
+    <script src="js/modules/credentials.js"></script>
+    <script src="js/modules/cards.js"></script>
+    <script src="js/modules/expenses.js"></script>
+    <script src="js/modules/investments.js"></script>
+    
+    <!-- UI modules -->
+    <script src="js/ui/toast.js"></script>
+    <script src="js/ui/chat.js"></script>
+    <script src="js/ui/navigation.js"></script>
+    
+    <!-- Main app initialization (must be last) -->
+    <script src="js/app.js"></script>
+    
+    <!-- Form Handlers -->
+    <script>
+        // Form handler functions that call the module methods
+        // Toggle credential form visibility
+        function toggleCredentialForm() {
+            const form = document.getElementById('credential-form');
+            form.classList.toggle('hidden');
+        }
+        
+        // Search credentials
+        function searchCredentials() {
+            const searchTerm = document.getElementById('credentials-search').value.toLowerCase();
+            
+            if (!searchTerm) {
+                Credentials.render();
+                return;
+            }
+            
+            // Filter credentials
+            const originalCredentials = [...window.DB.credentials];
+            window.DB.credentials = window.DB.credentials.filter(cred => {
+                const description = cred.description || cred.notes || '';
+                return cred.service.toLowerCase().includes(searchTerm) ||
+                    description.toLowerCase().includes(searchTerm) ||
+                    (cred.additionalDetails && cred.additionalDetails.toLowerCase().includes(searchTerm)) ||
+                    (cred.tag && cred.tag.toLowerCase().includes(searchTerm));
+            });
+            
+            // Render filtered list using the module
+            Credentials.render();
+            
+            // Restore original credentials
+            window.DB.credentials = originalCredentials;
+        }
+        
+        function handleAddCredential() {
+            try {
+                const service = document.getElementById('cred-service').value.trim();
+                const username = document.getElementById('cred-username').value.trim();
+                const password = document.getElementById('cred-password').value.trim();
+                const notes = document.getElementById('cred-notes').value.trim();
+                
+                Credentials.add(service, username, password, notes);
+                Credentials.render();
+                
+                // Clear form and hide it
+                document.getElementById('cred-service').value = '';
+                document.getElementById('cred-username').value = '';
+                document.getElementById('cred-password').value = '';
+                document.getElementById('cred-notes').value = '';
+                document.getElementById('credential-form').classList.add('hidden');
+                
+                Toast.success('Credential added successfully!');
+            } catch (error) {
+                Toast.error(error.message);
+            }
+        }
+        
+        // Card Modal Functions
+        function formatCardExpiry(input) {
+            let value = input.value.replace(/\D/g, ''); // Remove non-digits
+            if (value.length >= 2) {
+                value = value.substring(0, 2) + '/' + value.substring(2, 4);
+            }
+            input.value = value;
+        }
+        
+        window.openCardModal = function(id = null) {
+            // Always clear fields first
+            document.getElementById('card-modal-title').textContent = 'Add Card';
+            document.getElementById('card-modal-id').value = '';
+            document.getElementById('card-modal-name').value = '';
+            document.getElementById('card-modal-number').value = '';
+            document.getElementById('card-modal-expiry').value = '';
+            document.getElementById('card-modal-cvv').value = '';
+            
+            if (id) {
+                // Edit mode - populate with existing data
+                const card = window.DB.cards.find(c => c.id === id);
+                if (card) {
+                    document.getElementById('card-modal-title').textContent = 'Edit Card';
+                    document.getElementById('card-modal-id').value = card.id;
+                    document.getElementById('card-modal-name').value = card.name;
+                    document.getElementById('card-modal-number').value = card.cardNumber;
+                    document.getElementById('card-modal-expiry').value = card.expiry;
+                    document.getElementById('card-modal-cvv').value = card.cvv;
+                }
+            }
+            
+            document.getElementById('card-modal').classList.remove('hidden');
+        }
+        
+        window.closeCardModal = function() {
+            document.getElementById('card-modal').classList.add('hidden');
+        };
+        
+        window.saveCardModal = async function() {
+            try {
+                Loading.show('Saving card...');
+                
+                const id = document.getElementById('card-modal-id').value;
+                const name = document.getElementById('card-modal-name').value.trim();
+                const cardNumber = document.getElementById('card-modal-number').value.trim();
+                const expiry = document.getElementById('card-modal-expiry').value.trim();
+                const cvv = document.getElementById('card-modal-cvv').value.trim();
+                
+                if (id) {
+                    // Update existing
+                    await Cards.update(id, name, cardNumber, expiry, cvv);
+                    Toast.success('Card updated!');
+                } else {
+                    // Add new
+                    await Cards.add(name, cardNumber, expiry, cvv);
+                    Toast.success('Card added!');
+                }
+                
+                Cards.render();
+                closeCardModal();
+                Loading.hide();
+            } catch (error) {
+                Loading.hide();
+                console.error('Error saving card:', error);
+                Toast.error(error.message);
+            }
+        }
+        
+        // Search cards
+        function searchCards() {
+            const searchTerm = document.getElementById('cards-search').value.toLowerCase();
+            const cards = document.querySelectorAll('#cards-list > div');
+            
+            cards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                card.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        }
+        
+        // Toggle expense form visibility
+        function toggleExpenseForm() {
+            const form = document.getElementById('expense-form');
+            form.classList.toggle('hidden');
+        }
+        
+        // Search expenses (now integrated with filtering)
+        function searchExpenses() {
+            const searchTerm = document.getElementById('expenses-search').value;
+            Expenses.updateFilters(undefined, undefined, searchTerm);
+        }
+        
+        // Update expense filters
+        function updateExpenseFilters() {
+            const startDate = document.getElementById('expense-start-date').value;
+            const endDate = document.getElementById('expense-end-date').value;
+            const searchTerm = document.getElementById('expenses-search').value;
+            Expenses.updateFilters(startDate, endDate, searchTerm);
+        }
+        
+        // Set to current month
+        function setExpenseCurrentMonth() {
+            const now = new Date();
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            
+            document.getElementById('expense-start-date').value = firstDay.toISOString().split('T')[0];
+            document.getElementById('expense-end-date').value = lastDay.toISOString().split('T')[0];
+            updateExpenseFilters();
+        }
+        
+        // Set to all time
+        function setExpenseAllTime() {
+            if (window.DB.expenses.length === 0) {
+                Toast.info('No expenses yet');
+                return;
+            }
+            
+            // Find earliest and latest dates
+            const dates = window.DB.expenses.map(e => new Date(e.date));
+            const earliest = new Date(Math.min(...dates));
+            const latest = new Date(Math.max(...dates));
+            
+            document.getElementById('expense-start-date').value = earliest.toISOString().split('T')[0];
+            document.getElementById('expense-end-date').value = latest.toISOString().split('T')[0];
+            updateExpenseFilters();
+        }
+        
+        // Toggle investment form visibility
+        function toggleInvestmentForm() {
+            const form = document.getElementById('investment-form');
+            form.classList.toggle('hidden');
+        }
+        
+        // Filter investments by type
+        function filterInvestments() {
+            searchInvestments(); // Trigger search with current filters
+        }
+        
+        // Search investments
+        function searchInvestments() {
+            Investments.render(); // Just re-render using module's built-in logic
+        }
+        
+        // Expense modal functions
+        window.openExpenseModal = function(id = null) {
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            
+            // Clear fields first
+            document.getElementById('expense-modal-id').value = '';
+            document.getElementById('expense-modal-title').value = '';
+            document.getElementById('expense-modal-description').value = '';
+            document.getElementById('expense-modal-amount').value = '';
+            document.getElementById('expense-modal-category').value = '';
+            document.getElementById('expense-modal-date').value = today;
+            document.getElementById('expense-modal-title-header').textContent = 'Add Expense';
+            document.getElementById('expense-modal-save-btn').textContent = 'Add';
+            
+            // If editing, populate with existing data
+            if (id) {
+                const expense = window.DB.expenses.find(e => e.id == id || String(e.id) === String(id));
+                if (expense) {
+                    document.getElementById('expense-modal-id').value = expense.id;
+                    document.getElementById('expense-modal-title').value = expense.title || expense.description || '';
+                    document.getElementById('expense-modal-description').value = expense.description || '';
+                    document.getElementById('expense-modal-amount').value = expense.amount || '';
+                    document.getElementById('expense-modal-category').value = expense.category || '';
+                    document.getElementById('expense-modal-date').value = expense.date || today;
+                    document.getElementById('expense-modal-title-header').textContent = 'Edit Expense';
+                    document.getElementById('expense-modal-save-btn').textContent = 'Update';
+                }
+            }
+            
+            document.getElementById('expense-modal').classList.remove('hidden');
+        }
+        
+        window.closeExpenseModal = function() {
+            document.getElementById('expense-modal').classList.add('hidden');
+        }
+        
+        window.saveExpenseModal = function() {
+            try {
+                const id = document.getElementById('expense-modal-id').value;
+                Loading.show(id ? 'Updating expense...' : 'Adding expense...');
+                
+                const title = document.getElementById('expense-modal-title').value.trim();
+                const amount = document.getElementById('expense-modal-amount').value.trim();
+                const category = document.getElementById('expense-modal-category').value;
+                const date = document.getElementById('expense-modal-date').value;
+                const description = document.getElementById('expense-modal-description').value.trim();
+                
+                if (!title || !amount || !category || !date) {
+                    throw new Error('Please fill all required fields');
+                }
+                
+                if (id) {
+                    // Update existing expense
+                    const expense = window.DB.expenses.find(e => e.id == id);
+                    if (expense) {
+                        expense.title = title;
+                        expense.amount = parseFloat(amount);
+                        expense.category = category;
+                        expense.date = date;
+                        expense.description = description;
+                        window.Storage.save();
+                    }
+                    Toast.success('Expense updated!');
+                } else {
+                    // Add new expense
+                    Expenses.add(title, amount, category, date, description);
+                    Toast.success('Expense added!');
+                }
+                
+                Expenses.render();
+                closeExpenseModal();
+                Loading.hide();
+            } catch (error) {
+                Loading.hide();
+                Toast.error(error.message);
+            }
+        }
+        
+        // Date filter modal functions
+        window.openDateFilterModal = function() {
+            const startDate = Expenses.startDate || '';
+            const endDate = Expenses.endDate || '';
+            
+            document.getElementById('filter-start-date').value = startDate;
+            document.getElementById('filter-end-date').value = endDate;
+            
+            document.getElementById('date-filter-modal').classList.remove('hidden');
+        }
+        
+        window.closeDateFilterModal = function() {
+            document.getElementById('date-filter-modal').classList.add('hidden');
+        }
+        
+        window.applyQuickFilter = function(type) {
+            const today = new Date();
+            let startDate, endDate, label;
+            
+            switch(type) {
+                case 'today':
+                    startDate = endDate = today.toISOString().split('T')[0];
+                    label = 'Today';
+                    break;
+                case 'week':
+                    const weekStart = new Date(today);
+                    weekStart.setDate(today.getDate() - today.getDay());
+                    startDate = weekStart.toISOString().split('T')[0];
+                    endDate = today.toISOString().split('T')[0];
+                    label = 'This Week';
+                    break;
+                case 'month':
+                    startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+                    endDate = today.toISOString().split('T')[0];
+                    label = 'Current Month';
+                    break;
+                case 'year':
+                    startDate = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
+                    endDate = today.toISOString().split('T')[0];
+                    label = 'This Year';
+                    break;
+                case 'all':
+                    startDate = '2020-01-01';
+                    endDate = new Date(today.getFullYear() + 10, 11, 31).toISOString().split('T')[0];
+                    label = 'All Time';
+                    break;
+            }
+            
+            Expenses.startDate = startDate;
+            Expenses.endDate = endDate;
+            Expenses.currentPage = 1;
+            Expenses.render();
+            
+            const filterLabel = document.getElementById('date-filter-label');
+            if (filterLabel) filterLabel.textContent = label;
+            
+            closeDateFilterModal();
+        }
+        
+        window.applyCustomDateFilter = function() {
+            const startDate = document.getElementById('filter-start-date').value;
+            const endDate = document.getElementById('filter-end-date').value;
+            
+            if (!startDate || !endDate) {
+                Toast.error('Please select both start and end dates');
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                Toast.error('Start date must be before end date');
+                return;
+            }
+            
+            Expenses.startDate = startDate;
+            Expenses.endDate = endDate;
+            Expenses.currentPage = 1;
+            Expenses.render();
+            
+            const filterLabel = document.getElementById('date-filter-label');
+            if (filterLabel) filterLabel.textContent = 'Custom Range';
+            
+            closeDateFilterModal();
+        }
+        
+        function handleAddExpense() {
+            try {
+                const description = document.getElementById('expense-description').value.trim();
+                const amount = document.getElementById('expense-amount').value.trim();
+                const category = document.getElementById('expense-category').value;
+                const date = document.getElementById('expense-date').value;
+                
+                Expenses.add(description, amount, category, date);
+                Expenses.render();
+                
+                // Clear form and hide it
+                document.getElementById('expense-description').value = '';
+                document.getElementById('expense-amount').value = '';
+                document.getElementById('expense-category').value = '';
+                document.getElementById('expense-date').value = '';
+                document.getElementById('expense-form').classList.add('hidden');
+                
+                Toast.success('Expense added successfully!');
+            } catch (error) {
+                Toast.error(error.message);
+            }
+        }
+        
+        // Investment Modal Functions
+        let currentUsdToInrRate = null;
+        
+        function openInvestmentModal() {
+            document.getElementById('investment-modal').classList.remove('hidden');
+            document.getElementById('investment-modal-title').textContent = 'Add Investment';
+            document.getElementById('investment-modal-id').value = '';
+            document.getElementById('investment-modal-name').value = '';
+            document.getElementById('investment-modal-type').value = '';
+            document.getElementById('investment-modal-term').value = '';
+            document.getElementById('investment-modal-stock-price').value = '';
+            document.getElementById('investment-modal-currency').value = 'INR';
+            document.getElementById('investment-modal-quantity').value = '';
+            document.getElementById('investment-modal-amount').value = '';
+            document.getElementById('investment-modal-notes').value = '';
+            document.getElementById('calculated-amount').textContent = '';
+            toggleInvestmentFields();
+        }
+        
+        function closeInvestmentModal() {
+            document.getElementById('investment-modal').classList.add('hidden');
+        }
+        
+        function toggleInvestmentFields() {
+            const type = document.getElementById('investment-modal-type').value;
+            const stockFields = document.getElementById('stock-fields');
+            const amountField = document.getElementById('amount-field');
+            
+            if (type === 'stock') {
+                stockFields.classList.remove('hidden');
+                amountField.classList.add('hidden');
+            } else {
+                stockFields.classList.add('hidden');
+                amountField.classList.remove('hidden');
+            }
+        }
+        
+        async function getUsdToInrRate() {
+            // Try to use cached rate from last 1 hour
+            if (currentUsdToInrRate && currentUsdToInrRate.timestamp && 
+                (Date.now() - currentUsdToInrRate.timestamp) < 3600000) {
+                return currentUsdToInrRate.rate;
+            }
+            
+            try {
+                // Fetch current rate using AI
+                if (!window.AIProvider || !window.AIProvider.isConfigured()) {
+                    return 83; // Fallback rate
+                }
+                
+                const response = await window.AIProvider.call(
+                    'What is the current USD to INR exchange rate? Return ONLY the number, no explanations.',
+                    { system_instruction: 'You are a currency converter. Return only the numeric exchange rate.' }
+                );
+                
+                const rate = parseFloat(response.match(/[\d.]+/)?.[0] || 83);
+                currentUsdToInrRate = { rate, timestamp: Date.now() };
+                return rate;
+            } catch (error) {
+                console.error('Failed to fetch USD to INR rate:', error);
+                return 83; // Fallback rate
+            }
+        }
+        
+        async function calculateStockAmount() {
+            const price = parseFloat(document.getElementById('investment-modal-stock-price').value) || 0;
+            const quantity = parseFloat(document.getElementById('investment-modal-quantity').value) || 0;
+            const currency = document.getElementById('investment-modal-currency').value;
+            
+            if (price > 0 && quantity > 0) {
+                let priceInInr = price;
+                let displayText = '';
+                
+                if (currency === 'USD') {
+                    const rate = await getUsdToInrRate();
+                    priceInInr = price * rate;
+                    displayText = `Price: ₹${priceInInr.toFixed(2)}/share (USD ${price} × ${rate.toFixed(2)}) | `;
+                } else {
+                    displayText = `Price: ₹${price}/share | `;
+                }
+                
+                const totalAmount = priceInInr * quantity;
+                displayText += `Total: ₹${totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                
+                document.getElementById('calculated-amount').textContent = displayText;
+            } else {
+                document.getElementById('calculated-amount').textContent = '';
+            }
+        }
+        
+        async function saveInvestmentModal() {
+            try {
+                const id = document.getElementById('investment-modal-id').value;
+                const name = document.getElementById('investment-modal-name').value.trim();
+                const type = document.getElementById('investment-modal-type').value;
+                const term = document.getElementById('investment-modal-term').value;
+                const notes = document.getElementById('investment-modal-notes').value.trim();
+                
+                let amount, quantity, stockPrice, currency, usdToInrRate;
+                
+                if (type === 'stock') {
+                    stockPrice = parseFloat(document.getElementById('investment-modal-stock-price').value) || 0;
+                    quantity = parseFloat(document.getElementById('investment-modal-quantity').value) || 0;
+                    currency = document.getElementById('investment-modal-currency').value;
+                    
+                    if (!stockPrice || !quantity) {
+                        throw new Error('Please enter stock price and quantity');
+                    }
+                    
+                    // Convert to INR if USD
+                    if (currency === 'USD') {
+                        usdToInrRate = await getUsdToInrRate();
+                        const priceInInr = stockPrice * usdToInrRate;
+                        amount = priceInInr * quantity;
+                    } else {
+                        amount = stockPrice * quantity;
+                    }
+                } else {
+                    amount = parseFloat(document.getElementById('investment-modal-amount').value) || 0;
+                    if (!amount) {
+                        throw new Error('Please enter amount');
+                    }
+                }
+                
+                // Check if editing or adding
+                if (id) {
+                    // Update existing investment
+                    Investments.update(id, name, amount, term, type, quantity, notes, stockPrice, currency, usdToInrRate);
+                    Toast.success('Investment updated successfully!');
+                } else {
+                    // Add new investment
+                    Investments.add(name, amount, term, type, quantity, notes, stockPrice, currency, usdToInrRate);
+                    Toast.success('Investment added successfully!');
+                }
+                
+                Investments.render();
+                closeInvestmentModal();
+            } catch (error) {
+                Toast.error(error.message);
+            }
+        }
+        
+        // Credential Modal Functions
+        let currentCredentialId = null;
+        let currentViewPasswordVisible = false;
+        let currentViewPassword = '';
+        
+        // Make viewCredential globally accessible
+        window.viewCredential = function(id) {
+            if (!window.DB?.credentials || window.DB.credentials.length === 0) {
+                Toast.error('No credentials found. Please add a credential first.');
+                return;
+            }
+            
+            const cred = window.DB.credentials.find(c => c.id === id);
+            
+            if (!cred) {
+                Toast.error('Credential not found');
+                return;
+            }
+            
+            currentCredentialId = id;
+            currentViewPassword = cred.password;
+            currentViewPasswordVisible = false;
+            
+            const modal = document.getElementById('credential-view-modal');
+            if (!modal) {
+                console.error('credential-view-modal not found');
+                Toast.error('View modal not found');
+                return;
+            }
+            
+            modal.classList.remove('hidden');
+            document.getElementById('view-service').textContent = cred.service;
+            document.getElementById('view-username').textContent = cred.username;
+            document.getElementById('view-password').textContent = '••••••••';
+            
+            if (cred.tag) {
+                document.getElementById('view-tag').textContent = cred.tag;
+                document.getElementById('view-tag-container').classList.remove('hidden');
+            } else {
+                document.getElementById('view-tag-container').classList.add('hidden');
+            }
+            
+            const description = cred.description || cred.notes || '';
+            if (description) {
+                document.getElementById('view-description').textContent = description;
+                document.getElementById('view-description-container').classList.remove('hidden');
+            } else {
+                document.getElementById('view-description-container').classList.add('hidden');
+            }
+            
+            if (cred.additionalDetails) {
+                document.getElementById('view-additional-details').textContent = cred.additionalDetails;
+                document.getElementById('view-additional-details-container').classList.remove('hidden');
+            } else {
+                document.getElementById('view-additional-details-container').classList.add('hidden');
+            }
+            
+        };
+        
+        window.openCredentialModal = function(id = null) {
+            // Always clear fields first
+            document.getElementById('credential-modal-title').textContent = 'Add Credential';
+            document.getElementById('credential-modal-id').value = '';
+            document.getElementById('credential-modal-service').value = '';
+            document.getElementById('credential-modal-tag').value = '';
+            document.getElementById('credential-modal-username').value = '';
+            document.getElementById('credential-modal-password').value = '';
+            document.getElementById('credential-modal-description').value = '';
+            document.getElementById('credential-modal-additional-details').value = '';
+            
+            if (id) {
+                // Edit mode - populate with existing data
+                const cred = window.DB.credentials.find(c => c.id === id);
+                
+                if (cred) {
+                    document.getElementById('credential-modal-title').textContent = 'Edit Credential';
+                    document.getElementById('credential-modal-id').value = cred.id;
+                    document.getElementById('credential-modal-service').value = cred.service;
+                    document.getElementById('credential-modal-tag').value = cred.tag || '';
+                    document.getElementById('credential-modal-username').value = cred.username;
+                    document.getElementById('credential-modal-password').value = cred.password;
+                    document.getElementById('credential-modal-description').value = cred.description || cred.notes || '';
+                    document.getElementById('credential-modal-additional-details').value = cred.additionalDetails || '';
+                } else {
+                    Toast.error('Credential not found');
+                    return;
+                }
+            }
+            
+            document.getElementById('credential-modal').classList.remove('hidden');
+        };
+        
+        window.closeCredentialModal = function() {
+            document.getElementById('credential-modal').classList.add('hidden');
+        };
+        
+        window.saveCredentialModal = function() {
+            try {
+                const id = document.getElementById('credential-modal-id').value;
+                const service = document.getElementById('credential-modal-service').value.trim();
+                const tag = document.getElementById('credential-modal-tag').value.trim();
+                const username = document.getElementById('credential-modal-username').value.trim();
+                const password = document.getElementById('credential-modal-password').value.trim();
+                const description = document.getElementById('credential-modal-description').value.trim();
+                const additionalDetails = document.getElementById('credential-modal-additional-details').value.trim();
+                
+                if (id) {
+                    // Update existing
+                    Credentials.update(id, service, username, password, description, additionalDetails, tag);
+                    Toast.success('Credential updated!');
+                } else {
+                    // Add new
+                    Credentials.add(service, username, password, description, additionalDetails, tag);
+                    Toast.success('Credential added!');
+                }
+                
+                Credentials.render();
+                closeCredentialModal();
+            } catch (error) {
+                Toast.error(error.message);
+            }
+        }
+        
+        
+        window.closeCredentialViewModal = function() {
+            document.getElementById('credential-view-modal').classList.add('hidden');
+            currentCredentialId = null;
+            currentViewPassword = '';
+            currentViewPasswordVisible = false;
+        };
+        
+        window.toggleViewPassword = function() {
+            currentViewPasswordVisible = !currentViewPasswordVisible;
+            const passwordEl = document.getElementById('view-password');
+            
+            if (currentViewPasswordVisible) {
+                passwordEl.textContent = currentViewPassword;
+            } else {
+                passwordEl.textContent = '••••••••';
+            }
+        }
+        
+        window.editCredentialFromView = function() {
+            window.closeCredentialViewModal();
+            window.openCredentialModal(currentCredentialId);
+        };
+        
+        // Investment Edit Modal
+        function openInvestmentEditModal(id) {
+            // Handle both string and number IDs
+            const inv = window.DB.investments.find(i => i.id == id || String(i.id) === String(id));
+            if (!inv) {
+                Toast.error('Investment not found');
+                return;
+            }
+            
+            document.getElementById('investment-modal').classList.remove('hidden');
+            document.getElementById('investment-modal-title').textContent = 'Edit Investment';
+            document.getElementById('investment-modal-id').value = String(inv.id);
+            document.getElementById('investment-modal-name').value = inv.name;
+            document.getElementById('investment-modal-type').value = inv.type;
+            document.getElementById('investment-modal-term').value = inv.term;
+            document.getElementById('investment-modal-notes').value = inv.notes || '';
+            
+            if (inv.type === 'stock') {
+                document.getElementById('investment-modal-stock-price').value = inv.inputStockPrice || '';
+                document.getElementById('investment-modal-currency').value = inv.inputCurrency || 'INR';
+                document.getElementById('investment-modal-quantity').value = inv.quantity || '';
+            } else {
+                document.getElementById('investment-modal-amount').value = inv.amount || '';
+            }
+            
+            toggleInvestmentFields();
+            if (inv.type === 'stock') {
+                calculateStockAmount();
+            }
+        }
+        
+        // Exchange Rate Modal Functions
+        function openExchangeRateModal() {
+            const modal = document.getElementById('exchange-rate-modal');
+            const input = document.getElementById('exchange-rate-input');
+            const displayRate = document.getElementById('current-rate-display');
+            const lastUpdated = document.getElementById('rate-last-updated');
+            
+            // Display current rate
+            const currentRate = window.DB.exchangeRate?.rate || 83;
+            displayRate.textContent = `₹${currentRate.toFixed(2)}`;
+            
+            // Display last updated
+            if (window.DB.exchangeRate?.lastUpdated) {
+                const date = new Date(window.DB.exchangeRate.lastUpdated);
+                lastUpdated.textContent = date.toLocaleString();
+            } else {
+                lastUpdated.textContent = 'Never';
+            }
+            
+            // Set input value
+            input.value = currentRate.toFixed(2);
+            
+            modal.classList.remove('hidden');
+        }
+        
+        function closeExchangeRateModal() {
+            document.getElementById('exchange-rate-modal').classList.add('hidden');
+        }
+        
+        async function saveExchangeRate() {
+            try {
+                const input = document.getElementById('exchange-rate-input');
+                const newRate = parseFloat(input.value);
+                
+                if (!newRate || isNaN(newRate) || newRate <= 0) {
+                    Toast.error('Please enter a valid exchange rate');
+                    return;
+                }
+                
+                closeExchangeRateModal();
+                Loading.show('Updating exchange rate...');
+                
+                // Update in database
+                window.DB.exchangeRate = {
+                    rate: newRate,
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                // Recalculate all USD stocks
+                const updatedCount = Investments.recalculateUSDStocks(newRate);
+                
+                // Save to storage
+                window.Storage.save();
+                
+                // Re-render to show updated values
+                Investments.render();
+                
+                Loading.hide();
+                
+                if (updatedCount > 0) {
+                    Toast.success(`Rate updated to ₹${newRate}. ${updatedCount} USD stock(s) recalculated.`);
+                } else {
+                    Toast.success(`Rate updated to ₹${newRate}`);
+                }
+            } catch (error) {
+                Loading.hide();
+                Toast.error(error.message || 'Failed to update exchange rate');
+            }
+        }
+        
+        // Make exchange rate modal functions globally accessible
+        window.openExchangeRateModal = openExchangeRateModal;
+        window.closeExchangeRateModal = closeExchangeRateModal;
+        window.saveExchangeRate = saveExchangeRate;
+        
+        // Edit Stock Price Modal Functions
+        function openEditStockPriceModal(id) {
+            const stock = window.DB.investments.find(inv => inv.id == id);
+            if (!stock || stock.type !== 'stock') {
+                Toast.error('Stock not found');
+                return;
+            }
+            
+            const modal = document.getElementById('edit-stock-price-modal');
+            const titleEl = document.getElementById('edit-stock-name-title');
+            const idInput = document.getElementById('edit-stock-id');
+            const priceInput = document.getElementById('edit-stock-price-input');
+            const currencyInput = document.getElementById('edit-stock-currency-input');
+            const quantityInput = document.getElementById('edit-stock-quantity-input');
+            const currentPriceDisplay = document.getElementById('current-stock-price-display');
+            
+            // Set title
+            titleEl.textContent = `Edit ${stock.name}`;
+            
+            // Set hidden ID
+            idInput.value = stock.id;
+            
+            // Display current price
+            if (stock.inputStockPrice) {
+                const currencySymbol = stock.inputCurrency === 'USD' ? '$' : '₹';
+                currentPriceDisplay.textContent = `${currencySymbol}${stock.inputStockPrice.toFixed(2)}`;
+            } else {
+                currentPriceDisplay.textContent = 'Not set';
+            }
+            
+            // Set inputs
+            priceInput.value = stock.inputStockPrice || '';
+            currencyInput.value = stock.inputCurrency || 'INR';
+            quantityInput.value = stock.quantity || '';
+            
+            modal.classList.remove('hidden');
+        }
+        
+        function closeEditStockPriceModal() {
+            document.getElementById('edit-stock-price-modal').classList.add('hidden');
+        }
+        
+        async function saveEditStockPrice() {
+            try {
+                const id = document.getElementById('edit-stock-id').value;
+                const price = parseFloat(document.getElementById('edit-stock-price-input').value);
+                const currency = document.getElementById('edit-stock-currency-input').value;
+                const quantity = parseFloat(document.getElementById('edit-stock-quantity-input').value);
+                
+                if (!price || isNaN(price) || price <= 0) {
+                    Toast.error('Please enter a valid price');
+                    return;
+                }
+                
+                if (!quantity || isNaN(quantity) || quantity <= 0) {
+                    Toast.error('Please enter a valid quantity');
+                    return;
+                }
+                
+                closeEditStockPriceModal();
+                Loading.show('Updating stock price...');
+                
+                await Investments.editStockPrice(id, price, currency, quantity);
+                
+                Loading.hide();
+                Toast.success('Stock price updated successfully');
+            } catch (error) {
+                Loading.hide();
+                Toast.error(error.message || 'Failed to update stock price');
+            }
+        }
+        
+        // Make edit stock price modal functions globally accessible
+        window.openEditStockPriceModal = openEditStockPriceModal;
+        window.closeEditStockPriceModal = closeEditStockPriceModal;
+        window.saveEditStockPrice = saveEditStockPrice;
+        
+        // Legacy function for backwards compatibility
+        async function updateUsdToInrRate() {
+            openExchangeRateModal();
+        }
+        
+        // ============================================
+        // SECURITY FUNCTIONS
+        // ============================================
+        
+        /**
+         * Check if biometric is available and show option
+         */
+        async function checkBiometricAvailability() {
+            const available = await window.Security.isBiometricAvailable();
+            if (available) {
+                document.getElementById('biometric-setup-option').classList.remove('hidden');
+                document.getElementById('biometric-unlock-btn').classList.remove('hidden');
+            }
+        }
+        
+        /**
+         * Setup security (PIN + optional biometric)
+         */
+        async function setupSecurity() {
+            try {
+                const pin = document.getElementById('setup-pin').value;
+                const confirmPin = document.getElementById('setup-pin-confirm').value;
+                const enableBiometric = document.getElementById('enable-biometric-checkbox').checked;
+                
+                if (!pin || pin.length < 4) {
+                    Toast.error('PIN must be at least 4 digits');
+                    return;
+                }
+                
+                if (pin !== confirmPin) {
+                    Toast.error('PINs do not match');
+                    return;
+                }
+                
+                Loading.show('Setting up security...');
+                
+                // Setup PIN
+                await window.Security.setupPin(pin);
+                
+                // Enable biometric if requested
+                if (enableBiometric) {
+                    try {
+                        await window.Security.enableBiometric();
+                    } catch (error) {
+                        console.warn('Biometric setup failed:', error);
+                        Toast.show('PIN set, but biometric setup failed', 'warning');
+                    }
+                }
+                
+                // Clear inputs
+                document.getElementById('setup-pin').value = '';
+                document.getElementById('setup-pin-confirm').value = '';
+                document.getElementById('enable-biometric-checkbox').checked = false;
+                
+                // Hide setup modal
+                document.getElementById('security-setup-modal').classList.add('hidden');
+                
+                // Unlock the app
+                window.Security.isUnlocked = true;
+                
+                Loading.hide();
+                Toast.success('🔒 Security enabled successfully!');
+                
+                // Continue app initialization
+                window.App.init();
+                
+            } catch (error) {
+                Loading.hide();
+                console.error('Security setup error:', error);
+                Toast.error(error.message || 'Failed to setup security');
+            }
+        }
+        
+        /**
+         * Unlock with PIN
+         */
+        async function unlockWithPin() {
+            try {
+                const pin = document.getElementById('unlock-pin').value;
+                
+                if (!pin) {
+                    Toast.error('Please enter your PIN');
+                    return;
+                }
+                
+                Loading.show('Verifying PIN...');
+                
+                const success = await window.Security.unlockWithPin(pin);
+                
+                Loading.hide();
+                
+                if (success) {
+                    // Clear input
+                    document.getElementById('unlock-pin').value = '';
+                    
+                    // Hide unlock modal
+                    document.getElementById('security-unlock-modal').classList.add('hidden');
+                    
+                    Toast.success('✅ Unlocked successfully!');
+                    
+                    // Continue app initialization
+                    window.App.init();
+                } else {
+                    Toast.error('❌ Incorrect PIN');
+                    // Shake animation
+                    const input = document.getElementById('unlock-pin');
+                    input.classList.add('shake');
+                    setTimeout(() => input.classList.remove('shake'), 500);
+                }
+            } catch (error) {
+                Loading.hide();
+                console.error('Unlock error:', error);
+                Toast.error('Failed to unlock');
+            }
+        }
+        
+        /**
+         * Unlock with biometric
+         */
+        async function unlockWithBiometric() {
+            try {
+                Loading.show('Authenticating...');
+                
+                const success = await window.Security.authenticateWithBiometric();
+                
+                Loading.hide();
+                
+                if (success) {
+                    // Hide unlock modal
+                    document.getElementById('security-unlock-modal').classList.add('hidden');
+                    
+                    Toast.success('✅ Unlocked with biometric!');
+                    
+                    // Continue app initialization
+                    window.App.init();
+                }
+            } catch (error) {
+                Loading.hide();
+                console.error('Biometric unlock error:', error);
+                
+                if (error.message && error.message.includes('cancelled')) {
+                    Toast.show('Biometric cancelled. Use PIN instead.', 'info');
+                } else {
+                    Toast.error('Biometric failed. Use PIN instead.');
+                }
+            }
+        }
+        
+        // Make security functions globally accessible
+        window.setupSecurity = setupSecurity;
+        window.unlockWithPin = unlockWithPin;
+        window.unlockWithBiometric = unlockWithBiometric;
+        window.checkBiometricAvailability = checkBiometricAvailability;
+    </script>
+</body>
+</html>
+
+
+

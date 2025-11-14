@@ -1,0 +1,28 @@
+{
+  "name": "myassistant",
+  "version": "1.0.0",
+  "description": "Personal AI Assistant - Secure storage for credentials, cards, health, investments, and more",
+  "main": "index.js",
+  "scripts": {
+    "sync": "npx cap sync",
+    "open:android": "npx cap open android",
+    "build": "npx cap copy && npx cap sync"
+  },
+  "keywords": [
+    "personal-assistant",
+    "ai",
+    "secure-storage",
+    "capacitor"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@aparajita/capacitor-biometric-auth": "^9.1.2",
+    "@capacitor-community/sqlite": "^7.0.2",
+    "@capacitor-mlkit/barcode-scanning": "^7.3.0",
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/cli": "^7.4.4",
+    "@capacitor/core": "^7.4.4",
+    "@capacitor/status-bar": "^7.0.3"
+  }
+}

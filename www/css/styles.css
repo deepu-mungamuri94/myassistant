@@ -1,0 +1,194 @@
+/**
+ * My Assistant - Main Stylesheet
+ * Modern, mobile-first design with gradient animations
+ */
+
+/* ========================================
+   GLOBAL STYLES
+   ======================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(135deg, 
+        rgba(102, 126, 234, 0.1) 0%, 
+        rgba(118, 75, 162, 0.1) 25%, 
+        rgba(240, 147, 251, 0.1) 50%, 
+        rgba(79, 172, 254, 0.1) 75%, 
+        rgba(0, 242, 254, 0.1) 100%);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
+    min-height: 100vh;
+    overflow-x: hidden;
+    /* Safe area for status bar and notches */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+/* ========================================
+   LAYOUT
+   ======================================== */
+
+.container {
+    max-width: 100%;
+    padding: 0.5rem;
+}
+
+@media (min-width: 768px) {
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+}
+
+/* ========================================
+   CHAT INTERFACE
+   ======================================== */
+
+.chat-container {
+    height: calc(100vh - 280px);
+    overflow-y: auto;
+    scroll-behavior: smooth;
+}
+
+.message {
+    animation: slideIn 0.3s ease-out;
+}
+
+.loading-dots::after {
+    content: '';
+    animation: dots 1.5s infinite;
+}
+
+/* ========================================
+   INTERACTIVE ELEMENTS
+   ======================================== */
+
+.category-icon {
+    transition: all 0.3s ease;
+}
+
+.category-icon:hover {
+    transform: scale(1.1) rotate(5deg);
+}
+
+/* ========================================
+   SAFE AREA SUPPORT (Mobile Notch & Status Bar)
+   ======================================== */
+
+header {
+    /* Remove extra padding since body now handles safe area */
+    padding-top: 1rem;
+    /* Add margin to account for status bar on body */
+    margin-top: 0;
+}
+
+#side-menu .menu-header {
+    /* Account for status bar in menu header */
+    padding-top: 1.5rem;
+}
+
+/* ========================================
+   CUSTOM SCROLLBAR
+   ======================================== */
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #764ba2, #667eea);
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+.hidden {
+    display: none !important;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 640px) {
+    .chat-container {
+        height: calc(100vh - 320px);
+    }
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+
+/* Price update blink animation */
+@keyframes priceBlink {
+    0%, 100% { 
+        background-color: white;
+        border-color: rgb(229, 231, 235);
+    }
+    25%, 75% { 
+        background-color: rgb(220, 252, 231);
+        border-color: rgb(34, 197, 94);
+    }
+}
+
+.price-blink {
+    animation: priceBlink 1s ease-in-out 2;
+}
+
+/* PIN input shake animation (for incorrect PIN) */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+    20%, 40%, 60%, 80% { transform: translateX(10px); }
+}
+
+.shake {
+    animation: shake 0.5s ease-in-out;
+}
+
