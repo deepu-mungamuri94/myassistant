@@ -28,8 +28,8 @@ const Security = {
      * Setup PIN
      */
     async setupPin(pin) {
-        if (!pin || pin.length < 4) {
-            throw new Error('PIN must be at least 4 digits');
+        if (!pin || pin.length !== 4) {
+            throw new Error('PIN must be exactly 4 digits');
         }
         
         const pinHash = await this.hashPin(pin);
