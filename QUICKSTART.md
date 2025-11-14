@@ -188,6 +188,41 @@ On first launch, you'll be prompted to set up security:
 
 ---
 
+## 📤 Backup & Restore
+
+### Export Your Data
+1. Open **Side Menu** (☰ icon)
+2. Tap **"📤 Export Data"**
+3. Confirm export
+4. **Android**: File saved to `Documents/myassistant_backup_<timestamp>.json`
+5. **Web**: File downloaded to browser's Downloads folder
+
+💡 **File Location (Android)**:
+- Open **Files app** → **Documents** folder
+- Find `myassistant_backup_*.json`
+- File is in human-readable JSON format
+
+### Import Your Data
+1. Open **Side Menu** (☰ icon)
+2. Tap **"📥 Import Data"**
+3. Select your backup JSON file
+4. Confirm import
+5. ✅ All data restored!
+
+### Reset App
+1. Open **Side Menu** (☰ icon)
+2. Tap **"🔄 Reset App"**
+3. Confirm reset (⚠️ **WARNING**: This will delete all data!)
+4. App automatically exports backup before resetting
+5. App restarts with fresh data
+
+💡 **Use Cases**:
+- **Backup**: Before updating app or resetting device
+- **Transfer**: Move data to new device
+- **Recovery**: Restore after accidental deletion
+
+---
+
 ## 🆘 Troubleshooting
 
 ### "No AI provider configured"
