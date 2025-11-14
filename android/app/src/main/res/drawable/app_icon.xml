@@ -37,12 +37,10 @@
         android:fillColor="#f0f0f0"
         android:pathData="M47,34 h6 v3 h-6 Z"/>
     
-    <!-- Antenna Light (green dot) -->
-    <circle
+    <!-- Antenna Light (green circle as path) -->
+    <path
         android:fillColor="#4CAF50"
-        android:cx="50"
-        android:cy="28"
-        android:r="1.5"/>
+        android:pathData="M50,26.5 a1.5,1.5 0 1,0 0,3 a1.5,1.5 0 1,0 0,-3 Z"/>
     
     <!-- Headphone Band (curved path) -->
     <path
@@ -92,12 +90,10 @@
         android:fillColor="#4f46e5"
         android:pathData="M45,49 a2,2.5 0 1,0 0,5 a2,2.5 0 1,0 0,-5 Z"/>
     
-    <!-- Left Eye - Highlight -->
-    <circle
+    <!-- Left Eye - Highlight (small circle) -->
+    <path
         android:fillColor="#ffffff"
-        android:cx="44"
-        android:cy="47"
-        android:r="1"/>
+        android:pathData="M44,46 a1,1 0 1,0 0,2 a1,1 0 1,0 0,-2 Z"/>
     
     <!-- Right Eye - Outer -->
     <path
@@ -109,12 +105,10 @@
         android:fillColor="#4f46e5"
         android:pathData="M55,49 a2,2.5 0 1,0 0,5 a2,2.5 0 1,0 0,-5 Z"/>
     
-    <!-- Right Eye - Highlight -->
-    <circle
+    <!-- Right Eye - Highlight (small circle) -->
+    <path
         android:fillColor="#ffffff"
-        android:cx="54"
-        android:cy="47"
-        android:r="1"/>
+        android:pathData="M54,46 a1,1 0 1,0 0,2 a1,1 0 1,0 0,-2 Z"/>
     
     <!-- Smile -->
     <path
@@ -132,21 +126,19 @@
         android:strokeLineCap="round"
         android:fillColor="#00000000"/>
     
-    <!-- Microphone - Circle -->
-    <circle
+    <!-- Microphone - Circle (small) -->
+    <path
         android:fillColor="#ffffff"
-        android:cx="73"
-        android:cy="59"
-        android:r="2"/>
+        android:pathData="M73,57 a2,2 0 1,0 0,4 a2,2 0 1,0 0,-4 Z"/>
     
     <!-- Chest Panel Background -->
     <path
         android:fillColor="#f8f9ff"
         android:pathData="M45,66 h10 v2 h-10 Z"/>
     
-    <!-- Chest Panel Lights -->
-    <circle android:fillColor="#667eea" android:cx="47" android:cy="67" android:r="0.5"/>
-    <circle android:fillColor="#4CAF50" android:cx="50" android:cy="67" android:r="0.5"/>
-    <circle android:fillColor="#667eea" android:cx="53" android:cy="67" android:r="0.5"/>
+    <!-- Chest Panel Lights (small circles) -->
+    <path android:fillColor="#667eea" android:pathData="M47,66.5 a0.5,0.5 0 1,0 0,1 a0.5,0.5 0 1,0 0,-1 Z"/>
+    <path android:fillColor="#4CAF50" android:pathData="M50,66.5 a0.5,0.5 0 1,0 0,1 a0.5,0.5 0 1,0 0,-1 Z"/>
+    <path android:fillColor="#667eea" android:pathData="M53,66.5 a0.5,0.5 0 1,0 0,1 a0.5,0.5 0 1,0 0,-1 Z"/>
     
 </vector>
