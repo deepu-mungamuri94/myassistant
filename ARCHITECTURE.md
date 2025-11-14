@@ -1,375 +1,719 @@
-# Architecture Documentation - My Assistant
+# Architecture Documentation 🏗️
 
-## Overview
-
-My Assistant is a personal AI-powered data management application built with Capacitor, featuring secure local storage, encryption, and AI integration.
-
-## Technology Stack
-
-### Frontend
-- **HTML5/CSS3/JavaScript**: Pure vanilla JS, no frameworks
-- **Tailwind CSS**: Utility-first CSS via CDN
-- **Single-File Architecture**: All code in `www/index.html`
-
-### Mobile Framework
-- **Capacitor 7.x**: Web-to-native bridge
-- **Android Platform**: Target SDK 34
-
-### AI Integration
-- **Google Gemini API**: gemini-2.0-flash-lite model
-- **Abstraction Layer**: Switchable AI providers
-
-### Storage & Security
-- **localStorage**: Primary data storage
-- **Web Crypto API**: AES-256-GCM encryption
-- **PBKDF2**: Key derivation (100,000 iterations)
-
-### Database (Future)
-- **SQLite Plugin**: @capacitor-community/sqlite (ready but not implemented)
-
-## Project Structure
-
-```
-myassistant/
-├── www/
-│   └── index.html          # Complete app (HTML+CSS+JS inline)
-├── android/                # Android native project (Capacitor-generated)
-├── node_modules/           # NPM dependencies
-├── .npmrc                  # Project-specific npm registry
-├── package.json            # Dependencies and scripts
-├── capacitor.config.json   # Capacitor configuration
-├── README.md               # User documentation
-├── QUICKSTART.md           # Setup guide
-└── ARCHITECTURE.md         # This file
-```
-
-## Data Architecture
-
-### Storage Model
-
-All data stored in localStorage under key: `myassistant_db`
-
-```javascript
-{
-  credentials: [
-    { id, service, username, password, notes, createdAt }
-  ],
-  cards: [
-    { id, name, last4, bank, notes, createdAt }
-  ],
-  health: [
-    { id, type, date, details, createdAt }
-  ],
-  investments: [
-    { id, type, name, amount, date, notes, createdAt }
-  ],
-  reminders: [
-    { id, title, description, datetime, completed, createdAt }
-  ],
-  chatHistory: [
-    { role, content, timestamp }
-  ],
-  settings: {
-    aiProvider: 'gemini',
-    geminiApiKey: '',
-    masterPassword: ''
-  }
-}
-```
-
-### Encryption Flow
-
-1. **Key Derivation**:
-   - Input: Master password + random salt (16 bytes)
-   - Algorithm: PBKDF2 with SHA-256, 100,000 iterations
-   - Output: 256-bit encryption key
-
-2. **Encryption**:
-   - Algorithm: AES-256-GCM
-   - IV: Random 12 bytes per encryption
-   - Output: Base64-encoded (salt + IV + ciphertext)
-
-3. **Decryption**:
-   - Extract salt and IV from encrypted data
-   - Derive key using password and salt
-   - Decrypt using AES-256-GCM with key and IV
-
-### Backup Format
-
-- **File Extension**: `.myassistant`
-- **Content**: Base64-encoded encrypted JSON
-- **Structure**: `[salt(16) + IV(12) + encrypted_data]`
-
-## AI Integration Architecture
-
-### Abstraction Layer
-
-```javascript
-async function callAI(prompt, context) {
-  const provider = DB.settings.aiProvider;
-  
-  if (provider === 'gemini') return await callGemini(prompt, context);
-  if (provider === 'openai') return await callOpenAI(prompt, context);  // Future
-  // ... more providers
-}
-```
-
-### Provider Implementation: Gemini
-
-```javascript
-async function callGemini(prompt, context) {
-  // 1. Build full prompt with context
-  const fullPrompt = `Context: ${JSON.stringify(context)}
-                      User Query: ${prompt}
-                      Provide helpful insights.`;
-  
-  // 2. Call Gemini API
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
-    { method: 'POST', body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt }] }] }) }
-  );
-  
-  // 3. Extract and return text
-  const data = await response.json();
-  return data.candidates[0].content.parts[0].text;
-}
-```
-
-### Context Preparation
-
-Before AI call, prepare data context:
-
-```javascript
-const context = {
-  credentials_count: DB.credentials.length,
-  cards: DB.cards.map(c => ({ name: c.name, bank: c.bank })),
-  health_records_count: DB.health.length,
-  investments_count: DB.investments.length,
-  total_investment_value: DB.investments.reduce((sum, inv) => sum + inv.amount, 0),
-  upcoming_reminders: DB.reminders.filter(r => new Date(r.datetime) > new Date()).length
-};
-```
-
-## UI Architecture
-
-### Single-Page Application (SPA)
-
-- **Navigation**: View switching via `navigateTo(view)`
-- **Views**: Hidden by default, shown on navigation
-- **Menu**: Slide-in hamburger menu
-- **Modals**: Settings, Export, Import
-
-### View Management
-
-```javascript
-function navigateTo(view) {
-  // Hide all views
-  document.querySelectorAll('[id$="-view"]').forEach(v => v.classList.add('hidden'));
-  
-  // Show selected view
-  document.getElementById(`${view}-view`).classList.remove('hidden');
-  
-  // Refresh data
-  refreshView(view);
-}
-```
-
-### Safe Area Support
-
-```css
-header {
-  padding-top: calc(env(safe-area-inset-top) + 1rem);
-}
-
-#side-menu .menu-header {
-  padding-top: calc(env(safe-area-inset-top) + 1.5rem);
-}
-```
-
-## Security Model
-
-### Threat Model
-
-**Protected Against**:
-- Local device access without master password
-- Backup file theft (encrypted)
-
-**NOT Protected Against**:
-- Compromised device with keylogger
-- Physical device access with unlocked app
-- Side-channel attacks on encryption
-
-### Security Best Practices
-
-1. **Master Password**: Strong password required for encryption
-2. **No Cloud Storage**: All data local-only
-3. **Encryption at Rest**: Data encrypted before localStorage
-4. **API Keys**: Stored in localStorage (not encrypted - user responsibility)
-
-### Future Enhancements
-
-- Biometric authentication
-- Auto-lock after inactivity
-- Encrypted API key storage
-- Secure enclave integration (Android Keystore)
-
-## Performance Considerations
-
-### Current Performance
-
-- **localStorage Size Limit**: ~5-10MB (browser-dependent)
-- **Encryption Speed**: ~1ms per entry (modern devices)
-- **AI Response Time**: 2-5 seconds (network-dependent)
-
-### Optimization Strategies
-
-1. **Lazy Loading**: Load views on demand
-2. **Debouncing**: Throttle AI requests
-3. **Caching**: Cache AI responses
-4. **Pagination**: For large data sets
-
-### Future: SQLite Migration
-
-When localStorage becomes too large:
-
-```javascript
-// Replace localStorage with SQLite
-import { CapacitorSQLite } from '@capacitor-community/sqlite';
-
-async function saveToSQLite(table, data) {
-  const db = await CapacitorSQLite.createConnection({ database: 'myassistant' });
-  await db.execute(`INSERT INTO ${table} VALUES (...)`, data);
-}
-```
-
-## Error Handling
-
-### Global Handlers
-
-```javascript
-window.onerror = (msg, url, line, col, error) => {
-  console.error('Global error:', { msg, url, line, col, error });
-  showToast('An error occurred', 'error');
-};
-
-window.onunhandledrejection = (event) => {
-  console.error('Unhandled promise:', event.reason);
-  showToast('An error occurred', 'error');
-};
-```
-
-### Function-Level Error Handling
-
-All critical functions wrapped in try-catch:
-
-```javascript
-async function addCredential() {
-  try {
-    // ... logic
-    saveToStorage();
-    showToast('Success!', 'success');
-  } catch (error) {
-    console.error('Add credential error:', error);
-    showToast('Failed to add credential', 'error');
-  }
-}
-```
-
-## Design Decisions
-
-### Why Single-File Architecture?
-
-**Pros**:
-- Maximum compatibility with Android WebView
-- No module loading issues
-- Faster initial load (one HTTP request)
-- Easier debugging
-
-**Cons**:
-- Large file size (~50KB)
-- Harder to maintain
-- No code splitting
-
-**Decision**: Chosen for reliability and compatibility. If app grows significantly, migrate to modular architecture with bundler.
-
-### Why localStorage Instead of SQLite?
-
-**Current Approach**: localStorage
-- Simpler implementation
-- No plugin issues
-- Sufficient for personal use (~1000 entries)
-
-**Future Migration**: SQLite when:
-- Data exceeds 1000 entries
-- Complex queries needed
-- Performance degrades
-
-### Why Gemini Over Other AI?
-
-**Gemini Chosen Because**:
-- Free tier (60 RPM)
-- Fast response times
-- Good at structured data analysis
-- Easy API integration
-
-**Provider Abstraction**: Allows easy switching to OpenAI, Claude, or custom models.
-
-## Deployment
-
-### Development Build
-
-```bash
-npm run build
-npm run open:android
-# Build → Build APK in Android Studio
-```
-
-### Production Considerations
-
-This app is **NOT intended for Play Store**. If distributing:
-
-1. Add ProGuard rules for obfuscation
-2. Enable R8 full mode
-3. Sign with release keystore
-4. Test on multiple devices
-
-## Future Roadmap
-
-### Phase 1: Core Improvements (v1.1)
-- SQLite integration
-- Search functionality
-- Biometric auth
-- Auto-backup scheduling
-
-### Phase 2: AI Enhancements (v1.2)
-- OpenAI and Claude support
-- Voice input
-- Analytics dashboard
-- Tags and categories
-
-### Phase 3: Advanced Features (v2.0)
-- Optional cloud sync (E2E encrypted)
-- Multi-device support
-- Shared vaults
-- Browser extension
-
-## Contributing
-
-This is a personal project, but if you want to modify:
-
-1. Fork the repository
-2. Modify `www/index.html`
-3. Test locally: `npm run build && npm run open:android`
-4. Create pull request
-
-## References
-
-- Capacitor: https://capacitorjs.com/docs
-- Web Crypto API: https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API
-- Gemini API: https://ai.google.dev/docs
-- PBKDF2: https://en.wikipedia.org/wiki/PBKDF2
-- AES-GCM: https://en.wikipedia.org/wiki/Galois/Counter_Mode
+Complete technical architecture of My Assistant application.
 
 ---
 
-**Last Updated**: November 2025
+## 📐 Overview
+
+My Assistant is a **modular, mobile-first web application** built with vanilla JavaScript and packaged as a native Android app using Capacitor. The architecture emphasizes:
+
+- **Separation of Concerns**: Clear module boundaries
+- **Security First**: PIN + Biometric authentication
+- **AI Abstraction**: Provider-agnostic AI integration
+- **Offline Capable**: LocalStorage-based persistence
+- **Progressive Enhancement**: Works without network (except AI features)
+
+---
+
+## 🗂️ Directory Structure
+
+```
+myassistant/
+├── www/                        # Web application root
+│   ├── index.html              # Single-page application shell
+│   ├── css/
+│   │   └── styles.css          # Global styles, animations, utilities
+│   └── js/
+│       ├── app.js              # Application bootstrap & initialization
+│       ├── core/               # Core system modules
+│       │   ├── database.js     # In-memory data schema
+│       │   ├── storage.js      # LocalStorage persistence layer
+│       │   ├── security.js     # Authentication & encryption
+│       │   ├── stockapi.js     # Stock price fetching (multi-API)
+│       │   ├── loading.js      # Global loading overlay
+│       │   └── utils.js        # Shared utility functions
+│       ├── ai/                 # AI provider integrations
+│       │   ├── provider.js     # AI abstraction layer with fallback
+│       │   ├── gemini.js       # Google Gemini implementation
+│       │   ├── chatgpt.js      # OpenAI ChatGPT implementation
+│       │   └── perplexity.js   # Perplexity AI implementation
+│       ├── modules/            # Feature modules (business logic)
+│       │   ├── cards.js        # Credit card management
+│       │   ├── expenses.js     # Expense tracking
+│       │   ├── investments.js  # Portfolio management
+│       │   └── credentials.js  # Credential vault
+│       └── ui/                 # UI components
+│           ├── navigation.js   # Routing, menu, modals
+│           ├── chat.js         # AI chat interface
+│           └── toast.js        # Toast notifications
+└── android/                    # Capacitor Android project
+    ├── app/
+    │   └── src/main/
+    │       ├── AndroidManifest.xml
+    │       ├── res/            # Android resources
+    │       └── java/           # MainActivity
+    └── build.gradle
+```
+
+---
+
+## 🔧 Core Modules
+
+### 1. **database.js** - Data Schema
+
+In-memory singleton storing all application data:
+
+```javascript
+DB = {
+    credentials: Array,      // User credentials
+    cards: Array,            // Credit cards with benefits
+    expenses: Array,         // Expense transactions
+    investments: Array,      // Investment portfolio
+    chatHistory: Array,      // AI conversation history
+    exchangeRate: Object,    // USD to INR conversion
+    settings: Object,        // AI provider settings
+    security: Object         // PIN hash & biometric config
+}
+```
+
+**Key Features:**
+- Single source of truth
+- No external database dependencies
+- Loaded on app start, saved on changes
+- Exported globally as `window.DB`
+
+---
+
+### 2. **storage.js** - Persistence Layer
+
+Manages LocalStorage operations:
+
+```javascript
+Storage = {
+    save()          // Serialize DB to localStorage
+    load()          // Deserialize localStorage to DB
+    exportData()    // Export DB as JSON file
+    importData()    // Import JSON and merge with DB
+    clear()         // Wipe all data
+}
+```
+
+**Implementation Details:**
+- Uses `localStorage.setItem('myassistant_data', JSON.stringify(DB))`
+- Auto-loads on app initialization
+- Export/Import for backup/restore
+- Data validation on import
+
+---
+
+### 3. **security.js** - Authentication & Encryption
+
+Handles PIN and biometric authentication:
+
+```javascript
+Security = {
+    isUnlocked: Boolean,
+    
+    // PIN Management
+    isSetup()                          // Check if PIN configured
+    hashPin(pin)                       // SHA-256 hash
+    setupPin(pin)                      // Initial setup
+    verifyPin(pin)                     // Validate PIN
+    changePin(oldPin, newPin)          // Update PIN
+    
+    // Biometric
+    isBiometricAvailable()             // Check device capability
+    enableBiometric()                  // Enable fingerprint
+    disableBiometric()                 // Disable fingerprint
+    authenticateWithBiometric()        // Trigger biometric auth
+    
+    // Session
+    unlockWithPin(pin)                 // Unlock app with PIN
+    lock()                             // Lock app
+    resetSecurity()                    // Clear security (WARNING)
+}
+```
+
+**Security Flow:**
+1. **First Launch**: Show setup modal → Create PIN → Optional biometric
+2. **Subsequent Launches**: Show unlock modal → PIN or Fingerprint
+3. **Session**: Remains unlocked until app restart
+
+**Key Features:**
+- **SHA-256 Hashing**: PIN never stored in plain text
+- **Biometric Integration**: Uses `@aparajita/capacitor-biometric-auth` plugin
+- **Session Management**: Unlock once per app lifecycle
+- **No Recovery**: PIN cannot be recovered (by design)
+
+---
+
+### 4. **stockapi.js** - Stock Price Fetching
+
+Multi-API approach with fallback and parallel requests:
+
+```javascript
+StockAPI = {
+    // Core fetching
+    searchTicker(companyName)          // Resolve company → ticker
+    getPrice(ticker)                   // Fetch current price
+    fetchStockPrice(companyName)       // Search + Price
+    fetchAllPrices(stockNames)         // Batch fetch
+    
+    // With ticker caching
+    fetchAllPricesWithTickers(stocks)  // Use cached tickers
+    
+    // Helper
+    httpGet(url)                       // Capacitor HTTP or CORS proxy
+}
+```
+
+**API Providers:**
+1. **Yahoo Finance** (primary, no API key)
+2. **Finnhub** (fallback, free tier)
+3. **Alpha Vantage** (fallback, free tier)
+
+**Key Features:**
+- **Parallel Requests**: `Promise.race()` for fastest response
+- **Timeout**: 8-second limit per API
+- **Ticker Caching**: Stores resolved tickers in DB
+- **BSE ↔ NSE Fallback**: Tries both exchanges for Indian stocks
+- **CORS Handling**: Native HTTP in app, proxy in browser
+- **Batch AI Fallback**: Single AI call to resolve multiple tickers
+
+**Flow:**
+```
+fetchStockPrice("Infosys")
+    ↓
+searchTicker("Infosys") → Try common mappings
+    ↓ (if not found)
+Yahoo Search API → "INFY.NS"
+    ↓
+getPrice("INFY.NS") → Parallel race:
+    ├─ Yahoo Finance
+    ├─ Finnhub
+    └─ Alpha Vantage
+    ↓
+Return fastest successful response
+```
+
+---
+
+### 5. **loading.js** - Global Loading Overlay
+
+Centralized loading indicator:
+
+```javascript
+Loading = {
+    show(message)    // Display overlay with message
+    hide()           // Hide overlay
+}
+```
+
+**Usage:**
+- Shown during: AI calls, stock updates, benefit fetching
+- Blocks user interaction
+- Light gray semi-transparent overlay
+
+---
+
+### 6. **utils.js** - Utility Functions
+
+Shared helper functions:
+
+```javascript
+Utils = {
+    formatCurrency(amount)       // ₹1,234.56
+    formatDate(date)             // DD MMM YYYY
+    generateId()                 // Unique ID generator
+    parseMarkdown(text)          // Convert MD → HTML
+}
+```
+
+---
+
+## 🤖 AI Integration
+
+### **provider.js** - AI Abstraction Layer
+
+Unified interface for all AI providers with automatic fallback:
+
+```javascript
+AIProvider = {
+    // Provider Management
+    getAvailableProviders()              // List providers with API keys
+    callProvider(provider, prompt, ctx)  // Call specific provider
+    isRateLimitError(error)              // Detect 429/rate limit
+    
+    // Main Interface
+    call(prompt, context)                // Smart call with fallback
+    prepareContext(mode)                 // Context for Cards/Expenses/Investments
+    isConfigured()                       // Check if any provider ready
+}
+```
+
+**Fallback Logic:**
+```
+Primary Provider (e.g., Gemini)
+    ↓ (if 429 rate limit)
+Fallback #1 (e.g., ChatGPT)
+    ↓ (if 429 rate limit)
+Fallback #2 (e.g., Perplexity)
+    ↓
+Success or All Failed
+```
+
+**Key Features:**
+- **Automatic Retry**: Only on rate-limit errors (429, quota, resources exhausted)
+- **Max 3 Attempts**: Prevents infinite loops
+- **Provider Filtering**: Only tries providers with configured API keys
+- **Toast Notifications**: User feedback on fallback
+- **Console Logging**: Detailed debug information
+
+**Context Preparation:**
+- **Cards Mode**: Send only card names + stored benefits
+- **Expenses Mode**: Send all transactions, totals, categories
+- **Investments Mode**: Send portfolio, stocks, exchange rate
+
+---
+
+### Individual Providers
+
+#### **gemini.js** - Google Gemini
+```javascript
+GeminiAI = {
+    API_ENDPOINT: 'https://generativelanguage.googleapis.com/v1beta/...'
+    
+    call(prompt, context)                    // Main API call
+    getSystemInstruction(context)            // Mode-specific instructions
+    formatPromptWithContext(prompt, context) // Format data + query
+}
+```
+
+**Features:**
+- Google Search tool integration (when needed)
+- Structured JSON responses for stock tickers
+- Mode-aware system instructions
+
+#### **chatgpt.js** - OpenAI ChatGPT
+```javascript
+ChatGPT = {
+    API_ENDPOINT: 'https://api.openai.com/v1/chat/completions'
+    
+    call(prompt, context)  // Chat completion
+}
+```
+
+#### **perplexity.js** - Perplexity AI
+```javascript
+Perplexity = {
+    API_ENDPOINT: 'https://api.perplexity.ai/chat/completions'
+    
+    call(prompt, context)  // Perplexity chat
+}
+```
+
+---
+
+## 📦 Feature Modules
+
+### **cards.js** - Credit Card Management
+
+```javascript
+Cards = {
+    add(name, number, expiry, cvv)           // Add new card
+    update(id, ...)                          // Update card
+    delete(id)                               // Remove card
+    getById(id)                              // Retrieve card
+    fetchBenefits(id)                        // AI fetch from bank website
+    showBenefitsModal(id)                    // Display benefits in modal
+    render()                                 // Render card list UI
+}
+```
+
+**Data Structure:**
+```javascript
+{
+    id: Number,
+    name: String,                // "HDFC Regalia"
+    cardNumber: String,          // Encrypted
+    expiry: String,              // "12/25"
+    cvv: String,                 // Encrypted
+    benefits: String,            // AI-fetched benefits (MD/HTML)
+    benefitsFetchedAt: Timestamp,
+    createdAt: Timestamp
+}
+```
+
+---
+
+### **investments.js** - Portfolio Management
+
+```javascript
+Investments = {
+    add(...)                              // Add investment
+    update(id, ...)                       // Update investment
+    delete(id)                            // Remove investment
+    getById(id)                           // Retrieve investment
+    
+    // Stock-specific
+    refreshAllStockPrices()               // Batch fetch all stocks
+    refreshSingleStock(id)                // Fetch single stock
+    editStockPrice(id, price, currency)   // Manual price update
+    recalculateUSDStocks(newRate)         // Recalc on rate change
+    resolveMissingTickers()               // AI batch ticker resolution
+    
+    render()                              // Render portfolio UI
+    renderInvestmentCards(investments)    // Render card list
+}
+```
+
+**Data Structure:**
+```javascript
+{
+    id: Number,
+    name: String,                    // "Infosys" or "Mutual Fund XYZ"
+    type: 'stock' | 'other',
+    term: 'long' | 'short' | 'provident',
+    amount: Number,                  // Calculated total
+    
+    // Stock-only fields
+    inputStockPrice: Number,         // User/AI entered price
+    inputCurrency: 'INR' | 'USD',
+    quantity: Number,
+    tickerSymbol: String,            // Cached ticker (e.g., "INFY.NS")
+    livePrice: Number,               // Latest fetched price
+    livePriceCurrency: 'INR' | 'USD',
+    lastUpdated: Timestamp,
+    justUpdated: Boolean,            // For blink animation
+    
+    createdAt: Timestamp
+}
+```
+
+---
+
+### **expenses.js** - Expense Tracking
+
+```javascript
+Expenses = {
+    add(...)                  // Add expense
+    update(id, ...)           // Update expense
+    delete(id)                // Remove expense
+    getById(id)               // Retrieve expense
+    
+    // Filtering
+    filterByDateRange(start, end)  // Filter expenses
+    groupByMonth(expenses)         // Group by YYYY-MM
+    
+    // UI
+    render()                       // Render expense list
+    renderMonthGroup(...)          // Render month group
+    applyQuickFilter(type)         // Apply preset filter
+}
+```
+
+**Data Structure:**
+```javascript
+{
+    id: Number,
+    title: String,           // "Team Lunch"
+    description: String,     // Additional details
+    amount: Number,          // 1500.00
+    category: String,        // "Food"
+    date: String,            // "2024-11-14"
+    createdAt: Timestamp     // For sorting
+}
+```
+
+---
+
+### **credentials.js** - Credential Vault
+
+```javascript
+Credentials = {
+    add(...)          // Add credential
+    update(id, ...)   // Update credential
+    delete(id)        // Remove credential
+    getById(id)       // Retrieve credential
+    search(query)     // Search by service/tag/notes
+    render()          // Render credential list
+}
+```
+
+**Data Structure:**
+```javascript
+{
+    id: Number,
+    service: String,          // "Netflix"
+    username: String,
+    password: String,         // Encrypted
+    tag: String,              // "Streaming"
+    notes: String,            // Description
+    additionalDetails: String,
+    createdAt: Timestamp
+}
+```
+
+---
+
+## 🎨 UI Components
+
+### **navigation.js** - Routing & Navigation
+
+```javascript
+Navigation = {
+    navigateTo(view)           // Switch between views
+    refreshView(view)          // Re-render current view
+    openMenu()                 // Show side menu
+    closeMenu()                // Hide side menu
+    openSettings()             // Show settings modal
+    saveSettings()             // Save AI config
+    
+    // Export/Import
+    openExportModal()
+    exportData()
+    openImportModal()
+    importData()
+    
+    // Reset
+    openResetModal()
+    resetApp()                 // Clear all data + export
+}
+```
+
+**Views:**
+- `chat` - AI Advisor
+- `expenses` - Expense Tracker
+- `cards` - Credit Cards
+- `credentials` - Credentials Vault
+- `investments` - Investment Portfolio
+
+---
+
+### **chat.js** - AI Chat Interface
+
+```javascript
+Chat = {
+    getCurrentMode()              // Get selected context
+    send()                        // Send message to AI
+    addMessage(role, content)     // Add to chat history
+    updateWelcomeMessage()        // Show context-specific welcome
+    clear()                       // Clear chat history
+    loadHistory()                 // Load previous chat
+    formatAIResponse(text)        // MD → Styled HTML
+}
+```
+
+**Key Features:**
+- Context switching (Cards/Expenses/Investments)
+- Markdown formatting
+- Persistent chat history
+- Clear context option
+
+---
+
+### **toast.js** - Toast Notifications
+
+```javascript
+Toast = {
+    show(message, type)     // Generic toast
+    success(message)        // Green success
+    error(message)          // Red error
+    info(message)           // Blue info
+    warning(message)        // Yellow warning
+}
+```
+
+---
+
+## 🔄 Application Flow
+
+### Initialization
+
+```
+1. DOM Ready
+    ↓
+2. App.init()
+    ↓
+3. StatusBar configuration (mobile)
+    ↓
+4. Storage.load() → Load from localStorage
+    ↓
+5. Security check:
+    - Not setup? → Show setup modal → STOP
+    - Locked? → Show unlock modal → STOP
+    - Unlocked? → Continue
+    ↓
+6. Navigation.navigateTo('chat')
+    ↓
+7. Load chat history
+    ↓
+8. Check AI configuration
+    - No keys? → Prompt to configure
+    ↓
+9. Hide splash screen
+    ↓
+10. App ready ✅
+```
+
+### AI Request Flow
+
+```
+User Query
+    ↓
+Chat.send()
+    ↓
+AIProvider.call(prompt, context)
+    ↓
+AIProvider.getAvailableProviders() → ['gemini', 'chatgpt']
+    ↓
+Try Provider #1 (Gemini)
+    ↓ Success? → Return response
+    ↓ 429 Rate Limit?
+        ↓
+    Try Provider #2 (ChatGPT)
+        ↓ Success? → Return response
+        ↓ Failed?
+            ↓
+        Throw error: "All providers exhausted"
+```
+
+### Stock Price Update Flow
+
+```
+User clicks "Stocks" button
+    ↓
+Investments.refreshAllStockPrices()
+    ↓
+Filter: stocks only
+    ↓
+Check if tickers cached
+    - Yes: StockAPI.fetchAllPricesWithTickers()
+    - No/Partial: Investments.resolveMissingTickers() → AI call
+    ↓
+StockAPI.fetchStockPrice() for each
+    ↓
+Parallel API race:
+├─ Yahoo Finance
+├─ Finnhub  
+└─ Alpha Vantage
+    ↓
+Update DB with live prices
+    ↓
+Storage.save()
+    ↓
+Re-render investment list with blink animation
+```
+
+---
+
+## 📱 Mobile Integration
+
+### Capacitor Plugins
+
+1. **@capacitor/core** - Core APIs
+2. **@capacitor/status-bar** - Status bar control
+3. **@aparajita/capacitor-biometric-auth** - Fingerprint/Face ID
+4. **@capacitor/http** - Native HTTP (CORS-free)
+
+### Android Configuration
+
+**Permissions** (`AndroidManifest.xml`):
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.USE_BIOMETRIC" />
+<uses-permission android:name="android.permission.USE_FINGERPRINT" />
+```
+
+**Build**: `android/build.gradle`
+- Gradle 8.11.1
+- Android SDK 34
+- Kotlin support
+
+---
+
+## 🔐 Security Architecture
+
+### Data Protection
+- **PIN**: SHA-256 hashed, never stored in plain text
+- **Biometric**: Native Android/iOS biometric APIs
+- **Session**: Memory-based, cleared on app restart
+- **LocalStorage**: Unencrypted (app sandbox provides OS-level security)
+
+### Attack Mitigation
+- **Brute Force**: PIN input only, no password recovery
+- **Data Theft**: App sandbox prevents external access
+- **Man-in-the-Middle**: HTTPS for all external APIs
+- **XSS**: No `eval()`, sanitized user inputs
+
+---
+
+## 🚀 Performance Optimizations
+
+1. **Lazy Loading**: Modules loaded on-demand
+2. **Parallel API Calls**: `Promise.race()` for stock prices
+3. **Ticker Caching**: Avoid repeated ticker resolution
+4. **Context Pruning**: Send only relevant data to AI
+5. **LocalStorage**: Fast read/write, no network latency
+6. **Single-Page App**: No page reloads
+
+---
+
+## 🧪 Testing Recommendations
+
+### Unit Tests (TODO)
+- Core module functions (database, storage, security)
+- AI provider abstraction and fallback logic
+- Stock API with mocked responses
+
+### Integration Tests (TODO)
+- End-to-end user flows
+- Security setup and unlock
+- AI request with fallback
+- Stock price fetching
+
+### Manual Testing
+- Test on real Android device with fingerprint sensor
+- Test AI fallback by exhausting free tier limits
+- Test stock API with various company names
+- Test import/export functionality
+
+---
+
+## 🔮 Future Enhancements
+
+### Planned Features
+- [ ] iOS support
+- [ ] Data encryption at rest (optional)
+- [ ] Cloud sync (optional)
+- [ ] Widget support
+- [ ] OCR receipt scanning
+- [ ] Recurring expenses/investments
+- [ ] Budget goals and alerts
+- [ ] Multi-currency support
+- [ ] Tax calculation helpers
+
+### Technical Debt
+- [ ] Add comprehensive test suite
+- [ ] Migrate to TypeScript
+- [ ] Add state management (Redux/MobX)
+- [ ] Implement service workers for offline
+- [ ] Add CI/CD pipeline
+- [ ] Performance monitoring
+
+---
+
+## 📚 Resources
+
+- **Capacitor Docs**: https://capacitorjs.com/docs
+- **Biometric Auth Plugin**: https://github.com/aparajita/capacitor-biometric-auth
+- **TailwindCSS**: https://tailwindcss.com/docs
+- **Gemini API**: https://ai.google.dev/docs
+- **Yahoo Finance**: https://finance.yahoo.com
+- **Finnhub**: https://finnhub.io/docs/api
+- **Alpha Vantage**: https://www.alphavantage.co/documentation/
+
+---
+
+**Last Updated**: November 2024
