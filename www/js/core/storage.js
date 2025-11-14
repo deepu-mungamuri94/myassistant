@@ -55,37 +55,46 @@ const Storage = {
             const fileName = `myassistant_backup_${Date.now()}.json`;
             
             // Use Capacitor Filesystem API for native apps
-            if (this.isNativeApp() && window.Capacitor.Plugins.Filesystem) {
-                const { Filesystem, Directory } = window.Capacitor.Plugins;
-                
-                if (window.Loading) {
-                    window.Loading.show('Exporting data...');
+            if (this.isNativeApp()) {
+                try {
+                    // Import Filesystem from Capacitor
+                    const { Filesystem, Directory } = await import('@capacitor/filesystem');
+                    
+                    if (window.Loading) {
+                        window.Loading.show('Exporting data...');
+                    }
+                    
+                    // Write to Documents directory
+                    const result = await Filesystem.writeFile({
+                        path: fileName,
+                        data: dataStr,
+                        directory: Directory.Documents,
+                        encoding: 'utf8'
+                    });
+                    
+                    if (window.Loading) {
+                        window.Loading.hide();
+                    }
+                    
+                    console.log('✅ File exported:', result.uri);
+                    
+                    if (window.Toast) {
+                        window.Toast.show(`✅ Exported to Documents/${fileName}`, 'success');
+                    }
+                    
+                    // Show detailed path in console
+                    console.log('📂 File saved to:', result.uri);
+                    
+                    return true;
+                } catch (capacitorError) {
+                    console.error('Capacitor Filesystem error:', capacitorError);
+                    // Fall through to browser download
                 }
-                
-                // Write to Downloads directory
-                const result = await Filesystem.writeFile({
-                    path: fileName,
-                    data: dataStr,
-                    directory: Directory.Documents, // Use Documents for better compatibility
-                    encoding: 'utf8'
-                });
-                
-                if (window.Loading) {
-                    window.Loading.hide();
-                }
-                
-                console.log('✅ File exported:', result.uri);
-                
-                if (window.Toast) {
-                    window.Toast.show(`✅ Exported to Documents/${fileName}`, 'success');
-                }
-                
-                // Show detailed path in console
-                console.log('📂 File saved to:', result.uri);
-                
-                return true;
-            } else {
-                // Fallback to browser download for web
+            }
+            
+            // Fallback to browser download for web or if Capacitor fails
+            {
+                // Browser download
                 const blob = new Blob([dataStr], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -169,11 +178,11 @@ const Storage = {
      */
     async getExportedFiles() {
         try {
-            if (!this.isNativeApp() || !window.Capacitor.Plugins.Filesystem) {
+            if (!this.isNativeApp()) {
                 return [];
             }
             
-            const { Filesystem, Directory } = window.Capacitor.Plugins;
+            const { Filesystem, Directory } = await import('@capacitor/filesystem');
             
             const result = await Filesystem.readdir({
                 path: '',
