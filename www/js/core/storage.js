@@ -272,22 +272,29 @@ const Storage = {
                 window.Loading.show('Restoring data...');
             }
             
-            // Preserve local security settings (PIN and master password are device-specific)
-            const localSecurity = { ...window.DB.security };
+            // Preserve local PIN (device-specific)
+            const localPinHash = window.DB.security.pinHash;
+            const localBiometric = window.DB.security.biometricEnabled;
+            const localIsSetup = window.DB.security.isSetup;
             
-            console.log('🔒 Preserving local PIN and master password');
+            console.log('🔒 Preserving local PIN (device-specific)');
+            console.log('🔐 Updating master password to the one used for decryption');
             
             // Merge imported data with current DB
             Object.assign(window.DB, imported);
             
-            // Restore local security settings
-            window.DB.security = localSecurity;
+            // Restore local PIN but update master password
+            window.DB.security.pinHash = localPinHash;
+            window.DB.security.biometricEnabled = localBiometric;
+            window.DB.security.isSetup = localIsSetup;
+            window.DB.security.masterPassword = password; // Use the password that successfully decrypted the data
             
             this.save();
             
-            console.log('✅ Local security settings preserved');
-            console.log('   PIN: ' + (localSecurity.pinHash ? 'Kept' : 'Not set'));
-            console.log('   Master Password: ' + (localSecurity.masterPassword ? 'Kept' : 'Not set'));
+            console.log('✅ Security settings updated:');
+            console.log('   PIN: ' + (localPinHash ? 'Kept (device-specific)' : 'Not set'));
+            console.log('   Master Password: Updated to decryption password');
+            console.log('   💡 You can now export again from this device');
             
             if (window.Loading) {
                 window.Loading.hide();
@@ -297,7 +304,14 @@ const Storage = {
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             
             if (window.Toast) {
-                window.Toast.show('✅ Backup imported successfully!\n\n🔓 Data decrypted and restored.', 'success', 4000);
+                window.Toast.show(
+                    '✅ Backup imported successfully!\n\n' +
+                    '🔓 Data decrypted and restored\n' +
+                    '🔐 Master password updated\n' +
+                    '💡 You can now export from this device',
+                    'success',
+                    5000
+                );
             }
             
             return true;
