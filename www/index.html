@@ -1122,6 +1122,107 @@
         </div>
     </div>
     
+    <!-- MASTER PASSWORD SETUP MODAL (Onboarding) -->
+    <div id="master-password-setup-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-90 z-[1001] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+            <div class="text-center mb-6">
+                <div class="w-20 h-20 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                    Set Master Password
+                </h2>
+                <p class="text-gray-600 text-sm mt-2">This password encrypts your export backups</p>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Master Password (min 6 characters)</label>
+                    <input type="password" id="onboarding-master-password" placeholder="Enter master password" 
+                           class="w-full px-4 py-3 border-2 border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Confirm Password</label>
+                    <input type="password" id="onboarding-master-password-confirm" placeholder="Confirm master password" 
+                           class="w-full px-4 py-3 border-2 border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 flex gap-2">
+                    <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                    <div class="text-xs text-amber-800">
+                        <strong>Important:</strong> Remember this password! You'll need it to import backups. Without it, your backups cannot be decrypted.
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="completeMasterPasswordSetup()" class="w-full mt-6 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-bold text-lg">
+                Continue
+            </button>
+        </div>
+    </div>
+    
+    <!-- AI KEYS SETUP MODAL (Onboarding) -->
+    <div id="ai-keys-setup-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-90 z-[1001] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div class="text-center mb-6">
+                <div class="w-20 h-20 bg-gradient-to-br from-pink-600 to-rose-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <svg class="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+                    Configure AI Providers
+                </h2>
+                <p class="text-gray-600 text-sm mt-2">Set up your AI API keys for smart features</p>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Gemini API Key (Required)</label>
+                    <input type="password" id="onboarding-gemini-key" placeholder="Enter Gemini API key" 
+                           class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
+                    <p class="text-xs text-gray-500 mt-1">Get from <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-pink-600 underline">Google AI Studio</a></p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Groq API Key (Required)</label>
+                    <input type="password" id="onboarding-groq-key" placeholder="Enter Groq API key" 
+                           class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
+                    <p class="text-xs text-gray-500 mt-1">Get from <a href="https://console.groq.com/keys" target="_blank" class="text-pink-600 underline">Groq Console</a></p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">ChatGPT API Key (Optional)</label>
+                    <input type="password" id="onboarding-chatgpt-key" placeholder="Enter ChatGPT API key" 
+                           class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
+                    <p class="text-xs text-gray-500 mt-1">Get from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-pink-600 underline">OpenAI Platform</a></p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Perplexity API Key (Optional)</label>
+                    <input type="password" id="onboarding-perplexity-key" placeholder="Enter Perplexity API key" 
+                           class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
+                    <p class="text-xs text-gray-500 mt-1">Get from <a href="https://www.perplexity.ai/settings/api" target="_blank" class="text-pink-600 underline">Perplexity Settings</a></p>
+                </div>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p class="text-xs text-blue-800">
+                        💡 <strong>Tip:</strong> You can add optional keys later in AI Settings
+                    </p>
+                </div>
+            </div>
+            
+            <button onclick="completeAIKeysSetup()" class="w-full mt-6 px-6 py-3 bg-gradient-to-r from-pink-600 to-rose-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-bold text-lg">
+                Start Using App
+            </button>
+        </div>
+    </div>
+    
     <!-- SECURITY SETUP MODAL -->
     <div id="security-setup-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-90 z-[1001] flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
@@ -2491,10 +2592,12 @@
                 window.Security.isUnlocked = true;
                 
                 Loading.hide();
-                Toast.success('🔒 Security enabled successfully!');
+                Toast.success('🔒 PIN enabled successfully!');
                 
-                // Continue app initialization
-                window.App.init();
+                // Show master password setup next
+                setTimeout(() => {
+                    showMasterPasswordSetup();
+                }, 500);
                 
             } catch (error) {
                 Loading.hide();
@@ -2578,6 +2681,85 @@
             }
         }
         
+        /**
+         * Show Master Password Setup (Onboarding Step 2)
+         */
+        function showMasterPasswordSetup() {
+            document.getElementById('master-password-setup-modal').classList.remove('hidden');
+        }
+        
+        /**
+         * Complete Master Password Setup
+         */
+        function completeMasterPasswordSetup() {
+            const password = document.getElementById('onboarding-master-password').value;
+            const confirmPassword = document.getElementById('onboarding-master-password-confirm').value;
+            
+            if (!password || password.length < 6) {
+                Toast.error('Master password must be at least 6 characters long');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                Toast.error('Passwords do not match');
+                return;
+            }
+            
+            // Save master password
+            window.DB.security.masterPassword = password;
+            window.Storage.save();
+            
+            // Hide modal
+            document.getElementById('master-password-setup-modal').classList.add('hidden');
+            
+            Toast.success('🔐 Master password set successfully!');
+            
+            // Show AI Keys setup next
+            setTimeout(() => {
+                showAIKeysSetup();
+            }, 500);
+        }
+        
+        /**
+         * Show AI Keys Setup (Onboarding Step 3)
+         */
+        function showAIKeysSetup() {
+            document.getElementById('ai-keys-setup-modal').classList.remove('hidden');
+        }
+        
+        /**
+         * Complete AI Keys Setup
+         */
+        function completeAIKeysSetup() {
+            const geminiKey = document.getElementById('onboarding-gemini-key').value.trim();
+            const groqKey = document.getElementById('onboarding-groq-key').value.trim();
+            const chatgptKey = document.getElementById('onboarding-chatgpt-key').value.trim();
+            const perplexityKey = document.getElementById('onboarding-perplexity-key').value.trim();
+            
+            if (!geminiKey || !groqKey) {
+                Toast.error('⚠️ Both Gemini and Groq API keys are required!\n\n• Groq: Fast chat responses\n• Gemini: Card benefits & web search');
+                return;
+            }
+            
+            // Save API keys
+            window.DB.settings.geminiApiKey = geminiKey;
+            window.DB.groqApiKey = groqKey;
+            window.DB.settings.groqApiKey = groqKey;
+            window.DB.settings.chatGptApiKey = chatgptKey;
+            window.DB.settings.perplexityApiKey = perplexityKey;
+            window.Storage.save();
+            
+            // Hide modal
+            document.getElementById('ai-keys-setup-modal').classList.add('hidden');
+            
+            Toast.success('✅ Setup complete! Welcome to My Assistant!');
+            
+            // Start the app
+            setTimeout(() => {
+                window.App.init();
+            }, 1000);
+        }
+        
         // Make security functions globally accessible
         window.setupSecurity = setupSecurity;
         window.unlockWithPin = unlockWithPin;
@@ -2586,6 +2768,10 @@
         window.openChangePinModal = openChangePinModal;
         window.closeChangePinModal = closeChangePinModal;
         window.changePin = changePin;
+        window.showMasterPasswordSetup = showMasterPasswordSetup;
+        window.completeMasterPasswordSetup = completeMasterPasswordSetup;
+        window.showAIKeysSetup = showAIKeysSetup;
+        window.completeAIKeysSetup = completeAIKeysSetup;
     </script>
 </body>
 </html>
