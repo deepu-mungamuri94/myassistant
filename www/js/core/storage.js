@@ -66,10 +66,23 @@ const Storage = {
                 return false;
             }
             
-            const dataStr = JSON.stringify(window.DB, null, 2);
+            // Create a copy of DB without sensitive security data
+            const exportData = {
+                ...window.DB,
+                security: {
+                    pinHash: null, // Don't export PIN
+                    biometricEnabled: false, // Don't export biometric setting
+                    isSetup: false, // Don't export setup status
+                    masterPassword: '' // Don't export master password
+                }
+            };
+            
+            const dataStr = JSON.stringify(exportData, null, 2);
+            
+            console.log('🔐 Encrypting data (excluding PIN & master password)...');
+            console.log('📝 PIN and master password are device-specific and won\'t be exported');
             
             // Encrypt the data
-            console.log('🔐 Encrypting data with master password...');
             const encryptedData = await window.Crypto.encrypt(dataStr, masterPassword);
             
             const fileName = `myassistant_backup_${Date.now()}.enc`;
@@ -259,9 +272,22 @@ const Storage = {
                 window.Loading.show('Restoring data...');
             }
             
+            // Preserve local security settings (PIN and master password are device-specific)
+            const localSecurity = { ...window.DB.security };
+            
+            console.log('🔒 Preserving local PIN and master password');
+            
             // Merge imported data with current DB
             Object.assign(window.DB, imported);
+            
+            // Restore local security settings
+            window.DB.security = localSecurity;
+            
             this.save();
+            
+            console.log('✅ Local security settings preserved');
+            console.log('   PIN: ' + (localSecurity.pinHash ? 'Kept' : 'Not set'));
+            console.log('   Master Password: ' + (localSecurity.masterPassword ? 'Kept' : 'Not set'));
             
             if (window.Loading) {
                 window.Loading.hide();

@@ -404,9 +404,21 @@ const Navigation = {
             window.DB.settings = {
                 aiProvider: 'gemini',
                 geminiApiKey: '',
+                groqApiKey: '',
                 chatGptApiKey: '',
-                perplexityApiKey: ''
+                perplexityApiKey: '',
+                priorityOrder: ['groq', 'gemini', 'chatgpt', 'perplexity']
             };
+            window.DB.groqApiKey = '';
+            
+            // Reset security (clear PIN and master password)
+            window.DB.security = {
+                pinHash: null,
+                biometricEnabled: false,
+                isSetup: false,
+                masterPassword: ''
+            };
+            window.Security.isUnlocked = false;
             
             // Save empty state
             window.Storage.save();
@@ -417,14 +429,13 @@ const Navigation = {
             
             // Show success message
             if (window.Toast) {
-                window.Toast.show('✅ App reset successfully! Backup saved.', 'success');
+                window.Toast.show('✅ App reset successfully!\n\n🔐 Setting up new PIN...', 'success');
             }
             
-            // Refresh current view
+            // Reload page to trigger PIN setup
             setTimeout(() => {
-                this.navigateTo('chat');
-                this.refreshView('chat');
-            }, 1500);
+                window.location.reload();
+            }, 2000);
             
         } catch (error) {
             console.error('Reset error:', error);
