@@ -47,99 +47,73 @@ const Storage = {
     },
 
     /**
-     * Export data as JSON file (with Capacitor Filesystem API support)
+     * Export data as JSON file (with native Share support for better UX)
      */
     async exportData() {
         try {
             const dataStr = JSON.stringify(window.DB, null, 2);
             const fileName = `myassistant_backup_${Date.now()}.json`;
             
-            // Use Capacitor Filesystem API for native apps
+            // Use native Share functionality for mobile apps
             if (this.isNativeApp()) {
                 try {
-                    // Import Filesystem from Capacitor
+                    // Import Filesystem and Share from Capacitor
                     const { Filesystem, Directory } = await import('@capacitor/filesystem');
+                    const { Share } = await import('@capacitor/share');
                     
                     if (window.Loading) {
-                        window.Loading.show('Exporting data...');
+                        window.Loading.show('Preparing backup...');
                     }
                     
-                    // Strategy 1: Try External directory first (most accessible on Android)
-                    let result;
-                    let savedLocation = 'Documents';
+                    // First, write file to cache directory (temporary storage)
+                    const result = await Filesystem.writeFile({
+                        path: fileName,
+                        data: dataStr,
+                        directory: Directory.Cache,
+                        encoding: 'utf8'
+                    });
                     
-                    try {
-                        // Write to app-specific external directory (always accessible, no special permissions)
-                        result = await Filesystem.writeFile({
-                            path: `MyAssistant/${fileName}`,
-                            data: dataStr,
-                            directory: Directory.External,
-                            encoding: 'utf8',
-                            recursive: true
-                        });
-                        savedLocation = 'Android/data/.../MyAssistant';
-                        console.log('✅ Saved to External directory:', result.uri);
-                    } catch (externalErr) {
-                        console.warn('External directory failed, trying Documents...', externalErr);
-                        
-                        // Fallback: Try Documents directory
-                        result = await Filesystem.writeFile({
-                            path: fileName,
-                            data: dataStr,
-                            directory: Directory.Documents,
-                            encoding: 'utf8',
-                            recursive: true
-                        });
-                        savedLocation = 'Documents';
-                        console.log('✅ Saved to Documents directory:', result.uri);
-                    }
+                    console.log('✅ File created:', result.uri);
                     
                     if (window.Loading) {
                         window.Loading.hide();
                     }
                     
-                    // Parse the URI to show user-friendly location
-                    let displayPath = fileName;
-                    if (result.uri) {
-                        // Extract meaningful part of path
-                        if (result.uri.includes('Android/data')) {
-                            displayPath = `Internal Storage/Android/data/com.myassistant.app/files/MyAssistant/${fileName}`;
-                        } else if (result.uri.includes('Documents')) {
-                            displayPath = `Documents/${fileName}`;
-                        } else {
-                            // Show last few path segments
-                            const parts = result.uri.split('/');
-                            displayPath = parts.slice(-3).join('/');
-                        }
-                    }
+                    // Now open Android Share Sheet - user can choose where to save!
+                    await Share.share({
+                        title: 'Export My Assistant Backup',
+                        text: 'My Assistant app backup data',
+                        url: result.uri,
+                        dialogTitle: 'Save backup to...'
+                    });
                     
                     if (window.Toast) {
-                        window.Toast.show(`✅ Backup saved!\n\n📂 ${displayPath}\n\nOpen with: Files > MyAssistant folder`, 'success', 5000);
+                        window.Toast.show('✅ Choose where to save your backup!\n\n💡 Tip: Select Google Drive, Email, or any app', 'success', 4000);
                     }
                     
-                    // Detailed console logging for debugging
                     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    console.log('📥 EXPORT SUCCESSFUL');
+                    console.log('📤 EXPORT SHARE DIALOG OPENED');
                     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    console.log('📂 Full URI:', result.uri);
-                    console.log('📁 Location:', savedLocation);
-                    console.log('📄 Filename:', fileName);
-                    console.log('💡 How to find:');
-                    console.log('   1. Open "Files" or "My Files" app');
-                    console.log('   2. Look in "MyAssistant" folder or "Documents"');
-                    console.log('   3. File:', fileName);
+                    console.log('📄 File:', fileName);
+                    console.log('📂 Temporary URI:', result.uri);
+                    console.log('💡 User can now choose:');
+                    console.log('   • Google Drive');
+                    console.log('   • Email');
+                    console.log('   • WhatsApp');
+                    console.log('   • Files app (to save locally)');
+                    console.log('   • Any other app');
                     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                     
                     return true;
                 } catch (capacitorError) {
-                    console.error('❌ All Capacitor methods failed:', capacitorError);
+                    console.error('❌ Native share failed:', capacitorError);
                     
                     if (window.Loading) {
                         window.Loading.hide();
                     }
                     
                     if (window.Toast) {
-                        window.Toast.show(`❌ Export failed: ${capacitorError.message}\n\nTrying browser download...`, 'error');
+                        window.Toast.show(`❌ Share failed: ${capacitorError.message}\n\nTrying browser download...`, 'error');
                     }
                     // Fall through to browser download
                 }
