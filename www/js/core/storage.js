@@ -54,18 +54,30 @@ const Storage = {
             const dataStr = JSON.stringify(window.DB, null, 2);
             const fileName = `myassistant_backup_${Date.now()}.json`;
             
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('📤 STARTING EXPORT');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('Is Native App:', this.isNativeApp());
+            console.log('Capacitor Available:', typeof window.Capacitor !== 'undefined');
+            console.log('Is Native Platform:', window.Capacitor?.isNativePlatform());
+            
             // Use native Share functionality for mobile apps
             if (this.isNativeApp()) {
+                console.log('✅ Using Native Share...');
+                
+                if (window.Loading) {
+                    window.Loading.show('Preparing backup...');
+                }
+                
                 try {
                     // Import Filesystem and Share from Capacitor
                     const { Filesystem, Directory } = await import('@capacitor/filesystem');
                     const { Share } = await import('@capacitor/share');
                     
-                    if (window.Loading) {
-                        window.Loading.show('Preparing backup...');
-                    }
+                    console.log('✅ Capacitor plugins loaded');
                     
                     // First, write file to cache directory (temporary storage)
+                    console.log('📝 Writing file to cache...');
                     const result = await Filesystem.writeFile({
                         path: fileName,
                         data: dataStr,
@@ -80,70 +92,97 @@ const Storage = {
                     }
                     
                     // Now open Android Share Sheet - user can choose where to save!
-                    await Share.share({
+                    console.log('📤 Opening Share dialog...');
+                    const shareResult = await Share.share({
                         title: 'Export My Assistant Backup',
                         text: 'My Assistant app backup data',
                         url: result.uri,
                         dialogTitle: 'Save backup to...'
                     });
                     
-                    if (window.Toast) {
-                        window.Toast.show('✅ Choose where to save your backup!\n\n💡 Tip: Select Google Drive, Email, or any app', 'success', 4000);
-                    }
+                    console.log('✅ Share completed:', shareResult);
+                    
+                    // Don't show toast immediately - let user choose first
+                    // Toast will be shown after they select an app
                     
                     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    console.log('📤 EXPORT SHARE DIALOG OPENED');
+                    console.log('✅ SHARE DIALOG OPENED SUCCESSFULLY');
                     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                     console.log('📄 File:', fileName);
-                    console.log('📂 Temporary URI:', result.uri);
-                    console.log('💡 User can now choose:');
+                    console.log('📂 URI:', result.uri);
+                    console.log('💡 User can save to:');
                     console.log('   • Google Drive');
                     console.log('   • Email');
                     console.log('   • WhatsApp');
-                    console.log('   • Files app (to save locally)');
+                    console.log('   • Files app');
                     console.log('   • Any other app');
                     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                     
                     return true;
                 } catch (capacitorError) {
-                    console.error('❌ Native share failed:', capacitorError);
+                    console.error('❌ Native export failed:', capacitorError);
+                    console.error('Error details:', JSON.stringify(capacitorError, null, 2));
                     
                     if (window.Loading) {
                         window.Loading.hide();
                     }
                     
+                    // Show detailed error
                     if (window.Toast) {
-                        window.Toast.show(`❌ Share failed: ${capacitorError.message}\n\nTrying browser download...`, 'error');
+                        window.Toast.show(
+                            `❌ Export failed!\n\n` +
+                            `Error: ${capacitorError.message || 'Unknown error'}\n\n` +
+                            `Please check:\n` +
+                            `• App has file permissions\n` +
+                            `• Device has enough storage\n` +
+                            `• Try restarting the app`,
+                            'error',
+                            6000
+                        );
                     }
-                    // Fall through to browser download
+                    
+                    throw capacitorError; // Re-throw to be caught by outer catch
                 }
             }
             
-            // Fallback to browser download for web or if Capacitor fails
-            {
-                // Browser download
-                const blob = new Blob([dataStr], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                a.click();
-                URL.revokeObjectURL(url);
-                
-                if (window.Toast) {
-                    window.Toast.show('✅ Data exported to Downloads!', 'success');
-                }
-                return true;
+            // Fallback to browser download for web
+            console.log('⚠️ Using browser download (web mode)');
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            if (window.Toast) {
+                window.Toast.show('✅ Backup file downloaded!', 'success');
             }
+            
+            console.log('✅ Browser download completed');
+            return true;
+            
         } catch (error) {
-            console.error('Export error:', error);
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('❌ EXPORT ERROR');
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('Error:', error);
+            console.error('Stack:', error.stack);
             
             if (window.Loading) {
                 window.Loading.hide();
             }
             
             if (window.Toast) {
-                window.Toast.show('❌ Export failed: ' + error.message, 'error');
+                window.Toast.show(
+                    '❌ Export failed!\n\n' +
+                    `Error: ${error.message}\n\n` +
+                    'Please try again or contact support.',
+                    'error',
+                    5000
+                );
             }
             return false;
         }
