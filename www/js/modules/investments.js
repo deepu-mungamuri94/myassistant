@@ -419,9 +419,9 @@ Return tickers for ALL stocks in a JSON array.`;
         const longTermSum = longTerm.reduce((sum, inv) => sum + this.calculateValue(inv), 0);
         const shortTermSum = shortTerm.reduce((sum, inv) => sum + this.calculateValue(inv), 0);
         
-        // Check expanded state (use instance variable or default to both expanded)
+        // Check expanded state (use instance variable or default to both collapsed)
         if (!this.expandedTerms) {
-            this.expandedTerms = new Set(['long', 'short']);
+            this.expandedTerms = new Set(); // Start collapsed by default
         }
         
         const isLongExpanded = this.expandedTerms.has('long');
@@ -522,7 +522,7 @@ Return tickers for ALL stocks in a JSON array.`;
      */
     toggleTerm(term) {
         if (!this.expandedTerms) {
-            this.expandedTerms = new Set(['long', 'short']);
+            this.expandedTerms = new Set(); // Start collapsed by default
         }
         
         if (this.expandedTerms.has(term)) {
