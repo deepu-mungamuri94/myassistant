@@ -64,30 +64,83 @@ const Storage = {
                         window.Loading.show('Exporting data...');
                     }
                     
-                    // Write to Documents directory
-                    const result = await Filesystem.writeFile({
-                        path: fileName,
-                        data: dataStr,
-                        directory: Directory.Documents,
-                        encoding: 'utf8'
-                    });
+                    // Strategy 1: Try External directory first (most accessible on Android)
+                    let result;
+                    let savedLocation = 'Documents';
+                    
+                    try {
+                        // Write to app-specific external directory (always accessible, no special permissions)
+                        result = await Filesystem.writeFile({
+                            path: `MyAssistant/${fileName}`,
+                            data: dataStr,
+                            directory: Directory.External,
+                            encoding: 'utf8',
+                            recursive: true
+                        });
+                        savedLocation = 'Android/data/.../MyAssistant';
+                        console.log('✅ Saved to External directory:', result.uri);
+                    } catch (externalErr) {
+                        console.warn('External directory failed, trying Documents...', externalErr);
+                        
+                        // Fallback: Try Documents directory
+                        result = await Filesystem.writeFile({
+                            path: fileName,
+                            data: dataStr,
+                            directory: Directory.Documents,
+                            encoding: 'utf8',
+                            recursive: true
+                        });
+                        savedLocation = 'Documents';
+                        console.log('✅ Saved to Documents directory:', result.uri);
+                    }
                     
                     if (window.Loading) {
                         window.Loading.hide();
                     }
                     
-                    console.log('✅ File exported:', result.uri);
-                    
-                    if (window.Toast) {
-                        window.Toast.show(`✅ Exported to Documents/${fileName}`, 'success');
+                    // Parse the URI to show user-friendly location
+                    let displayPath = fileName;
+                    if (result.uri) {
+                        // Extract meaningful part of path
+                        if (result.uri.includes('Android/data')) {
+                            displayPath = `Internal Storage/Android/data/com.myassistant.app/files/MyAssistant/${fileName}`;
+                        } else if (result.uri.includes('Documents')) {
+                            displayPath = `Documents/${fileName}`;
+                        } else {
+                            // Show last few path segments
+                            const parts = result.uri.split('/');
+                            displayPath = parts.slice(-3).join('/');
+                        }
                     }
                     
-                    // Show detailed path in console
-                    console.log('📂 File saved to:', result.uri);
+                    if (window.Toast) {
+                        window.Toast.show(`✅ Backup saved!\n\n📂 ${displayPath}\n\nOpen with: Files > MyAssistant folder`, 'success', 5000);
+                    }
+                    
+                    // Detailed console logging for debugging
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log('📥 EXPORT SUCCESSFUL');
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log('📂 Full URI:', result.uri);
+                    console.log('📁 Location:', savedLocation);
+                    console.log('📄 Filename:', fileName);
+                    console.log('💡 How to find:');
+                    console.log('   1. Open "Files" or "My Files" app');
+                    console.log('   2. Look in "MyAssistant" folder or "Documents"');
+                    console.log('   3. File:', fileName);
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                     
                     return true;
                 } catch (capacitorError) {
-                    console.error('Capacitor Filesystem error:', capacitorError);
+                    console.error('❌ All Capacitor methods failed:', capacitorError);
+                    
+                    if (window.Loading) {
+                        window.Loading.hide();
+                    }
+                    
+                    if (window.Toast) {
+                        window.Toast.show(`❌ Export failed: ${capacitorError.message}\n\nTrying browser download...`, 'error');
+                    }
                     // Fall through to browser download
                 }
             }
