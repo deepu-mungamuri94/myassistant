@@ -754,8 +754,13 @@ Return tickers for ALL stocks in a JSON array.`;
     /**
      * Delete with confirmation
      */
-    deleteWithConfirm(id) {
-        if (!confirm('Delete this investment?')) return;
+    async deleteWithConfirm(id) {
+        const confirmed = await window.Utils.confirm(
+            'This will permanently delete this investment. Are you sure?',
+            'Delete Investment'
+        );
+        if (!confirmed) return;
+        
         this.delete(id);
         this.render();
         if (window.Toast) {

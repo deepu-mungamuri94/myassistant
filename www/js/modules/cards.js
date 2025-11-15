@@ -438,8 +438,13 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
     /**
      * Delete with confirmation
      */
-    deleteWithConfirm(id) {
-        if (!confirm('Delete this card?')) return;
+    async deleteWithConfirm(id) {
+        const confirmed = await window.Utils.confirm(
+            'This will permanently delete this credit card and its rules. Are you sure?',
+            'Delete Credit Card'
+        );
+        if (!confirmed) return;
+        
         this.delete(id);
         this.render();
         if (window.Toast) {

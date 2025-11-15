@@ -58,6 +58,62 @@ const Utils = {
      */
     getCurrentTimestamp() {
         return new Date().toISOString();
+    },
+
+    /**
+     * Custom confirm dialog (replaces native confirm)
+     * @param {string} message - The confirmation message
+     * @param {string} title - Optional title (default: "Confirm Action")
+     * @returns {Promise<boolean>} - Resolves to true if confirmed, false if cancelled
+     */
+    async confirm(message, title = 'Confirm Action') {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('custom-confirm-modal');
+            const titleEl = document.getElementById('confirm-modal-title');
+            const messageEl = document.getElementById('confirm-modal-message');
+            const confirmBtn = document.getElementById('confirm-modal-confirm');
+            const cancelBtn = document.getElementById('confirm-modal-cancel');
+            
+            // Set content
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            
+            // Show modal
+            modal.classList.remove('hidden');
+            
+            // Handler for confirm
+            const handleConfirm = () => {
+                modal.classList.add('hidden');
+                cleanup();
+                resolve(true);
+            };
+            
+            // Handler for cancel
+            const handleCancel = () => {
+                modal.classList.add('hidden');
+                cleanup();
+                resolve(false);
+            };
+            
+            // Cleanup listeners
+            const cleanup = () => {
+                confirmBtn.removeEventListener('click', handleConfirm);
+                cancelBtn.removeEventListener('click', handleCancel);
+                modal.removeEventListener('click', handleBackdropClick);
+            };
+            
+            // Handle backdrop click
+            const handleBackdropClick = (e) => {
+                if (e.target === modal) {
+                    handleCancel();
+                }
+            };
+            
+            // Add event listeners
+            confirmBtn.addEventListener('click', handleConfirm);
+            cancelBtn.addEventListener('click', handleCancel);
+            modal.addEventListener('click', handleBackdropClick);
+        });
     }
 };
 

@@ -131,8 +131,13 @@ const Credentials = {
     /**
      * Delete with confirmation
      */
-    deleteWithConfirm(id) {
-        if (!confirm('Delete this credential?')) return;
+    async deleteWithConfirm(id) {
+        const confirmed = await window.Utils.confirm(
+            'This will permanently delete this credential. Are you sure?',
+            'Delete Credential'
+        );
+        if (!confirmed) return;
+        
         this.delete(id);
         this.render();
         window.Toast.show('Credential deleted', 'success');

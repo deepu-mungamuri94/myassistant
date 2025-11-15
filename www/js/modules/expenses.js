@@ -470,8 +470,13 @@ const Expenses = {
     /**
      * Delete with confirmation
      */
-    deleteWithConfirm(id) {
-        if (!confirm('Delete this expense?')) return;
+    async deleteWithConfirm(id) {
+        const confirmed = await window.Utils.confirm(
+            'This will permanently delete this expense. Are you sure?',
+            'Delete Expense'
+        );
+        if (!confirmed) return;
+        
         this.delete(id);
         this.render();
         window.Toast.show('Expense deleted', 'success');
