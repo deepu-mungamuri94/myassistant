@@ -60,35 +60,24 @@ const AIProvider = {
 
     /**
      * Call AI with automatic fallback on rate limits (3-level retry)
+     * Uses user-defined priority order from settings
      */
     async call(prompt, context = null) {
-        const primaryProvider = window.DB.settings.aiProvider;
         const availableProviders = this.getAvailableProviders();
         
         if (availableProviders.length === 0) {
             throw new Error('No AI provider configured. Please add API keys in Settings.');
         }
         
-        // Build ordered list: primary first (ONLY if it has API key), then other available providers
-        const providerOrder = [];
-        
-        // Add primary provider only if it has an API key configured
-        if (availableProviders.includes(primaryProvider)) {
-            providerOrder.push(primaryProvider);
-        }
-        
-        // Add other available providers (excluding primary if already added)
-        availableProviders.forEach(p => {
-            if (p !== primaryProvider) {
-                providerOrder.push(p);
-            }
-        });
+        // Get user-defined priority order, filter to only include configured providers
+        const priorityOrder = window.DB.settings.priorityOrder || ['gemini', 'groq', 'chatgpt', 'perplexity'];
+        const providerOrder = priorityOrder.filter(p => availableProviders.includes(p));
         
         // Limit to 3 attempts
         const maxAttempts = Math.min(3, providerOrder.length);
         
         console.log(`🤖 AI Call - Available providers: ${availableProviders.join(', ')}`);
-        console.log(`📋 Fallback order (max ${maxAttempts} attempts): ${providerOrder.slice(0, maxAttempts).join(' → ')}`);
+        console.log(`📋 Priority order (max ${maxAttempts} attempts): ${providerOrder.slice(0, maxAttempts).join(' → ')}`);
         
         let lastError = null;
         
@@ -102,19 +91,19 @@ const AIProvider = {
             }
             
             try {
-                console.log(`🔄 Attempt ${i + 1}/${maxAttempts}: Using ${currentProvider.toUpperCase()}`);
+                console.log(`🔄 Attempt ${i + 1}/${maxAttempts}: Using ${currentProvider.toUpperCase()} (Priority #${i + 1})`);
                 
                 const result = await this.callProvider(currentProvider, prompt, context);
                 
                 // Success!
                 if (i > 0) {
                     // Fallback was used
-                    console.log(`✅ SUCCESS with fallback provider: ${currentProvider.toUpperCase()}`);
+                    console.log(`✅ SUCCESS with fallback provider: ${currentProvider.toUpperCase()} (Priority #${i + 1})`);
                     if (window.Toast) {
                         window.Toast.show(`✅ AI responded (via ${currentProvider})`, 'success');
                     }
                 } else {
-                    console.log(`✅ SUCCESS with primary provider: ${currentProvider.toUpperCase()}`);
+                    console.log(`✅ SUCCESS with primary provider: ${currentProvider.toUpperCase()} (Priority #1)`);
                 }
                 
                 return result;
@@ -130,7 +119,7 @@ const AIProvider = {
                     // If not the last attempt, try next provider
                     if (i < maxAttempts - 1) {
                         const nextProvider = providerOrder[i + 1];
-                        console.log(`🔀 Falling back to ${nextProvider.toUpperCase()}...`);
+                        console.log(`🔀 Falling back to ${nextProvider.toUpperCase()} (Priority #${i + 2})...`);
                         
                         if (window.Toast) {
                             window.Toast.show(`⚠️ ${currentProvider} rate limit - trying ${nextProvider}...`, 'warning');

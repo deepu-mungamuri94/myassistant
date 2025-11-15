@@ -85,8 +85,72 @@ const Navigation = {
             if (perplexityKeyInput) perplexityKeyInput.value = window.DB.settings.perplexityApiKey || '';
             if (providerSelect) providerSelect.value = window.DB.settings.aiProvider || 'gemini';
             
+            // Load priority order
+            this.renderPriorityOrder();
+            
             modal.classList.remove('hidden');
         }
+    },
+    
+    /**
+     * Render priority order list
+     */
+    renderPriorityOrder() {
+        const container = document.getElementById('priority-order-list');
+        if (!container) return;
+        
+        const priorityOrder = window.DB.settings.priorityOrder || ['gemini', 'groq', 'chatgpt', 'perplexity'];
+        const providerNames = {
+            'gemini': 'Google Gemini',
+            'groq': 'Groq (Mixtral)',
+            'chatgpt': 'OpenAI ChatGPT',
+            'perplexity': 'Perplexity AI'
+        };
+        
+        container.innerHTML = priorityOrder.map((provider, index) => `
+            <div class="flex items-center bg-gray-50 rounded-lg p-2 border border-gray-200">
+                <span class="w-8 h-8 flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-lg text-sm font-bold mr-3">
+                    ${index + 1}
+                </span>
+                <span class="flex-1 text-sm font-medium text-gray-700">
+                    ${providerNames[provider]}
+                </span>
+                <div class="flex gap-1">
+                    <button 
+                        onclick="Navigation.movePriority(${index}, -1)" 
+                        ${index === 0 ? 'disabled' : ''}
+                        class="w-7 h-7 flex items-center justify-center rounded ${index === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'} transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                        </svg>
+                    </button>
+                    <button 
+                        onclick="Navigation.movePriority(${index}, 1)" 
+                        ${index === priorityOrder.length - 1 ? 'disabled' : ''}
+                        class="w-7 h-7 flex items-center justify-center rounded ${index === priorityOrder.length - 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'} transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    },
+    
+    /**
+     * Move priority order
+     */
+    movePriority(index, direction) {
+        const priorityOrder = window.DB.settings.priorityOrder || ['gemini', 'groq', 'chatgpt', 'perplexity'];
+        const newIndex = index + direction;
+        
+        if (newIndex < 0 || newIndex >= priorityOrder.length) return;
+        
+        // Swap elements
+        [priorityOrder[index], priorityOrder[newIndex]] = [priorityOrder[newIndex], priorityOrder[index]];
+        
+        window.DB.settings.priorityOrder = priorityOrder;
+        this.renderPriorityOrder();
     },
 
     /**

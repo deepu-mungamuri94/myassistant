@@ -18,7 +18,9 @@ const DB = {
         geminiApiKey: '',
         groqApiKey: '',
         chatGptApiKey: '',
-        perplexityApiKey: ''
+        perplexityApiKey: '',
+        // Priority order for AI fallback (1st = primary, 2nd = fallback 1, etc.)
+        priorityOrder: ['gemini', 'groq', 'chatgpt', 'perplexity']
     },
     // Backward compatibility: Store groqApiKey at root level
     groqApiKey: '',
