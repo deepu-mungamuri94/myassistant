@@ -173,9 +173,18 @@ const Navigation = {
         const chatGptKeyInput = document.getElementById('chatgpt-api-key');
         const perplexityKeyInput = document.getElementById('perplexity-api-key');
         
+        // Validate: Require both Groq and Gemini API keys
+        const geminiKey = geminiKeyInput ? geminiKeyInput.value.trim() : '';
+        const groqKey = groqKeyInput ? groqKeyInput.value.trim() : '';
+        
+        if (!geminiKey || !groqKey) {
+            window.Toast.show('⚠️ Both Gemini and Groq API keys are required!\n\n• Groq: Fast chat responses\n• Gemini: Card benefits & web search', 'error');
+            return;
+        }
+        
         if (providerSelect) window.DB.settings.aiProvider = providerSelect.value;
-        if (geminiKeyInput) window.DB.settings.geminiApiKey = geminiKeyInput.value.trim();
-        if (groqKeyInput) window.DB.groqApiKey = groqKeyInput.value.trim();
+        if (geminiKeyInput) window.DB.settings.geminiApiKey = geminiKey;
+        if (groqKeyInput) window.DB.groqApiKey = groqKey;
         if (chatGptKeyInput) window.DB.settings.chatGptApiKey = chatGptKeyInput.value.trim();
         if (perplexityKeyInput) window.DB.settings.perplexityApiKey = perplexityKeyInput.value.trim();
         

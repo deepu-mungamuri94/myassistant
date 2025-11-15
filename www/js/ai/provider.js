@@ -25,6 +25,23 @@ const AIProvider = {
         
         return available;
     },
+    
+    /**
+     * Get providers that support web search
+     * Only Gemini and Perplexity have built-in web search capabilities
+     */
+    getWebSearchProviders() {
+        const webSearchCapable = [];
+        
+        if (window.DB.settings.geminiApiKey) {
+            webSearchCapable.push('gemini');
+        }
+        if (window.DB.settings.perplexityApiKey) {
+            webSearchCapable.push('perplexity');
+        }
+        
+        return webSearchCapable;
+    },
 
     /**
      * Call a specific provider
@@ -100,10 +117,13 @@ const AIProvider = {
                     // Fallback was used
                     console.log(`✅ SUCCESS with fallback provider: ${currentProvider.toUpperCase()} (Priority #${i + 1})`);
                     if (window.Toast) {
-                        window.Toast.show(`✅ AI responded (via ${currentProvider})`, 'success');
+                        window.Toast.show(`✅ Response via ${currentProvider.toUpperCase()}`, 'success');
                     }
                 } else {
                     console.log(`✅ SUCCESS with primary provider: ${currentProvider.toUpperCase()} (Priority #1)`);
+                    if (window.Toast) {
+                        window.Toast.show(`🤖 Using ${currentProvider.toUpperCase()}`, 'info');
+                    }
                 }
                 
                 return result;
@@ -140,6 +160,69 @@ const AIProvider = {
         console.error('💥 All AI providers exhausted');
         throw new Error(`All AI providers failed. Last error: ${lastError?.message || 'Unknown error'}`);
     },
+    
+    /**
+     * Call AI specifically for web search tasks (card benefits, etc.)
+     * Only uses providers with web search capabilities: Gemini (preferred) or Perplexity
+     * 
+     * @param {string} prompt - The search query
+     * @param {object} context - Additional context (system instructions, etc.)
+     * @returns {Promise<string>} - AI response
+     */
+    async callWithWebSearch(prompt, context = null) {
+        const webSearchProviders = this.getWebSearchProviders();
+        
+        if (webSearchProviders.length === 0) {
+            throw new Error('No web search capable AI provider configured. Please add Gemini or Perplexity API key in Settings.');
+        }
+        
+        // Prefer Gemini (best for web search), then Perplexity
+        const searchOrder = ['gemini', 'perplexity'].filter(p => webSearchProviders.includes(p));
+        
+        console.log(`🔍 Web Search - Using providers: ${searchOrder.join(' → ')}`);
+        
+        let lastError = null;
+        
+        for (let i = 0; i < searchOrder.length; i++) {
+            const provider = searchOrder[i];
+            
+            try {
+                console.log(`🔄 Web Search Attempt ${i + 1}/${searchOrder.length}: Using ${provider.toUpperCase()}`);
+                
+                const result = await this.callProvider(provider, prompt, context);
+                
+                console.log(`✅ Web Search SUCCESS with ${provider.toUpperCase()}`);
+                
+                // Show which AI is being used for web search
+                if (window.Toast) {
+                    window.Toast.show(`🔍 Fetching via ${provider.toUpperCase()} (web search)`, 'info');
+                }
+                
+                return result;
+                
+            } catch (error) {
+                console.error(`❌ Web Search with ${provider.toUpperCase()} failed:`, error.message);
+                lastError = error;
+                
+                // If rate limit and not last attempt, try next provider
+                if (this.isRateLimitError(error) && i < searchOrder.length - 1) {
+                    const nextProvider = searchOrder[i + 1];
+                    console.log(`🔀 Falling back to ${nextProvider.toUpperCase()}...`);
+                    
+                    if (window.Toast) {
+                        window.Toast.show(`⚠️ ${provider} rate limit - trying ${nextProvider}...`, 'warning');
+                    }
+                    continue;
+                }
+                
+                // Non-rate-limit error or last attempt
+                throw error;
+            }
+        }
+        
+        // All attempts failed
+        throw new Error(`Web search failed with all providers. Last error: ${lastError?.message || 'Unknown error'}`);
+    },
 
     /**
      * Check if AI is configured
@@ -150,10 +233,16 @@ const AIProvider = {
 
     /**
      * Prepare context for AI based on selected mode
-     * @param {string} mode - 'cards', 'expenses', or 'investments'
+     * @param {string} mode - 'general', 'cards', 'expenses', or 'investments'
      */
-    prepareContext(mode = 'cards') {
+    prepareContext(mode = 'general') {
         switch(mode) {
+            case 'general':
+                return {
+                    mode: 'general',
+                    message: 'You are a helpful AI assistant. Answer any questions the user has.'
+                };
+                
             case 'cards':
                 return {
                     mode: 'credit_cards',

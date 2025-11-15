@@ -214,7 +214,8 @@ MUST COVER (if available):
 
 DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and reward points for EVERY category found on official website. Use bullet points, NO TABLES. Format in RUPEES (₹) for INDIAN market.`;
 
-            const benefits = await window.AIProvider.call(userQuery, { system_instruction: systemPrompt });
+            // Use callWithWebSearch to ensure we use Gemini/Perplexity (providers with web search)
+            const benefits = await window.AIProvider.callWithWebSearch(userQuery, { system_instruction: systemPrompt });
             
             // Update card with fetched benefits
             const card = this.getById(cardId);
