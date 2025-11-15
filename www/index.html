@@ -456,8 +456,8 @@
                     <div class="flex items-center gap-3">
                         <h2 class="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">AI Advisor</h2>
                         <select id="chat-mode" onchange="Chat.updateWelcomeMessage(); Chat.clear();" class="px-3 py-1.5 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-800 rounded-lg text-sm font-semibold border-2 border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                            <option value="cards" selected>💳 Credit Cards</option>
                             <option value="general">💬 General</option>
-                            <option value="cards">💳 Credit Cards</option>
                             <option value="expenses">📊 Expenses</option>
                             <option value="investments">💰 Investments</option>
                         </select>
@@ -1182,29 +1182,35 @@
             </div>
             
             <div class="space-y-4">
+                <div class="bg-amber-50 border-2 border-amber-300 rounded-lg p-3 mb-4">
+                    <p class="text-sm text-amber-900 font-semibold">
+                        ⚠️ At least ONE AI key is required to use the app
+                    </p>
+                </div>
+                
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Gemini API Key (Required)</label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Gemini API Key</label>
                     <input type="password" id="onboarding-gemini-key" placeholder="Enter Gemini API key" 
                            class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
                     <p class="text-xs text-gray-500 mt-1">Get from <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-pink-600 underline">Google AI Studio</a></p>
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Groq API Key (Required)</label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Groq API Key</label>
                     <input type="password" id="onboarding-groq-key" placeholder="Enter Groq API key" 
                            class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
                     <p class="text-xs text-gray-500 mt-1">Get from <a href="https://console.groq.com/keys" target="_blank" class="text-pink-600 underline">Groq Console</a></p>
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">ChatGPT API Key (Optional)</label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">ChatGPT API Key</label>
                     <input type="password" id="onboarding-chatgpt-key" placeholder="Enter ChatGPT API key" 
                            class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
                     <p class="text-xs text-gray-500 mt-1">Get from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-pink-600 underline">OpenAI Platform</a></p>
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Perplexity API Key (Optional)</label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Perplexity API Key</label>
                     <input type="password" id="onboarding-perplexity-key" placeholder="Enter Perplexity API key" 
                            class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
                     <p class="text-xs text-gray-500 mt-1">Get from <a href="https://www.perplexity.ai/settings/api" target="_blank" class="text-pink-600 underline">Perplexity Settings</a></p>
@@ -1212,7 +1218,7 @@
                 
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
                     <p class="text-xs text-blue-800">
-                        💡 <strong>Tip:</strong> You can add optional keys later in AI Settings
+                        💡 <strong>Tip:</strong> You can add more keys later in AI Settings
                     </p>
                 </div>
             </div>
@@ -2692,16 +2698,21 @@
          * Complete Master Password Setup
          */
         function completeMasterPasswordSetup() {
-            const password = document.getElementById('onboarding-master-password').value;
-            const confirmPassword = document.getElementById('onboarding-master-password-confirm').value;
+            const password = document.getElementById('onboarding-master-password').value.trim();
+            const confirmPassword = document.getElementById('onboarding-master-password-confirm').value.trim();
             
-            if (!password || password.length < 6) {
-                Toast.error('Master password must be at least 6 characters long');
+            if (!password) {
+                Toast.error('⚠️ Master password is required!\n\nThis password encrypts your backups.');
+                return;
+            }
+            
+            if (password.length < 6) {
+                Toast.error('⚠️ Master password must be at least 6 characters long');
                 return;
             }
             
             if (password !== confirmPassword) {
-                Toast.error('Passwords do not match');
+                Toast.error('❌ Passwords do not match');
                 return;
             }
             
@@ -2736,8 +2747,9 @@
             const chatgptKey = document.getElementById('onboarding-chatgpt-key').value.trim();
             const perplexityKey = document.getElementById('onboarding-perplexity-key').value.trim();
             
-            if (!geminiKey || !groqKey) {
-                Toast.error('⚠️ Both Gemini and Groq API keys are required!\n\n• Groq: Fast chat responses\n• Gemini: Card benefits & web search');
+            // Check if at least ONE AI key is provided
+            if (!geminiKey && !groqKey && !chatgptKey && !perplexityKey) {
+                Toast.error('⚠️ At least ONE AI API key is required!\n\nChoose any:\n• Gemini (recommended for card benefits)\n• Groq (fastest for chat)\n• ChatGPT\n• Perplexity');
                 return;
             }
             
