@@ -1183,13 +1183,17 @@
             
             <div class="space-y-4">
                 <div class="bg-amber-50 border-2 border-amber-300 rounded-lg p-3 mb-4">
-                    <p class="text-sm text-amber-900 font-semibold">
-                        ⚠️ At least ONE AI key is required to use the app
+                    <p class="text-sm text-amber-900 font-semibold mb-2">
+                        ⚠️ Gemini or Perplexity is REQUIRED
+                    </p>
+                    <p class="text-xs text-amber-800">
+                        Card Benefits feature needs web search capability. You must provide at least ONE of: Gemini or Perplexity.<br>
+                        Groq/ChatGPT are optional (for faster chat).
                     </p>
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Gemini API Key</label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Gemini API Key <span class="text-red-600">*</span></label>
                     <input type="password" id="onboarding-gemini-key" placeholder="Enter Gemini API key" 
                            class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
                     <p class="text-xs text-gray-500 mt-1">Get from <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-pink-600 underline">Google AI Studio</a></p>
@@ -1210,13 +1214,16 @@
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Perplexity API Key</label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Perplexity API Key <span class="text-red-600">*</span></label>
                     <input type="password" id="onboarding-perplexity-key" placeholder="Enter Perplexity API key" 
                            class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
                     <p class="text-xs text-gray-500 mt-1">Get from <a href="https://www.perplexity.ai/settings/api" target="_blank" class="text-pink-600 underline">Perplexity Settings</a></p>
                 </div>
                 
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p class="text-xs text-blue-800 mb-2">
+                        <strong class="text-red-600">* Required:</strong> You need at least ONE of: Gemini OR Perplexity (not both)
+                    </p>
                     <p class="text-xs text-blue-800">
                         💡 <strong>Tip:</strong> You can add more keys later in AI Settings
                     </p>
@@ -2749,7 +2756,13 @@
             
             // Check if at least ONE AI key is provided
             if (!geminiKey && !groqKey && !chatgptKey && !perplexityKey) {
-                Toast.error('⚠️ At least ONE AI API key is required!\n\nChoose any:\n• Gemini (recommended for card benefits)\n• Groq (fastest for chat)\n• ChatGPT\n• Perplexity');
+                Toast.error('⚠️ At least ONE AI API key is required!\n\nChoose any:\n• Gemini (recommended)\n• Groq (fastest chat)\n• ChatGPT\n• Perplexity');
+                return;
+            }
+            
+            // IMPORTANT: Check for web search capability (needed for card benefits)
+            if (!geminiKey && !perplexityKey) {
+                Toast.error('⚠️ Warning: Card Benefits feature requires web search!\n\nYou need at least ONE of:\n• Gemini (recommended)\n• Perplexity\n\nGroq/ChatGPT alone will work for chat, but NOT for fetching card benefits.');
                 return;
             }
             
