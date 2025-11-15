@@ -94,12 +94,13 @@ const Navigation = {
     
     /**
      * Render priority order list
+     * Groq is LOCKED at #1 (mandatory for chat), rest is configurable
      */
     renderPriorityOrder() {
         const container = document.getElementById('priority-order-list');
         if (!container) return;
         
-        const priorityOrder = window.DB.settings.priorityOrder || ['gemini', 'groq', 'chatgpt', 'perplexity'];
+        const priorityOrder = window.DB.settings.priorityOrder || ['groq', 'gemini', 'chatgpt', 'perplexity'];
         const providerNames = {
             'gemini': 'Google Gemini',
             'groq': 'Groq (Mixtral)',
@@ -107,44 +108,68 @@ const Navigation = {
             'perplexity': 'Perplexity AI'
         };
         
-        container.innerHTML = priorityOrder.map((provider, index) => `
-            <div class="flex items-center bg-gray-50 rounded-lg p-2 border border-gray-200">
-                <span class="w-8 h-8 flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-lg text-sm font-bold mr-3">
+        container.innerHTML = priorityOrder.map((provider, index) => {
+            const isGroq = index === 0 && provider === 'groq';
+            
+            return `
+            <div class="flex items-center ${isGroq ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300' : 'bg-gray-50 border-gray-200'} rounded-lg p-2 border">
+                <span class="w-8 h-8 flex items-center justify-center bg-gradient-to-br ${isGroq ? 'from-green-500 to-emerald-500' : 'from-purple-500 to-pink-500'} text-white rounded-lg text-sm font-bold mr-3">
                     ${index + 1}
                 </span>
                 <span class="flex-1 text-sm font-medium text-gray-700">
                     ${providerNames[provider]}
+                    ${isGroq ? '<span class="text-xs text-green-600 ml-2">🔒 Fixed (Chat Priority)</span>' : ''}
                 </span>
-                <div class="flex gap-1">
-                    <button 
-                        onclick="Navigation.movePriority(${index}, -1)" 
-                        ${index === 0 ? 'disabled' : ''}
-                        class="w-7 h-7 flex items-center justify-center rounded ${index === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'} transition-all">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
-                        </svg>
-                    </button>
-                    <button 
-                        onclick="Navigation.movePriority(${index}, 1)" 
-                        ${index === priorityOrder.length - 1 ? 'disabled' : ''}
-                        class="w-7 h-7 flex items-center justify-center rounded ${index === priorityOrder.length - 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'} transition-all">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    </button>
-                </div>
+                ${isGroq ? `
+                    <div class="flex gap-1">
+                        <div class="w-7 h-7 flex items-center justify-center rounded bg-green-100 text-green-600" title="Groq is locked as #1 for fast chat">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                    </div>
+                ` : `
+                    <div class="flex gap-1">
+                        <button 
+                            onclick="Navigation.movePriority(${index}, -1)" 
+                            ${index === 1 ? 'disabled' : ''}
+                            class="w-7 h-7 flex items-center justify-center rounded ${index === 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'} transition-all"
+                            title="${index === 1 ? 'Cannot move above Groq' : 'Move up'}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                            </svg>
+                        </button>
+                        <button 
+                            onclick="Navigation.movePriority(${index}, 1)" 
+                            ${index === priorityOrder.length - 1 ? 'disabled' : ''}
+                            class="w-7 h-7 flex items-center justify-center rounded ${index === priorityOrder.length - 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'} transition-all"
+                            title="${index === priorityOrder.length - 1 ? 'Already at bottom' : 'Move down'}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                    </div>
+                `}
             </div>
-        `).join('');
+        `}).join('');
     },
     
     /**
      * Move priority order
+     * Groq (index 0) is LOCKED and cannot be moved
      */
     movePriority(index, direction) {
-        const priorityOrder = window.DB.settings.priorityOrder || ['gemini', 'groq', 'chatgpt', 'perplexity'];
+        const priorityOrder = window.DB.settings.priorityOrder || ['groq', 'gemini', 'chatgpt', 'perplexity'];
         const newIndex = index + direction;
         
-        if (newIndex < 0 || newIndex >= priorityOrder.length) return;
+        // Prevent moving Groq (index 0)
+        if (index === 0 || newIndex === 0) {
+            console.warn('Cannot move Groq - it is fixed at position #1 for chat priority');
+            return;
+        }
+        
+        // Validate new index
+        if (newIndex < 1 || newIndex >= priorityOrder.length) return;
         
         // Swap elements
         [priorityOrder[index], priorityOrder[newIndex]] = [priorityOrder[newIndex], priorityOrder[index]];
