@@ -642,6 +642,7 @@
                     <label class="block text-sm font-semibold text-gray-700 mb-2">AI Provider</label>
                     <select id="ai-provider" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
                         <option value="gemini">Google Gemini</option>
+                        <option value="groq">Groq (Mixtral) - Fast & High Limits</option>
                         <option value="chatgpt">OpenAI ChatGPT</option>
                         <option value="perplexity">Perplexity AI</option>
                     </select>
@@ -651,6 +652,12 @@
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Gemini API Key</label>
                     <input type="password" id="gemini-api-key" placeholder="Enter your Gemini API key" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
                     <p class="text-xs text-gray-500 mt-1">Get your API key from <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-purple-600 underline">Google AI Studio</a></p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Groq API Key</label>
+                    <input type="password" id="groq-api-key" placeholder="Enter your Groq API key" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <p class="text-xs text-gray-500 mt-1">Get your API key from <a href="https://console.groq.com/keys" target="_blank" class="text-purple-600 underline">Groq Console</a> (Free tier: 30 req/min)</p>
                 </div>
                 
                 <div>
@@ -1259,6 +1266,7 @@
     
     <!-- AI modules -->
     <script src="js/ai/gemini.js"></script>
+    <script src="js/ai/groq.js"></script>
     <script src="js/ai/chatgpt.js"></script>
     <script src="js/ai/perplexity.js"></script>
     <script src="js/ai/provider.js"></script>

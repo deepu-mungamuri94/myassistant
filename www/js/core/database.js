@@ -16,9 +16,12 @@ const DB = {
     settings: {
         aiProvider: 'gemini',
         geminiApiKey: '',
+        groqApiKey: '',
         chatGptApiKey: '',
         perplexityApiKey: ''
     },
+    // Backward compatibility: Store groqApiKey at root level
+    groqApiKey: '',
     security: {
         pinHash: null, // SHA-256 hash of PIN
         biometricEnabled: false, // Whether biometric is enabled

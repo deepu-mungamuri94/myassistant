@@ -74,11 +74,13 @@ const Navigation = {
         if (modal) {
             // Load current settings
             const geminiKeyInput = document.getElementById('gemini-api-key');
+            const groqKeyInput = document.getElementById('groq-api-key');
             const chatGptKeyInput = document.getElementById('chatgpt-api-key');
             const perplexityKeyInput = document.getElementById('perplexity-api-key');
             const providerSelect = document.getElementById('ai-provider');
             
             if (geminiKeyInput) geminiKeyInput.value = window.DB.settings.geminiApiKey || '';
+            if (groqKeyInput) groqKeyInput.value = window.DB.groqApiKey || '';
             if (chatGptKeyInput) chatGptKeyInput.value = window.DB.settings.chatGptApiKey || '';
             if (perplexityKeyInput) perplexityKeyInput.value = window.DB.settings.perplexityApiKey || '';
             if (providerSelect) providerSelect.value = window.DB.settings.aiProvider || 'gemini';
@@ -103,11 +105,13 @@ const Navigation = {
     saveSettings() {
         const providerSelect = document.getElementById('ai-provider');
         const geminiKeyInput = document.getElementById('gemini-api-key');
+        const groqKeyInput = document.getElementById('groq-api-key');
         const chatGptKeyInput = document.getElementById('chatgpt-api-key');
         const perplexityKeyInput = document.getElementById('perplexity-api-key');
         
         if (providerSelect) window.DB.settings.aiProvider = providerSelect.value;
         if (geminiKeyInput) window.DB.settings.geminiApiKey = geminiKeyInput.value.trim();
+        if (groqKeyInput) window.DB.groqApiKey = groqKeyInput.value.trim();
         if (chatGptKeyInput) window.DB.settings.chatGptApiKey = chatGptKeyInput.value.trim();
         if (perplexityKeyInput) window.DB.settings.perplexityApiKey = perplexityKeyInput.value.trim();
         

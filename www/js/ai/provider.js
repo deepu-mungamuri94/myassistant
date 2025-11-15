@@ -13,6 +13,9 @@ const AIProvider = {
         if (window.DB.settings.geminiApiKey) {
             available.push('gemini');
         }
+        if (window.DB.groqApiKey) {
+            available.push('groq');
+        }
         if (window.DB.settings.chatGptApiKey) {
             available.push('chatgpt');
         }
@@ -30,6 +33,8 @@ const AIProvider = {
         switch(provider) {
             case 'gemini':
                 return await window.GeminiAI.call(prompt, context);
+            case 'groq':
+                return await window.GroqAI.call(prompt, context);
             case 'chatgpt':
                 return await window.ChatGPT.call(prompt, context);
             case 'perplexity':
