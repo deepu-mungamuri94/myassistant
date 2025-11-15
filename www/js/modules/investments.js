@@ -192,15 +192,20 @@ Return tickers for ALL stocks in a JSON array.`;
             // Use stored ticker symbols for faster, more reliable fetching
             const pricesData = await window.StockAPI.fetchAllPricesWithTickers(stocks);
             
+            console.log(`📊 Received ${pricesData.length} price results for ${stocks.length} stocks`);
+            
             // Update all investments with fetched prices
             let successCount = 0;
             let errorCount = 0;
             
-            pricesData.forEach(priceData => {
+            for (let i = 0; i < pricesData.length; i++) {
+                const priceData = pricesData[i];
+                console.log(`\n🔄 Processing result ${i + 1}/${pricesData.length}:`, priceData.name, priceData.error ? 'ERROR' : `$${priceData.price || priceData.price === 0 ? priceData.price : 'N/A'}`);
+                
                 if (priceData.error) {
-                    console.warn(`Stock not found: ${priceData.name}`, priceData.error);
+                    console.warn(`❌ Stock not found: ${priceData.name}`, priceData.error);
                     errorCount++;
-                    return;
+                    continue;
                 }
                 
                 // Find matching stock by name (case-insensitive partial match)
@@ -209,7 +214,10 @@ Return tickers for ALL stocks in a JSON array.`;
                     priceData.name.toLowerCase().includes(s.name.toLowerCase())
                 );
                 
-                if (stock && priceData.price) {
+                console.log(`🔍 Matching "${priceData.name}" with stocks:`, stocks.map(s => s.name).join(', '));
+                console.log(`✓ Found match:`, stock ? stock.name : 'NONE');
+                
+                if (stock && priceData.price !== undefined && priceData.price !== null) {
                     // Store ticker symbol for future use (if not already stored)
                     if (priceData.symbol && !stock.tickerSymbol) {
                         stock.tickerSymbol = priceData.symbol;
@@ -244,11 +252,12 @@ Return tickers for ALL stocks in a JSON array.`;
                     
                     stock.lastUpdated = Utils.getCurrentTimestamp();
                     successCount++;
+                    console.log(`✅ Success! Updated ${stock.name}`);
                 } else {
                     errorCount++;
-                    console.warn(`Could not match: ${priceData.name}`);
+                    console.warn(`❌ Could not match or invalid price: ${priceData.name}`, { stock: stock?.name, price: priceData.price });
                 }
-            });
+            }
             
             // Save all updates
             window.Storage.save();
@@ -582,6 +591,9 @@ Return tickers for ALL stocks in a JSON array.`;
                                 </button>
                             </div>
                             <p class="text-base font-bold text-yellow-700">${Utils.formatCurrency(value)}</p>
+                            ${isStock && displayCurrency === 'USD' && inv.usdToInrRate ? `
+                                <p class="text-xs text-gray-500 mt-0.5">($${((inv.inputStockPrice || 0) * (inv.quantity || 1)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})})</p>
+                            ` : ''}
                         </div>
                     </div>
                 </div>

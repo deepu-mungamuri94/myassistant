@@ -2,143 +2,146 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="100"
-    android:viewportHeight="100">
+    android:viewportWidth="108"
+    android:viewportHeight="108">
     
     <!-- Background Circle with Gradient -->
     <path
         android:fillColor="#667eea"
-        android:pathData="M50,5 A45,45 0 1,1 50,95 A45,45 0 1,1 50,5 Z"/>
+        android:pathData="M54,10 A44,44 0 1,1 54,98 A44,44 0 1,1 54,10 Z"/>
     
     <!-- Gradient effect (darker shade at bottom) -->
     <path
         android:fillColor="#764ba2"
         android:fillAlpha="0.4"
-        android:pathData="M50,50 A45,45 0 0,0 50,95 A45,45 0 0,0 95,50 Z"/>
+        android:pathData="M54,54 A44,44 0 0,0 54,98 A44,44 0 0,0 98,54 Z"/>
     
-    <!-- Neck -->
-    <path
-        android:fillColor="#ffffff"
-        android:pathData="M46,65 h8 v5 a1,1 0 0,1 -1,1 h-6 a1,1 0 0,1 -1,-1 v-5 Z"/>
-    
-    <!-- Shoulders (approximated as ellipse with path) -->
-    <path
-        android:fillColor="#ffffff"
-        android:fillAlpha="0.9"
-        android:pathData="M30,76 Q50,80 70,76 Q70,82 50,86 Q30,82 30,76 Z"/>
-    
-    <!-- Head/Face (Round ellipse) -->
-    <path
-        android:fillColor="#ffffff"
-        android:pathData="M50,34 a14,16 0 1,0 0,32 a14,16 0 1,0 0,-32 Z"/>
-    
-    <!-- Antenna Base -->
-    <path
-        android:fillColor="#f0f0f0"
-        android:pathData="M47,34 h6 v3 h-6 Z"/>
-    
-    <!-- Antenna Light (green circle as path) -->
-    <path
-        android:fillColor="#4CAF50"
-        android:pathData="M50,26.5 a1.5,1.5 0 1,0 0,3 a1.5,1.5 0 1,0 0,-3 Z"/>
-    
-    <!-- Headphone Band (curved path) -->
-    <path
-        android:pathData="M36,42 Q36,32 50,30 Q64,32 64,42"
-        android:strokeColor="#ffffff"
-        android:strokeWidth="2.5"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"/>
-    
-    <!-- Left Ear Cup - Outer -->
-    <path
-        android:fillColor="#ffffff"
-        android:pathData="M33,43 a5,7 0 1,0 0,14 a5,7 0 1,0 0,-14 Z"/>
-    
-    <!-- Left Ear Cup - Middle -->
-    <path
-        android:fillColor="#e0e7ff"
-        android:pathData="M33,45 a3.5,5 0 1,0 0,10 a3.5,5 0 1,0 0,-10 Z"/>
-    
-    <!-- Left Ear Cup - Inner -->
-    <path
-        android:fillColor="#c7d2fe"
-        android:pathData="M33,47 a2,3 0 1,0 0,6 a2,3 0 1,0 0,-6 Z"/>
-    
-    <!-- Right Ear Cup - Outer -->
-    <path
-        android:fillColor="#ffffff"
-        android:pathData="M67,43 a5,7 0 1,0 0,14 a5,7 0 1,0 0,-14 Z"/>
-    
-    <!-- Right Ear Cup - Middle -->
-    <path
-        android:fillColor="#e0e7ff"
-        android:pathData="M67,45 a3.5,5 0 1,0 0,10 a3.5,5 0 1,0 0,-10 Z"/>
-    
-    <!-- Right Ear Cup - Inner -->
-    <path
-        android:fillColor="#c7d2fe"
-        android:pathData="M67,47 a2,3 0 1,0 0,6 a2,3 0 1,0 0,-6 Z"/>
-    
-    <!-- Left Eye - Outer -->
-    <path
-        android:fillColor="#667eea"
-        android:pathData="M45,48 a3.5,4.5 0 1,0 0,9 a3.5,4.5 0 1,0 0,-9 Z"/>
-    
-    <!-- Left Eye - Pupil -->
-    <path
-        android:fillColor="#4f46e5"
-        android:pathData="M45,49 a2,2.5 0 1,0 0,5 a2,2.5 0 1,0 0,-5 Z"/>
-    
-    <!-- Left Eye - Highlight (small circle) -->
-    <path
-        android:fillColor="#ffffff"
-        android:pathData="M44,46 a1,1 0 1,0 0,2 a1,1 0 1,0 0,-2 Z"/>
-    
-    <!-- Right Eye - Outer -->
-    <path
-        android:fillColor="#667eea"
-        android:pathData="M55,48 a3.5,4.5 0 1,0 0,9 a3.5,4.5 0 1,0 0,-9 Z"/>
-    
-    <!-- Right Eye - Pupil -->
-    <path
-        android:fillColor="#4f46e5"
-        android:pathData="M55,49 a2,2.5 0 1,0 0,5 a2,2.5 0 1,0 0,-5 Z"/>
-    
-    <!-- Right Eye - Highlight (small circle) -->
-    <path
-        android:fillColor="#ffffff"
-        android:pathData="M54,46 a1,1 0 1,0 0,2 a1,1 0 1,0 0,-2 Z"/>
-    
-    <!-- Smile -->
-    <path
-        android:pathData="M44,56 Q50,60 56,56"
-        android:strokeColor="#667eea"
-        android:strokeWidth="1.5"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"/>
-    
-    <!-- Microphone - Line -->
-    <path
-        android:pathData="M67,55 L72,58"
-        android:strokeColor="#ffffff"
-        android:strokeWidth="1.2"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"/>
-    
-    <!-- Microphone - Circle (small) -->
-    <path
-        android:fillColor="#ffffff"
-        android:pathData="M73,57 a2,2 0 1,0 0,4 a2,2 0 1,0 0,-4 Z"/>
-    
-    <!-- Chest Panel Background -->
-    <path
-        android:fillColor="#f8f9ff"
-        android:pathData="M45,66 h10 v2 h-10 Z"/>
-    
-    <!-- Chest Panel Lights (small circles) -->
-    <path android:fillColor="#667eea" android:pathData="M47,66.5 a0.5,0.5 0 1,0 0,1 a0.5,0.5 0 1,0 0,-1 Z"/>
-    <path android:fillColor="#4CAF50" android:pathData="M50,66.5 a0.5,0.5 0 1,0 0,1 a0.5,0.5 0 1,0 0,-1 Z"/>
-    <path android:fillColor="#667eea" android:pathData="M53,66.5 a0.5,0.5 0 1,0 0,1 a0.5,0.5 0 1,0 0,-1 Z"/>
+    <!-- Robot with Headphones (scaled down and centered for adaptive icon) -->
+    <g android:translateX="54" android:translateY="54" android:scaleX="0.7" android:scaleY="0.7">
+        <!-- Neck -->
+        <path
+            android:fillColor="#ffffff"
+            android:pathData="M-4,15 h8 v5 a1,1 0 0,1 -1,1 h-6 a1,1 0 0,1 -1,-1 v-5 Z"/>
+        
+        <!-- Shoulders -->
+        <path
+            android:fillColor="#ffffff"
+            android:fillAlpha="0.9"
+            android:pathData="M-20,26 Q0,30 20,26 Q20,32 0,36 Q-20,32 -20,26 Z"/>
+        
+        <!-- Head/Face (Round ellipse) -->
+        <path
+            android:fillColor="#ffffff"
+            android:pathData="M0,-16 a14,16 0 1,0 0,32 a14,16 0 1,0 0,-32 Z"/>
+        
+        <!-- Antenna Base -->
+        <path
+            android:fillColor="#f0f0f0"
+            android:pathData="M-3,-16 h6 v3 h-6 Z"/>
+        
+        <!-- Antenna Light (green circle as path) -->
+        <path
+            android:fillColor="#4CAF50"
+            android:pathData="M0,-23.5 a1.5,1.5 0 1,0 0,3 a1.5,1.5 0 1,0 0,-3 Z"/>
+        
+        <!-- Headphone Band (curved path) -->
+        <path
+            android:pathData="M-14,-8 Q-14,-18 0,-20 Q14,-18 14,-8"
+            android:strokeColor="#ffffff"
+            android:strokeWidth="2.5"
+            android:strokeLineCap="round"
+            android:fillColor="#00000000"/>
+        
+        <!-- Left Ear Cup - Outer -->
+        <path
+            android:fillColor="#ffffff"
+            android:pathData="M-17,-7 a5,7 0 1,0 0,14 a5,7 0 1,0 0,-14 Z"/>
+        
+        <!-- Left Ear Cup - Middle -->
+        <path
+            android:fillColor="#e0e7ff"
+            android:pathData="M-17,-5 a3.5,5 0 1,0 0,10 a3.5,5 0 1,0 0,-10 Z"/>
+        
+        <!-- Left Ear Cup - Inner -->
+        <path
+            android:fillColor="#c7d2fe"
+            android:pathData="M-17,-3 a2,3 0 1,0 0,6 a2,3 0 1,0 0,-6 Z"/>
+        
+        <!-- Right Ear Cup - Outer -->
+        <path
+            android:fillColor="#ffffff"
+            android:pathData="M17,-7 a5,7 0 1,0 0,14 a5,7 0 1,0 0,-14 Z"/>
+        
+        <!-- Right Ear Cup - Middle -->
+        <path
+            android:fillColor="#e0e7ff"
+            android:pathData="M17,-5 a3.5,5 0 1,0 0,10 a3.5,5 0 1,0 0,-10 Z"/>
+        
+        <!-- Right Ear Cup - Inner -->
+        <path
+            android:fillColor="#c7d2fe"
+            android:pathData="M17,-3 a2,3 0 1,0 0,6 a2,3 0 1,0 0,-6 Z"/>
+        
+        <!-- Left Eye - Outer -->
+        <path
+            android:fillColor="#667eea"
+            android:pathData="M-5,-2 a3.5,4.5 0 1,0 0,9 a3.5,4.5 0 1,0 0,-9 Z"/>
+        
+        <!-- Left Eye - Pupil -->
+        <path
+            android:fillColor="#4f46e5"
+            android:pathData="M-5,-1 a2,2.5 0 1,0 0,5 a2,2.5 0 1,0 0,-5 Z"/>
+        
+        <!-- Left Eye - Highlight -->
+        <path
+            android:fillColor="#ffffff"
+            android:pathData="M-6,-4 a1,1 0 1,0 0,2 a1,1 0 1,0 0,-2 Z"/>
+        
+        <!-- Right Eye - Outer -->
+        <path
+            android:fillColor="#667eea"
+            android:pathData="M5,-2 a3.5,4.5 0 1,0 0,9 a3.5,4.5 0 1,0 0,-9 Z"/>
+        
+        <!-- Right Eye - Pupil -->
+        <path
+            android:fillColor="#4f46e5"
+            android:pathData="M5,-1 a2,2.5 0 1,0 0,5 a2,2.5 0 1,0 0,-5 Z"/>
+        
+        <!-- Right Eye - Highlight -->
+        <path
+            android:fillColor="#ffffff"
+            android:pathData="M4,-4 a1,1 0 1,0 0,2 a1,1 0 1,0 0,-2 Z"/>
+        
+        <!-- Smile -->
+        <path
+            android:pathData="M-6,6 Q0,10 6,6"
+            android:strokeColor="#667eea"
+            android:strokeWidth="1.5"
+            android:strokeLineCap="round"
+            android:fillColor="#00000000"/>
+        
+        <!-- Microphone - Line -->
+        <path
+            android:pathData="M17,5 L22,8"
+            android:strokeColor="#ffffff"
+            android:strokeWidth="1.2"
+            android:strokeLineCap="round"
+            android:fillColor="#00000000"/>
+        
+        <!-- Microphone - Circle -->
+        <path
+            android:fillColor="#ffffff"
+            android:pathData="M23,7 a2,2 0 1,0 0,4 a2,2 0 1,0 0,-4 Z"/>
+        
+        <!-- Chest Panel Background -->
+        <path
+            android:fillColor="#f8f9ff"
+            android:pathData="M-5,16 h10 v2 h-10 Z"/>
+        
+        <!-- Chest Panel Lights -->
+        <path android:fillColor="#667eea" android:pathData="M-3,16.5 a0.5,0.5 0 1,0 0,1 a0.5,0.5 0 1,0 0,-1 Z"/>
+        <path android:fillColor="#4CAF50" android:pathData="M0,16.5 a0.5,0.5 0 1,0 0,1 a0.5,0.5 0 1,0 0,-1 Z"/>
+        <path android:fillColor="#667eea" android:pathData="M3,16.5 a0.5,0.5 0 1,0 0,1 a0.5,0.5 0 1,0 0,-1 Z"/>
+    </g>
     
 </vector>

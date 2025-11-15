@@ -1720,9 +1720,14 @@
                 let displayText = '';
                 
                 if (currency === 'USD') {
-                    const rate = await getUsdToInrRate();
+                    // Use global exchange rate from DB
+                    const rate = window.DB.exchangeRate?.rate || 83;
                     priceInInr = price * rate;
-                    displayText = `Price: ₹${priceInInr.toFixed(2)}/share (USD ${price} × ${rate.toFixed(2)}) | `;
+                    displayText = `Price: ₹${priceInInr.toFixed(2)}/share (USD ${price} × ₹${rate.toFixed(2)}) | `;
+                    
+                    if (!window.DB.exchangeRate || !window.DB.exchangeRate.rate) {
+                        displayText += `⚠️ Using default rate (₹83). Update rate in Investments page | `;
+                    }
                 } else {
                     displayText = `Price: ₹${price}/share | `;
                 }
