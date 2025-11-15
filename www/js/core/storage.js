@@ -70,18 +70,24 @@ const Storage = {
                 }
                 
                 try {
-                    // Import Filesystem and Share from Capacitor
-                    const { Filesystem, Directory } = await import('@capacitor/filesystem');
-                    const { Share } = await import('@capacitor/share');
+                    // Get Capacitor plugins directly
+                    const Filesystem = window.Capacitor.Plugins.Filesystem;
+                    const Share = window.Capacitor.Plugins.Share;
+                    
+                    if (!Filesystem || !Share) {
+                        throw new Error('Capacitor Filesystem or Share plugin not available');
+                    }
                     
                     console.log('✅ Capacitor plugins loaded');
+                    console.log('Filesystem:', !!Filesystem);
+                    console.log('Share:', !!Share);
                     
                     // First, write file to cache directory (temporary storage)
                     console.log('📝 Writing file to cache...');
                     const result = await Filesystem.writeFile({
                         path: fileName,
                         data: dataStr,
-                        directory: Directory.Cache,
+                        directory: 'CACHE', // Use string constant
                         encoding: 'utf8'
                     });
                     
@@ -248,11 +254,16 @@ const Storage = {
                 return [];
             }
             
-            const { Filesystem, Directory } = await import('@capacitor/filesystem');
+            const Filesystem = window.Capacitor.Plugins.Filesystem;
+            
+            if (!Filesystem) {
+                console.warn('Filesystem plugin not available');
+                return [];
+            }
             
             const result = await Filesystem.readdir({
                 path: '',
-                directory: Directory.Documents
+                directory: 'DOCUMENTS' // Use string constant
             });
             
             // Filter only My Assistant backup files
