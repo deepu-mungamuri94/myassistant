@@ -47,12 +47,32 @@ const Storage = {
     },
 
     /**
-     * Export data as JSON file (with native Share support for better UX)
+     * Export data as JSON file (with AES-256 encryption)
      */
     async exportData() {
         try {
+            // Check if master password is set
+            const masterPassword = window.DB.security.masterPassword;
+            if (!masterPassword) {
+                if (window.Toast) {
+                    window.Toast.show(
+                        '⚠️ Master password not set!\n\n' +
+                        'Go to Settings and set a master password first.\n\n' +
+                        'This is required to encrypt your backup data.',
+                        'error',
+                        5000
+                    );
+                }
+                return false;
+            }
+            
             const dataStr = JSON.stringify(window.DB, null, 2);
-            const fileName = `myassistant_backup_${Date.now()}.json`;
+            
+            // Encrypt the data
+            console.log('🔐 Encrypting data with master password...');
+            const encryptedData = await window.Crypto.encrypt(dataStr, masterPassword);
+            
+            const fileName = `myassistant_backup_${Date.now()}.enc`;
             
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             console.log('📤 STARTING EXPORT');
@@ -82,11 +102,11 @@ const Storage = {
                     console.log('Filesystem:', !!Filesystem);
                     console.log('Share:', !!Share);
                     
-                    // First, write file to cache directory (temporary storage)
-                    console.log('📝 Writing file to cache...');
+                    // First, write encrypted file to cache directory (temporary storage)
+                    console.log('📝 Writing encrypted file to cache...');
                     const result = await Filesystem.writeFile({
                         path: fileName,
-                        data: dataStr,
+                        data: encryptedData,
                         directory: 'CACHE', // Use string constant
                         encoding: 'utf8'
                     });
@@ -112,10 +132,11 @@ const Storage = {
                     // Toast will be shown after they select an app
                     
                     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    console.log('✅ SHARE DIALOG OPENED SUCCESSFULLY');
+                    console.log('✅ ENCRYPTED BACKUP READY TO SHARE');
                     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                     console.log('📄 File:', fileName);
                     console.log('📂 URI:', result.uri);
+                    console.log('🔐 Encryption: AES-256-GCM');
                     console.log('💡 User can save to:');
                     console.log('   • Google Drive');
                     console.log('   • Email');
@@ -153,7 +174,7 @@ const Storage = {
             
             // Fallback to browser download for web
             console.log('⚠️ Using browser download (web mode)');
-            const blob = new Blob([dataStr], { type: 'application/json' });
+            const blob = new Blob([encryptedData], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -164,10 +185,10 @@ const Storage = {
             URL.revokeObjectURL(url);
             
             if (window.Toast) {
-                window.Toast.show('✅ Backup file downloaded!', 'success');
+                window.Toast.show('✅ Encrypted backup downloaded!\n🔐 Keep your master password safe!', 'success', 4000);
             }
             
-            console.log('✅ Browser download completed');
+            console.log('✅ Browser download completed (encrypted)');
             return true;
             
         } catch (error) {
@@ -195,25 +216,47 @@ const Storage = {
     },
 
     /**
-     * Import data from JSON file (with Capacitor Filesystem API support)
+     * Import data from encrypted backup file
      */
-    async importData(file) {
+    async importData(file, password) {
         try {
             if (!file) {
                 throw new Error('Please select a file');
             }
             
-            if (window.Loading) {
-                window.Loading.show('Importing data...');
+            if (!password) {
+                throw new Error('Please enter your master password');
             }
             
-            // Read file content
-            const text = await file.text();
-            const imported = JSON.parse(text);
+            if (window.Loading) {
+                window.Loading.show('Decrypting backup...');
+            }
+            
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('📥 STARTING IMPORT');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('📄 File:', file.name);
+            console.log('🔐 Decrypting with master password...');
+            
+            // Read encrypted file content
+            const encryptedText = await file.text();
+            
+            // Decrypt the data
+            const decryptedText = await window.Crypto.decrypt(encryptedText, password);
+            
+            console.log('✅ Decryption successful');
+            console.log('📦 Parsing data...');
+            
+            // Parse decrypted JSON
+            const imported = JSON.parse(decryptedText);
             
             // Validate imported data
             if (!imported || typeof imported !== 'object') {
                 throw new Error('Invalid backup file format');
+            }
+            
+            if (window.Loading) {
+                window.Loading.show('Restoring data...');
             }
             
             // Merge imported data with current DB
@@ -224,22 +267,39 @@ const Storage = {
                 window.Loading.hide();
             }
             
-            if (window.Toast) {
-                window.Toast.show('✅ Data imported successfully!', 'success');
-            }
+            console.log('✅ Data imported successfully');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             
-            console.log('✅ Data imported from:', file.name);
+            if (window.Toast) {
+                window.Toast.show('✅ Backup imported successfully!\n\n🔓 Data decrypted and restored.', 'success', 4000);
+            }
             
             return true;
         } catch (error) {
-            console.error('Import error:', error);
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('❌ IMPORT ERROR');
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('Error:', error);
+            console.error('Stack:', error.stack);
             
             if (window.Loading) {
                 window.Loading.hide();
             }
             
+            // Provide specific error messages
+            let errorMessage = 'Import failed!';
+            if (error.message.includes('Decryption failed')) {
+                errorMessage = '❌ Wrong password or corrupted file!\n\nPlease check:\n• Master password is correct\n• File is not corrupted';
+            } else if (error.message.includes('master password')) {
+                errorMessage = '⚠️ ' + error.message;
+            } else if (error.message.includes('select a file')) {
+                errorMessage = '⚠️ ' + error.message;
+            } else {
+                errorMessage = `❌ Import failed!\n\n${error.message}`;
+            }
+            
             if (window.Toast) {
-                window.Toast.show('❌ Import failed: Invalid file format', 'error');
+                window.Toast.show(errorMessage, 'error', 5000);
             }
             return false;
         }

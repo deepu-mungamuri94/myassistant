@@ -27,7 +27,8 @@ const DB = {
     security: {
         pinHash: null, // SHA-256 hash of PIN
         biometricEnabled: false, // Whether biometric is enabled
-        isSetup: false // Whether security is set up
+        isSetup: false, // Whether security is set up
+        masterPassword: '' // Master password for export/import encryption
     }
 };
 

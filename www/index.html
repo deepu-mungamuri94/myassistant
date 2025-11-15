@@ -289,6 +289,19 @@
                     </div>
                 </button>
                 
+                <!-- AI Settings -->
+                <button onclick="Navigation.openAISettings(); Navigation.closeMenu();" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-pink-500 hover:to-rose-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-pink-400 to-rose-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
+                        <svg class="w-4 h-4 text-white group-hover:text-pink-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <span class="font-bold text-sm">AI Settings</span>
+                        <p class="text-[11px] opacity-70 group-hover:opacity-90">Configure AI providers</p>
+                    </div>
+                </button>
+                
                 <!-- Section Header -->
                 <div class="pt-1.5 pb-0">
                     <div class="flex items-center px-2">
@@ -633,10 +646,15 @@
         
     </div>
     
-    <!-- SETTINGS MODAL -->
-    <div id="settings-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Navigation.closeSettings()">
+    <!-- AI SETTINGS MODAL -->
+    <div id="ai-settings-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Navigation.closeAISettings()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">AI Settings</h2>
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent flex items-center gap-2">
+                <svg class="w-6 h-6 text-pink-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
+                </svg>
+                AI Provider Settings
+            </h2>
             
             <div class="space-y-4">
                 <div>
@@ -684,13 +702,36 @@
                     <p class="text-xs text-gray-500 mt-1">Get your API key from <a href="https://www.perplexity.ai/settings/api" target="_blank" class="text-purple-600 underline">Perplexity Settings</a></p>
                 </div>
                 
+                <div class="flex space-x-3 pt-4">
+                    <button onclick="Navigation.saveAISettings()" class="flex-1 px-4 py-2 bg-gradient-to-r from-pink-600 to-rose-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                        Save
+                    </button>
+                    <button onclick="Navigation.closeAISettings()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Navigation.closeSettings()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-2">
+                <svg class="w-6 h-6 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
+                </svg>
+                Settings
+            </h2>
+            
+            <div class="space-y-4">
                 <!-- Security Section -->
-                <div class="border-t pt-4 mt-4">
+                <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-3">
-                        Security
-                        <span class="text-xs font-normal text-gray-500 block mt-1">Manage your PIN and biometric settings</span>
+                        🔒 Security
+                        <span class="text-xs font-normal text-gray-500 block mt-1">Manage your PIN and data encryption</span>
                     </label>
-                    <button onclick="openChangePinModal()" class="w-full px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-semibold flex items-center justify-center gap-2">
+                    <button onclick="openChangePinModal()" class="w-full px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-semibold flex items-center justify-center gap-2 mb-3">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
                         </svg>
@@ -698,8 +739,26 @@
                     </button>
                 </div>
                 
+                <!-- Master Password Section -->
+                <div class="border-t pt-4">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        🔐 Master Password (for Export/Import)
+                        <span class="text-xs font-normal text-gray-500 block mt-1">
+                            This password encrypts your exported data with AES-256 encryption
+                        </span>
+                    </label>
+                    <input type="password" id="master-password" placeholder="Enter master password" 
+                           class="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                    <p class="text-xs text-amber-600 mt-2 flex items-start gap-1">
+                        <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        <span>Store this password safely! Without it, you cannot decrypt your backups.</span>
+                    </p>
+                </div>
+                
                 <div class="flex space-x-3 pt-4">
-                    <button onclick="Navigation.saveSettings()" class="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                    <button onclick="Navigation.saveSettings()" class="flex-1 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
                         Save
                     </button>
                     <button onclick="Navigation.closeSettings()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
@@ -1031,13 +1090,30 @@
     <!-- IMPORT MODAL -->
     <div id="import-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Navigation.closeImportModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
-            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-gray-600 to-gray-800 bg-clip-text text-transparent">Import Data</h2>
-            <p class="text-gray-600 mb-4">Upload your backup file to restore data.</p>
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-gray-600 to-gray-800 bg-clip-text text-transparent flex items-center gap-2">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+                Import Encrypted Backup
+            </h2>
+            <p class="text-gray-600 mb-4">Upload your encrypted backup file (.enc) and enter your master password to restore data.</p>
             
-            <input type="file" id="import-file" accept=".myassistant" class="w-full p-2 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Select Backup File</label>
+                    <input type="file" id="import-file" accept=".enc" class="w-full p-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Master Password</label>
+                    <input type="password" id="import-password" placeholder="Enter master password used during export" 
+                           class="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500">
+                    <p class="text-xs text-gray-500 mt-1">🔐 This is the password you set in Settings before exporting</p>
+                </div>
+            </div>
             
-            <button onclick="Navigation.importData()" class="w-full px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-800 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold mb-3">
-                📤 Import Backup
+            <button onclick="Navigation.importData()" class="w-full px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-800 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold mt-4 mb-3">
+                📥 Decrypt & Import
             </button>
             
             <button onclick="Navigation.closeImportModal()" class="w-full px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
@@ -1333,6 +1409,7 @@
     <!-- Core modules first -->
     <script src="js/core/database.js"></script>
     <script src="js/core/utils.js"></script>
+    <script src="js/utils/crypto.js"></script>
     <script src="js/core/storage.js"></script>
     <script src="js/core/security.js"></script>
     <script src="js/core/loading.js"></script>

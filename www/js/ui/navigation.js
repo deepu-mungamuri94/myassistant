@@ -69,10 +69,62 @@ const Navigation = {
     /**
      * Open settings modal
      */
+    /**
+     * Open Settings modal (for PIN and Master Password)
+     */
     openSettings() {
         const modal = document.getElementById('settings-modal');
         if (modal) {
-            // Load current settings
+            // Load master password
+            const masterPasswordInput = document.getElementById('master-password');
+            if (masterPasswordInput) {
+                masterPasswordInput.value = window.DB.security.masterPassword || '';
+            }
+            
+            modal.classList.remove('hidden');
+        }
+    },
+    
+    /**
+     * Close Settings modal
+     */
+    closeSettings() {
+        const modal = document.getElementById('settings-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    },
+    
+    /**
+     * Save Settings (PIN and Master Password)
+     */
+    saveSettings() {
+        const masterPasswordInput = document.getElementById('master-password');
+        
+        if (masterPasswordInput) {
+            const masterPassword = masterPasswordInput.value.trim();
+            
+            if (masterPassword && masterPassword.length < 6) {
+                window.Toast.show('⚠️ Master password must be at least 6 characters long', 'error');
+                return;
+            }
+            
+            window.DB.security.masterPassword = masterPassword;
+        }
+        
+        if (window.Storage.save()) {
+            window.Toast.show('✅ Settings saved successfully!', 'success');
+            this.closeSettings();
+        }
+    },
+    
+    /**
+     * Open AI Settings modal
+     */
+    openAISettings() {
+        const modal = document.getElementById('ai-settings-modal');
+        if (modal) {
+            // Load current AI settings
             const geminiKeyInput = document.getElementById('gemini-api-key');
             const groqKeyInput = document.getElementById('groq-api-key');
             const chatGptKeyInput = document.getElementById('chatgpt-api-key');
@@ -89,6 +141,47 @@ const Navigation = {
             this.renderPriorityOrder();
             
             modal.classList.remove('hidden');
+        }
+    },
+    
+    /**
+     * Close AI Settings modal
+     */
+    closeAISettings() {
+        const modal = document.getElementById('ai-settings-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    },
+    
+    /**
+     * Save AI Settings
+     */
+    saveAISettings() {
+        const providerSelect = document.getElementById('ai-provider');
+        const geminiKeyInput = document.getElementById('gemini-api-key');
+        const groqKeyInput = document.getElementById('groq-api-key');
+        const chatGptKeyInput = document.getElementById('chatgpt-api-key');
+        const perplexityKeyInput = document.getElementById('perplexity-api-key');
+        
+        // Validate: Require both Groq and Gemini API keys
+        const geminiKey = geminiKeyInput ? geminiKeyInput.value.trim() : '';
+        const groqKey = groqKeyInput ? groqKeyInput.value.trim() : '';
+        
+        if (!geminiKey || !groqKey) {
+            window.Toast.show('⚠️ Both Gemini and Groq API keys are required!\n\n• Groq: Fast chat responses\n• Gemini: Card benefits & web search', 'error');
+            return;
+        }
+        
+        if (providerSelect) window.DB.settings.aiProvider = providerSelect.value;
+        if (geminiKeyInput) window.DB.settings.geminiApiKey = geminiKey;
+        if (groqKeyInput) window.DB.groqApiKey = groqKey;
+        if (chatGptKeyInput) window.DB.settings.chatGptApiKey = chatGptKeyInput.value.trim();
+        if (perplexityKeyInput) window.DB.settings.perplexityApiKey = perplexityKeyInput.value.trim();
+        
+        if (window.Storage.save()) {
+            window.Toast.show('✅ AI Settings saved successfully!', 'success');
+            this.closeAISettings();
         }
     },
     
@@ -179,47 +272,6 @@ const Navigation = {
     },
 
     /**
-     * Close settings modal
-     */
-    closeSettings() {
-        const modal = document.getElementById('settings-modal');
-        if (modal) {
-            modal.classList.add('hidden');
-        }
-    },
-
-    /**
-     * Save settings
-     */
-    saveSettings() {
-        const providerSelect = document.getElementById('ai-provider');
-        const geminiKeyInput = document.getElementById('gemini-api-key');
-        const groqKeyInput = document.getElementById('groq-api-key');
-        const chatGptKeyInput = document.getElementById('chatgpt-api-key');
-        const perplexityKeyInput = document.getElementById('perplexity-api-key');
-        
-        // Validate: Require both Groq and Gemini API keys
-        const geminiKey = geminiKeyInput ? geminiKeyInput.value.trim() : '';
-        const groqKey = groqKeyInput ? groqKeyInput.value.trim() : '';
-        
-        if (!geminiKey || !groqKey) {
-            window.Toast.show('⚠️ Both Gemini and Groq API keys are required!\n\n• Groq: Fast chat responses\n• Gemini: Card benefits & web search', 'error');
-            return;
-        }
-        
-        if (providerSelect) window.DB.settings.aiProvider = providerSelect.value;
-        if (geminiKeyInput) window.DB.settings.geminiApiKey = geminiKey;
-        if (groqKeyInput) window.DB.groqApiKey = groqKey;
-        if (chatGptKeyInput) window.DB.settings.chatGptApiKey = chatGptKeyInput.value.trim();
-        if (perplexityKeyInput) window.DB.settings.perplexityApiKey = perplexityKeyInput.value.trim();
-        
-        if (window.Storage.save()) {
-            window.Toast.show('Settings saved successfully!', 'success');
-            this.closeSettings();
-        }
-    },
-
-    /**
      * Open export modal
      */
     openExportModal() {
@@ -274,15 +326,25 @@ const Navigation = {
      */
     async importData() {
         const fileInput = document.getElementById('import-file');
+        const passwordInput = document.getElementById('import-password');
+        
         if (!fileInput || !fileInput.files[0]) {
-            window.Toast.show('Please select a file', 'error');
+            window.Toast.show('⚠️ Please select a file', 'error');
+            return;
+        }
+        
+        if (!passwordInput || !passwordInput.value) {
+            window.Toast.show('⚠️ Please enter your master password', 'error');
             return;
         }
         
         const file = fileInput.files[0];
+        const password = passwordInput.value;
         
-        const success = await window.Storage.importData(file);
+        const success = await window.Storage.importData(file, password);
         if (success) {
+            // Clear password input
+            passwordInput.value = '';
             this.closeImportModal();
             this.refreshView(this.currentView);
         }
