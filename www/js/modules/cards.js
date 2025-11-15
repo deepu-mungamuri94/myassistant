@@ -249,11 +249,32 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             throw new Error('Card not found');
         }
         
-        if (window.Toast) {
-            window.Toast.info(`Fetching latest benefits for ${card.name}...`);
+        // Show loading on button
+        const btn = document.getElementById(`refresh-btn-${cardId}`);
+        const btnText = document.getElementById(`refresh-text-${cardId}`);
+        if (btn && btnText) {
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-wait');
+            btnText.textContent = 'Fetching...';
         }
         
-        await this.fetchAndStoreBenefits(cardId, card.name);
+        try {
+            if (window.Toast) {
+                window.Toast.info(`Fetching latest benefits for ${card.name}...`);
+            }
+            
+            await this.fetchAndStoreBenefits(cardId, card.name);
+            
+            // Re-render to show View button now enabled
+            this.render();
+        } finally {
+            // Restore button state
+            if (btn && btnText) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-wait');
+                btnText.textContent = 'Update Rules';
+            }
+        }
     },
 
     /**
@@ -388,24 +409,24 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     <div class="flex justify-between items-center">
                         <span class="text-sm font-semibold text-green-800">💳 Card Rules</span>
                         <div class="flex gap-2">
-                            ${card.benefits ? `
-                                <button onclick="Cards.showBenefitsModal(${card.id})" 
-                                        class="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-sm"
-                                        title="View full benefits">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                    </svg>
-                                    View
-                                </button>
-                            ` : ''}
+                            <button onclick="${card.benefits ? `Cards.showBenefitsModal(${card.id})` : 'void(0)'}" 
+                                    class="text-xs ${card.benefits ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-400 cursor-not-allowed opacity-60'} text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-sm"
+                                    title="${card.benefits ? 'View full benefits' : 'No rules fetched yet - click Update Rules first'}"
+                                    ${!card.benefits ? 'disabled' : ''}>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                                View
+                            </button>
                             <button onclick="Cards.refreshBenefits(${card.id})" 
+                                    id="refresh-btn-${card.id}"
                                     class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-sm"
                                     title="Fetch latest rules">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                                 </svg>
-                                Update Rules
+                                <span id="refresh-text-${card.id}">Update Rules</span>
                             </button>
                         </div>
                     </div>
