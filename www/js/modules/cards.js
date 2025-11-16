@@ -469,35 +469,35 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         }
         
         list.innerHTML = window.DB.cards.map(card => `
-            <div class="p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl border-2 border-green-300 hover:shadow-lg transition-all" data-card-id="${card.id}">
+            <div class="p-4 bg-gradient-to-br from-slate-100 via-blue-50 to-purple-100 rounded-xl border-2 border-slate-300 hover:shadow-2xl hover:border-purple-300 transition-all duration-300 backdrop-blur-sm" data-card-id="${card.id}" style="background-image: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 25%, #e0e7ff 50%, #ddd6f3 75%, #faaca8 100%); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.4);">
                 <!-- Top Section: Card Details and Actions -->
                 <div class="flex justify-between items-start mb-3">
                     <div class="flex-1">
-                        <h4 class="font-bold text-green-800 text-lg">${Utils.escapeHtml(card.name)}</h4>
+                        <h4 class="font-bold text-slate-800 text-lg drop-shadow-sm">${Utils.escapeHtml(card.name)}</h4>
                         
                         <!-- Card Number -->
-                        <p class="text-sm text-gray-600 font-mono mt-1" id="card-num-${card.id}">${this.maskCardNumber(card.cardNumber)}</p>
+                        <p class="text-sm text-slate-700 font-mono mt-1 font-semibold" id="card-num-${card.id}">${this.maskCardNumber(card.cardNumber)}</p>
                         
                         <!-- Expiry and CVV -->
                         <div class="flex items-center gap-3 mt-1">
-                            <span class="text-xs text-gray-500">Expiry: ${Utils.escapeHtml(card.expiry)}</span>
-                            <span class="text-xs text-gray-500">CVV: <span id="card-cvv-${card.id}">•••</span></span>
+                            <span class="text-xs text-slate-600 font-medium">Expiry: ${Utils.escapeHtml(card.expiry)}</span>
+                            <span class="text-xs text-slate-600 font-medium">CVV: <span id="card-cvv-${card.id}">•••</span></span>
                         </div>
                         
                         <!-- Additional Data -->
-                        ${card.additionalData ? `<p class="text-xs text-gray-600 mt-1">${Utils.escapeHtml(card.additionalData)}</p>` : ''}
+                        ${card.additionalData ? `<p class="text-xs text-slate-700 mt-1 font-medium">${Utils.escapeHtml(card.additionalData)}</p>` : ''}
                         
                     </div>
                     
                     <!-- Top Right Actions: View, Edit, Delete -->
                     <div class="flex gap-2 ml-3">
-                        <button onclick="Cards.toggleCardDetails(${card.id})" class="text-blue-500 hover:text-blue-700 p-1" title="Show/Hide card details">
+                        <button onclick="Cards.toggleCardDetails(${card.id})" class="text-indigo-600 hover:text-indigo-800 p-1" title="Show/Hide card details">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                             </svg>
                         </button>
-                        <button onclick="openCardModal(${card.id})" class="text-green-600 hover:text-green-800 p-1" title="Edit">
+                        <button onclick="openCardModal(${card.id})" class="text-purple-600 hover:text-purple-800 p-1" title="Edit">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                             </svg>
@@ -511,12 +511,12 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 </div>
                 
                 <!-- Bottom Section: Card Rules -->
-                <div class="pt-3 border-t border-green-200">
+                <div class="pt-3 border-t border-slate-300 border-opacity-50">
                     <div class="flex justify-between items-center">
-                        <span class="text-sm font-semibold text-green-800">💳 Card Rules</span>
+                        <span class="text-sm font-semibold text-slate-800">💎 Card Rules</span>
                         <div class="flex gap-2">
                             <button onclick="${card.benefits ? `Cards.showBenefitsModal(${card.id})` : 'void(0)'}" 
-                                    class="text-xs ${card.benefits ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-400 cursor-not-allowed opacity-60'} text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-sm"
+                                    class="text-xs ${card.benefits ? 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700' : 'bg-gray-400 cursor-not-allowed opacity-60'} text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-md"
                                     title="${card.benefits ? 'View full benefits' : 'No rules fetched yet - click Update Rules first'}"
                                     ${!card.benefits ? 'disabled' : ''}>
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -527,7 +527,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                             </button>
                             <button onclick="Cards.refreshBenefits(${card.id})" 
                                     id="refresh-btn-${card.id}"
-                                    class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-sm"
+                                    class="text-xs bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-md"
                                     title="Fetch latest rules">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
