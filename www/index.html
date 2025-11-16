@@ -2131,7 +2131,10 @@
             
             switch(type) {
                 case 'today':
-                    startDate = endDate = today.toISOString().split('T')[0];
+                    const todayYear = today.getFullYear();
+                    const todayMonth = String(today.getMonth() + 1).padStart(2, '0');
+                    const todayDay = String(today.getDate()).padStart(2, '0');
+                    startDate = endDate = `${todayYear}-${todayMonth}-${todayDay}`;
                     label = 'Today';
                     break;
                 case 'week':
@@ -2158,13 +2161,17 @@
                     label = 'Current Month';
                     break;
                 case 'year':
-                    startDate = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
-                    endDate = today.toISOString().split('T')[0];
+                    // Full current year (Jan 1 to Dec 31)
+                    const yearNum = today.getFullYear();
+                    const todayYearMonth = String(today.getMonth() + 1).padStart(2, '0');
+                    const todayYearDay = String(today.getDate()).padStart(2, '0');
+                    startDate = `${yearNum}-01-01`;
+                    endDate = `${yearNum}-${todayYearMonth}-${todayYearDay}`;
                     label = 'This Year';
                     break;
                 case 'all':
                     startDate = '2020-01-01';
-                    endDate = new Date(today.getFullYear() + 10, 11, 31).toISOString().split('T')[0];
+                    endDate = `${today.getFullYear() + 10}-12-31`;
                     label = 'All Time';
                     break;
             }
