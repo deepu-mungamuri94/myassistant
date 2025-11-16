@@ -17,11 +17,12 @@ const Expenses = {
      */
     initializeFilters() {
         const now = new Date();
-        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
         
-        this.startDate = firstDay.toISOString().split('T')[0];
-        this.endDate = lastDay.toISOString().split('T')[0];
+        this.startDate = `${year}-${month}-01`; // First day of current month
+        this.endDate = `${year}-${month}-${day}`; // Today
         this.currentPage = 1;
     },
     
@@ -406,6 +407,7 @@ const Expenses = {
         
         // Check if viewing a single month (for recurring expenses display)
         const isSingleMonth = this.isSingleMonth();
+        console.log('isSingleMonth:', isSingleMonth, 'startDate:', this.startDate, 'endDate:', this.endDate);
         
         // Get recurring expenses (upcoming and completed) - only for monthly view
         let upcomingRecurring = [];
@@ -417,6 +419,7 @@ const Expenses = {
             upcomingRecurring = recurringData.upcoming;
             completedRecurring = recurringData.completed;
             totalRecurring = upcomingRecurring.length + completedRecurring.length;
+            console.log('Recurring data:', { upcoming: upcomingRecurring.length, completed: completedRecurring.length, total: totalRecurring });
         }
         
         if (filteredExpenses.length === 0 && totalRecurring === 0) {
@@ -441,19 +444,8 @@ const Expenses = {
         const total = this.getTotalAmount(filteredExpenses);
         const recurringTotal = [...upcomingRecurring, ...completedRecurring].reduce((sum, e) => sum + e.amount, 0);
         
-        // Render total summary
-        list.innerHTML = `
-            <div class="p-4 bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl border-2 border-purple-400 mb-4">
-                <h3 class="font-bold text-purple-900 text-lg">Total Expenses</h3>
-                <p class="text-3xl font-bold text-purple-800 mt-2">${Utils.formatCurrency(total)}</p>
-                <p class="text-sm text-purple-600 mt-1">${totalItems} transaction${totalItems !== 1 ? 's' : ''}</p>
-                ${this.startDate && this.endDate ? `
-                    <p class="text-xs text-purple-500 mt-1">
-                        ${Utils.formatDate(this.startDate)} - ${Utils.formatDate(this.endDate)}
-                    </p>
-                ` : ''}
-            </div>
-        `;
+        // Clear list
+        list.innerHTML = '';
         
         // Render recurring expenses section (if any)
         if (totalRecurring > 0) {

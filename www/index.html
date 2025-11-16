@@ -1989,11 +1989,12 @@
         // Set to current month
         function setExpenseCurrentMonth() {
             const now = new Date();
-            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-            const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
             
-            document.getElementById('expense-start-date').value = firstDay.toISOString().split('T')[0];
-            document.getElementById('expense-end-date').value = lastDay.toISOString().split('T')[0];
+            document.getElementById('expense-start-date').value = `${year}-${month}-01`;
+            document.getElementById('expense-end-date').value = `${year}-${month}-${day}`;
             updateExpenseFilters();
         }
         
