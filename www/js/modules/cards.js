@@ -1084,6 +1084,96 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         this.renderEMIs(cardId);
         this.render(); // Update card count
         window.Toast.success('EMI deleted!');
+    },
+
+    /**
+     * Auto-add EMI payments to expenses for current and past months
+     * Called when expenses page loads
+     */
+    autoAddEMIExpenses() {
+        if (!window.DB.cards || !window.Expenses) return;
+        
+        const today = new Date();
+        let addedCount = 0;
+        
+        window.DB.cards.forEach(card => {
+            if (!card.emis || card.emis.length === 0) return;
+            
+            card.emis.forEach(emi => {
+                if (!emi.firstEmiDate || emi.completed || !emi.emiAmount) return;
+                
+                // Initialize tracking array if not exists
+                if (!emi.addedToExpenses) {
+                    emi.addedToExpenses = [];
+                }
+                
+                const firstDate = new Date(emi.firstEmiDate);
+                
+                // Calculate which EMI months should have been paid by now
+                let monthsElapsed = (today.getFullYear() - firstDate.getFullYear()) * 12 
+                                  + (today.getMonth() - firstDate.getMonth());
+                
+                // If current date hasn't reached the EMI day this month, subtract 1
+                if (today.getDate() < firstDate.getDate()) {
+                    monthsElapsed--;
+                }
+                
+                // Loop through each month that should have an EMI payment
+                for (let i = 0; i <= Math.min(monthsElapsed, emi.totalCount - 1); i++) {
+                    const emiDate = new Date(firstDate);
+                    emiDate.setMonth(emiDate.getMonth() + i);
+                    
+                    const emiMonthKey = `${emiDate.getFullYear()}-${String(emiDate.getMonth() + 1).padStart(2, '0')}`;
+                    
+                    // Skip if already added for this month
+                    if (emi.addedToExpenses.includes(emiMonthKey)) {
+                        continue;
+                    }
+                    
+                    // Create the EMI date (use the day from firstEmiDate)
+                    const expenseDate = new Date(emiDate.getFullYear(), emiDate.getMonth(), firstDate.getDate());
+                    const expenseDateStr = expenseDate.toISOString().split('T')[0];
+                    
+                    // Check if expense already exists for this EMI and month
+                    const existingExpense = window.DB.expenses.find(exp => 
+                        exp.title === `EMI: ${emi.reason}` &&
+                        exp.date === expenseDateStr &&
+                        exp.amount === parseFloat(emi.emiAmount)
+                    );
+                    
+                    if (!existingExpense) {
+                        // Add as expense
+                        try {
+                            window.Expenses.add(
+                                `EMI: ${emi.reason}`,
+                                emi.emiAmount,
+                                'emi',
+                                expenseDateStr,
+                                `Auto-added EMI payment ${i + 1}/${emi.totalCount} for ${card.name}`,
+                                card.name
+                            );
+                            
+                            // Mark this month as added
+                            emi.addedToExpenses.push(emiMonthKey);
+                            addedCount++;
+                        } catch (error) {
+                            console.error('Failed to add EMI expense:', error);
+                        }
+                    } else {
+                        // Mark as added even if it already exists (manual entry)
+                        emi.addedToExpenses.push(emiMonthKey);
+                    }
+                }
+            });
+        });
+        
+        // Save if any EMIs were updated
+        if (addedCount > 0) {
+            window.Storage.save();
+            console.log(`Auto-added ${addedCount} EMI payment(s) to expenses`);
+        }
+        
+        return addedCount;
     }
 };
 

@@ -232,6 +232,18 @@ const Expenses = {
         
         if (!list) return;
         
+        // Auto-add EMI payments to expenses (if any are due)
+        if (window.Cards && window.Cards.autoAddEMIExpenses) {
+            try {
+                const addedCount = window.Cards.autoAddEMIExpenses();
+                if (addedCount > 0) {
+                    window.Toast.success(`Auto-added ${addedCount} EMI payment(s) to expenses`);
+                }
+            } catch (error) {
+                console.error('Error auto-adding EMI expenses:', error);
+            }
+        }
+        
         // Initialize filters if not set
         if (!this.startDate || !this.endDate) {
             this.initializeFilters();
