@@ -267,6 +267,11 @@ const Loans = {
         const closureDate = this.calculateClosureDate(loan.firstEmiDate, loan.tenure);
         const remaining = this.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
         
+        // Get EMI day of month from first EMI date
+        const firstEmiDate = new Date(loan.firstEmiDate);
+        const emiDay = firstEmiDate.getDate();
+        const emiDayOrdinal = this.getOrdinalSuffix(emiDay);
+        
         const progress = ((loan.tenure - remaining.emisRemaining) / loan.tenure) * 100;
         const isCompleted = remaining.emisRemaining === 0;
         const isExpanded = this.expandedLoans.has(loan.id);
@@ -277,19 +282,24 @@ const Loans = {
                 <div class="p-4 cursor-pointer" onclick="Loans.toggleExpansion(${loan.id})">
                     <div class="flex justify-between items-start mb-2">
                         <div class="flex-1">
-                            <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center justify-between gap-2 mb-1">
                                 <div class="flex items-center gap-2">
                                     <h4 class="font-bold text-blue-900 text-lg">${Utils.escapeHtml(loan.bankName)}</h4>
                                     ${isCompleted ? '<span class="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-semibold">✓</span>' : ''}
                                 </div>
-                                <span class="font-bold text-blue-900 text-sm">₹${Utils.formatIndianNumber(loan.amount)}</span>
+                                <span class="font-bold text-blue-900 text-lg">₹${Utils.formatIndianNumber(loan.amount)}</span>
                             </div>
-                            <p class="text-sm text-blue-700 mb-2">${Utils.escapeHtml(loan.reason)}</p>
+                            <p class="text-sm text-blue-700 mb-1">${Utils.escapeHtml(loan.reason)}</p>
+                            
+                            <!-- EMI Date Info -->
+                            <div class="text-xs text-gray-600 mb-2 bg-blue-50 px-2 py-1 rounded inline-block">
+                                📅 EMI on <strong>${emiDayOrdinal}</strong> of every month
+                            </div>
                             
                             <!-- Key Info in Collapsed View -->
                             <div class="flex justify-between items-center text-xs mb-2">
                                 <span class="text-gray-600">Balance: <strong class="${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</strong></span>
-                                <span class="text-gray-600">EMI: <strong class="text-blue-900">₹${Utils.formatIndianNumber(emi)}</strong></span>
+                                <span class="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-3 py-1 rounded-full font-bold text-sm shadow-md">EMI: ₹${Utils.formatIndianNumber(emi)}</span>
                             </div>
                             
                             <!-- Progress Bar in Collapsed View -->
@@ -385,6 +395,19 @@ const Loans = {
     toggleClosedSection() {
         this.closedSectionExpanded = !this.closedSectionExpanded;
         this.render();
+    },
+    
+    /**
+     * Get ordinal suffix for day (1st, 2nd, 3rd, etc.)
+     */
+    getOrdinalSuffix(day) {
+        if (day > 3 && day < 21) return day + 'th';
+        switch (day % 10) {
+            case 1: return day + 'st';
+            case 2: return day + 'nd';
+            case 3: return day + 'rd';
+            default: return day + 'th';
+        }
     }
 };
 
