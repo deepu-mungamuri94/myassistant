@@ -7,7 +7,7 @@ const Cards = {
     /**
      * Add a new card (fetches benefits automatically)
      */
-    async add(name, cardNumber, expiry, cvv, additionalData = '') {
+    async add(name, cardNumber, expiry, cvv, additionalData = '', creditLimit = '') {
         if (!name || !cardNumber || !expiry || !cvv) {
             throw new Error('Please fill in all required fields');
         }
@@ -34,6 +34,7 @@ const Cards = {
             cardNumber: cleanCardNumber,
             expiry,
             cvv,
+            creditLimit: creditLimit || '',
             additionalData: additionalData || '',
             benefits: null, // Will be fetched
             benefitsFetchedAt: null,
@@ -342,7 +343,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
     /**
      * Update a card
      */
-    async update(id, name, cardNumber, expiry, cvv, additionalData = '') {
+    async update(id, name, cardNumber, expiry, cvv, additionalData = '', creditLimit = '') {
         if (!name || !cardNumber || !expiry || !cvv) {
             throw new Error('Please fill in all required fields');
         }
@@ -384,6 +385,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         card.cardNumber = cleanCardNumber;
         card.expiry = expiry;
         card.cvv = cvv;
+        card.creditLimit = creditLimit || '';
         card.additionalData = additionalData || '';
         card.lastUpdated = Utils.getCurrentTimestamp();
         
@@ -483,6 +485,9 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                             <span class="text-xs text-slate-600 font-medium">Expiry: ${Utils.escapeHtml(card.expiry)}</span>
                             <span class="text-xs text-slate-600 font-medium">CVV: <span id="card-cvv-${card.id}">•••</span></span>
                         </div>
+                        
+                        <!-- Credit Limit -->
+                        ${card.creditLimit ? `<p class="text-xs text-slate-600 mt-1 font-medium">💳 Limit: ₹${Utils.escapeHtml(card.creditLimit)}</p>` : ''}
                         
                         <!-- Additional Data -->
                         ${card.additionalData ? `<p class="text-xs text-slate-700 mt-1 font-medium">${Utils.escapeHtml(card.additionalData)}</p>` : ''}
