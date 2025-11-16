@@ -210,143 +210,201 @@ const Loans = {
             return;
         }
         
-        list.innerHTML = loans.map(loan => {
-            const emi = this.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
-            const totalAmount = this.calculateTotalAmount(emi, loan.tenure);
-            const totalInterest = this.calculateTotalInterest(totalAmount, loan.amount);
-            const closureDate = this.calculateClosureDate(loan.firstEmiDate, loan.tenure);
+        // Separate active and closed loans
+        const activeLoans = [];
+        const closedLoans = [];
+        
+        loans.forEach(loan => {
             const remaining = this.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
-            
-            // Debug log to see actual values
-            console.log('Loan Debug:', {
-                bankName: loan.bankName,
-                principal: loan.amount,
-                interestRate: loan.interestRate,
-                tenure: loan.tenure,
-                calculatedEMI: emi,
-                totalAmount: totalAmount,
-                totalInterest: totalInterest,
-                formattedEMI: Utils.formatIndianNumber(emi),
-                formattedTotal: Utils.formatIndianNumber(totalAmount),
-                formattedInterest: Utils.formatIndianNumber(totalInterest)
-            });
-            
-            const progress = ((loan.tenure - remaining.emisRemaining) / loan.tenure) * 100;
-            const isCompleted = remaining.emisRemaining === 0;
-            const isExpanded = this.expandedLoans.has(loan.id);
-            
-            return `
-                <div class="bg-gradient-to-br from-blue-50 via-white to-cyan-50 rounded-xl border-2 ${isCompleted ? 'border-green-400' : 'border-blue-300'} hover:shadow-lg transition-all">
-                    <!-- Collapsed Header - Always Visible -->
-                    <div class="p-4 cursor-pointer" onclick="Loans.toggleExpansion(${loan.id})">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1">
-                                <div class="flex items-center gap-2">
-                                    <h4 class="font-bold text-blue-900 text-lg">${Utils.escapeHtml(loan.bankName)}</h4>
-                                    ${isCompleted ? '<span class="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-semibold">✓</span>' : ''}
-                                </div>
-                                <p class="text-sm text-blue-700 mb-2">${Utils.escapeHtml(loan.reason)}</p>
-                                
-                                <!-- Key Info in Collapsed View -->
-                                <div class="mt-1 space-y-1">
-                                    <div class="flex justify-between text-xs">
-                                        <span class="text-gray-600">Monthly EMI:</span>
-                                        <span class="font-bold text-blue-900">₹${Utils.formatIndianNumber(emi)}</span>
-                                    </div>
-                                    <div class="flex justify-between text-xs">
-                                        <span class="text-gray-600">Total Amount:</span>
-                                        <span class="font-bold text-blue-900">₹${Utils.formatIndianNumber(totalAmount)}</span>
-                                    </div>
-                                    <div class="flex justify-between text-xs">
-                                        <span class="text-gray-600">Balance Left:</span>
-                                        <span class="font-bold ${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Expand/Collapse Icon -->
-                            <div class="ml-3 flex flex-col items-end gap-1">
-                                <svg class="w-6 h-6 text-blue-600 transition-transform ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            if (remaining.emisRemaining === 0) {
+                closedLoans.push(loan);
+            } else {
+                activeLoans.push(loan);
+            }
+        });
+        
+        let html = '';
+        
+        // Render active loans
+        if (activeLoans.length > 0) {
+            html += activeLoans.map(loan => this.renderLoanCard(loan, false)).join('');
+        }
+        
+        // Render closed loans section
+        if (closedLoans.length > 0) {
+            html += `
+                <div class="mt-4">
+                    <div class="bg-green-50 rounded-xl border-2 border-green-200">
+                        <div class="p-3 cursor-pointer flex justify-between items-center" onclick="Loans.toggleClosedSection()">
+                            <h3 class="font-bold text-green-800 flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                                 </svg>
-                            </div>
+                                Closed Loans (${closedLoans.length})
+                            </h3>
+                            <svg class="w-5 h-5 text-green-700 transition-transform ${this.closedSectionExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
                         </div>
-                    </div>
-                    
-                    <!-- Expanded Content -->
-                    <div class="${isExpanded ? '' : 'hidden'} px-4 pb-4 border-t border-blue-200 pt-4">
-                        <!-- Action Buttons -->
-                        <div class="flex gap-2 mb-4">
-                            ${!isCompleted ? `
-                                <button onclick="event.stopPropagation(); openLoanModal(${loan.id})" class="flex-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all font-semibold text-sm flex items-center justify-center gap-2">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                    </svg>
-                                    Edit
-                                </button>
-                            ` : ''}
-                            <button onclick="event.stopPropagation(); Loans.delete(${loan.id})" class="flex-1 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-all font-semibold text-sm flex items-center justify-center gap-2">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                </svg>
-                                Delete
-                            </button>
-                        </div>
-                        
-                        <!-- Loan Details Grid -->
-                        <div class="grid grid-cols-2 gap-3 mb-3">
-                            <div class="bg-white bg-opacity-50 p-2 rounded-lg">
-                                <p class="text-xs text-gray-600">Principal Amount</p>
-                                <p class="font-bold text-blue-900">₹${Utils.formatIndianNumber(loan.amount)}</p>
-                            </div>
-                            <div class="bg-white bg-opacity-50 p-2 rounded-lg">
-                                <p class="text-xs text-gray-600">Interest Rate</p>
-                                <p class="font-bold text-blue-900">${loan.interestRate}% p.a.</p>
-                            </div>
-                            <div class="bg-white bg-opacity-50 p-2 rounded-lg">
-                                <p class="text-xs text-gray-600">Monthly EMI</p>
-                                <p class="font-bold text-blue-900">₹${Utils.formatIndianNumber(emi)}</p>
-                            </div>
-                            <div class="bg-white bg-opacity-50 p-2 rounded-lg">
-                                <p class="text-xs text-gray-600">Tenure</p>
-                                <p class="font-bold text-blue-900">${loan.tenure} months</p>
-                            </div>
-                        </div>
-                        
-                        <!-- Progress Bar -->
-                        <div class="mb-3">
-                            <div class="flex justify-between text-xs text-gray-600 mb-1">
-                                <span>${remaining.emisPaid} / ${loan.tenure} EMIs paid</span>
-                                <span>${Math.round(progress)}%</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div class="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
-                            </div>
-                        </div>
-                        
-                        <!-- Financial Summary -->
-                        <div class="space-y-2 bg-white bg-opacity-70 p-3 rounded-lg">
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-700">Total Payable:</span>
-                                <span class="font-bold text-blue-900">₹${Utils.formatIndianNumber(totalAmount)}</span>
-                            </div>
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-700">Total Interest:</span>
-                                <span class="font-bold text-orange-700">₹${Utils.formatIndianNumber(totalInterest)}</span>
-                            </div>
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-700">Balance Remaining:</span>
-                                <span class="font-bold ${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</span>
-                            </div>
-                            <div class="flex justify-between text-sm pt-2 border-t border-gray-200">
-                                <span class="text-gray-700">Closure Date:</span>
-                                <span class="font-semibold text-blue-800">${closureDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}</span>
-                            </div>
+                        <div class="${this.closedSectionExpanded ? '' : 'hidden'} px-3 pb-3 space-y-3">
+                            ${closedLoans.map(loan => this.renderLoanCard(loan, true)).join('')}
                         </div>
                     </div>
                 </div>
             `;
-        }).join('');
+        }
+        
+        list.innerHTML = html;
+    },
+    
+    /**
+     * Render individual loan card
+     */
+    renderLoanCard(loan, isClosed) {
+        const emi = this.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
+        const totalAmount = this.calculateTotalAmount(emi, loan.tenure);
+        const totalInterest = this.calculateTotalInterest(totalAmount, loan.amount);
+        const closureDate = this.calculateClosureDate(loan.firstEmiDate, loan.tenure);
+        const remaining = this.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
+        
+        // Debug log to see actual values
+        console.log('Loan Debug:', {
+            bankName: loan.bankName,
+            principal: loan.amount,
+            interestRate: loan.interestRate,
+            tenure: loan.tenure,
+            calculatedEMI: emi,
+            totalAmount: totalAmount,
+            totalInterest: totalInterest,
+            formattedEMI: Utils.formatIndianNumber(emi),
+            formattedTotal: Utils.formatIndianNumber(totalAmount),
+            formattedInterest: Utils.formatIndianNumber(totalInterest)
+        });
+        
+        const progress = ((loan.tenure - remaining.emisRemaining) / loan.tenure) * 100;
+        const isCompleted = remaining.emisRemaining === 0;
+        const isExpanded = this.expandedLoans.has(loan.id);
+        
+        return `
+            <div class="bg-gradient-to-br from-blue-50 via-white to-cyan-50 rounded-xl border-2 ${isCompleted ? 'border-green-400' : 'border-blue-300'} hover:shadow-lg transition-all">
+                <!-- Collapsed Header - Always Visible -->
+                <div class="p-4 cursor-pointer" onclick="Loans.toggleExpansion(${loan.id})">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2">
+                                    <h4 class="font-bold text-blue-900 text-lg">${Utils.escapeHtml(loan.bankName)}</h4>
+                                    ${isCompleted ? '<span class="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-semibold">✓</span>' : ''}
+                                </div>
+                                <span class="font-bold text-blue-900 text-sm">₹${Utils.formatIndianNumber(totalAmount)}</span>
+                            </div>
+                            <p class="text-sm text-blue-700 mb-2">${Utils.escapeHtml(loan.reason)}</p>
+                            
+                            <!-- Key Info in Collapsed View -->
+                            <div class="flex justify-between items-center text-xs mb-1">
+                                <span class="text-gray-600">Balance: <strong class="${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</strong></span>
+                                <span class="text-gray-600">EMI: <strong class="text-blue-900">₹${Utils.formatIndianNumber(emi)}</strong></span>
+                            </div>
+                            
+                            <!-- EMI Status -->
+                            <div class="text-xs text-gray-600">
+                                <span class="font-semibold">${remaining.emisPaid}/${loan.tenure}</span> EMIs paid • 
+                                <span class="font-semibold">${Math.round(progress)}%</span> complete
+                            </div>
+                        </div>
+                        
+                        <!-- Expand/Collapse Icon -->
+                        <div class="ml-3">
+                            <svg class="w-6 h-6 text-blue-600 transition-transform ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Expanded Content -->
+                <div class="${isExpanded ? '' : 'hidden'} px-4 pb-4 border-t border-blue-200 pt-4">
+                    <!-- Action Buttons -->
+                    <div class="flex gap-2 mb-4">
+                        ${!isCompleted ? `
+                            <button onclick="event.stopPropagation(); openLoanModal(${loan.id})" class="flex-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all font-semibold text-sm flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                </svg>
+                                Edit
+                            </button>
+                        ` : ''}
+                        <button onclick="event.stopPropagation(); Loans.delete(${loan.id})" class="flex-1 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-all font-semibold text-sm flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            Delete
+                        </button>
+                    </div>
+                    
+                    <!-- Loan Details Grid -->
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div class="bg-white bg-opacity-50 p-2 rounded-lg">
+                            <p class="text-xs text-gray-600">Principal Amount</p>
+                            <p class="font-bold text-blue-900">₹${Utils.formatIndianNumber(loan.amount)}</p>
+                        </div>
+                        <div class="bg-white bg-opacity-50 p-2 rounded-lg">
+                            <p class="text-xs text-gray-600">Interest Rate</p>
+                            <p class="font-bold text-blue-900">${loan.interestRate}% p.a.</p>
+                        </div>
+                        <div class="bg-white bg-opacity-50 p-2 rounded-lg">
+                            <p class="text-xs text-gray-600">Monthly EMI</p>
+                            <p class="font-bold text-blue-900">₹${Utils.formatIndianNumber(emi)}</p>
+                        </div>
+                        <div class="bg-white bg-opacity-50 p-2 rounded-lg">
+                            <p class="text-xs text-gray-600">Tenure</p>
+                            <p class="font-bold text-blue-900">${loan.tenure} months</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Progress Bar -->
+                    <div class="mb-3">
+                        <div class="flex justify-between text-xs text-gray-600 mb-1">
+                            <span>${remaining.emisPaid} / ${loan.tenure} EMIs paid</span>
+                            <span>${Math.round(progress)}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Financial Summary -->
+                    <div class="space-y-2 bg-white bg-opacity-70 p-3 rounded-lg">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-700">Total Payable:</span>
+                            <span class="font-bold text-blue-900">₹${Utils.formatIndianNumber(totalAmount)}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-700">Total Interest:</span>
+                            <span class="font-bold text-orange-700">₹${Utils.formatIndianNumber(totalInterest)}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-700">Balance Remaining:</span>
+                            <span class="font-bold ${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</span>
+                        </div>
+                        <div class="flex justify-between text-sm pt-2 border-t border-gray-200">
+                            <span class="text-gray-700">Closure Date:</span>
+                            <span class="font-semibold text-blue-800">${closureDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+    
+    closedSectionExpanded: false,
+    
+    /**
+     * Toggle closed loans section
+     */
+    toggleClosedSection() {
+        this.closedSectionExpanded = !this.closedSectionExpanded;
+        this.render();
     }
 };
 
