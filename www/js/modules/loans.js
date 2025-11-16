@@ -267,20 +267,6 @@ const Loans = {
         const closureDate = this.calculateClosureDate(loan.firstEmiDate, loan.tenure);
         const remaining = this.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
         
-        // Debug log to see actual values
-        console.log('Loan Debug:', {
-            bankName: loan.bankName,
-            principal: loan.amount,
-            interestRate: loan.interestRate,
-            tenure: loan.tenure,
-            calculatedEMI: emi,
-            totalAmount: totalAmount,
-            totalInterest: totalInterest,
-            formattedEMI: Utils.formatIndianNumber(emi),
-            formattedTotal: Utils.formatIndianNumber(totalAmount),
-            formattedInterest: Utils.formatIndianNumber(totalInterest)
-        });
-        
         const progress = ((loan.tenure - remaining.emisRemaining) / loan.tenure) * 100;
         const isCompleted = remaining.emisRemaining === 0;
         const isExpanded = this.expandedLoans.has(loan.id);
@@ -296,20 +282,25 @@ const Loans = {
                                     <h4 class="font-bold text-blue-900 text-lg">${Utils.escapeHtml(loan.bankName)}</h4>
                                     ${isCompleted ? '<span class="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-semibold">✓</span>' : ''}
                                 </div>
-                                <span class="font-bold text-blue-900 text-sm">₹${Utils.formatIndianNumber(totalAmount)}</span>
+                                <span class="font-bold text-blue-900 text-sm">₹${loan.amount.toLocaleString('en-IN')}</span>
                             </div>
                             <p class="text-sm text-blue-700 mb-2">${Utils.escapeHtml(loan.reason)}</p>
                             
                             <!-- Key Info in Collapsed View -->
-                            <div class="flex justify-between items-center text-xs mb-1">
-                                <span class="text-gray-600">Balance: <strong class="${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</strong></span>
-                                <span class="text-gray-600">EMI: <strong class="text-blue-900">₹${Utils.formatIndianNumber(emi)}</strong></span>
+                            <div class="flex justify-between items-center text-xs mb-2">
+                                <span class="text-gray-600">Balance: <strong class="${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${remaining.remainingBalance.toLocaleString('en-IN')}</strong></span>
+                                <span class="text-gray-600">EMI: <strong class="text-blue-900">₹${emi.toLocaleString('en-IN')}</strong></span>
                             </div>
                             
-                            <!-- EMI Status -->
-                            <div class="text-xs text-gray-600">
-                                <span class="font-semibold">${remaining.emisPaid}/${loan.tenure}</span> EMIs paid • 
-                                <span class="font-semibold">${Math.round(progress)}%</span> complete
+                            <!-- Progress Bar in Collapsed View -->
+                            <div class="mb-1">
+                                <div class="flex justify-between text-xs text-gray-600 mb-1">
+                                    <span><span class="font-semibold">${remaining.emisPaid}/${loan.tenure}</span> EMIs paid</span>
+                                    <span class="font-semibold">${Math.round(progress)}%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-1.5">
+                                    <div class="bg-gradient-to-r from-blue-500 to-cyan-500 h-1.5 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
+                                </div>
                             </div>
                         </div>
                         
@@ -346,7 +337,7 @@ const Loans = {
                     <div class="grid grid-cols-2 gap-3 mb-3">
                         <div class="bg-white bg-opacity-50 p-2 rounded-lg">
                             <p class="text-xs text-gray-600">Principal Amount</p>
-                            <p class="font-bold text-blue-900">₹${Utils.formatIndianNumber(loan.amount)}</p>
+                            <p class="font-bold text-blue-900">₹${loan.amount.toLocaleString('en-IN')}</p>
                         </div>
                         <div class="bg-white bg-opacity-50 p-2 rounded-lg">
                             <p class="text-xs text-gray-600">Interest Rate</p>
@@ -354,7 +345,7 @@ const Loans = {
                         </div>
                         <div class="bg-white bg-opacity-50 p-2 rounded-lg">
                             <p class="text-xs text-gray-600">Monthly EMI</p>
-                            <p class="font-bold text-blue-900">₹${Utils.formatIndianNumber(emi)}</p>
+                            <p class="font-bold text-blue-900">₹${emi.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         </div>
                         <div class="bg-white bg-opacity-50 p-2 rounded-lg">
                             <p class="text-xs text-gray-600">Tenure</p>
@@ -362,30 +353,19 @@ const Loans = {
                         </div>
                     </div>
                     
-                    <!-- Progress Bar -->
-                    <div class="mb-3">
-                        <div class="flex justify-between text-xs text-gray-600 mb-1">
-                            <span>${remaining.emisPaid} / ${loan.tenure} EMIs paid</span>
-                            <span>${Math.round(progress)}%</span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2">
-                            <div class="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
-                        </div>
-                    </div>
-                    
                     <!-- Financial Summary -->
                     <div class="space-y-2 bg-white bg-opacity-70 p-3 rounded-lg">
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-700">Total Payable:</span>
-                            <span class="font-bold text-blue-900">₹${Utils.formatIndianNumber(totalAmount)}</span>
+                            <span class="font-bold text-blue-900">₹${totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-700">Total Interest:</span>
-                            <span class="font-bold text-orange-700">₹${Utils.formatIndianNumber(totalInterest)}</span>
+                            <span class="font-bold text-orange-700">₹${totalInterest.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-700">Balance Remaining:</span>
-                            <span class="font-bold ${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</span>
+                            <span class="font-bold ${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${remaining.remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div class="flex justify-between text-sm pt-2 border-t border-gray-200">
                             <span class="text-gray-700">Closure Date:</span>

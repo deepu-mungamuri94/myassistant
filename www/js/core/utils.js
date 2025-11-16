@@ -42,36 +42,11 @@ const Utils = {
         const number = typeof num === 'string' ? parseFloat(num) : num;
         if (isNaN(number)) return '0';
         
-        console.log('formatIndianNumber input:', num, 'parsed:', number);
-        
-        // Split into integer and decimal parts
-        const parts = number.toFixed(2).split('.');
-        const integerPart = parts[0];
-        const decimalPart = parts[1];
-        
-        console.log('After toFixed and split:', { integerPart, decimalPart });
-        
-        // Format integer part with Indian comma style
-        const lastThree = integerPart.substring(integerPart.length - 3);
-        const otherNumbers = integerPart.substring(0, integerPart.length - 3);
-        
-        console.log('Split for formatting:', { lastThree, otherNumbers });
-        
-        let formatted = lastThree;
-        if (otherNumbers !== '') {
-            const formattedOther = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',');
-            console.log('Formatted other numbers:', formattedOther);
-            formatted = formattedOther + ',' + lastThree;
-        }
-        
-        // Add decimal part if not .00
-        if (decimalPart && decimalPart !== '00') {
-            formatted += '.' + decimalPart;
-        }
-        
-        console.log('Final formatted:', formatted);
-        
-        return formatted;
+        // Use native toLocaleString for proper Indian formatting
+        return number.toLocaleString('en-IN', { 
+            minimumFractionDigits: 0, 
+            maximumFractionDigits: 2 
+        });
     },
 
     /**
