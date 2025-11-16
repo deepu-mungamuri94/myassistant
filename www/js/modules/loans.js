@@ -225,6 +225,7 @@ const Loans = {
         const closedLoans = [];
         let totalRemainingAmount = 0;
         let totalAmountTaken = 0;
+        let latestClosureDate = null;
         
         loans.forEach(loan => {
             const remaining = this.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
@@ -235,6 +236,12 @@ const Loans = {
             } else {
                 activeLoans.push(loan);
                 totalRemainingAmount += remaining.remainingBalance;
+                
+                // Find the latest closure date among active loans
+                const closureDate = this.calculateClosureDate(loan.firstEmiDate, loan.tenure);
+                if (!latestClosureDate || closureDate > latestClosureDate) {
+                    latestClosureDate = closureDate;
+                }
             }
         });
         
@@ -243,7 +250,7 @@ const Loans = {
         // Render summary
         html += `
             <div class="mb-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl p-4 shadow-lg">
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-4 mb-3">
                     <div>
                         <p class="text-sm opacity-90">Total Borrowed</p>
                         <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(totalAmountTaken)}</p>
@@ -253,6 +260,12 @@ const Loans = {
                         <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(totalRemainingAmount)}</p>
                     </div>
                 </div>
+                ${latestClosureDate ? `
+                    <div class="pt-3 border-t border-white border-opacity-30">
+                        <p class="text-sm opacity-90">All Loans Paid By</p>
+                        <p class="text-lg font-bold">📅 ${latestClosureDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'long' })}</p>
+                    </div>
+                ` : ''}
             </div>
         `;
         
