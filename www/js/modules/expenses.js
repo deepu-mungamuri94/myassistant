@@ -199,6 +199,19 @@ const Expenses = {
     },
     
     /**
+     * Check if an expense is a loan EMI
+     */
+    isLoanEMIExpense(expense) {
+        // Check if title matches loan EMI pattern: "<Bank> <Type> EMI"
+        // Examples: "HDFC Home EMI", "SBI Car EMI", "ICICI Personal EMI"
+        // Exclude card EMIs which start with "EMI:"
+        return expense.title && 
+               expense.title.includes(' EMI') && 
+               expense.category === 'emi' && 
+               !expense.title.startsWith('EMI:');
+    },
+    
+    /**
      * Check if viewing a single month (for recurring expenses display)
      * Only returns true for "Current Month" filter (starts from 1st of month)
      */
@@ -221,51 +234,16 @@ const Expenses = {
      * Update the summary section with total, count, and date range
      */
     updateSummary(expenses) {
-        // Calculate expenses total
-        const expensesTotal = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+        // Separate loan EMI expenses from regular expenses
+        const loanEmiExpenses = expenses.filter(exp => this.isLoanEMIExpense(exp));
+        const regularExpenses = expenses.filter(exp => !this.isLoanEMIExpense(exp));
         
-        // Calculate loan EMI total for current period
-        let loanEmiTotal = 0;
-        if (window.Loans && window.DB.loans) {
-            window.DB.loans.forEach(loan => {
-                const remaining = window.Loans.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
-                if (remaining.emisRemaining === 0) return; // Skip closed loans
-                
-                const emi = window.Loans.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
-                const firstDate = new Date(loan.firstEmiDate);
-                
-                // Count how many EMIs fall within the current date range
-                if (this.startDate && this.endDate) {
-                    const rangeStart = new Date(this.startDate);
-                    const rangeEnd = new Date(this.endDate);
-                    
-                    // Check each month in the range
-                    const currentDate = new Date(rangeStart);
-                    while (currentDate <= rangeEnd) {
-                        const emiDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), firstDate.getDate());
-                        
-                        // Check if this EMI date is within range and after the first EMI
-                        if (emiDate >= firstDate && emiDate >= rangeStart && emiDate <= rangeEnd) {
-                            // Calculate which EMI number this is
-                            const monthsElapsed = (emiDate.getFullYear() - firstDate.getFullYear()) * 12 
-                                                + (emiDate.getMonth() - firstDate.getMonth());
-                            const emiNumber = monthsElapsed + 1;
-                            
-                            // Only count if within total EMIs
-                            if (emiNumber > 0 && emiNumber <= loan.tenure) {
-                                loanEmiTotal += parseFloat(emi);
-                            }
-                        }
-                        
-                        // Move to next month
-                        currentDate.setMonth(currentDate.getMonth() + 1);
-                    }
-                }
-            });
-        }
+        // Calculate totals
+        const regularTotal = regularExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+        const loanEmiTotal = loanEmiExpenses.reduce((sum, exp) => sum + exp.amount, 0);
         
         // Calculate final total based on toggle
-        const finalTotal = this.includeLoansInTotal ? expensesTotal + loanEmiTotal : expensesTotal;
+        const finalTotal = this.includeLoansInTotal ? regularTotal + loanEmiTotal : regularTotal;
         
         // Update total amount
         const totalEl = document.getElementById('expenses-total-amount');
