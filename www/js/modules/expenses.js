@@ -737,7 +737,9 @@ const Expenses = {
                         <!-- Month Expenses (Collapsible) -->
                         ${isExpanded ? `
                             <div class="p-3 space-y-2 bg-purple-50">
-                                ${group.expenses.map(expense => `
+                                ${group.expenses.map(expense => {
+                                    const isLoanEMI = this.isLoanEMIExpense(expense);
+                                    return `
                                     <div class="p-3 bg-white rounded-lg border border-purple-200 hover:shadow-md transition-all">
                                         <!-- Top Row: Title with Category + Actions -->
                                         <div class="flex justify-between items-start mb-1">
@@ -746,11 +748,13 @@ const Expenses = {
                                                 <span class="text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded">${Utils.escapeHtml(expense.category)}</span>
                                             </div>
                                             <div class="flex gap-1">
-                                                <button onclick="openExpenseModal(${expense.id})" class="text-green-600 hover:text-green-800 p-1" title="Edit">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                                    </svg>
-                                                </button>
+                                                ${!isLoanEMI ? `
+                                                    <button onclick="openExpenseModal(${expense.id})" class="text-green-600 hover:text-green-800 p-1" title="Edit">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                        </svg>
+                                                    </button>
+                                                ` : ''}
                                                 <button onclick="Expenses.deleteWithConfirm(${expense.id})" class="text-red-500 hover:text-red-700 p-1" title="Delete">
                                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                                         <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
@@ -758,6 +762,7 @@ const Expenses = {
                                                 </button>
                                             </div>
                                         </div>
+                                `}).join('')}
                                         
                                         <!-- Bottom Row: Description + Amount/Date -->
                                         <div class="flex justify-between items-start">
@@ -778,7 +783,9 @@ const Expenses = {
             }).join('');
         } else {
             // Render flat list for single month
-            list.innerHTML += paginatedExpenses.map(expense => `
+            list.innerHTML += paginatedExpenses.map(expense => {
+                const isLoanEMI = this.isLoanEMIExpense(expense);
+                return `
                 <div class="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200 hover:shadow-md transition-all">
                     <!-- Top Row: Title with Category + Actions -->
                     <div class="flex justify-between items-start mb-1">
@@ -787,11 +794,13 @@ const Expenses = {
                             <span class="text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded">${Utils.escapeHtml(expense.category)}</span>
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="openExpenseModal(${expense.id})" class="text-green-600 hover:text-green-800 p-1" title="Edit">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                </svg>
-                            </button>
+                            ${!isLoanEMI ? `
+                                <button onclick="openExpenseModal(${expense.id})" class="text-green-600 hover:text-green-800 p-1" title="Edit">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </button>
+                            ` : ''}
                             <button onclick="Expenses.deleteWithConfirm(${expense.id})" class="text-red-500 hover:text-red-700 p-1" title="Delete">
                                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
@@ -799,6 +808,7 @@ const Expenses = {
                             </button>
                         </div>
                     </div>
+                `}).join('')
                     
                     <!-- Bottom Row: Description + Amount/Date -->
                     <div class="flex justify-between items-start">
