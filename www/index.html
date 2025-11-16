@@ -1687,8 +1687,13 @@
             const today = new Date();
             
             // Calculate months between first EMI and today
-            const monthsElapsed = (today.getFullYear() - firstDate.getFullYear()) * 12 
-                                + (today.getMonth() - firstDate.getMonth());
+            let monthsElapsed = (today.getFullYear() - firstDate.getFullYear()) * 12 
+                              + (today.getMonth() - firstDate.getMonth());
+            
+            // If current date hasn't reached the EMI day this month, subtract 1
+            if (today.getDate() < firstDate.getDate()) {
+                monthsElapsed--;
+            }
             
             if (monthsElapsed < 0) {
                 infoDiv.innerHTML = '📅 First EMI is in the future';
@@ -1696,10 +1701,14 @@
                 return;
             }
             
+            // Calculate actual paid EMIs (monthsElapsed represents completed months)
+            // We add 1 because the first EMI month itself counts as 1 paid EMI
+            const actualPaidEMIs = monthsElapsed + 1;
+            
             // If total EMIs is specified, calculate based on that
             const totalEMIs = parseInt(totalInput.value);
             if (totalEMIs > 0) {
-                const paidEMIs = Math.min(monthsElapsed, totalEMIs);
+                const paidEMIs = Math.min(actualPaidEMIs, totalEMIs);
                 const remainingEMIs = totalEMIs - paidEMIs;
                 
                 // Auto-fill paid EMIs
@@ -1714,7 +1723,7 @@
                 }
                 infoDiv.classList.remove('hidden');
             } else {
-                infoDiv.innerHTML = `📅 ${monthsElapsed} month(s) since first EMI`;
+                infoDiv.innerHTML = `📅 ${actualPaidEMIs} EMI(s) paid since first EMI date`;
                 infoDiv.classList.remove('hidden');
             }
         }

@@ -779,11 +779,19 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         emis.forEach(emi => {
             if (emi.firstEmiDate && !emi.completed) {
                 const firstDate = new Date(emi.firstEmiDate);
-                const monthsElapsed = (today.getFullYear() - firstDate.getFullYear()) * 12 
-                                    + (today.getMonth() - firstDate.getMonth());
+                let monthsElapsed = (today.getFullYear() - firstDate.getFullYear()) * 12 
+                                  + (today.getMonth() - firstDate.getMonth());
+                
+                // If current date hasn't reached the EMI day this month, subtract 1
+                if (today.getDate() < firstDate.getDate()) {
+                    monthsElapsed--;
+                }
+                
+                // Calculate actual paid EMIs
+                const actualPaidEMIs = Math.max(0, monthsElapsed + 1);
                 
                 // If all EMIs should have been paid by now
-                if (monthsElapsed >= emi.totalCount) {
+                if (actualPaidEMIs >= emi.totalCount) {
                     emi.completed = true;
                     emi.paidCount = emi.totalCount;
                     autoCompleted = true;
