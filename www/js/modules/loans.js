@@ -13,7 +13,7 @@ const Loans = {
      * Show loan details in a view-only modal
      */
     showDetailsModal(loanId) {
-        const loan = window.DB.loans.find(l => l.id === loanId ||String(l.id) === String(loanId));
+        const loan = window.DB.loans.find(l => l.id === loanId || String(l.id) === String(loanId));
         if (!loan) {
             window.Toast.error('Loan not found');
             return;
@@ -22,8 +22,11 @@ const Loans = {
         // Force expand for view modal
         this.viewModalExpanded = true;
         
+        // Check if loan is completed
+        const remaining = this.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
+        const isCompleted = remaining.emisRemaining === 0;
+        
         // Render the loan card (same design as list)
-        const isCompleted = this.isLoanCompleted(loan);
         const cardHtml = this.renderLoanCardForModal(loan, isCompleted);
         
         // Create and show modal
