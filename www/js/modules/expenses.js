@@ -225,52 +225,69 @@ const Expenses = {
     },
     
     /**
-     * Get planned expenses (upcoming EMIs in current month)
+     * Get recurring expenses (upcoming EMIs and custom recurring in current month)
      */
-    getPlannedExpenses() {
-        if (!window.Cards || !window.DB.cards) return [];
-        
+    getRecurringExpenses() {
         const today = new Date();
-        const plannedExpenses = [];
+        const recurringExpenses = [];
         
-        window.DB.cards.forEach(card => {
-            if (!card.emis || card.emis.length === 0) return;
-            
-            card.emis.forEach(emi => {
-                if (!emi.firstEmiDate || emi.completed || !emi.emiAmount) return;
+        // Get upcoming EMIs
+        if (window.Cards && window.DB.cards) {
+            window.DB.cards.forEach(card => {
+                if (!card.emis || card.emis.length === 0) return;
                 
-                const firstDate = new Date(emi.firstEmiDate);
-                
-                // Calculate which EMI payment number this month would be
-                let monthsElapsed = (today.getFullYear() - firstDate.getFullYear()) * 12 
-                                  + (today.getMonth() - firstDate.getMonth());
-                
-                // If current date hasn't reached the EMI day this month
-                if (today.getDate() < firstDate.getDate()) {
-                    // This month's EMI is upcoming - include it
-                    const emiDate = new Date(today.getFullYear(), today.getMonth(), firstDate.getDate());
-                    const emiNumber = monthsElapsed + 1;
+                card.emis.forEach(emi => {
+                    if (!emi.firstEmiDate || emi.completed || !emi.emiAmount) return;
                     
-                    // Only if this EMI number is within total EMIs
-                    if (emiNumber > 0 && emiNumber <= emi.totalCount) {
-                        plannedExpenses.push({
-                            title: `EMI: ${emi.reason}`,
-                            amount: parseFloat(emi.emiAmount),
-                            category: 'emi',
-                            date: emiDate.toISOString().split('T')[0],
-                            description: `Upcoming EMI payment ${emiNumber}/${emi.totalCount}`,
-                            suggestedCard: card.name,
-                            isPlanned: true
-                        });
+                    const firstDate = new Date(emi.firstEmiDate);
+                    
+                    // Calculate which EMI payment number this month would be
+                    let monthsElapsed = (today.getFullYear() - firstDate.getFullYear()) * 12 
+                                      + (today.getMonth() - firstDate.getMonth());
+                    
+                    // If current date hasn't reached the EMI day this month
+                    if (today.getDate() < firstDate.getDate()) {
+                        // This month's EMI is upcoming - include it
+                        const emiDate = new Date(today.getFullYear(), today.getMonth(), firstDate.getDate());
+                        const emiNumber = monthsElapsed + 1;
+                        
+                        // Only if this EMI number is within total EMIs
+                        if (emiNumber > 0 && emiNumber <= emi.totalCount) {
+                            recurringExpenses.push({
+                                title: `EMI: ${emi.reason}`,
+                                amount: parseFloat(emi.emiAmount),
+                                category: 'emi',
+                                date: emiDate.toISOString().split('T')[0],
+                                description: `Upcoming EMI payment ${emiNumber}/${emi.totalCount}`,
+                                suggestedCard: card.name,
+                                isRecurring: true
+                            });
+                        }
                     }
-                }
+                });
             });
-        });
+        }
+        
+        // Get upcoming custom recurring expenses
+        if (window.RecurringExpenses) {
+            const upcomingRecurring = window.RecurringExpenses.getUpcoming();
+            upcomingRecurring.forEach(recurring => {
+                recurringExpenses.push({
+                    title: recurring.name,
+                    amount: recurring.amount,
+                    category: 'recurring',
+                    date: recurring.dueDate,
+                    description: recurring.description || 'Recurring expense',
+                    suggestedCard: null,
+                    isRecurring: true
+                });
+            });
+        }
         
         // Sort by date
-        plannedExpenses.sort((a, b) => new Date(a.date) - new Date(b.date));
+        recurringExpenses.sort((a, b) => new Date(a.date) - new Date(b.date));
         
-        return plannedExpenses;
+        return recurringExpenses;
     },
     
     /**
@@ -282,15 +299,28 @@ const Expenses = {
         if (!list) return;
         
         // Auto-add EMI payments to expenses (if any are due)
+        let totalAdded = 0;
         if (window.Cards && window.Cards.autoAddEMIExpenses) {
             try {
-                const addedCount = window.Cards.autoAddEMIExpenses();
-                if (addedCount > 0) {
-                    window.Toast.success(`Auto-added ${addedCount} EMI payment(s) to expenses`);
-                }
+                const emiCount = window.Cards.autoAddEMIExpenses();
+                totalAdded += emiCount;
             } catch (error) {
                 console.error('Error auto-adding EMI expenses:', error);
             }
+        }
+        
+        // Auto-add recurring expenses (if any are due)
+        if (window.RecurringExpenses && window.RecurringExpenses.autoAddToExpenses) {
+            try {
+                const recurringCount = window.RecurringExpenses.autoAddToExpenses();
+                totalAdded += recurringCount;
+            } catch (error) {
+                console.error('Error auto-adding recurring expenses:', error);
+            }
+        }
+        
+        if (totalAdded > 0) {
+            window.Toast.success(`Auto-added ${totalAdded} recurring expense(s)`);
         }
         
         // Initialize filters if not set
@@ -305,10 +335,10 @@ const Expenses = {
         
         const filteredExpenses = this.getFilteredExpenses();
         
-        // Get planned expenses (upcoming EMIs in current month)
-        const plannedExpenses = this.getPlannedExpenses();
+        // Get recurring expenses (upcoming EMIs and custom recurring in current month)
+        const recurringExpenses = this.getRecurringExpenses();
         
-        if (filteredExpenses.length === 0 && plannedExpenses.length === 0) {
+        if (filteredExpenses.length === 0 && recurringExpenses.length === 0) {
             list.innerHTML = `
                 <p class="text-gray-500 text-center py-8">
                     ${window.DB.expenses.length === 0 
@@ -328,7 +358,7 @@ const Expenses = {
         
         // Calculate total
         const total = this.getTotalAmount(filteredExpenses);
-        const plannedTotal = plannedExpenses.reduce((sum, e) => sum + e.amount, 0);
+        const recurringTotal = recurringExpenses.reduce((sum, e) => sum + e.amount, 0);
         
         // Render total summary
         list.innerHTML = `
@@ -344,24 +374,24 @@ const Expenses = {
             </div>
         `;
         
-        // Render planned expenses section (if any)
-        if (plannedExpenses.length > 0) {
+        // Render recurring expenses section (if any)
+        if (recurringExpenses.length > 0) {
             list.innerHTML += `
-                <details class="mb-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border-2 border-blue-300 overflow-hidden">
-                    <summary class="cursor-pointer p-4 hover:bg-blue-100 transition-colors">
+                <details class="mb-4 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border-2 border-orange-300 overflow-hidden">
+                    <summary class="cursor-pointer p-4 hover:bg-orange-100 transition-colors">
                         <div class="flex justify-between items-center">
                             <div>
-                                <h3 class="font-bold text-blue-900 text-lg inline">📅 Planned Expenses</h3>
-                                <span class="text-sm text-blue-600 ml-2">(${plannedExpenses.length} upcoming)</span>
+                                <h3 class="font-bold text-orange-900 text-lg inline">🔁 Recurring Expenses</h3>
+                                <span class="text-sm text-orange-600 ml-2">(${recurringExpenses.length} upcoming)</span>
                             </div>
                             <div class="text-right">
-                                <p class="text-xl font-bold text-blue-800">${Utils.formatCurrency(plannedTotal)}</p>
+                                <p class="text-xl font-bold text-orange-800">${Utils.formatCurrency(recurringTotal)}</p>
                             </div>
                         </div>
                     </summary>
                     <div class="p-4 pt-0 space-y-2">
-                        ${plannedExpenses.map(exp => `
-                            <div class="p-3 bg-white rounded-lg border border-blue-200 opacity-75">
+                        ${recurringExpenses.map(exp => `
+                            <div class="p-3 bg-white rounded-lg border border-orange-200 opacity-75">
                                 <div class="flex justify-between items-start">
                                     <div class="flex-1">
                                         <p class="font-semibold text-gray-800">${Utils.escapeHtml(exp.title)}</p>
@@ -369,7 +399,7 @@ const Expenses = {
                                         ${exp.description ? `<p class="text-xs text-gray-500 mt-1">${Utils.escapeHtml(exp.description)}</p>` : ''}
                                     </div>
                                     <div class="text-right ml-4">
-                                        <p class="font-bold text-blue-700">${Utils.formatCurrency(exp.amount)}</p>
+                                        <p class="font-bold text-orange-700">${Utils.formatCurrency(exp.amount)}</p>
                                         ${exp.suggestedCard ? `<p class="text-xs text-gray-500">${Utils.escapeHtml(exp.suggestedCard)}</p>` : ''}
                                     </div>
                                 </div>
