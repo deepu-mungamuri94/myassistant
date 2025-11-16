@@ -537,18 +537,16 @@
                 </div>
                 
                 <!-- Search and Filter Box -->
-                <div class="mb-3 flex gap-2">
-                    <input type="text" id="expenses-search" placeholder="🔍 Search expenses..." class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" oninput="searchExpenses()">
-                    <button onclick="openDateFilterModal()" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all duration-200 flex items-center gap-2" title="Filter by date">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                    </button>
-                </div>
-                
-                <!-- Filter Info -->
-                <div id="filter-info" class="mb-3 px-3 py-2 bg-purple-50 rounded-lg border border-purple-200 text-sm text-purple-800 font-semibold">
-                    📅 <span id="date-filter-label">Current Month</span>
+                <div class="mb-3">
+                    <div class="flex gap-2 mb-2">
+                        <input type="text" id="expenses-search" placeholder="🔍 Search expenses..." class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" oninput="searchExpenses()">
+                        <button onclick="openDateFilterModal()" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all duration-200 flex items-center gap-2" title="Filter by date">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span class="text-xs font-semibold">📅 <span id="date-filter-label">Current Month</span></span>
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Expenses List -->
