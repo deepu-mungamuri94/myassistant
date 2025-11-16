@@ -289,17 +289,12 @@ const Loans = {
                                 </div>
                                 <span class="font-bold text-blue-900 text-lg">₹${Utils.formatIndianNumber(loan.amount)}</span>
                             </div>
-                            <p class="text-sm text-blue-700 mb-1">${Utils.escapeHtml(loan.reason)}</p>
-                            
-                            <!-- EMI Date Info -->
-                            <div class="text-xs text-gray-600 mb-2 bg-blue-50 px-2 py-1 rounded inline-block">
-                                📅 EMI on <strong>${emiDayOrdinal}</strong> of every month
-                            </div>
+                            <p class="text-sm text-blue-700 mb-2">${Utils.escapeHtml(loan.reason)}</p>
                             
                             <!-- Key Info in Collapsed View -->
                             <div class="flex justify-between items-center text-xs mb-2">
                                 <span class="text-gray-600">Balance: <strong class="${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</strong></span>
-                                <span class="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-3 py-1 rounded-full font-bold text-sm shadow-md">EMI: ₹${Utils.formatIndianNumber(emi)}</span>
+                                <span class="text-gray-600">EMI: <strong class="text-green-700">₹${Utils.formatIndianNumber(emi)}</strong></span>
                             </div>
                             
                             <!-- Progress Bar in Collapsed View -->
@@ -311,6 +306,11 @@ const Loans = {
                                 <div class="w-full bg-gray-200 rounded-full h-1.5">
                                     <div class="bg-gradient-to-r from-blue-500 to-cyan-500 h-1.5 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
                                 </div>
+                            </div>
+                            
+                            <!-- EMI Date Info at Bottom -->
+                            <div class="text-xs text-gray-600">
+                                📅 EMI on <strong>${emiDayOrdinal}</strong> of every month
                             </div>
                         </div>
                         
