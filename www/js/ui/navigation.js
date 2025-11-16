@@ -42,6 +42,7 @@ const Navigation = {
                 break;
             case 'recurring':
                 if (window.RecurringExpenses) window.RecurringExpenses.render();
+                if (window.Loans) window.Loans.render();
                 break;
             case 'investments':
                 if (window.Investments) window.Investments.render();

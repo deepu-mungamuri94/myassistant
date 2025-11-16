@@ -9,6 +9,7 @@ const DB = {
     expenses: [],
     investments: [],
     recurringExpenses: [], // Custom recurring expenses (LIC, insurance, etc.)
+    loans: [], // Loan tracking
     chatHistory: [],
     exchangeRate: {
         rate: 83, // Default USD to INR rate

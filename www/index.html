@@ -322,7 +322,7 @@
                     </div>
                 </button>
                 
-                <!-- Recurring Expenses -->
+                <!-- Recurring / Loans -->
                 <button onclick="Navigation.navigateTo('recurring')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-orange-500 hover:to-amber-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
                     <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-400 to-amber-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
                         <svg class="w-4 h-4 text-white group-hover:text-orange-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -330,8 +330,8 @@
                         </svg>
                     </div>
                     <div class="flex-1">
-                        <span class="font-bold text-sm">Recurring</span>
-                        <p class="text-[11px] opacity-70 group-hover:opacity-90">Manage recurring</p>
+                        <span class="font-bold text-sm">Recurring / Loans</span>
+                        <p class="text-[11px] opacity-70 group-hover:opacity-90">Manage recurring & loans</p>
                     </div>
                 </button>
                 
@@ -567,7 +567,7 @@
             </div>
         </div>
         
-        <!-- RECURRING EXPENSES VIEW -->
+        <!-- RECURRING / LOANS VIEW -->
         <div id="recurring-view" class="hidden">
             <div class="bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl p-5">
                 <div class="flex items-center justify-between mb-4">
@@ -575,22 +575,47 @@
                         <svg class="w-8 h-8 mr-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                         </svg>
-                        Recurring Expenses
+                        Recurring / Loans
                     </h2>
-                    <button onclick="openRecurringExpenseModal()" class="px-3 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center">
+                    <button id="recurring-add-btn" onclick="openRecurringExpenseModal()" class="px-3 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center">
                         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                         </svg>
                     </button>
                 </div>
                 
-                <p class="text-sm text-gray-600 mb-4 bg-orange-50 p-3 rounded-lg border border-orange-200">
-                    💡 <strong>Tip:</strong> Add recurring expenses like LIC premiums, insurance, subscriptions, etc. They'll be automatically added to your expenses on due dates.
-                </p>
+                <!-- Tabs -->
+                <div class="flex gap-2 mb-4">
+                    <button id="recurring-tab" onclick="switchRecurringTab('recurring')" class="flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md">
+                        🔁 Recurring
+                    </button>
+                    <button id="loans-tab" onclick="switchRecurringTab('loans')" class="flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300">
+                        💰 Loans
+                    </button>
+                </div>
                 
-                <!-- Recurring Expenses List -->
-                <div id="recurring-expenses-list" class="space-y-3">
-                    <!-- Recurring expenses will be listed here -->
+                <!-- Recurring Tab Content -->
+                <div id="recurring-tab-content">
+                    <p class="text-sm text-gray-600 mb-4 bg-orange-50 p-3 rounded-lg border border-orange-200">
+                        💡 <strong>Tip:</strong> Add recurring expenses like LIC premiums, insurance, subscriptions, etc. They'll be automatically added to your expenses on due dates.
+                    </p>
+                    
+                    <!-- Recurring Expenses List -->
+                    <div id="recurring-expenses-list" class="space-y-3">
+                        <!-- Recurring expenses will be listed here -->
+                    </div>
+                </div>
+                
+                <!-- Loans Tab Content -->
+                <div id="loans-tab-content" class="hidden">
+                    <p class="text-sm text-gray-600 mb-4 bg-blue-50 p-3 rounded-lg border border-blue-200">
+                        💡 <strong>Tip:</strong> Track your loans with EMI calculations. Monitor remaining balance and closure dates.
+                    </p>
+                    
+                    <!-- Loans List -->
+                    <div id="loans-list" class="space-y-3">
+                        <!-- Loans will be listed here -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -1010,6 +1035,42 @@
                     Save
                 </button>
                 <button onclick="closeRecurringExpenseModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- LOAN MODAL -->
+    <div id="loan-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeLoanModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <h2 id="loan-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">Add Loan</h2>
+            
+            <input type="hidden" id="loan-modal-id">
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">Bank Name *</label>
+            <input type="text" id="loan-modal-bank" placeholder="e.g., HDFC Bank, SBI" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">Reason for Loan *</label>
+            <input type="text" id="loan-modal-reason" placeholder="e.g., Home Loan, Car Loan, Personal Loan" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">Total Amount (₹) *</label>
+            <input type="number" id="loan-modal-amount" placeholder="Principal amount" step="0.01" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">Interest Rate (% per annum) *</label>
+            <input type="number" id="loan-modal-interest" placeholder="e.g., 8.5" step="0.01" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tenure (Months) *</label>
+            <input type="number" id="loan-modal-tenure" placeholder="e.g., 60 (5 years)" min="1" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">First EMI Date *</label>
+            <input type="date" id="loan-modal-first-emi-date" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            
+            <div class="flex space-x-3">
+                <button onclick="saveLoanModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                    Save
+                </button>
+                <button onclick="closeLoanModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
                     Cancel
                 </button>
             </div>
@@ -1767,6 +1828,7 @@
     <script src="js/modules/cards.js"></script>
     <script src="js/modules/expenses.js"></script>
     <script src="js/modules/recurringExpenses.js"></script>
+    <script src="js/modules/loans.js"></script>
     <script src="js/modules/investments.js"></script>
     
     <!-- UI modules -->
@@ -2373,6 +2435,91 @@
                 
                 window.RecurringExpenses.render();
                 closeRecurringExpenseModal();
+            } catch (error) {
+                Toast.error(error.message);
+            }
+        }
+        
+        // Tab switching for Recurring/Loans
+        window.switchRecurringTab = function(tab) {
+            const recurringTab = document.getElementById('recurring-tab');
+            const loansTab = document.getElementById('loans-tab');
+            const recurringContent = document.getElementById('recurring-tab-content');
+            const loansContent = document.getElementById('loans-tab-content');
+            const addBtn = document.getElementById('recurring-add-btn');
+            
+            if (tab === 'recurring') {
+                recurringTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md';
+                loansTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300';
+                recurringContent.classList.remove('hidden');
+                loansContent.classList.add('hidden');
+                addBtn.onclick = () => openRecurringExpenseModal();
+            } else {
+                recurringTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300';
+                loansTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md';
+                recurringContent.classList.add('hidden');
+                loansContent.classList.remove('hidden');
+                addBtn.onclick = () => openLoanModal();
+            }
+        }
+        
+        // Loan Modal Functions
+        window.openLoanModal = function(id = null) {
+            document.getElementById('loan-modal-title').textContent = id ? 'Edit Loan' : 'Add Loan';
+            document.getElementById('loan-modal-id').value = '';
+            document.getElementById('loan-modal-bank').value = '';
+            document.getElementById('loan-modal-reason').value = '';
+            document.getElementById('loan-modal-amount').value = '';
+            document.getElementById('loan-modal-interest').value = '';
+            document.getElementById('loan-modal-tenure').value = '';
+            document.getElementById('loan-modal-first-emi-date').value = '';
+            
+            if (id) {
+                const loan = window.Loans.getById(id);
+                if (loan) {
+                    document.getElementById('loan-modal-id').value = loan.id;
+                    document.getElementById('loan-modal-bank').value = loan.bankName;
+                    document.getElementById('loan-modal-reason').value = loan.reason;
+                    document.getElementById('loan-modal-amount').value = loan.amount;
+                    document.getElementById('loan-modal-interest').value = loan.interestRate;
+                    document.getElementById('loan-modal-tenure').value = loan.tenure;
+                    document.getElementById('loan-modal-first-emi-date').value = loan.firstEmiDate;
+                }
+            }
+            
+            document.getElementById('loan-modal').classList.remove('hidden');
+        }
+        
+        window.closeLoanModal = function() {
+            document.getElementById('loan-modal').classList.add('hidden');
+        }
+        
+        window.saveLoanModal = function() {
+            try {
+                const id = document.getElementById('loan-modal-id').value;
+                const bankName = document.getElementById('loan-modal-bank').value.trim();
+                const reason = document.getElementById('loan-modal-reason').value.trim();
+                const amount = document.getElementById('loan-modal-amount').value.trim();
+                const interestRate = document.getElementById('loan-modal-interest').value.trim();
+                const tenure = document.getElementById('loan-modal-tenure').value.trim();
+                const firstEmiDate = document.getElementById('loan-modal-first-emi-date').value;
+                
+                if (!bankName || !reason || !amount || !interestRate || !tenure || !firstEmiDate) {
+                    throw new Error('Please fill all required fields');
+                }
+                
+                if (id) {
+                    // Update existing
+                    window.Loans.update(id, bankName, reason, amount, interestRate, tenure, firstEmiDate);
+                    Toast.success('Loan updated!');
+                } else {
+                    // Add new
+                    window.Loans.add(bankName, reason, amount, interestRate, tenure, firstEmiDate);
+                    Toast.success('Loan added!');
+                }
+                
+                window.Loans.render();
+                closeLoanModal();
             } catch (error) {
                 Toast.error(error.message);
             }
