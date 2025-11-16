@@ -7,6 +7,76 @@ const Loans = {
     expandedLoans: new Set(), // Track which loans are expanded
     activeSectionExpanded: false, // Track active loans section
     closedSectionExpanded: false, // Track closed loans section
+    viewModalExpanded: false, // Track expansion in view modal
+    
+    /**
+     * Show loan details in a view-only modal
+     */
+    showDetailsModal(loanId) {
+        const loan = window.DB.loans.find(l => l.id === loanId ||String(l.id) === String(loanId));
+        if (!loan) {
+            window.Toast.error('Loan not found');
+            return;
+        }
+        
+        // Force expand for view modal
+        this.viewModalExpanded = true;
+        
+        // Render the loan card (same design as list)
+        const isCompleted = this.isLoanCompleted(loan);
+        const cardHtml = this.renderLoanCardForModal(loan, isCompleted);
+        
+        // Create and show modal
+        const modalHtml = `
+            <div id="loan-details-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-[1001] flex items-center justify-center p-4" onclick="if(event.target===this) Loans.closeDetailsModal()">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div class="sticky top-0 bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-4 flex justify-between items-center rounded-t-2xl">
+                        <h2 class="text-xl font-bold text-white">Loan Details</h2>
+                        <button onclick="Loans.closeDetailsModal()" class="text-white hover:text-gray-200 p-1">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        ${cardHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if any
+        const existing = document.getElementById('loan-details-modal');
+        if (existing) existing.remove();
+        
+        // Add to body
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+    
+    /**
+     * Close details modal
+     */
+    closeDetailsModal() {
+        const modal = document.getElementById('loan-details-modal');
+        if (modal) modal.remove();
+        this.viewModalExpanded = false;
+    },
+    
+    /**
+     * Toggle expansion in view modal
+     */
+    toggleViewModalExpansion() {
+        this.viewModalExpanded = !this.viewModalExpanded;
+        // Re-render modal content
+        const modal = document.getElementById('loan-details-modal');
+        if (modal) {
+            // Get the loan ID from the modal (we'll need to store it)
+            const loanId = modal.dataset.loanId;
+            if (loanId) {
+                this.showDetailsModal(parseInt(loanId));
+            }
+        }
+    },
     
     /**
      * Toggle loan expansion
@@ -433,6 +503,119 @@ const Loans = {
                     <div class="space-y-2 bg-white bg-opacity-70 p-3 rounded-lg">
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-700">Total Payable:</span>
+                            <span class="font-bold text-blue-900">₹${Utils.formatIndianNumber(totalAmount)}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-700">Total Interest:</span>
+                            <span class="font-bold text-orange-700">₹${Utils.formatIndianNumber(totalInterest)}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-700">Balance Remaining:</span>
+                            <span class="font-bold ${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</span>
+                        </div>
+                        <div class="flex justify-between text-sm pt-2 border-t border-gray-200">
+                            <span class="text-gray-700">Closure Date:</span>
+                            <span class="font-semibold text-blue-800">${closureDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+    
+    /**
+     * Render loan card for view modal (always expanded, no edit/delete buttons)
+     */
+    renderLoanCardForModal(loan, isClosed) {
+        const emi = this.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
+        const totalAmount = this.calculateTotalAmount(emi, loan.tenure);
+        const totalInterest = this.calculateTotalInterest(totalAmount, loan.amount);
+        const closureDate = this.calculateClosureDate(loan.firstEmiDate, loan.tenure);
+        const remaining = this.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
+        
+        // Get EMI day of month from first EMI date
+        const firstEmiDate = new Date(loan.firstEmiDate);
+        const emiDay = firstEmiDate.getDate();
+        const emiDayOrdinal = this.getOrdinalSuffix(emiDay);
+        
+        const progress = ((loan.tenure - remaining.emisRemaining) / loan.tenure) * 100;
+        const isCompleted = remaining.emisRemaining === 0;
+        
+        return `
+            <div class="bg-gradient-to-br from-blue-50 via-white to-cyan-50 rounded-xl border-2 ${isCompleted ? 'border-green-400' : 'border-blue-300'} shadow-lg">
+                <div class="p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between gap-2 mb-1">
+                                <div class="flex items-center gap-2">
+                                    <h4 class="font-bold text-blue-900 text-lg">${Utils.escapeHtml(loan.bankName)}</h4>
+                                    ${isCompleted ? '<span class="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-semibold">✓ Completed</span>' : ''}
+                                </div>
+                                <span class="font-bold text-blue-900 text-lg">₹${Utils.formatIndianNumber(loan.amount)}</span>
+                            </div>
+                            <p class="text-sm text-gray-700 mb-2">
+                                <strong>${Utils.escapeHtml(loan.loanType || 'Loan')}</strong>${loan.reason ? ': ' + Utils.escapeHtml(loan.reason) : ''}
+                            </p>
+                            
+                            <!-- Key Info -->
+                            <div class="flex justify-between items-center text-xs mb-2">
+                                <span class="text-gray-600">Balance: <strong class="${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</strong></span>
+                                <span class="text-gray-600">EMI: <strong class="text-green-700">₹${Utils.formatIndianNumber(emi)}</strong></span>
+                            </div>
+                            
+                            <!-- Progress Bar -->
+                            <div class="mb-2">
+                                <div class="flex justify-between text-xs text-gray-600 mb-1">
+                                    <span><span class="font-semibold">${remaining.emisPaid}/${loan.tenure}</span> EMIs paid</span>
+                                    <span class="font-semibold">${Math.round(progress)}%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- EMI Date Info -->
+                            <div class="text-xs text-gray-600">
+                                📅 EMI on <strong>${emiDayOrdinal}</strong> of every month
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Detailed Info -->
+                <div class="px-4 pb-4 border-t border-blue-200 pt-4">
+                    <!-- Loan Details Grid -->
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div class="bg-white bg-opacity-50 p-2 rounded-lg">
+                            <p class="text-xs text-gray-600">Principal Amount</p>
+                            <p class="font-bold text-blue-900">₹${Utils.formatIndianNumber(loan.amount)}</p>
+                        </div>
+                        <div class="bg-white bg-opacity-50 p-2 rounded-lg">
+                            <p class="text-xs text-gray-600">Interest Rate</p>
+                            <p class="font-bold text-blue-900">${loan.interestRate}% p.a.</p>
+                        </div>
+                        <div class="bg-white bg-opacity-50 p-2 rounded-lg">
+                            <p class="text-xs text-gray-600">Monthly EMI</p>
+                            <p class="font-bold text-blue-900">₹${Utils.formatIndianNumber(emi)}</p>
+                        </div>
+                        <div class="bg-white bg-opacity-50 p-2 rounded-lg">
+                            <p class="text-xs text-gray-600">Tenure</p>
+                            <p class="font-bold text-blue-900">${loan.tenure} months</p>
+                        </div>
+                        <div class="bg-white bg-opacity-50 p-2 rounded-lg">
+                            <p class="text-xs text-gray-600">First EMI Date</p>
+                            <p class="font-bold text-blue-900">${new Date(loan.firstEmiDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                        </div>
+                        <div class="bg-white bg-opacity-50 p-2 rounded-lg">
+                            <p class="text-xs text-gray-600">EMIs Remaining</p>
+                            <p class="font-bold text-blue-900">${remaining.emisRemaining} EMIs</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Summary Section -->
+                    <div class="bg-gradient-to-r from-blue-50 to-cyan-50 p-3 rounded-lg space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-700">Total Amount (Principal + Interest):</span>
                             <span class="font-bold text-blue-900">₹${Utils.formatIndianNumber(totalAmount)}</span>
                         </div>
                         <div class="flex justify-between text-sm">

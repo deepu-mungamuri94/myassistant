@@ -285,7 +285,7 @@ const Expenses = {
     },
     
     /**
-     * Show loan details
+     * Show loan details in view-only modal
      */
     showLoanDetails(loanTitle) {
         // Find the loan by title
@@ -297,8 +297,11 @@ const Expenses = {
             return loanTitle === displayTitle || loanTitle.includes(l.bankName);
         });
         
-        if (loan && window.openLoanModal) {
-            // Open the loan modal with the loan ID
+        if (loan && window.Loans && window.Loans.showDetailsModal) {
+            // Show loan details in view modal
+            window.Loans.showDetailsModal(loan.id);
+        } else if (loan && window.openLoanModal) {
+            // Fallback to edit modal if view modal doesn't exist
             window.openLoanModal(loan.id);
         } else {
             window.Toast.error('Loan not found');
@@ -306,14 +309,18 @@ const Expenses = {
     },
     
     /**
-     * Show card details
+     * Show card details in view-only modal
      */
     showCardDetails(cardName) {
-        // Find and open the card modal
+        // Find the card
         const cards = window.DB.cards || [];
         const card = cards.find(c => c.name && c.name.includes(cardName));
         
-        if (card && window.openCardModal) {
+        if (card && window.Cards && window.Cards.showDetailsModal) {
+            // Show card details in view modal
+            window.Cards.showDetailsModal(card.id);
+        } else if (card && window.openCardModal) {
+            // Fallback to edit modal if view modal doesn't exist
             window.openCardModal(card.id);
         } else {
             window.Toast.error('Card not found');
@@ -321,15 +328,18 @@ const Expenses = {
     },
     
     /**
-     * Show recurring expense details
+     * Show recurring expense details in view-only modal
      */
     showRecurringDetails(recurringName) {
         // Find the recurring expense by name
         const recurringExpenses = window.DB.recurringExpenses || [];
         const recurring = recurringExpenses.find(r => r.name === recurringName);
         
-        if (recurring && window.openRecurringExpenseModal) {
-            // Open the recurring expense modal with the ID
+        if (recurring && window.RecurringExpenses && window.RecurringExpenses.showDetailsModal) {
+            // Show recurring details in view modal
+            window.RecurringExpenses.showDetailsModal(recurring.id);
+        } else if (recurring && window.openRecurringExpenseModal) {
+            // Fallback to edit modal if view modal doesn't exist
             window.openRecurringExpenseModal(recurring.id);
         } else {
             window.Toast.error('Recurring expense not found');
