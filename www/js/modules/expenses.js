@@ -288,73 +288,52 @@ const Expenses = {
      * Show loan details
      */
     showLoanDetails(loanTitle) {
-        // Navigate to Recurring/Loans tab and highlight the loan
-        if (window.Navigation && window.Navigation.navigateTo) {
-            window.Navigation.navigateTo('recurring');
-        }
+        // Find the loan by title
+        const loans = window.DB.loans || [];
+        const loan = loans.find(l => {
+            const displayTitle = l.loanType === 'Other' && l.customLoanType 
+                ? `${l.bankName} ${l.customLoanType} EMI`
+                : `${l.bankName} ${l.loanType} EMI`;
+            return loanTitle === displayTitle || loanTitle.includes(l.bankName);
+        });
         
-        // Switch to loans tab
-        setTimeout(() => {
-            const loansTabBtn = document.querySelector('[onclick="showRecurringTab(\'loans\')"]');
-            if (loansTabBtn) loansTabBtn.click();
-            
-            // Find and scroll to the loan
-            setTimeout(() => {
-                const loanCards = document.querySelectorAll('[data-loan-title]');
-                loanCards.forEach(card => {
-                    if (card.dataset.loanTitle && loanTitle.includes(card.dataset.loanTitle)) {
-                        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        card.style.animation = 'pulse 1s ease-in-out 2';
-                    }
-                });
-            }, 300);
-        }, 100);
+        if (loan && window.openLoanModal) {
+            // Open the loan modal with the loan ID
+            window.openLoanModal(loan.id);
+        } else {
+            window.Toast.error('Loan not found');
+        }
     },
     
     /**
      * Show card details
      */
     showCardDetails(cardName) {
-        // Navigate to Credit/Debit Cards page
-        if (window.Navigation && window.Navigation.navigateTo) {
-            window.Navigation.navigateTo('cards');
-        }
+        // Find and open the card modal
+        const cards = window.DB.cards || [];
+        const card = cards.find(c => c.name && c.name.includes(cardName));
         
-        // Find and open the card
-        setTimeout(() => {
-            const cards = window.DB.cards || [];
-            const card = cards.find(c => c.name && c.name.includes(cardName));
-            if (card && window.openCardModal) {
-                window.openCardModal(card.id);
-            }
-        }, 300);
+        if (card && window.openCardModal) {
+            window.openCardModal(card.id);
+        } else {
+            window.Toast.error('Card not found');
+        }
     },
     
     /**
      * Show recurring expense details
      */
     showRecurringDetails(recurringName) {
-        // Navigate to Recurring/Loans tab
-        if (window.Navigation && window.Navigation.navigateTo) {
-            window.Navigation.navigateTo('recurring');
-        }
+        // Find the recurring expense by name
+        const recurringExpenses = window.DB.recurringExpenses || [];
+        const recurring = recurringExpenses.find(r => r.name === recurringName);
         
-        // Switch to recurring tab
-        setTimeout(() => {
-            const recurringTabBtn = document.querySelector('[onclick="showRecurringTab(\'recurring\')"]');
-            if (recurringTabBtn) recurringTabBtn.click();
-            
-            // Find and highlight the recurring expense
-            setTimeout(() => {
-                const recurringItems = document.querySelectorAll('[data-recurring-name]');
-                recurringItems.forEach(item => {
-                    if (item.dataset.recurringName === recurringName) {
-                        item.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        item.style.animation = 'pulse 1s ease-in-out 2';
-                    }
-                });
-            }, 300);
-        }, 100);
+        if (recurring && window.openRecurringExpenseModal) {
+            // Open the recurring expense modal with the ID
+            window.openRecurringExpenseModal(recurring.id);
+        } else {
+            window.Toast.error('Recurring expense not found');
+        }
     },
     
     /**
