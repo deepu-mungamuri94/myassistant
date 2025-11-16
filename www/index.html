@@ -2199,6 +2199,12 @@
         
         window.saveExpenseModal = function() {
             try {
+                // Safety check
+                if (!window.Expenses) {
+                    Toast.error('Expenses module not loaded. Please refresh the page.');
+                    return;
+                }
+                
                 const id = document.getElementById('expense-modal-id').value;
                 Loading.show(id ? 'Updating expense...' : 'Adding expense...');
                 
