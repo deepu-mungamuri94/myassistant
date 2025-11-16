@@ -205,14 +205,8 @@ const Expenses = {
         const start = new Date(this.startDate);
         const end = new Date(this.endDate);
         
-        // Check if same month and year, and roughly covers the whole month
-        if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
-            // Check if it's a reasonable month range (at least 25 days to be considered a "month view")
-            const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-            return daysDiff >= 25;
-        }
-        
-        return false;
+        // Check if same month and year
+        return start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
     },
     
     /**
