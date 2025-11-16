@@ -489,6 +489,14 @@ const Loans = {
                 
                 const loanEmiTitle = `${loan.bankName} ${loan.loanType || 'Loan'} EMI`;
                 
+                // Check if dismissed by user
+                const isDismissed = window.Expenses && window.Expenses.isDismissed(loanEmiTitle, emiDateStr, emi);
+                
+                if (isDismissed) {
+                    console.log('Loan EMI dismissed by user, skipping:', loanEmiTitle);
+                    return;
+                }
+                
                 // Check if already added to expenses
                 const exists = window.DB.expenses.find(exp => 
                     exp.title === loanEmiTitle &&

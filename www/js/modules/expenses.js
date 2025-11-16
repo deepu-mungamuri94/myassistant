@@ -56,6 +56,26 @@ const Expenses = {
      * Delete an expense
      */
     delete(id) {
+        const expense = this.getById(id);
+        
+        // If it's an auto-added recurring expense (loan or card EMI), mark as dismissed
+        if (expense && (this.isLoanEMIExpense(expense) || (expense.category === 'emi' && expense.title.startsWith('EMI:')))) {
+            const dismissal = {
+                title: expense.title,
+                date: expense.date,
+                amount: expense.amount,
+                dismissedAt: Utils.getCurrentTimestamp()
+            };
+            
+            if (!window.DB.dismissedRecurringExpenses) {
+                window.DB.dismissedRecurringExpenses = [];
+            }
+            
+            // Add to dismissed list
+            window.DB.dismissedRecurringExpenses.push(dismissal);
+            console.log('Marked as dismissed:', dismissal);
+        }
+        
         window.DB.expenses = window.DB.expenses.filter(e => e.id !== id);
         window.Storage.save();
     },
@@ -209,6 +229,36 @@ const Expenses = {
                expense.title.includes(' EMI') && 
                expense.category === 'emi' && 
                !expense.title.startsWith('EMI:');
+    },
+    
+    /**
+     * Check if a recurring expense has been dismissed
+     */
+    isDismissed(title, date, amount) {
+        if (!window.DB.dismissedRecurringExpenses) return false;
+        
+        return window.DB.dismissedRecurringExpenses.some(d => 
+            d.title === title && 
+            d.date === date && 
+            Math.abs(d.amount - amount) < 0.01
+        );
+    },
+    
+    /**
+     * Manually add a recurring expense to expenses
+     */
+    addRecurringExpense(title, amount, category, date, description) {
+        // Remove from dismissed list if it was dismissed
+        if (window.DB.dismissedRecurringExpenses) {
+            window.DB.dismissedRecurringExpenses = window.DB.dismissedRecurringExpenses.filter(d => 
+                !(d.title === title && d.date === date && Math.abs(d.amount - amount) < 0.01)
+            );
+        }
+        
+        // Add to expenses
+        this.add(title, amount, category, date, description, null);
+        this.render();
+        window.Toast.success('Added to expenses!');
     },
     
     /**
@@ -597,15 +647,37 @@ const Expenses = {
                             <div class="mb-2">
                                 <p class="text-xs font-semibold text-blue-600 mb-1.5">🕐 Upcoming (${upcomingRecurring.length})</p>
                                 <div class="space-y-1.5">
-                                    ${upcomingRecurring.map(exp => `
+                                    ${upcomingRecurring.map(exp => {
+                                        // Check if this expense is already in expenses list
+                                        const existsInExpenses = window.DB.expenses.find(e => 
+                                            e.title === exp.title && 
+                                            e.date === exp.date && 
+                                            Math.abs(e.amount - exp.amount) < 0.01
+                                        );
+                                        
+                                        return `
                                         <div class="flex justify-between items-center py-1.5 px-2 bg-blue-50 rounded border border-blue-100">
                                             <div class="flex-1 min-w-0">
                                                 <p class="text-sm font-medium text-gray-800 truncate">${Utils.escapeHtml(exp.title)}</p>
-                                                <p class="text-xs text-gray-500">${Utils.formatDate(exp.date)}</p>
+                                                <p class="text-xs text-gray-500">${exp.description ? Utils.escapeHtml(exp.description) + ' • ' : ''}${Utils.formatDate(exp.date)}</p>
                                             </div>
-                                            <span class="text-sm font-semibold text-blue-700 ml-2">${Utils.formatCurrency(exp.amount)}</span>
+                                            <div class="flex items-center gap-2 ml-2">
+                                                <span class="text-sm font-semibold text-blue-700">${Utils.formatCurrency(exp.amount)}</span>
+                                                ${!existsInExpenses ? `
+                                                    <button onclick="Expenses.addRecurringExpense('${Utils.escapeHtml(exp.title).replace(/'/g, "\\'")}', ${exp.amount}, '${exp.category}', '${exp.date}', '${Utils.escapeHtml(exp.description || '').replace(/'/g, "\\'")}'); event.stopPropagation();" 
+                                                            class="px-2 py-0.5 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors flex items-center gap-1" 
+                                                            title="Add to Expenses">
+                                                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                                                        </svg>
+                                                        Add
+                                                    </button>
+                                                ` : `
+                                                    <span class="text-xs text-green-600 font-medium">✓ Added</span>
+                                                `}
+                                            </div>
                                         </div>
-                                    `).join('')}
+                                    `}).join('')}
                                 </div>
                             </div>
                         ` : ''}
