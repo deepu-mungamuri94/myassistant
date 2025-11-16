@@ -458,6 +458,25 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
     },
 
     /**
+     * Calculate used limit (total remaining EMI amount)
+     */
+    calculateUsedLimit(card) {
+        if (!card.emis || card.emis.length === 0) return 0;
+        
+        const activeEMIs = card.emis.filter(e => !e.completed);
+        let totalUsed = 0;
+        
+        activeEMIs.forEach(emi => {
+            if (emi.emiAmount) {
+                const remainingEMIs = emi.totalCount - emi.paidCount;
+                totalUsed += parseFloat(emi.emiAmount) * remainingEMIs;
+            }
+        });
+        
+        return Math.round(totalUsed);
+    },
+
+    /**
      * Render cards list
      */
     render() {
@@ -509,45 +528,43 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     ${card.creditLimit ? `<span class="text-xs text-slate-600 font-medium">💳 Limit: ₹${Utils.formatIndianNumber(card.creditLimit)}</span>` : '<span></span>'}
                 </div>
                 
-                <!-- Note (Left) and EMI Button (Right, inline) -->
+                <!-- Note (Left) and Used Limit (Right, inline) -->
                 <div class="flex justify-between items-start mt-1">
                     <div class="flex-1">
                         ${card.additionalData ? `<p class="text-xs text-slate-700 font-medium">${Utils.escapeHtml(card.additionalData)}</p>` : '<p class="text-xs text-slate-700">&nbsp;</p>'}
                     </div>
-                    <button onclick="Cards.openEMIModal(${card.id})" class="text-xs bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-sm ml-2">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                        </svg>
-                        EMIs ${card.emis && card.emis.filter(e => !e.completed).length > 0 ? `(${card.emis.filter(e => !e.completed).length})` : ''}
-                    </button>
+                    ${this.calculateUsedLimit(card) > 0 ? `<span class="text-xs text-orange-600 font-medium ml-2">Used: ₹${Utils.formatIndianNumber(this.calculateUsedLimit(card))}</span>` : ''}
                 </div>
                 
-                <!-- Bottom Section: Card Rules -->
+                <!-- Bottom Section: EMIs, View Terms, Update Terms -->
                 <div class="pt-3 border-t border-slate-300 border-opacity-50">
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm font-semibold text-slate-800">📋 Card Rules</span>
-                        <div class="flex gap-2">
-                            <button onclick="${card.benefits ? `Cards.showBenefitsModal(${card.id})` : 'void(0)'}" 
-                                    class="text-xs ${card.benefits ? 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700' : 'bg-gray-400 cursor-not-allowed opacity-60'} text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-md"
-                                    title="${card.benefits ? 'View full benefits' : 'No rules fetched yet - click Update Rules first'}"
-                                    ${!card.benefits ? 'disabled' : ''}>
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                </svg>
-                                View
-                            </button>
-                            <button onclick="Cards.refreshBenefits(${card.id})" 
-                                    id="refresh-btn-${card.id}"
-                                    class="text-xs bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-md"
-                                    title="Fetch latest rules">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                                </svg>
-                                <span id="refresh-text-${card.id}">Update Rules</span>
-                            </button>
-                        </div>
+                    <div class="flex justify-between items-center gap-2">
+                        <button onclick="Cards.openEMIModal(${card.id})" class="flex-1 text-xs bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-3 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 shadow-md">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            EMIs ${card.emis && card.emis.filter(e => !e.completed).length > 0 ? `(${card.emis.filter(e => !e.completed).length})` : ''}
+                        </button>
+                        <button onclick="${card.benefits ? `Cards.showBenefitsModal(${card.id})` : 'void(0)'}"
+                                class="flex-1 text-xs ${card.benefits ? 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700' : 'bg-gray-400 cursor-not-allowed opacity-60'} text-white px-3 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 shadow-md"
+                                title="${card.benefits ? 'View full terms' : 'No terms fetched yet - click Update Terms first'}"
+                                ${!card.benefits ? 'disabled' : ''}>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            View Terms
+                        </button>
+                        <button onclick="Cards.refreshBenefits(${card.id})"
+                                id="refresh-btn-${card.id}"
+                                class="flex-1 text-xs bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-3 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 shadow-md"
+                                title="Fetch latest terms">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            <span id="refresh-text-${card.id}">Update Terms</span>
+                        </button>
                     </div>
                 </div>
             </div>
