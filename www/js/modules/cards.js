@@ -52,13 +52,58 @@ const Cards = {
     },
 
     /**
+     * Show loading overlay on a specific card
+     */
+    showCardLoading(cardId) {
+        const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+        if (!cardElement) return;
+        
+        // Create or show loading overlay
+        let overlay = cardElement.querySelector('.card-loading-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.className = 'card-loading-overlay absolute inset-0 bg-white bg-opacity-90 flex flex-col items-center justify-center rounded-2xl z-10';
+            overlay.innerHTML = `
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-3"></div>
+                <p class="text-sm font-semibold text-gray-700">Fetching Card Benefits...</p>
+                <p class="text-xs text-gray-500 mt-1">This may take a few seconds</p>
+            `;
+            cardElement.style.position = 'relative';
+            cardElement.appendChild(overlay);
+        } else {
+            overlay.classList.remove('hidden');
+        }
+    },
+
+    /**
+     * Hide loading overlay on a specific card
+     */
+    hideCardLoading(cardId) {
+        const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+        if (!cardElement) return;
+        
+        const overlay = cardElement.querySelector('.card-loading-overlay');
+        if (overlay) {
+            overlay.remove();
+        }
+    },
+
+    /**
      * Fetch card benefits from AI and store in database
      */
-    async fetchAndStoreBenefits(cardId, cardName) {
+    async fetchAndStoreBenefits(cardId, cardName, showLoading = true) {
         try {
+            // Show loading overlay on the card
+            if (showLoading) {
+                this.showCardLoading(cardId);
+            }
+            
             // Check if AI is configured
             if (!window.AIProvider || !window.AIProvider.isConfigured()) {
                 console.warn('AI not configured, skipping benefits fetch');
+                if (showLoading) {
+                    this.hideCardLoading(cardId);
+                }
                 return;
             }
 
@@ -235,9 +280,23 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     window.Toast.success(`Card benefits loaded for ${cardName}`);
                 }
             }
+            
+            // Hide loading overlay
+            if (showLoading) {
+                this.hideCardLoading(cardId);
+            }
         } catch (error) {
             console.error(`Failed to fetch benefits for ${cardName}:`, error);
-            // Don't show error toast - this is background operation
+            
+            // Hide loading overlay
+            if (showLoading) {
+                this.hideCardLoading(cardId);
+            }
+            
+            // Show error toast for user awareness
+            if (window.Toast) {
+                window.Toast.error(`Failed to fetch benefits for ${cardName}`);
+            }
         }
     },
 
@@ -264,7 +323,8 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 window.Toast.info(`Fetching latest benefits for ${card.name}...`);
             }
             
-            await this.fetchAndStoreBenefits(cardId, card.name);
+            // Don't show card loading for manual refresh (button loading is enough)
+            await this.fetchAndStoreBenefits(cardId, card.name, false);
             
             // Re-render to show View button now enabled
             this.render();
@@ -407,7 +467,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         }
         
         list.innerHTML = window.DB.cards.map(card => `
-            <div class="p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl border-2 border-green-300 hover:shadow-lg transition-all">
+            <div class="p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl border-2 border-green-300 hover:shadow-lg transition-all" data-card-id="${card.id}">
                 <!-- Top Section: Card Details and Actions -->
                 <div class="flex justify-between items-start mb-3">
                     <div class="flex-1">
