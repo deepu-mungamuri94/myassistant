@@ -286,27 +286,41 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             throw new Error('Please fill in all required fields');
         }
         
-        const card = this.getById(id);
-        if (card) {
-            card.name = name;
-            card.cardNumber = cardNumber;
-            card.expiry = expiry;
-            card.cvv = cvv;
-            card.lastUpdated = Utils.getCurrentTimestamp();
-            
-            // Re-fetch benefits for the updated card
-            if (window.AIProvider && window.AIProvider.isConfigured()) {
-                try {
-                    const benefits = await this.fetchCardBenefits(name);
-                    card.benefits = benefits;
-                    card.benefitsFetchedAt = Utils.getCurrentTimestamp();
-                } catch (error) {
-                    console.warn('Failed to fetch benefits for updated card:', error);
-                }
-            }
-            
-            window.Storage.save();
+        // Basic card number validation (remove spaces)
+        const cleanCardNumber = cardNumber.replace(/\s/g, '');
+        if (!/^\d{13,19}$/.test(cleanCardNumber)) {
+            throw new Error('Invalid card number (13-19 digits required)');
         }
+        
+        // Expiry validation (MM/YY or MM/YYYY)
+        if (!/^\d{2}\/\d{2,4}$/.test(expiry)) {
+            throw new Error('Invalid expiry format (use MM/YY or MM/YYYY)');
+        }
+        
+        // CVV validation (3-4 digits)
+        if (!/^\d{3,4}$/.test(cvv)) {
+            throw new Error('Invalid CVV (3-4 digits required)');
+        }
+        
+        const card = this.getById(id);
+        if (!card) {
+            throw new Error('Card not found');
+        }
+        
+        // Update card fields
+        card.name = name;
+        card.cardNumber = cleanCardNumber;
+        card.expiry = expiry;
+        card.cvv = cvv;
+        card.lastUpdated = Utils.getCurrentTimestamp();
+        
+        // Save to storage
+        window.Storage.save();
+        
+        // Re-fetch benefits for the updated card in background
+        this.fetchAndStoreBenefits(card.id, name).catch(err => {
+            console.error('Failed to fetch benefits for updated card:', err);
+        });
         
         return card;
     },
