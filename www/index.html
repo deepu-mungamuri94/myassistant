@@ -1073,6 +1073,50 @@
         </div>
     </div>
     
+    <!-- EMI LIST MODAL -->
+    <div id="emi-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) document.getElementById('emi-modal').classList.add('hidden')">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-2xl w-full max-h-[80vh] flex flex-col">
+            <h2 id="emi-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">EMIs</h2>
+            
+            <div id="emi-list" class="flex-1 overflow-y-auto mb-4">
+                <!-- EMIs will be rendered here -->
+            </div>
+            
+            <div class="flex space-x-3">
+                <button onclick="Cards.openEMIForm(window.currentEMICardId)" class="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                    + Add EMI
+                </button>
+                <button onclick="document.getElementById('emi-modal').classList.add('hidden')" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- EMI FORM MODAL -->
+    <div id="emi-form-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-[60] flex items-center justify-center p-4" onclick="if(event.target===this) document.getElementById('emi-form-modal').classList.add('hidden')">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 id="emi-form-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">Add EMI</h2>
+            
+            <input type="hidden" id="emi-form-id">
+            <input type="text" id="emi-form-reason" placeholder="Reason (e.g., iPhone 15 Pro)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="text" id="emi-form-date" placeholder="Start Date (e.g., Jan 2024)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="flex gap-2">
+                <input type="number" id="emi-form-paid" placeholder="Paid EMIs" min="0" class="flex-1 p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="number" id="emi-form-total" placeholder="Total EMIs" min="1" class="flex-1 p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            
+            <div class="flex space-x-3">
+                <button onclick="Cards.saveEMI(window.currentEMICardId)" class="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                    Save
+                </button>
+                <button onclick="document.getElementById('emi-form-modal').classList.add('hidden')" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <!-- EXPORT MODAL -->
     <div id="export-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Navigation.closeExportModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">

@@ -480,17 +480,26 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                         <!-- Card Number -->
                         <p class="text-sm text-slate-700 font-mono mt-1 font-semibold" id="card-num-${card.id}">${this.maskCardNumber(card.cardNumber)}</p>
                         
-                        <!-- Expiry and CVV -->
-                        <div class="flex items-center gap-3 mt-1">
-                            <span class="text-xs text-slate-600 font-medium">Expiry: ${Utils.escapeHtml(card.expiry)}</span>
-                            <span class="text-xs text-slate-600 font-medium">CVV: <span id="card-cvv-${card.id}">•••</span></span>
+                        <!-- Expiry, CVV, and Credit Limit -->
+                        <div class="flex items-center justify-between mt-1">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs text-slate-600 font-medium">Expiry: ${Utils.escapeHtml(card.expiry)}</span>
+                                <span class="text-xs text-slate-600 font-medium">CVV: <span id="card-cvv-${card.id}">•••</span></span>
+                            </div>
+                            ${card.creditLimit ? `<span class="text-xs text-slate-600 font-medium">💳 Limit: ₹${Utils.escapeHtml(card.creditLimit)}</span>` : ''}
                         </div>
-                        
-                        <!-- Credit Limit -->
-                        ${card.creditLimit ? `<p class="text-xs text-slate-600 mt-1 font-medium">💳 Limit: ₹${Utils.escapeHtml(card.creditLimit)}</p>` : ''}
                         
                         <!-- Additional Data -->
                         ${card.additionalData ? `<p class="text-xs text-slate-700 mt-1 font-medium">${Utils.escapeHtml(card.additionalData)}</p>` : ''}
+                        
+                        <!-- EMI Button -->
+                        <button onclick="Cards.openEMIModal(${card.id})" class="mt-2 text-xs bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-sm">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            EMIs ${card.emis && card.emis.filter(e => !e.completed).length > 0 ? `(${card.emis.filter(e => !e.completed).length})` : ''}
+                        </button>
                         
                     </div>
                     
@@ -730,6 +739,251 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         }
         
         return html || `<p class="text-sm text-gray-700">${Utils.escapeHtml(text)}</p>`;
+    },
+
+    /**
+     * Open EMI modal for a card
+     */
+    openEMIModal(cardId) {
+        const card = this.getById(cardId);
+        if (!card) return;
+        
+        // Initialize emis array if not exists
+        if (!card.emis) {
+            card.emis = [];
+        }
+        
+        // Store current card ID globally
+        window.currentEMICardId = cardId;
+        
+        // Render EMIs
+        this.renderEMIs(cardId);
+        
+        // Show modal
+        document.getElementById('emi-modal').classList.remove('hidden');
+        document.getElementById('emi-modal-title').textContent = `EMIs - ${card.name}`;
+    },
+
+    /**
+     * Render EMIs list in modal
+     */
+    renderEMIs(cardId) {
+        const card = this.getById(cardId);
+        if (!card) return;
+        
+        const list = document.getElementById('emi-list');
+        const emis = card.emis || [];
+        
+        // Separate active and completed EMIs
+        const activeEMIs = emis.filter(e => !e.completed);
+        const completedEMIs = emis.filter(e => e.completed);
+        
+        if (activeEMIs.length === 0 && completedEMIs.length === 0) {
+            list.innerHTML = '<p class="text-gray-500 text-center py-4">No EMIs on this card yet.</p>';
+            return;
+        }
+        
+        let html = '';
+        
+        // Active EMIs
+        if (activeEMIs.length > 0) {
+            html += '<h3 class="text-sm font-semibold text-gray-700 mb-2">Active EMIs</h3>';
+            html += activeEMIs.map(emi => `
+                <div class="p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-200 mb-2">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <p class="text-sm font-semibold text-gray-800">${Utils.escapeHtml(emi.reason)}</p>
+                            <p class="text-xs text-gray-600 mt-1">Date: ${Utils.escapeHtml(emi.date)}</p>
+                            <p class="text-xs text-gray-600">Progress: ${emi.paidCount}/${emi.totalCount} EMIs</p>
+                            <div class="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                                <div class="bg-blue-600 h-1.5 rounded-full" style="width: ${(emi.paidCount/emi.totalCount)*100}%"></div>
+                            </div>
+                        </div>
+                        <div class="flex gap-1 ml-2">
+                            <button onclick="Cards.editEMI(${cardId}, '${emi.id}')" class="text-blue-600 hover:text-blue-800 p-1" title="Edit">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                </svg>
+                            </button>
+                            ${emi.paidCount >= emi.totalCount ? `
+                                <button onclick="Cards.markEMIComplete(${cardId}, '${emi.id}')" class="text-green-600 hover:text-green-800 p-1" title="Mark Complete">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </button>
+                            ` : ''}
+                            <button onclick="Cards.deleteEMI(${cardId}, '${emi.id}')" class="text-red-600 hover:text-red-800 p-1" title="Delete">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Completed EMIs (collapsed by default)
+        if (completedEMIs.length > 0) {
+            html += `
+                <details class="mt-4">
+                    <summary class="text-sm font-semibold text-gray-500 cursor-pointer">Completed EMIs (${completedEMIs.length})</summary>
+                    <div class="mt-2">
+                        ${completedEMIs.map(emi => `
+                            <div class="p-3 bg-gray-100 rounded-lg border border-gray-300 mb-2 opacity-60">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex-1">
+                                        <p class="text-sm font-semibold text-gray-700 line-through">${Utils.escapeHtml(emi.reason)}</p>
+                                        <p class="text-xs text-gray-500 mt-1">Date: ${Utils.escapeHtml(emi.date)}</p>
+                                        <p class="text-xs text-gray-500">Completed: ${emi.totalCount}/${emi.totalCount} EMIs ✓</p>
+                                    </div>
+                                    <button onclick="Cards.deleteEMI(${cardId}, '${emi.id}')" class="text-red-600 hover:text-red-800 p-1" title="Delete">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </details>
+            `;
+        }
+        
+        list.innerHTML = html;
+    },
+
+    /**
+     * Open EMI add/edit form
+     */
+    openEMIForm(cardId, emiId = null) {
+        const card = this.getById(cardId);
+        if (!card) return;
+        
+        // Clear form
+        document.getElementById('emi-form-id').value = emiId || '';
+        document.getElementById('emi-form-reason').value = '';
+        document.getElementById('emi-form-date').value = '';
+        document.getElementById('emi-form-paid').value = '0';
+        document.getElementById('emi-form-total').value = '';
+        
+        if (emiId) {
+            // Edit mode
+            const emi = card.emis.find(e => e.id === emiId);
+            if (emi) {
+                document.getElementById('emi-form-title').textContent = 'Edit EMI';
+                document.getElementById('emi-form-reason').value = emi.reason;
+                document.getElementById('emi-form-date').value = emi.date;
+                document.getElementById('emi-form-paid').value = emi.paidCount;
+                document.getElementById('emi-form-total').value = emi.totalCount;
+            }
+        } else {
+            document.getElementById('emi-form-title').textContent = 'Add EMI';
+        }
+        
+        document.getElementById('emi-form-modal').classList.remove('hidden');
+    },
+
+    /**
+     * Save EMI (add or update)
+     */
+    saveEMI(cardId) {
+        const card = this.getById(cardId);
+        if (!card) return;
+        
+        const emiId = document.getElementById('emi-form-id').value;
+        const reason = document.getElementById('emi-form-reason').value.trim();
+        const date = document.getElementById('emi-form-date').value.trim();
+        const paidCount = parseInt(document.getElementById('emi-form-paid').value);
+        const totalCount = parseInt(document.getElementById('emi-form-total').value);
+        
+        if (!reason || !date || !totalCount) {
+            window.Toast.error('Please fill all required fields');
+            return;
+        }
+        
+        if (paidCount > totalCount) {
+            window.Toast.error('Paid EMIs cannot exceed total EMIs');
+            return;
+        }
+        
+        if (!card.emis) {
+            card.emis = [];
+        }
+        
+        if (emiId) {
+            // Update existing
+            const emi = card.emis.find(e => e.id === emiId);
+            if (emi) {
+                emi.reason = reason;
+                emi.date = date;
+                emi.paidCount = paidCount;
+                emi.totalCount = totalCount;
+                emi.completed = paidCount >= totalCount;
+            }
+        } else {
+            // Add new
+            card.emis.push({
+                id: Utils.generateId().toString(),
+                reason,
+                date,
+                paidCount,
+                totalCount,
+                completed: false,
+                createdAt: Utils.getCurrentTimestamp()
+            });
+        }
+        
+        window.Storage.save();
+        this.renderEMIs(cardId);
+        this.render(); // Update card count
+        document.getElementById('emi-form-modal').classList.add('hidden');
+        window.Toast.success(emiId ? 'EMI updated!' : 'EMI added!');
+    },
+
+    /**
+     * Edit EMI
+     */
+    editEMI(cardId, emiId) {
+        this.openEMIForm(cardId, emiId);
+    },
+
+    /**
+     * Mark EMI as complete
+     */
+    markEMIComplete(cardId, emiId) {
+        const card = this.getById(cardId);
+        if (!card || !card.emis) return;
+        
+        const emi = card.emis.find(e => e.id === emiId);
+        if (emi) {
+            emi.completed = true;
+            emi.paidCount = emi.totalCount;
+            window.Storage.save();
+            this.renderEMIs(cardId);
+            this.render(); // Update card count
+            window.Toast.success('EMI marked as complete!');
+        }
+    },
+
+    /**
+     * Delete EMI
+     */
+    async deleteEMI(cardId, emiId) {
+        const confirmed = await window.Utils.confirm(
+            'Delete this EMI? This action cannot be undone.',
+            'Delete EMI'
+        );
+        if (!confirmed) return;
+        
+        const card = this.getById(cardId);
+        if (!card || !card.emis) return;
+        
+        card.emis = card.emis.filter(e => e.id !== emiId);
+        window.Storage.save();
+        this.renderEMIs(cardId);
+        this.render(); // Update card count
+        window.Toast.success('EMI deleted!');
     }
 };
 
