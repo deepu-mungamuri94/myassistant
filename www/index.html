@@ -1059,6 +1059,7 @@
                 <input type="text" id="card-modal-expiry" placeholder="MM/YY" maxlength="5" class="flex-1 p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" oninput="formatCardExpiry(this)">
                 <input type="text" id="card-modal-cvv" placeholder="CVV" maxlength="4" class="w-24 p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
+            <textarea id="card-modal-additional-data" placeholder="Additional Data (optional - shown below expiry)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" rows="2"></textarea>
             
             <div class="flex space-x-3">
                 <button onclick="saveCardModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
@@ -1628,6 +1629,7 @@
             document.getElementById('card-modal-number').value = '';
             document.getElementById('card-modal-expiry').value = '';
             document.getElementById('card-modal-cvv').value = '';
+            document.getElementById('card-modal-additional-data').value = '';
             
             if (id) {
                 // Edit mode - populate with existing data
@@ -1646,6 +1648,7 @@
                     document.getElementById('card-modal-number').value = card.cardNumber;
                     document.getElementById('card-modal-expiry').value = card.expiry;
                     document.getElementById('card-modal-cvv').value = card.cvv;
+                    document.getElementById('card-modal-additional-data').value = card.additionalData || '';
                     console.log('Modal populated with card data. Hidden ID field value:', document.getElementById('card-modal-id').value);
                 } else {
                     console.error('Card not found in openCardModal! ID:', id);
@@ -1668,14 +1671,15 @@
                 const cardNumber = document.getElementById('card-modal-number').value.trim();
                 const expiry = document.getElementById('card-modal-expiry').value.trim();
                 const cvv = document.getElementById('card-modal-cvv').value.trim();
+                const additionalData = document.getElementById('card-modal-additional-data').value.trim();
                 
                 if (id) {
                     // Update existing
-                    await Cards.update(id, name, cardNumber, expiry, cvv);
+                    await Cards.update(id, name, cardNumber, expiry, cvv, additionalData);
                     Toast.success('Card updated!');
                 } else {
                     // Add new
-                    await Cards.add(name, cardNumber, expiry, cvv);
+                    await Cards.add(name, cardNumber, expiry, cvv, additionalData);
                     Toast.success('Card added!');
                 }
                 

@@ -7,7 +7,7 @@ const Cards = {
     /**
      * Add a new card (fetches benefits automatically)
      */
-    async add(name, cardNumber, expiry, cvv) {
+    async add(name, cardNumber, expiry, cvv, additionalData = '') {
         if (!name || !cardNumber || !expiry || !cvv) {
             throw new Error('Please fill in all required fields');
         }
@@ -34,6 +34,7 @@ const Cards = {
             cardNumber: cleanCardNumber,
             expiry,
             cvv,
+            additionalData: additionalData || '',
             benefits: null, // Will be fetched
             benefitsFetchedAt: null,
             createdAt: Utils.getCurrentTimestamp()
@@ -341,7 +342,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
     /**
      * Update a card
      */
-    async update(id, name, cardNumber, expiry, cvv) {
+    async update(id, name, cardNumber, expiry, cvv, additionalData = '') {
         if (!name || !cardNumber || !expiry || !cvv) {
             throw new Error('Please fill in all required fields');
         }
@@ -383,6 +384,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         card.cardNumber = cleanCardNumber;
         card.expiry = expiry;
         card.cvv = cvv;
+        card.additionalData = additionalData || '';
         card.lastUpdated = Utils.getCurrentTimestamp();
         
         // Save to storage
@@ -481,6 +483,9 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                             <span class="text-xs text-gray-500">Expiry: ${Utils.escapeHtml(card.expiry)}</span>
                             <span class="text-xs text-gray-500">CVV: <span id="card-cvv-${card.id}">•••</span></span>
                         </div>
+                        
+                        <!-- Additional Data -->
+                        ${card.additionalData ? `<p class="text-xs text-gray-600 mt-1">${Utils.escapeHtml(card.additionalData)}</p>` : ''}
                         
                     </div>
                     
