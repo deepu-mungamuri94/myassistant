@@ -538,8 +538,8 @@
                 
                 <!-- Search and Filter -->
                 <div class="mb-3 flex gap-2">
-                    <input type="text" id="expenses-search" placeholder="🔍 Search expenses..." class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" oninput="searchExpenses()">
-                    <button onclick="openDateFilterModal()" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all duration-200" title="Filter by date">
+                    <input type="text" id="expenses-search" placeholder="🔍 Search expenses..." class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" oninput="if(window.Expenses) searchExpenses()">
+                    <button id="expense-filter-btn" onclick="if(window.Expenses) openDateFilterModal()" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all duration-200" title="Filter by date">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
@@ -2102,6 +2102,7 @@
         
         // Search expenses (now integrated with filtering)
         function searchExpenses() {
+            if (!window.Expenses) return;
             const searchTerm = document.getElementById('expenses-search').value;
             Expenses.updateFilters(undefined, undefined, searchTerm);
         }
@@ -2240,6 +2241,8 @@
         
         // Date filter modal functions
         window.openDateFilterModal = function() {
+            if (!window.Expenses) return;
+            
             const startDate = Expenses.startDate || '';
             const endDate = Expenses.endDate || '';
             
@@ -2254,6 +2257,8 @@
         }
         
         window.applyQuickFilter = function(type) {
+            if (!window.Expenses) return;
+            
             const today = new Date();
             let startDate, endDate, label;
             
@@ -2592,6 +2597,8 @@
         }
         
         window.applyCustomDateFilter = function() {
+            if (!window.Expenses) return;
+            
             const startDate = document.getElementById('filter-start-date').value;
             const endDate = document.getElementById('filter-end-date').value;
             

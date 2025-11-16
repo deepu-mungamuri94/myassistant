@@ -779,7 +779,6 @@ const Expenses = {
                                                 </button>
                                             </div>
                                         </div>
-                                `}).join('')}
                                         
                                         <!-- Bottom Row: Description + Amount/Date -->
                                         <div class="flex justify-between items-start">
@@ -792,7 +791,7 @@ const Expenses = {
                                             </div>
                                         </div>
                                     </div>
-                                `).join('')}
+                                `}).join('')}
                             </div>
                         ` : ''}
                     </div>
