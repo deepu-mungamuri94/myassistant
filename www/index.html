@@ -550,12 +550,19 @@
                 <div id="expenses-summary" class="mb-4 p-4 rounded-xl" style="background: linear-gradient(135deg, rgba(167, 139, 250, 0.15) 0%, rgba(236, 72, 153, 0.15) 50%, rgba(251, 207, 232, 0.15) 100%); box-shadow: 0 8px 32px 0 rgba(147, 51, 234, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.5); backdrop-filter: blur(8px); border: 2px solid rgba(167, 139, 250, 0.3); border-radius: 12px;">
                     <!-- Total Amount -->
                     <div class="flex justify-between items-center mb-2">
-                        <h3 class="font-bold text-purple-900 text-lg">Total Expenses</h3>
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-bold text-purple-900 text-lg">Total Expenses</h3>
+                            <button id="toggle-loans-btn" onclick="Expenses.toggleLoansInTotal()" class="px-2 py-1 rounded-lg text-xs font-semibold transition-all" title="Include/Exclude Loans">
+                                💰 Loans
+                            </button>
+                        </div>
                         <span id="expenses-total-amount" class="font-bold text-purple-900 text-xl">₹0</span>
                     </div>
                     <!-- Transaction Count and Date Range -->
                     <p id="expenses-transaction-info" class="text-sm text-purple-700 mb-1">0 transactions</p>
                     <p id="expenses-date-range" class="text-sm text-purple-700 mb-2">-</p>
+                    <!-- Loan EMI Info (if included) -->
+                    <p id="expenses-loan-info" class="text-xs text-purple-600 mb-1 hidden">+ <span id="loan-emi-amount">₹0</span> in loan EMIs</p>
                     <!-- Filter Info -->
                     <p class="text-xs text-purple-600">Filter: <span id="date-filter-label-info" class="font-medium text-purple-800">Current Month</span></p>
                 </div>

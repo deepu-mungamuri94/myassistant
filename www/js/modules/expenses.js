@@ -11,6 +11,7 @@ const Expenses = {
     endDate: null,
     searchTerm: '',
     expandedMonths: new Set(), // Track which months are expanded
+    includeLoansInTotal: false, // Toggle for including loans in total
     
     /**
      * Initialize with current month dates
@@ -220,12 +221,79 @@ const Expenses = {
      * Update the summary section with total, count, and date range
      */
     updateSummary(expenses) {
-        // Calculate total
-        const total = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+        // Calculate expenses total
+        const expensesTotal = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+        
+        // Calculate loan EMI total for current period
+        let loanEmiTotal = 0;
+        if (window.Loans && window.DB.loans) {
+            window.DB.loans.forEach(loan => {
+                const remaining = window.Loans.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
+                if (remaining.emisRemaining === 0) return; // Skip closed loans
+                
+                const emi = window.Loans.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
+                const firstDate = new Date(loan.firstEmiDate);
+                
+                // Count how many EMIs fall within the current date range
+                if (this.startDate && this.endDate) {
+                    const rangeStart = new Date(this.startDate);
+                    const rangeEnd = new Date(this.endDate);
+                    
+                    // Check each month in the range
+                    const currentDate = new Date(rangeStart);
+                    while (currentDate <= rangeEnd) {
+                        const emiDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), firstDate.getDate());
+                        
+                        // Check if this EMI date is within range and after the first EMI
+                        if (emiDate >= firstDate && emiDate >= rangeStart && emiDate <= rangeEnd) {
+                            // Calculate which EMI number this is
+                            const monthsElapsed = (emiDate.getFullYear() - firstDate.getFullYear()) * 12 
+                                                + (emiDate.getMonth() - firstDate.getMonth());
+                            const emiNumber = monthsElapsed + 1;
+                            
+                            // Only count if within total EMIs
+                            if (emiNumber > 0 && emiNumber <= loan.tenure) {
+                                loanEmiTotal += parseFloat(emi);
+                            }
+                        }
+                        
+                        // Move to next month
+                        currentDate.setMonth(currentDate.getMonth() + 1);
+                    }
+                }
+            });
+        }
+        
+        // Calculate final total based on toggle
+        const finalTotal = this.includeLoansInTotal ? expensesTotal + loanEmiTotal : expensesTotal;
         
         // Update total amount
         const totalEl = document.getElementById('expenses-total-amount');
-        if (totalEl) totalEl.textContent = Utils.formatCurrency(total);
+        if (totalEl) totalEl.textContent = Utils.formatCurrency(finalTotal);
+        
+        // Update toggle button appearance
+        const toggleBtn = document.getElementById('toggle-loans-btn');
+        if (toggleBtn) {
+            if (this.includeLoansInTotal) {
+                toggleBtn.className = 'px-2 py-1 rounded-lg text-xs font-semibold transition-all bg-green-100 text-green-700 border border-green-300';
+                toggleBtn.title = 'Loans Included - Click to Exclude';
+            } else {
+                toggleBtn.className = 'px-2 py-1 rounded-lg text-xs font-semibold transition-all bg-gray-100 text-gray-600 border border-gray-300';
+                toggleBtn.title = 'Loans Excluded - Click to Include';
+            }
+        }
+        
+        // Update loan info display
+        const loanInfoEl = document.getElementById('expenses-loan-info');
+        const loanAmountEl = document.getElementById('loan-emi-amount');
+        if (loanInfoEl && loanAmountEl) {
+            if (this.includeLoansInTotal && loanEmiTotal > 0) {
+                loanAmountEl.textContent = Utils.formatCurrency(loanEmiTotal);
+                loanInfoEl.classList.remove('hidden');
+            } else {
+                loanInfoEl.classList.add('hidden');
+            }
+        }
         
         // Update transaction count
         const countEl = document.getElementById('expenses-transaction-info');
@@ -327,6 +395,48 @@ const Expenses = {
             });
         }
         
+        // Get loan EMIs
+        if (window.Loans && window.DB.loans) {
+            window.DB.loans.forEach(loan => {
+                const remaining = window.Loans.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
+                if (remaining.emisRemaining === 0) return; // Skip closed loans
+                
+                const emi = window.Loans.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
+                const firstDate = new Date(loan.firstEmiDate);
+                const emiDay = firstDate.getDate();
+                
+                // Check if EMI is due this month
+                const thisMonthEmiDate = new Date(today.getFullYear(), today.getMonth(), emiDay);
+                const emiDateStr = thisMonthEmiDate.toISOString().split('T')[0];
+                
+                const loanEmi = {
+                    title: `Loan EMI: ${loan.loanType || 'Loan'}`,
+                    amount: parseFloat(emi),
+                    category: 'emi',
+                    date: emiDateStr,
+                    description: `${loan.bankName}${loan.reason ? ' - ' + loan.reason : ''}`,
+                    suggestedCard: null,
+                    isRecurring: true,
+                    isLoan: true
+                };
+                
+                // Check if date has passed
+                if (today.getDate() < emiDay) {
+                    upcoming.push(loanEmi);
+                } else {
+                    // Check if it exists in expenses
+                    const exists = window.DB.expenses.find(exp => 
+                        exp.title === loanEmi.title &&
+                        exp.date === emiDateStr &&
+                        Math.abs(exp.amount - loanEmi.amount) < 0.01
+                    );
+                    if (exists) {
+                        completed.push(loanEmi);
+                    }
+                }
+            });
+        }
+        
         // Get custom recurring expenses
         if (window.RecurringExpenses) {
             const upcomingRecurring = window.RecurringExpenses.getUpcoming();
@@ -361,6 +471,14 @@ const Expenses = {
         completed.sort((a, b) => new Date(a.date) - new Date(b.date));
         
         return { upcoming, completed };
+    },
+    
+    /**
+     * Toggle loans inclusion in total
+     */
+    toggleLoansInTotal() {
+        this.includeLoansInTotal = !this.includeLoansInTotal;
+        this.render();
     },
     
     /**
