@@ -887,6 +887,38 @@ const Expenses = {
                 </div>
             `;
         }
+        
+        // Enable/disable filter and toggle buttons based on expenses existence
+        this.updateControlsState();
+    },
+    
+    /**
+     * Enable/disable filter and toggle buttons
+     */
+    updateControlsState() {
+        const hasExpenses = window.DB && window.DB.expenses && window.DB.expenses.length > 0;
+        const filterButton = document.getElementById('expense-filter-btn');
+        const toggleButton = document.getElementById('toggle-loans-btn');
+        
+        if (filterButton) {
+            if (hasExpenses) {
+                filterButton.disabled = false;
+                filterButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                filterButton.disabled = true;
+                filterButton.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+        
+        if (toggleButton) {
+            if (hasExpenses) {
+                toggleButton.disabled = false;
+                toggleButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                toggleButton.disabled = true;
+                toggleButton.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
     },
     
     /**

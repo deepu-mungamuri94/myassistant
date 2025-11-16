@@ -566,7 +566,7 @@
                         <!-- Toggle Switch for Loans -->
                         <div class="flex items-center gap-2">
                             <span class="text-xs text-purple-700 font-medium">💰 Loans</span>
-                            <button id="toggle-loans-btn" onclick="Expenses.toggleLoansInTotal()" class="relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 bg-gray-300" title="Exclude Loans - Click to Include">
+                            <button id="toggle-loans-btn" onclick="if(!this.disabled && window.Expenses) Expenses.toggleLoansInTotal()" class="relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 bg-gray-300" title="Exclude Loans - Click to Include">
                                 <span id="toggle-loans-slider" class="inline-block w-4 h-4 transform rounded-full bg-white shadow-lg transition-transform translate-x-0.5"></span>
                             </button>
                         </div>
@@ -1111,16 +1111,16 @@
             <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Filter by Date</h2>
             
             <div class="grid grid-cols-2 gap-3 mb-4">
-                <button onclick="applyQuickFilter('today')" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all font-semibold">
+                <button onclick="if(window.Expenses) applyQuickFilter('today')" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all font-semibold">
                     Today
                 </button>
-                <button onclick="applyQuickFilter('week')" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all font-semibold">
+                <button onclick="if(window.Expenses) applyQuickFilter('week')" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all font-semibold">
                     Last 7 Days
                 </button>
-                <button onclick="applyQuickFilter('month')" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all font-semibold">
+                <button onclick="if(window.Expenses) applyQuickFilter('month')" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all font-semibold">
                     This Month
                 </button>
-                <button onclick="applyQuickFilter('year')" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all font-semibold">
+                <button onclick="if(window.Expenses) applyQuickFilter('year')" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all font-semibold">
                     This Year
                 </button>
             </div>
@@ -1143,7 +1143,7 @@
                 <button onclick="applyCustomDateFilter()" class="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
                     Apply
                 </button>
-                <button onclick="applyQuickFilter('all')" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                <button onclick="if(window.Expenses) applyQuickFilter('all')" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
                     All Time
                 </button>
             </div>
@@ -3350,9 +3350,7 @@
                     // Hide unlock modal
                     document.getElementById('security-unlock-modal').classList.add('hidden');
                     
-                    Toast.success('✅ Unlocked successfully!');
-                    
-                    // Continue app initialization
+                    // Continue app initialization (no toast - just unlock silently)
                     window.App.init();
                 } else {
                     Toast.error('❌ Incorrect PIN');
@@ -3383,9 +3381,7 @@
                     // Hide unlock modal
                     document.getElementById('security-unlock-modal').classList.add('hidden');
                     
-                    Toast.success('✅ Unlocked with biometric!');
-                    
-                    // Continue app initialization
+                    // Continue app initialization (no toast - just unlock silently)
                     window.App.init();
                 }
             } catch (error) {
