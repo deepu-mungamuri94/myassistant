@@ -1016,7 +1016,7 @@
                     Today
                 </button>
                 <button onclick="applyQuickFilter('week')" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all font-semibold">
-                    This Week
+                    Last 7 Days
                 </button>
                 <button onclick="applyQuickFilter('month')" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all font-semibold">
                     This Month
@@ -1991,10 +1991,10 @@
             const now = new Date();
             const year = now.getFullYear();
             const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
+            const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
             
             document.getElementById('expense-start-date').value = `${year}-${month}-01`;
-            document.getElementById('expense-end-date').value = `${year}-${month}-${day}`;
+            document.getElementById('expense-end-date').value = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
             updateExpenseFilters();
         }
         
@@ -2135,15 +2135,26 @@
                     label = 'Today';
                     break;
                 case 'week':
+                    // Last 7 days (today to 6 days ago)
                     const weekStart = new Date(today);
-                    weekStart.setDate(today.getDate() - today.getDay());
-                    startDate = weekStart.toISOString().split('T')[0];
-                    endDate = today.toISOString().split('T')[0];
-                    label = 'This Week';
+                    weekStart.setDate(today.getDate() - 6);
+                    const weekStartYear = weekStart.getFullYear();
+                    const weekStartMonth = String(weekStart.getMonth() + 1).padStart(2, '0');
+                    const weekStartDay = String(weekStart.getDate()).padStart(2, '0');
+                    const todayYear = today.getFullYear();
+                    const todayMonth = String(today.getMonth() + 1).padStart(2, '0');
+                    const todayDay = String(today.getDate()).padStart(2, '0');
+                    startDate = `${weekStartYear}-${weekStartMonth}-${weekStartDay}`;
+                    endDate = `${todayYear}-${todayMonth}-${todayDay}`;
+                    label = 'Last 7 Days';
                     break;
                 case 'month':
-                    startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-                    endDate = today.toISOString().split('T')[0];
+                    // Full current month (1st to last day)
+                    const monthYear = today.getFullYear();
+                    const monthNum = String(today.getMonth() + 1).padStart(2, '0');
+                    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+                    startDate = `${monthYear}-${monthNum}-01`;
+                    endDate = `${monthYear}-${monthNum}-${String(lastDay).padStart(2, '0')}`;
                     label = 'Current Month';
                     break;
                 case 'year':

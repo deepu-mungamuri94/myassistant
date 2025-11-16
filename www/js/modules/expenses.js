@@ -19,10 +19,10 @@ const Expenses = {
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
         
         this.startDate = `${year}-${month}-01`; // First day of current month
-        this.endDate = `${year}-${month}-${day}`; // Today
+        this.endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`; // Last day of current month
         this.currentPage = 1;
     },
     
