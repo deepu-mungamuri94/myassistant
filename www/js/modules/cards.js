@@ -344,7 +344,9 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
      * Get card by ID
      */
     getById(id) {
-        return window.DB.cards.find(c => c.id === id);
+        // Convert to string to handle both string and number IDs
+        const searchId = String(id);
+        return window.DB.cards.find(c => String(c.id) === searchId);
     },
 
     /**
