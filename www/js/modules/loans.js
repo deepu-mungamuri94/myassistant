@@ -487,7 +487,7 @@ const Loans = {
                 const thisMonthEmiDate = new Date(today.getFullYear(), today.getMonth(), emiDay);
                 const emiDateStr = thisMonthEmiDate.toISOString().split('T')[0];
                 
-                const loanEmiTitle = `Loan EMI: ${loan.loanType || 'Loan'}`;
+                const loanEmiTitle = `${loan.bankName} ${loan.loanType || 'Loan'} EMI`;
                 
                 // Check if already added to expenses
                 const exists = window.DB.expenses.find(exp => 
@@ -503,7 +503,7 @@ const Loans = {
                         emi,
                         'emi',
                         emiDateStr,
-                        `${loan.bankName}${loan.reason ? ' - ' + loan.reason : ''}`,
+                        loan.reason || 'Monthly payment',
                         null
                     );
                     addedCount++;

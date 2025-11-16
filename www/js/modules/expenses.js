@@ -429,11 +429,11 @@ const Expenses = {
                 console.log('Loan EMI date:', emiDateStr, 'Amount:', emi);
                 
                 const loanEmi = {
-                    title: `Loan EMI: ${loan.loanType || 'Loan'}`,
+                    title: `${loan.bankName} ${loan.loanType || 'Loan'} EMI`,
                     amount: parseFloat(emi),
                     category: 'emi',
                     date: emiDateStr,
-                    description: `${loan.bankName}${loan.reason ? ' - ' + loan.reason : ''}`,
+                    description: loan.reason || 'Monthly payment',
                     suggestedCard: null,
                     isRecurring: true,
                     isLoan: true
