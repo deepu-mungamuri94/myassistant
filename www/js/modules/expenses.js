@@ -58,12 +58,13 @@ const Expenses = {
     delete(id) {
         const expense = this.getById(id);
         
-        // If it's an auto-added recurring expense (loan or card EMI), mark as dismissed
-        if (expense && (this.isLoanEMIExpense(expense) || (expense.category === 'emi' && expense.title.startsWith('EMI:')))) {
+        // If it's an auto-added recurring expense, mark as dismissed
+        if (expense && this.isAutoRecurringExpense(expense)) {
             const dismissal = {
                 title: expense.title,
                 date: expense.date,
                 amount: expense.amount,
+                category: expense.category,
                 dismissedAt: Utils.getCurrentTimestamp()
             };
             
@@ -229,6 +230,22 @@ const Expenses = {
                expense.title.includes(' EMI') && 
                expense.category === 'emi' && 
                !expense.title.startsWith('EMI:');
+    },
+    
+    /**
+     * Check if an expense is an auto-recurring expense (loan EMI, card EMI, or custom recurring)
+     */
+    isAutoRecurringExpense(expense) {
+        // Loan EMIs
+        if (this.isLoanEMIExpense(expense)) return true;
+        
+        // Card EMIs (start with "EMI:")
+        if (expense.category === 'emi' && expense.title && expense.title.startsWith('EMI:')) return true;
+        
+        // Custom recurring expenses (category is 'recurring')
+        if (expense.category === 'recurring') return true;
+        
+        return false;
     },
     
     /**
@@ -738,7 +755,7 @@ const Expenses = {
                         ${isExpanded ? `
                             <div class="p-3 space-y-2 bg-purple-50">
                                 ${group.expenses.map(expense => {
-                                    const isLoanEMI = this.isLoanEMIExpense(expense);
+                                    const isAutoRecurring = this.isAutoRecurringExpense(expense);
                                     return `
                                     <div class="p-3 bg-white rounded-lg border border-purple-200 hover:shadow-md transition-all">
                                         <!-- Top Row: Title with Category + Actions -->
@@ -748,7 +765,7 @@ const Expenses = {
                                                 <span class="text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded">${Utils.escapeHtml(expense.category)}</span>
                                             </div>
                                             <div class="flex gap-1">
-                                                ${!isLoanEMI ? `
+                                                ${!isAutoRecurring ? `
                                                     <button onclick="openExpenseModal(${expense.id})" class="text-green-600 hover:text-green-800 p-1" title="Edit">
                                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
@@ -784,7 +801,7 @@ const Expenses = {
         } else {
             // Render flat list for single month
             list.innerHTML += paginatedExpenses.map(expense => {
-                const isLoanEMI = this.isLoanEMIExpense(expense);
+                const isAutoRecurring = this.isAutoRecurringExpense(expense);
                 return `
                 <div class="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200 hover:shadow-md transition-all">
                     <!-- Top Row: Title with Category + Actions -->
@@ -794,7 +811,7 @@ const Expenses = {
                             <span class="text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded">${Utils.escapeHtml(expense.category)}</span>
                         </div>
                         <div class="flex gap-2">
-                            ${!isLoanEMI ? `
+                            ${!isAutoRecurring ? `
                                 <button onclick="openExpenseModal(${expense.id})" class="text-green-600 hover:text-green-800 p-1" title="Edit">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>

@@ -275,6 +275,14 @@ const RecurringExpenses = {
                     
                     const dueDateStr = dueDate.toISOString().split('T')[0];
                     
+                    // Check if dismissed by user
+                    const isDismissed = window.Expenses && window.Expenses.isDismissed(recurring.name, dueDateStr, recurring.amount);
+                    
+                    if (isDismissed) {
+                        console.log('Recurring expense dismissed by user, skipping:', recurring.name);
+                        continue;
+                    }
+                    
                     // Check if expense already exists
                     const existingExpense = window.DB.expenses.find(exp => 
                         exp.title === recurring.name &&
