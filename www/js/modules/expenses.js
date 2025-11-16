@@ -197,6 +197,25 @@ const Expenses = {
     },
     
     /**
+     * Check if viewing a single month (for recurring expenses display)
+     */
+    isSingleMonth() {
+        if (!this.startDate || !this.endDate) return false;
+        
+        const start = new Date(this.startDate);
+        const end = new Date(this.endDate);
+        
+        // Check if same month and year, and roughly covers the whole month
+        if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+            // Check if it's a reasonable month range (at least 25 days to be considered a "month view")
+            const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+            return daysDiff >= 25;
+        }
+        
+        return false;
+    },
+    
+    /**
      * Update filters and re-render
      */
     updateFilters(startDate, endDate, searchTerm) {
@@ -363,11 +382,20 @@ const Expenses = {
         
         const filteredExpenses = this.getFilteredExpenses();
         
-        // Get recurring expenses (upcoming and completed)
-        const recurringData = this.getRecurringExpenses();
-        const upcomingRecurring = recurringData.upcoming;
-        const completedRecurring = recurringData.completed;
-        const totalRecurring = upcomingRecurring.length + completedRecurring.length;
+        // Check if viewing a single month (for recurring expenses display)
+        const isSingleMonth = this.isSingleMonth();
+        
+        // Get recurring expenses (upcoming and completed) - only for monthly view
+        let upcomingRecurring = [];
+        let completedRecurring = [];
+        let totalRecurring = 0;
+        
+        if (isSingleMonth) {
+            const recurringData = this.getRecurringExpenses();
+            upcomingRecurring = recurringData.upcoming;
+            completedRecurring = recurringData.completed;
+            totalRecurring = upcomingRecurring.length + completedRecurring.length;
+        }
         
         if (filteredExpenses.length === 0 && totalRecurring === 0) {
             list.innerHTML = `
