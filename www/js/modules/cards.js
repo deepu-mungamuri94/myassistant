@@ -513,7 +513,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 <!-- Bottom Section: Card Rules -->
                 <div class="pt-3 border-t border-slate-300 border-opacity-50">
                     <div class="flex justify-between items-center">
-                        <span class="text-sm font-semibold text-slate-800">💎 Card Rules</span>
+                        <span class="text-sm font-semibold text-slate-800">📋 Card Rules</span>
                         <div class="flex gap-2">
                             <button onclick="${card.benefits ? `Cards.showBenefitsModal(${card.id})` : 'void(0)'}" 
                                     class="text-xs ${card.benefits ? 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700' : 'bg-gray-400 cursor-not-allowed opacity-60'} text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-md"
