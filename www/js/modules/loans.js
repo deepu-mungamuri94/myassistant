@@ -217,6 +217,20 @@ const Loans = {
             const closureDate = this.calculateClosureDate(loan.firstEmiDate, loan.tenure);
             const remaining = this.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
             
+            // Debug log to see actual values
+            console.log('Loan Debug:', {
+                bankName: loan.bankName,
+                principal: loan.amount,
+                interestRate: loan.interestRate,
+                tenure: loan.tenure,
+                calculatedEMI: emi,
+                totalAmount: totalAmount,
+                totalInterest: totalInterest,
+                formattedEMI: Utils.formatIndianNumber(emi),
+                formattedTotal: Utils.formatIndianNumber(totalAmount),
+                formattedInterest: Utils.formatIndianNumber(totalInterest)
+            });
+            
             const progress = ((loan.tenure - remaining.emisRemaining) / loan.tenure) * 100;
             const isCompleted = remaining.emisRemaining === 0;
             const isExpanded = this.expandedLoans.has(loan.id);
