@@ -810,16 +810,24 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         // Active EMIs
         if (activeEMIs.length > 0) {
             html += '<h3 class="text-sm font-semibold text-gray-700 mb-2">Active EMIs</h3>';
-            html += activeEMIs.map(emi => `
+            html += activeEMIs.map(emi => {
+                // Calculate end date (first date + total EMIs months)
+                let endDateStr = 'N/A';
+                if (emi.firstEmiDate) {
+                    const firstDate = new Date(emi.firstEmiDate);
+                    const endDate = new Date(firstDate);
+                    endDate.setMonth(endDate.getMonth() + emi.totalCount - 1);
+                    endDateStr = endDate.toISOString().split('T')[0];
+                }
+                
+                // Calculate total amount
+                const totalAmount = emi.emiAmount ? (parseFloat(emi.emiAmount) * emi.totalCount).toFixed(0) : null;
+                
+                return `
                 <div class="p-3 rounded-lg border border-blue-300 mb-2 backdrop-blur-md bg-white/40" style="background: rgba(219, 234, 254, 0.5); backdrop-filter: blur(10px);">
-                    <div class="flex justify-between items-start">
+                    <div class="flex justify-between items-start mb-2">
                         <div class="flex-1">
                             <p class="text-sm font-semibold text-gray-800">${Utils.escapeHtml(emi.reason)}</p>
-                            <p class="text-xs text-gray-600 mt-1">Start: ${Utils.escapeHtml(emi.firstEmiDate || emi.date)}</p>
-                            <p class="text-xs text-gray-600">Progress: ${emi.paidCount}/${emi.totalCount} EMIs</p>
-                            <div class="w-full bg-gray-200/60 rounded-full h-1.5 mt-1">
-                                <div class="bg-blue-600 h-1.5 rounded-full" style="width: ${(emi.paidCount/emi.totalCount)*100}%"></div>
-                            </div>
                         </div>
                         <div class="flex gap-1 ml-2">
                             <button onclick="Cards.editEMI(${cardId}, '${emi.id}')" class="text-blue-600 hover:text-blue-800 p-1" title="Edit">
@@ -841,8 +849,21 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                             </button>
                         </div>
                     </div>
+                    <div class="flex justify-between items-center">
+                        <div class="flex-1">
+                            <p class="text-xs text-gray-600">
+                                📅 ${Utils.escapeHtml(emi.firstEmiDate || emi.date)} → ${Utils.escapeHtml(endDateStr)}
+                            </p>
+                        </div>
+                        ${totalAmount ? `<p class="text-xs font-semibold text-blue-700 ml-2">₹${Utils.escapeHtml(totalAmount)}</p>` : ''}
+                    </div>
+                    <p class="text-xs text-gray-600 mt-1">Progress: ${emi.paidCount}/${emi.totalCount} EMIs ${emi.emiAmount ? `(₹${Utils.escapeHtml(emi.emiAmount)}/month)` : ''}</p>
+                    <div class="w-full bg-gray-200/60 rounded-full h-1.5 mt-1">
+                        <div class="bg-blue-600 h-1.5 rounded-full" style="width: ${(emi.paidCount/emi.totalCount)*100}%"></div>
+                    </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         }
         
         // Completed EMIs (collapsed by default)
@@ -851,13 +872,24 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 <details class="mt-4">
                     <summary class="text-sm font-semibold text-gray-500 cursor-pointer">Completed EMIs (${completedEMIs.length})</summary>
                     <div class="mt-2">
-                        ${completedEMIs.map(emi => `
+                        ${completedEMIs.map(emi => {
+                            // Calculate end date (first date + total EMIs months)
+                            let endDateStr = 'N/A';
+                            if (emi.firstEmiDate) {
+                                const firstDate = new Date(emi.firstEmiDate);
+                                const endDate = new Date(firstDate);
+                                endDate.setMonth(endDate.getMonth() + emi.totalCount - 1);
+                                endDateStr = endDate.toISOString().split('T')[0];
+                            }
+                            
+                            // Calculate total amount
+                            const totalAmount = emi.emiAmount ? (parseFloat(emi.emiAmount) * emi.totalCount).toFixed(0) : null;
+                            
+                            return `
                             <div class="p-3 bg-gray-100 rounded-lg border border-gray-300 mb-2 opacity-60">
-                                <div class="flex justify-between items-start">
+                                <div class="flex justify-between items-start mb-2">
                                     <div class="flex-1">
                                         <p class="text-sm font-semibold text-gray-700 line-through">${Utils.escapeHtml(emi.reason)}</p>
-                                        <p class="text-xs text-gray-500 mt-1">Date: ${Utils.escapeHtml(emi.date)}</p>
-                                        <p class="text-xs text-gray-500">Completed: ${emi.totalCount}/${emi.totalCount} EMIs ✓</p>
                                     </div>
                                     <button onclick="Cards.deleteEMI(${cardId}, '${emi.id}')" class="text-red-600 hover:text-red-800 p-1" title="Delete">
                                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -865,8 +897,18 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                                         </svg>
                                     </button>
                                 </div>
+                                <div class="flex justify-between items-center">
+                                    <div class="flex-1">
+                                        <p class="text-xs text-gray-500">
+                                            📅 ${Utils.escapeHtml(emi.firstEmiDate || emi.date)} → ${Utils.escapeHtml(endDateStr)}
+                                        </p>
+                                    </div>
+                                    ${totalAmount ? `<p class="text-xs font-semibold text-gray-600 ml-2">₹${Utils.escapeHtml(totalAmount)}</p>` : ''}
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Completed: ${emi.totalCount}/${emi.totalCount} EMIs ✓ ${emi.emiAmount ? `(₹${Utils.escapeHtml(emi.emiAmount)}/month)` : ''}</p>
                             </div>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     </div>
                 </details>
             `;
