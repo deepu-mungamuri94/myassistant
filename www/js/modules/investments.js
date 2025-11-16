@@ -19,7 +19,7 @@ const Investments = {
         const investment = {
             id: Utils.generateId(),
             name,
-            type, // 'stock', 'mutual_fund', 'fd', 'pf', 'gold', 'general'
+            type, // 'stock', 'mutual_fund', 'fd', 'epf', 'gold', 'general'
             amount: parseFloat(amount), // Always in INR
             term: term.toLowerCase(),
             quantity: quantity ? parseFloat(quantity) : null,
