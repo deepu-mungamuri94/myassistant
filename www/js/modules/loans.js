@@ -5,6 +5,8 @@
 
 const Loans = {
     expandedLoans: new Set(), // Track which loans are expanded
+    activeSectionExpanded: false, // Track active loans section
+    closedSectionExpanded: false, // Track closed loans section
     
     /**
      * Toggle loan expansion
@@ -15,6 +17,14 @@ const Loans = {
         } else {
             this.expandedLoans.add(loanId);
         }
+        this.render();
+    },
+    
+    /**
+     * Toggle active loans section
+     */
+    toggleActiveSection() {
+        this.activeSectionExpanded = !this.activeSectionExpanded;
         this.render();
     },
     
@@ -210,24 +220,64 @@ const Loans = {
             return;
         }
         
-        // Separate active and closed loans
+        // Separate active and closed loans and calculate totals
         const activeLoans = [];
         const closedLoans = [];
+        let totalRemainingAmount = 0;
+        let totalAmountTaken = 0;
         
         loans.forEach(loan => {
             const remaining = this.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
+            totalAmountTaken += parseFloat(loan.amount);
+            
             if (remaining.emisRemaining === 0) {
                 closedLoans.push(loan);
             } else {
                 activeLoans.push(loan);
+                totalRemainingAmount += remaining.remainingBalance;
             }
         });
         
         let html = '';
         
-        // Render active loans
+        // Render summary
+        html += `
+            <div class="mb-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl p-4 shadow-lg">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm opacity-90">Total Borrowed</p>
+                        <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(totalAmountTaken)}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm opacity-90">Remaining to Pay</p>
+                        <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(totalRemainingAmount)}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Render active loans section
         if (activeLoans.length > 0) {
-            html += activeLoans.map(loan => this.renderLoanCard(loan, false)).join('');
+            html += `
+                <div class="mb-4">
+                    <div class="bg-blue-50 rounded-xl border-2 border-blue-200">
+                        <div class="p-3 cursor-pointer flex justify-between items-center" onclick="Loans.toggleActiveSection()">
+                            <h3 class="font-bold text-blue-800 flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"/>
+                                </svg>
+                                Active Loans (${activeLoans.length})
+                            </h3>
+                            <svg class="w-5 h-5 text-blue-700 transition-transform ${this.activeSectionExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </div>
+                        <div class="${this.activeSectionExpanded ? '' : 'hidden'} px-3 pb-3 space-y-3">
+                            ${activeLoans.map(loan => this.renderLoanCard(loan, false)).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
         }
         
         // Render closed loans section
@@ -289,7 +339,7 @@ const Loans = {
                                 </div>
                                 <span class="font-bold text-blue-900 text-lg">₹${Utils.formatIndianNumber(loan.amount)}</span>
                             </div>
-                            <p class="text-sm text-blue-700 mb-2">${Utils.escapeHtml(loan.reason)}</p>
+                            <p class="text-sm text-gray-700 mb-2">${Utils.escapeHtml(loan.reason)}</p>
                             
                             <!-- Key Info in Collapsed View -->
                             <div class="flex justify-between items-center text-xs mb-2">
@@ -386,8 +436,6 @@ const Loans = {
             </div>
         `;
     },
-    
-    closedSectionExpanded: false,
     
     /**
      * Toggle closed loans section
