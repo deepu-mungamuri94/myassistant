@@ -536,7 +536,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     ${this.calculateUsedLimit(card) > 0 ? `<span class="text-xs text-orange-600 font-medium ml-2">Used: ₹${Utils.formatIndianNumber(this.calculateUsedLimit(card))}</span>` : ''}
                 </div>
                 
-                <!-- Bottom Section: EMIs, View Terms, Update Terms -->
+                <!-- Bottom Section: EMIs, Terms (View), Terms (Update) -->
                 <div class="pt-3 border-t border-slate-300 border-opacity-50">
                     <div class="flex justify-between items-center gap-2">
                         <button onclick="Cards.openEMIModal(${card.id})" class="flex-1 text-xs bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-3 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 shadow-md">
@@ -548,22 +548,22 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                         </button>
                         <button onclick="${card.benefits ? `Cards.showBenefitsModal(${card.id})` : 'void(0)'}"
                                 class="flex-1 text-xs ${card.benefits ? 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700' : 'bg-gray-400 cursor-not-allowed opacity-60'} text-white px-3 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 shadow-md"
-                                title="${card.benefits ? 'View full terms' : 'No terms fetched yet - click Update Terms first'}"
+                                title="${card.benefits ? 'View terms' : 'No terms fetched yet'}"
                                 ${!card.benefits ? 'disabled' : ''}>
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                             </svg>
-                            View Terms
+                            Terms
                         </button>
                         <button onclick="Cards.refreshBenefits(${card.id})"
                                 id="refresh-btn-${card.id}"
                                 class="flex-1 text-xs bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-3 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 shadow-md"
-                                title="Fetch latest terms">
+                                title="Update terms">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                             </svg>
-                            <span id="refresh-text-${card.id}">Update Terms</span>
+                            <span id="refresh-text-${card.id}">Terms</span>
                         </button>
                     </div>
                 </div>
