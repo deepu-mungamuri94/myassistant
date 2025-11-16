@@ -2144,11 +2144,11 @@
                     const weekStartYear = weekStart.getFullYear();
                     const weekStartMonth = String(weekStart.getMonth() + 1).padStart(2, '0');
                     const weekStartDay = String(weekStart.getDate()).padStart(2, '0');
-                    const todayYear = today.getFullYear();
-                    const todayMonth = String(today.getMonth() + 1).padStart(2, '0');
-                    const todayDay = String(today.getDate()).padStart(2, '0');
+                    const weekEndYear = today.getFullYear();
+                    const weekEndMonth = String(today.getMonth() + 1).padStart(2, '0');
+                    const weekEndDay = String(today.getDate()).padStart(2, '0');
                     startDate = `${weekStartYear}-${weekStartMonth}-${weekStartDay}`;
-                    endDate = `${todayYear}-${todayMonth}-${todayDay}`;
+                    endDate = `${weekEndYear}-${weekEndMonth}-${weekEndDay}`;
                     label = 'Last 7 Days';
                     break;
                 case 'month':
