@@ -33,17 +33,35 @@ const Utils = {
     },
 
     /**
-     * Format number with Indian style commas (lakhs, crores) - no decimals
+     * Format number with Indian style commas (lakhs, crores) with decimals
      */
     formatIndianNumber(num) {
-        if (!num) return num;
-        const numStr = num.toString();
-        const lastThree = numStr.substring(numStr.length - 3);
-        const otherNumbers = numStr.substring(0, numStr.length - 3);
+        if (!num && num !== 0) return '0';
+        
+        // Convert to number and handle decimals
+        const number = typeof num === 'string' ? parseFloat(num) : num;
+        if (isNaN(number)) return '0';
+        
+        // Split into integer and decimal parts
+        const parts = number.toFixed(2).split('.');
+        const integerPart = parts[0];
+        const decimalPart = parts[1];
+        
+        // Format integer part with Indian comma style
+        const lastThree = integerPart.substring(integerPart.length - 3);
+        const otherNumbers = integerPart.substring(0, integerPart.length - 3);
+        
+        let formatted = lastThree;
         if (otherNumbers !== '') {
-            return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + lastThree;
+            formatted = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + lastThree;
         }
-        return lastThree;
+        
+        // Add decimal part if not .00
+        if (decimalPart && decimalPart !== '00') {
+            formatted += '.' + decimalPart;
+        }
+        
+        return formatted;
     },
 
     /**

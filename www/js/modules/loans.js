@@ -112,20 +112,14 @@ const Loans = {
         const R = parseFloat(annualRate);
         const N = parseInt(tenure);
         
-        console.log('EMI Calculation:', { P, R, N });
-        
         const monthlyRate = (R / 12) / 100;
-        console.log('Monthly Rate:', monthlyRate);
         
         if (monthlyRate === 0) {
-            const emi = P / N;
-            console.log('Zero interest EMI:', emi);
-            return Math.round(emi * 100) / 100;
+            return Math.round((P / N) * 100) / 100;
         }
         
         const powerTerm = Math.pow(1 + monthlyRate, N);
         const emi = (P * monthlyRate * powerTerm) / (powerTerm - 1);
-        console.log('Calculated EMI:', emi);
         
         return Math.round(emi * 100) / 100; // Round to 2 decimals
     },
@@ -135,7 +129,6 @@ const Loans = {
      */
     calculateTotalAmount(emi, tenure) {
         const total = parseFloat(emi) * parseInt(tenure);
-        console.log('Total Amount:', { emi, tenure, total });
         return Math.round(total * 100) / 100;
     },
     
@@ -144,7 +137,6 @@ const Loans = {
      */
     calculateTotalInterest(totalAmount, principal) {
         const interest = parseFloat(totalAmount) - parseFloat(principal);
-        console.log('Total Interest:', { totalAmount, principal, interest });
         return Math.round(interest * 100) / 100;
     },
     
@@ -239,12 +231,22 @@ const Loans = {
                                     <h4 class="font-bold text-blue-900 text-lg">${Utils.escapeHtml(loan.bankName)}</h4>
                                     ${isCompleted ? '<span class="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-semibold">✓</span>' : ''}
                                 </div>
-                                <p class="text-sm text-blue-700">${Utils.escapeHtml(loan.reason)}</p>
+                                <p class="text-sm text-blue-700 mb-2">${Utils.escapeHtml(loan.reason)}</p>
                                 
                                 <!-- Key Info in Collapsed View -->
-                                <div class="mt-2 flex justify-between text-sm">
-                                    <span class="text-gray-700">EMI: <strong class="text-blue-900">₹${Utils.formatIndianNumber(emi)}</strong></span>
-                                    <span class="text-gray-700">Balance: <strong class="${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</strong></span>
+                                <div class="mt-1 space-y-1">
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-gray-600">Monthly EMI:</span>
+                                        <span class="font-bold text-blue-900">₹${Utils.formatIndianNumber(emi)}</span>
+                                    </div>
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-gray-600">Total Amount:</span>
+                                        <span class="font-bold text-blue-900">₹${Utils.formatIndianNumber(totalAmount)}</span>
+                                    </div>
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-gray-600">Balance Left:</span>
+                                        <span class="font-bold ${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</span>
+                                    </div>
                                 </div>
                             </div>
                             
