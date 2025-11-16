@@ -506,7 +506,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                         <span class="text-xs text-slate-600 font-medium">Expiry: ${Utils.escapeHtml(card.expiry)}</span>
                         <span class="text-xs text-slate-600 font-medium">CVV: <span id="card-cvv-${card.id}">•••</span></span>
                     </div>
-                    ${card.creditLimit ? `<span class="text-xs text-slate-600 font-medium">💳 Limit: ₹${Utils.escapeHtml(card.creditLimit)}</span>` : '<span></span>'}
+                    ${card.creditLimit ? `<span class="text-xs text-slate-600 font-medium">💳 Limit: ₹${Utils.formatIndianNumber(card.creditLimit)}</span>` : '<span></span>'}
                 </div>
                 
                 <!-- Note (Left) and EMI Button (Right, inline) -->
@@ -863,9 +863,9 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                                 📅 ${Utils.escapeHtml(emi.firstEmiDate || emi.date)} → ${Utils.escapeHtml(endDateStr)}
                             </p>
                         </div>
-                        ${totalAmount ? `<p class="text-xs font-semibold text-blue-700 ml-2">₹${Utils.escapeHtml(totalAmount)}</p>` : ''}
+                        ${totalAmount ? `<p class="text-xs font-semibold text-blue-700 ml-2">₹${Utils.formatIndianNumber(totalAmount)}</p>` : ''}
                     </div>
-                    <p class="text-xs text-gray-600 mt-1">Progress: ${emi.paidCount}/${emi.totalCount} EMIs ${emi.emiAmount ? `(₹${Utils.escapeHtml(emi.emiAmount)}/month)` : ''}</p>
+                    <p class="text-xs text-gray-600 mt-1">Progress: ${emi.paidCount}/${emi.totalCount} EMIs ${emi.emiAmount ? `(₹${Utils.formatIndianNumber(emi.emiAmount)}/month)` : ''}</p>
                     <div class="w-full bg-gray-200/60 rounded-full h-1.5 mt-1">
                         <div class="bg-blue-600 h-1.5 rounded-full" style="width: ${(emi.paidCount/emi.totalCount)*100}%"></div>
                     </div>
@@ -894,10 +894,13 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                             const totalAmount = emi.emiAmount ? (parseFloat(emi.emiAmount) * emi.totalCount).toFixed(0) : null;
                             
                             return `
-                            <div class="p-3 bg-gray-100 rounded-lg border border-gray-300 mb-2 opacity-60">
+                            <div class="p-3 rounded-lg border border-green-300 mb-2" style="background: rgba(220, 252, 231, 0.6);">
                                 <div class="flex justify-between items-start mb-2">
                                     <div class="flex-1">
-                                        <p class="text-sm font-semibold text-gray-700 line-through">${Utils.escapeHtml(emi.reason)}</p>
+                                        <p class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                            ${Utils.escapeHtml(emi.reason)}
+                                            <span class="text-xs text-green-600">✓ Completed</span>
+                                        </p>
                                     </div>
                                     <button onclick="Cards.deleteEMI(${cardId}, '${emi.id}')" class="text-red-600 hover:text-red-800 p-1" title="Delete">
                                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -907,13 +910,13 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                                 </div>
                                 <div class="flex justify-between items-center">
                                     <div class="flex-1">
-                                        <p class="text-xs text-gray-500">
+                                        <p class="text-xs text-gray-600">
                                             📅 ${Utils.escapeHtml(emi.firstEmiDate || emi.date)} → ${Utils.escapeHtml(endDateStr)}
                                         </p>
                                     </div>
-                                    ${totalAmount ? `<p class="text-xs font-semibold text-gray-600 ml-2">₹${Utils.escapeHtml(totalAmount)}</p>` : ''}
+                                    ${totalAmount ? `<p class="text-xs font-semibold text-green-700 ml-2">₹${Utils.formatIndianNumber(totalAmount)}</p>` : ''}
                                 </div>
-                                <p class="text-xs text-gray-500 mt-1">Completed: ${emi.totalCount}/${emi.totalCount} EMIs ✓ ${emi.emiAmount ? `(₹${Utils.escapeHtml(emi.emiAmount)}/month)` : ''}</p>
+                                <p class="text-xs text-gray-600 mt-1">${emi.totalCount}/${emi.totalCount} EMIs paid ${emi.emiAmount ? `(₹${Utils.formatIndianNumber(emi.emiAmount)}/month)` : ''}</p>
                             </div>
                             `;
                         }).join('')}

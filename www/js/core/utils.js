@@ -33,6 +33,20 @@ const Utils = {
     },
 
     /**
+     * Format number with Indian style commas (lakhs, crores) - no decimals
+     */
+    formatIndianNumber(num) {
+        if (!num) return num;
+        const numStr = num.toString();
+        const lastThree = numStr.substring(numStr.length - 3);
+        const otherNumbers = numStr.substring(0, numStr.length - 3);
+        if (otherNumbers !== '') {
+            return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + lastThree;
+        }
+        return lastThree;
+    },
+
+    /**
      * Format date
      */
     formatDate(date) {
