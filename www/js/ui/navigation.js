@@ -40,6 +40,9 @@ const Navigation = {
             case 'expenses':
                 if (window.Expenses) window.Expenses.render();
                 break;
+            case 'recurring':
+                if (window.RecurringExpenses) window.RecurringExpenses.render();
+                break;
             case 'investments':
                 if (window.Investments) window.Investments.render();
                 break;

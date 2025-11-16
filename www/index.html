@@ -322,6 +322,19 @@
                     </div>
                 </button>
                 
+                <!-- Recurring Expenses -->
+                <button onclick="Navigation.navigateTo('recurring')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-orange-500 hover:to-amber-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-400 to-amber-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
+                        <svg class="w-4 h-4 text-white group-hover:text-orange-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <span class="font-bold text-sm">Recurring</span>
+                        <p class="text-[11px] opacity-70 group-hover:opacity-90">Manage recurring</p>
+                    </div>
+                </button>
+                
                 <!-- Credit Cards -->
                 <button onclick="Navigation.navigateTo('cards')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-green-500 hover:to-emerald-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
                     <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-green-400 to-emerald-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
@@ -541,6 +554,34 @@
                 <!-- Expenses List -->
                 <div id="expenses-list" class="space-y-3">
                     <!-- Expenses will be listed here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- RECURRING EXPENSES VIEW -->
+        <div id="recurring-view" class="hidden">
+            <div class="bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent flex items-center">
+                        <svg class="w-8 h-8 mr-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Recurring Expenses
+                    </h2>
+                    <button onclick="openRecurringExpenseModal()" class="px-3 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <p class="text-sm text-gray-600 mb-4 bg-orange-50 p-3 rounded-lg border border-orange-200">
+                    💡 <strong>Tip:</strong> Add recurring expenses like LIC premiums, insurance, subscriptions, etc. They'll be automatically added to your expenses on due dates.
+                </p>
+                
+                <!-- Recurring Expenses List -->
+                <div id="recurring-expenses-list" class="space-y-3">
+                    <!-- Recurring expenses will be listed here -->
                 </div>
             </div>
         </div>
@@ -862,6 +903,85 @@
                     Add
                 </button>
                 <button onclick="closeExpenseModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- RECURRING EXPENSE MODAL -->
+    <div id="recurring-expense-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeRecurringExpenseModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <h2 id="recurring-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Add Recurring Expense</h2>
+            
+            <input type="hidden" id="recurring-modal-id">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+            <input type="text" id="recurring-modal-name" placeholder="e.g., LIC Premium, Car Insurance" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">Amount (₹) *</label>
+            <input type="number" id="recurring-modal-amount" placeholder="Amount" step="0.01" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">Frequency *</label>
+            <select id="recurring-modal-frequency" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" onchange="updateRecurringFrequency()">
+                <option value="">Select Frequency</option>
+                <option value="monthly">Monthly (Every Month)</option>
+                <option value="yearly">Yearly (Specific Months)</option>
+                <option value="custom">Custom (Select Months)</option>
+            </select>
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">Day of Month *</label>
+            <input type="number" id="recurring-modal-day" placeholder="Day (1-31)" min="1" max="31" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+            
+            <div id="recurring-months-section" class="hidden mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Months *</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
+                        <input type="checkbox" class="mr-2" value="1"> Jan
+                    </label>
+                    <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
+                        <input type="checkbox" class="mr-2" value="2"> Feb
+                    </label>
+                    <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
+                        <input type="checkbox" class="mr-2" value="3"> Mar
+                    </label>
+                    <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
+                        <input type="checkbox" class="mr-2" value="4"> Apr
+                    </label>
+                    <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
+                        <input type="checkbox" class="mr-2" value="5"> May
+                    </label>
+                    <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
+                        <input type="checkbox" class="mr-2" value="6"> Jun
+                    </label>
+                    <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
+                        <input type="checkbox" class="mr-2" value="7"> Jul
+                    </label>
+                    <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
+                        <input type="checkbox" class="mr-2" value="8"> Aug
+                    </label>
+                    <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
+                        <input type="checkbox" class="mr-2" value="9"> Sep
+                    </label>
+                    <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
+                        <input type="checkbox" class="mr-2" value="10"> Oct
+                    </label>
+                    <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
+                        <input type="checkbox" class="mr-2" value="11"> Nov
+                    </label>
+                    <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
+                        <input type="checkbox" class="mr-2" value="12"> Dec
+                    </label>
+                </div>
+            </div>
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
+            <textarea id="recurring-modal-description" placeholder="Additional details" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" rows="2"></textarea>
+            
+            <div class="flex space-x-3">
+                <button onclick="saveRecurringExpenseModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                    Save
+                </button>
+                <button onclick="closeRecurringExpenseModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
                     Cancel
                 </button>
             </div>
@@ -2028,6 +2148,110 @@
             if (filterLabel) filterLabel.textContent = label;
             
             closeDateFilterModal();
+        }
+        
+        // Recurring Expense Modal Functions
+        window.openRecurringExpenseModal = function(id = null) {
+            // Clear fields
+            document.getElementById('recurring-modal-id').value = '';
+            document.getElementById('recurring-modal-name').value = '';
+            document.getElementById('recurring-modal-amount').value = '';
+            document.getElementById('recurring-modal-frequency').value = '';
+            document.getElementById('recurring-modal-day').value = '';
+            document.getElementById('recurring-modal-description').value = '';
+            document.getElementById('recurring-modal-title').textContent = 'Add Recurring Expense';
+            
+            // Hide months section by default
+            document.getElementById('recurring-months-section').classList.add('hidden');
+            
+            // Uncheck all month checkboxes
+            document.querySelectorAll('#recurring-months-section input[type="checkbox"]').forEach(cb => cb.checked = false);
+            
+            // If editing, populate with existing data
+            if (id) {
+                const recurring = window.RecurringExpenses.getById(id);
+                if (recurring) {
+                    document.getElementById('recurring-modal-id').value = recurring.id;
+                    document.getElementById('recurring-modal-name').value = recurring.name;
+                    document.getElementById('recurring-modal-amount').value = recurring.amount;
+                    document.getElementById('recurring-modal-frequency').value = recurring.frequency;
+                    document.getElementById('recurring-modal-day').value = recurring.day;
+                    document.getElementById('recurring-modal-description').value = recurring.description || '';
+                    document.getElementById('recurring-modal-title').textContent = 'Edit Recurring Expense';
+                    
+                    // Show months section if needed and check appropriate months
+                    if (recurring.frequency === 'yearly' || recurring.frequency === 'custom') {
+                        document.getElementById('recurring-months-section').classList.remove('hidden');
+                        recurring.months.forEach(month => {
+                            const checkbox = document.querySelector(`#recurring-months-section input[value="${month}"]`);
+                            if (checkbox) checkbox.checked = true;
+                        });
+                    }
+                }
+            }
+            
+            document.getElementById('recurring-expense-modal').classList.remove('hidden');
+        }
+        
+        window.closeRecurringExpenseModal = function() {
+            document.getElementById('recurring-expense-modal').classList.add('hidden');
+        }
+        
+        window.updateRecurringFrequency = function() {
+            const frequency = document.getElementById('recurring-modal-frequency').value;
+            const monthsSection = document.getElementById('recurring-months-section');
+            
+            if (frequency === 'yearly' || frequency === 'custom') {
+                monthsSection.classList.remove('hidden');
+            } else {
+                monthsSection.classList.add('hidden');
+            }
+        }
+        
+        window.saveRecurringExpenseModal = function() {
+            try {
+                const id = document.getElementById('recurring-modal-id').value;
+                const name = document.getElementById('recurring-modal-name').value.trim();
+                const amount = document.getElementById('recurring-modal-amount').value.trim();
+                const frequency = document.getElementById('recurring-modal-frequency').value;
+                const day = document.getElementById('recurring-modal-day').value.trim();
+                const description = document.getElementById('recurring-modal-description').value.trim();
+                
+                // Get selected months
+                const months = [];
+                if (frequency === 'yearly' || frequency === 'custom') {
+                    document.querySelectorAll('#recurring-months-section input[type="checkbox"]:checked').forEach(cb => {
+                        months.push(parseInt(cb.value));
+                    });
+                    
+                    if (months.length === 0) {
+                        throw new Error('Please select at least one month');
+                    }
+                }
+                
+                if (!name || !amount || !frequency || !day) {
+                    throw new Error('Please fill all required fields');
+                }
+                
+                if (parseInt(day) < 1 || parseInt(day) > 31) {
+                    throw new Error('Day must be between 1 and 31');
+                }
+                
+                if (id) {
+                    // Update existing
+                    window.RecurringExpenses.update(id, name, amount, frequency, day, months, description);
+                    Toast.success('Recurring expense updated!');
+                } else {
+                    // Add new
+                    window.RecurringExpenses.add(name, amount, frequency, day, months, description);
+                    Toast.success('Recurring expense added!');
+                }
+                
+                window.RecurringExpenses.render();
+                closeRecurringExpenseModal();
+            } catch (error) {
+                Toast.error(error.message);
+            }
         }
         
         window.applyCustomDateFilter = function() {
