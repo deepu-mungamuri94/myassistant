@@ -31,15 +31,16 @@ const Loans = {
     /**
      * Add a new loan
      */
-    add(bankName, reason, amount, interestRate, tenure, firstEmiDate) {
-        if (!bankName || !reason || !amount || !interestRate || !tenure || !firstEmiDate) {
-            throw new Error('All fields are required');
+    add(bankName, loanType, reason, amount, interestRate, tenure, firstEmiDate) {
+        if (!bankName || !loanType || !amount || !interestRate || !tenure || !firstEmiDate) {
+            throw new Error('All required fields must be filled');
         }
         
         const loan = {
             id: Utils.generateId(),
             bankName: bankName.trim(),
-            reason: reason.trim(),
+            loanType: loanType.trim(),
+            reason: reason ? reason.trim() : '',
             amount: parseFloat(amount),
             interestRate: parseFloat(interestRate),
             tenure: parseInt(tenure),
@@ -57,12 +58,13 @@ const Loans = {
     /**
      * Update a loan
      */
-    update(id, bankName, reason, amount, interestRate, tenure, firstEmiDate) {
+    update(id, bankName, loanType, reason, amount, interestRate, tenure, firstEmiDate) {
         const loan = this.getById(id);
         if (!loan) throw new Error('Loan not found');
         
         loan.bankName = bankName.trim();
-        loan.reason = reason.trim();
+        loan.loanType = loanType.trim();
+        loan.reason = reason ? reason.trim() : '';
         loan.amount = parseFloat(amount);
         loan.interestRate = parseFloat(interestRate);
         loan.tenure = parseInt(tenure);
@@ -351,7 +353,9 @@ const Loans = {
                                 </div>
                                 <span class="font-bold text-blue-900 text-lg">₹${Utils.formatIndianNumber(loan.amount)}</span>
                             </div>
-                            <p class="text-sm text-gray-700 mb-2">${Utils.escapeHtml(loan.reason)}</p>
+                            <p class="text-sm text-gray-700 mb-2">
+                                <strong>${Utils.escapeHtml(loan.loanType || 'Loan')}</strong>${loan.reason ? ': ' + Utils.escapeHtml(loan.reason) : ''}
+                            </p>
                             
                             <!-- Key Info in Collapsed View -->
                             <div class="flex justify-between items-center text-xs mb-2">
