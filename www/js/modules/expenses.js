@@ -271,14 +271,17 @@ const Expenses = {
         const totalEl = document.getElementById('expenses-total-amount');
         if (totalEl) totalEl.textContent = Utils.formatCurrency(finalTotal);
         
-        // Update toggle button appearance
+        // Update toggle switch appearance
         const toggleBtn = document.getElementById('toggle-loans-btn');
-        if (toggleBtn) {
+        const toggleSlider = document.getElementById('toggle-loans-slider');
+        if (toggleBtn && toggleSlider) {
             if (this.includeLoansInTotal) {
-                toggleBtn.className = 'px-2 py-1 rounded-lg text-xs font-semibold transition-all bg-green-100 text-green-700 border border-green-300';
+                toggleBtn.className = 'relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 bg-green-500';
+                toggleSlider.className = 'inline-block w-4 h-4 transform rounded-full bg-white shadow-lg transition-transform translate-x-4';
                 toggleBtn.title = 'Loans Included - Click to Exclude';
             } else {
-                toggleBtn.className = 'px-2 py-1 rounded-lg text-xs font-semibold transition-all bg-gray-100 text-gray-600 border border-gray-300';
+                toggleBtn.className = 'relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 bg-gray-300';
+                toggleSlider.className = 'inline-block w-4 h-4 transform rounded-full bg-white shadow-lg transition-transform translate-x-0.5';
                 toggleBtn.title = 'Loans Excluded - Click to Include';
             }
         }
@@ -397,17 +400,33 @@ const Expenses = {
         
         // Get loan EMIs
         if (window.Loans && window.DB.loans) {
+            console.log('Checking loans...', window.DB.loans.length, 'loans found');
             window.DB.loans.forEach(loan => {
+                console.log('Processing loan:', loan.bankName, loan.loanType);
+                
+                // Check if loan has started yet
+                const firstDate = new Date(loan.firstEmiDate);
+                if (firstDate > today) {
+                    console.log('Loan not started yet:', loan.bankName);
+                    return; // Loan hasn't started yet
+                }
+                
                 const remaining = window.Loans.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
-                if (remaining.emisRemaining === 0) return; // Skip closed loans
+                console.log('Remaining EMIs:', remaining.emisRemaining);
+                
+                if (remaining.emisRemaining === 0) {
+                    console.log('Loan closed:', loan.bankName);
+                    return; // Skip closed loans
+                }
                 
                 const emi = window.Loans.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
-                const firstDate = new Date(loan.firstEmiDate);
                 const emiDay = firstDate.getDate();
                 
                 // Check if EMI is due this month
                 const thisMonthEmiDate = new Date(today.getFullYear(), today.getMonth(), emiDay);
                 const emiDateStr = thisMonthEmiDate.toISOString().split('T')[0];
+                
+                console.log('Loan EMI date:', emiDateStr, 'Amount:', emi);
                 
                 const loanEmi = {
                     title: `Loan EMI: ${loan.loanType || 'Loan'}`,
@@ -420,21 +439,24 @@ const Expenses = {
                     isLoan: true
                 };
                 
-                // Check if date has passed
-                if (today.getDate() < emiDay) {
-                    upcoming.push(loanEmi);
+                // Check if it exists in expenses already
+                const exists = window.DB.expenses.find(exp => 
+                    exp.title === loanEmi.title &&
+                    exp.date === emiDateStr &&
+                    Math.abs(exp.amount - loanEmi.amount) < 0.01
+                );
+                
+                if (exists) {
+                    console.log('Loan EMI already in expenses (completed):', loanEmi.title);
+                    completed.push(loanEmi);
                 } else {
-                    // Check if it exists in expenses
-                    const exists = window.DB.expenses.find(exp => 
-                        exp.title === loanEmi.title &&
-                        exp.date === emiDateStr &&
-                        Math.abs(exp.amount - loanEmi.amount) < 0.01
-                    );
-                    if (exists) {
-                        completed.push(loanEmi);
-                    }
+                    // If date has passed but not added to expenses, still show as upcoming
+                    console.log('Loan EMI upcoming:', loanEmi.title);
+                    upcoming.push(loanEmi);
                 }
             });
+        } else {
+            console.log('No Loans module or no loans in DB');
         }
         
         // Get custom recurring expenses
@@ -497,6 +519,16 @@ const Expenses = {
                 totalAdded += emiCount;
             } catch (error) {
                 console.error('Error auto-adding EMI expenses:', error);
+            }
+        }
+        
+        // Auto-add loan EMI expenses (if any are due)
+        if (window.Loans && window.Loans.autoAddToExpenses) {
+            try {
+                const loanCount = window.Loans.autoAddToExpenses();
+                totalAdded += loanCount;
+            } catch (error) {
+                console.error('Error auto-adding loan EMI expenses:', error);
             }
         }
         

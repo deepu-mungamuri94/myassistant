@@ -462,6 +462,59 @@ const Loans = {
     },
     
     /**
+     * Auto-add loan EMI expenses that are due
+     */
+    autoAddToExpenses() {
+        const today = new Date();
+        let addedCount = 0;
+        
+        if (!window.DB.loans || !window.Expenses) return 0;
+        
+        window.DB.loans.forEach(loan => {
+            // Check if loan has started
+            const firstDate = new Date(loan.firstEmiDate);
+            if (firstDate > today) return; // Loan hasn't started yet
+            
+            // Check if loan is still active
+            const remaining = this.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
+            if (remaining.emisRemaining === 0) return; // Skip closed loans
+            
+            const emi = this.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
+            const emiDay = firstDate.getDate();
+            
+            // Check if EMI is due this month and date has passed
+            if (today.getDate() >= emiDay) {
+                const thisMonthEmiDate = new Date(today.getFullYear(), today.getMonth(), emiDay);
+                const emiDateStr = thisMonthEmiDate.toISOString().split('T')[0];
+                
+                const loanEmiTitle = `Loan EMI: ${loan.loanType || 'Loan'}`;
+                
+                // Check if already added to expenses
+                const exists = window.DB.expenses.find(exp => 
+                    exp.title === loanEmiTitle &&
+                    exp.date === emiDateStr &&
+                    Math.abs(exp.amount - emi) < 0.01
+                );
+                
+                if (!exists) {
+                    // Add to expenses
+                    window.Expenses.add(
+                        loanEmiTitle,
+                        emi,
+                        'emi',
+                        emiDateStr,
+                        `${loan.bankName}${loan.reason ? ' - ' + loan.reason : ''}`,
+                        null
+                    );
+                    addedCount++;
+                }
+            }
+        });
+        
+        return addedCount;
+    },
+    
+    /**
      * Get ordinal suffix for day (1st, 2nd, 3rd, etc.)
      */
     getOrdinalSuffix(day) {
