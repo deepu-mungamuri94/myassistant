@@ -472,39 +472,12 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         
         list.innerHTML = window.DB.cards.map(card => `
             <div class="p-4 bg-gradient-to-br from-slate-100 via-blue-50 to-purple-100 rounded-xl border-2 border-slate-300 hover:shadow-2xl hover:border-purple-300 transition-all duration-300 backdrop-blur-sm" data-card-id="${card.id}" style="background-image: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 25%, #e0e7ff 50%, #ddd6f3 75%, #faaca8 100%); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.4);">
-                <!-- Top Section: Card Details and Actions -->
-                <div class="flex justify-between items-start mb-3">
-                    <div class="flex-1">
-                        <h4 class="font-bold text-slate-800 text-lg drop-shadow-sm">${Utils.escapeHtml(card.name)}</h4>
-                        
-                        <!-- Card Number -->
-                        <p class="text-sm text-slate-700 font-mono mt-1 font-semibold" id="card-num-${card.id}">${this.maskCardNumber(card.cardNumber)}</p>
-                        
-                        <!-- Expiry, CVV, and Credit Limit -->
-                        <div class="flex items-center justify-between mt-1">
-                            <div class="flex items-center gap-3">
-                                <span class="text-xs text-slate-600 font-medium">Expiry: ${Utils.escapeHtml(card.expiry)}</span>
-                                <span class="text-xs text-slate-600 font-medium">CVV: <span id="card-cvv-${card.id}">•••</span></span>
-                            </div>
-                            ${card.creditLimit ? `<span class="text-xs text-slate-600 font-medium">💳 Limit: ₹${Utils.escapeHtml(card.creditLimit)}</span>` : ''}
-                        </div>
-                        
-                        <!-- Additional Data -->
-                        ${card.additionalData ? `<p class="text-xs text-slate-700 mt-1 font-medium">${Utils.escapeHtml(card.additionalData)}</p>` : ''}
-                        
-                        <!-- EMI Button -->
-                        <button onclick="Cards.openEMIModal(${card.id})" class="mt-2 text-xs bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-sm">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                            </svg>
-                            EMIs ${card.emis && card.emis.filter(e => !e.completed).length > 0 ? `(${card.emis.filter(e => !e.completed).length})` : ''}
-                        </button>
-                        
-                    </div>
+                <!-- Top Row: Card Name (Left) and Actions (Right) -->
+                <div class="flex justify-between items-start mb-2">
+                    <h4 class="font-bold text-slate-800 text-lg drop-shadow-sm">${Utils.escapeHtml(card.name)}</h4>
                     
                     <!-- Top Right Actions: View, Edit, Delete -->
-                    <div class="flex gap-2 ml-3">
+                    <div class="flex gap-2">
                         <button onclick="Cards.toggleCardDetails(${card.id})" class="text-indigo-600 hover:text-indigo-800 p-1" title="Show/Hide card details">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -522,6 +495,32 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                             </svg>
                         </button>
                     </div>
+                </div>
+                
+                <!-- Card Number -->
+                <p class="text-sm text-slate-700 font-mono font-semibold" id="card-num-${card.id}">${this.maskCardNumber(card.cardNumber)}</p>
+                
+                <!-- Expiry & CVV (Left) and Credit Limit (Right, below actions) -->
+                <div class="flex justify-between items-center mt-1">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-slate-600 font-medium">Expiry: ${Utils.escapeHtml(card.expiry)}</span>
+                        <span class="text-xs text-slate-600 font-medium">CVV: <span id="card-cvv-${card.id}">•••</span></span>
+                    </div>
+                    ${card.creditLimit ? `<span class="text-xs text-slate-600 font-medium">💳 Limit: ₹${Utils.escapeHtml(card.creditLimit)}</span>` : '<span></span>'}
+                </div>
+                
+                <!-- Note (Left) and EMI Button (Right, inline) -->
+                <div class="flex justify-between items-start mt-1">
+                    <div class="flex-1">
+                        ${card.additionalData ? `<p class="text-xs text-slate-700 font-medium">${Utils.escapeHtml(card.additionalData)}</p>` : '<p class="text-xs text-slate-700">&nbsp;</p>'}
+                    </div>
+                    <button onclick="Cards.openEMIModal(${card.id})" class="text-xs bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-sm ml-2">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        EMIs ${card.emis && card.emis.filter(e => !e.completed).length > 0 ? `(${card.emis.filter(e => !e.completed).length})` : ''}
+                    </button>
                 </div>
                 
                 <!-- Bottom Section: Card Rules -->
@@ -774,6 +773,29 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         const list = document.getElementById('emi-list');
         const emis = card.emis || [];
         
+        // Auto-mark EMIs as completed if last EMI date has passed
+        const today = new Date();
+        let autoCompleted = false;
+        emis.forEach(emi => {
+            if (emi.firstEmiDate && !emi.completed) {
+                const firstDate = new Date(emi.firstEmiDate);
+                const monthsElapsed = (today.getFullYear() - firstDate.getFullYear()) * 12 
+                                    + (today.getMonth() - firstDate.getMonth());
+                
+                // If all EMIs should have been paid by now
+                if (monthsElapsed >= emi.totalCount) {
+                    emi.completed = true;
+                    emi.paidCount = emi.totalCount;
+                    autoCompleted = true;
+                }
+            }
+        });
+        
+        // Save if any EMI was auto-completed
+        if (autoCompleted) {
+            window.Storage.save();
+        }
+        
         // Separate active and completed EMIs
         const activeEMIs = emis.filter(e => !e.completed);
         const completedEMIs = emis.filter(e => e.completed);
@@ -789,13 +811,13 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         if (activeEMIs.length > 0) {
             html += '<h3 class="text-sm font-semibold text-gray-700 mb-2">Active EMIs</h3>';
             html += activeEMIs.map(emi => `
-                <div class="p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-200 mb-2">
+                <div class="p-3 rounded-lg border border-blue-300 mb-2 backdrop-blur-md bg-white/40" style="background: rgba(219, 234, 254, 0.5); backdrop-filter: blur(10px);">
                     <div class="flex justify-between items-start">
                         <div class="flex-1">
                             <p class="text-sm font-semibold text-gray-800">${Utils.escapeHtml(emi.reason)}</p>
-                            <p class="text-xs text-gray-600 mt-1">Date: ${Utils.escapeHtml(emi.date)}</p>
+                            <p class="text-xs text-gray-600 mt-1">Start: ${Utils.escapeHtml(emi.firstEmiDate || emi.date)}</p>
                             <p class="text-xs text-gray-600">Progress: ${emi.paidCount}/${emi.totalCount} EMIs</p>
-                            <div class="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                            <div class="w-full bg-gray-200/60 rounded-full h-1.5 mt-1">
                                 <div class="bg-blue-600 h-1.5 rounded-full" style="width: ${(emi.paidCount/emi.totalCount)*100}%"></div>
                             </div>
                         </div>
@@ -863,9 +885,11 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         // Clear form
         document.getElementById('emi-form-id').value = emiId || '';
         document.getElementById('emi-form-reason').value = '';
-        document.getElementById('emi-form-date').value = '';
+        document.getElementById('emi-form-first-date').value = '';
+        document.getElementById('emi-form-amount').value = '';
         document.getElementById('emi-form-paid').value = '0';
         document.getElementById('emi-form-total').value = '';
+        document.getElementById('emi-auto-info').classList.add('hidden');
         
         if (emiId) {
             // Edit mode
@@ -873,7 +897,8 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             if (emi) {
                 document.getElementById('emi-form-title').textContent = 'Edit EMI';
                 document.getElementById('emi-form-reason').value = emi.reason;
-                document.getElementById('emi-form-date').value = emi.date;
+                document.getElementById('emi-form-first-date').value = emi.firstEmiDate || '';
+                document.getElementById('emi-form-amount').value = emi.emiAmount || '';
                 document.getElementById('emi-form-paid').value = emi.paidCount;
                 document.getElementById('emi-form-total').value = emi.totalCount;
             }
@@ -893,11 +918,12 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         
         const emiId = document.getElementById('emi-form-id').value;
         const reason = document.getElementById('emi-form-reason').value.trim();
-        const date = document.getElementById('emi-form-date').value.trim();
-        const paidCount = parseInt(document.getElementById('emi-form-paid').value);
+        const firstEmiDate = document.getElementById('emi-form-first-date').value;
+        const emiAmount = document.getElementById('emi-form-amount').value.trim();
+        const paidCount = parseInt(document.getElementById('emi-form-paid').value) || 0;
         const totalCount = parseInt(document.getElementById('emi-form-total').value);
         
-        if (!reason || !date || !totalCount) {
+        if (!reason || !firstEmiDate || !totalCount) {
             window.Toast.error('Please fill all required fields');
             return;
         }
@@ -916,7 +942,9 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             const emi = card.emis.find(e => e.id === emiId);
             if (emi) {
                 emi.reason = reason;
-                emi.date = date;
+                emi.firstEmiDate = firstEmiDate;
+                emi.emiAmount = emiAmount;
+                emi.date = firstEmiDate; // Keep for backward compatibility
                 emi.paidCount = paidCount;
                 emi.totalCount = totalCount;
                 emi.completed = paidCount >= totalCount;
@@ -926,7 +954,9 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             card.emis.push({
                 id: Utils.generateId().toString(),
                 reason,
-                date,
+                firstEmiDate,
+                emiAmount,
+                date: firstEmiDate, // Keep for backward compatibility
                 paidCount,
                 totalCount,
                 completed: false,
