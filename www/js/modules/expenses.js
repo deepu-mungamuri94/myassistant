@@ -210,6 +210,31 @@ const Expenses = {
     },
     
     /**
+     * Update the summary section with total, count, and date range
+     */
+    updateSummary(expenses) {
+        // Calculate total
+        const total = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+        
+        // Update total amount
+        const totalEl = document.getElementById('expenses-total-amount');
+        if (totalEl) totalEl.textContent = Utils.formatCurrency(total);
+        
+        // Update transaction count
+        const countEl = document.getElementById('expenses-transaction-info');
+        if (countEl) countEl.textContent = `${expenses.length} transaction${expenses.length !== 1 ? 's' : ''}`;
+        
+        // Update date range
+        const dateRangeEl = document.getElementById('expenses-date-range');
+        if (dateRangeEl && this.startDate && this.endDate) {
+            const startDate = new Date(this.startDate);
+            const endDate = new Date(this.endDate);
+            const options = { month: 'short', day: 'numeric', year: 'numeric' };
+            dateRangeEl.textContent = `${startDate.toLocaleDateString('en-US', options)} - ${endDate.toLocaleDateString('en-US', options)}`;
+        }
+    },
+    
+    /**
      * Update filters and re-render
      */
     updateFilters(startDate, endDate, searchTerm) {
@@ -375,6 +400,9 @@ const Expenses = {
         }
         
         const filteredExpenses = this.getFilteredExpenses();
+        
+        // Update summary section
+        this.updateSummary(filteredExpenses);
         
         // Check if viewing a single month (for recurring expenses display)
         const isSingleMonth = this.isSingleMonth();
