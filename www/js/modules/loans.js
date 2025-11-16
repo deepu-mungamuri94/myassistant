@@ -282,14 +282,14 @@ const Loans = {
                                     <h4 class="font-bold text-blue-900 text-lg">${Utils.escapeHtml(loan.bankName)}</h4>
                                     ${isCompleted ? '<span class="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-semibold">✓</span>' : ''}
                                 </div>
-                                <span class="font-bold text-blue-900 text-sm">₹${loan.amount.toLocaleString('en-IN')}</span>
+                                <span class="font-bold text-blue-900 text-sm">₹${Utils.formatIndianNumber(loan.amount)}</span>
                             </div>
                             <p class="text-sm text-blue-700 mb-2">${Utils.escapeHtml(loan.reason)}</p>
                             
                             <!-- Key Info in Collapsed View -->
                             <div class="flex justify-between items-center text-xs mb-2">
-                                <span class="text-gray-600">Balance: <strong class="${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${remaining.remainingBalance.toLocaleString('en-IN')}</strong></span>
-                                <span class="text-gray-600">EMI: <strong class="text-blue-900">₹${emi.toLocaleString('en-IN')}</strong></span>
+                                <span class="text-gray-600">Balance: <strong class="${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</strong></span>
+                                <span class="text-gray-600">EMI: <strong class="text-blue-900">₹${Utils.formatIndianNumber(emi)}</strong></span>
                             </div>
                             
                             <!-- Progress Bar in Collapsed View -->
@@ -337,7 +337,7 @@ const Loans = {
                     <div class="grid grid-cols-2 gap-3 mb-3">
                         <div class="bg-white bg-opacity-50 p-2 rounded-lg">
                             <p class="text-xs text-gray-600">Principal Amount</p>
-                            <p class="font-bold text-blue-900">₹${loan.amount.toLocaleString('en-IN')}</p>
+                            <p class="font-bold text-blue-900">₹${Utils.formatIndianNumber(loan.amount)}</p>
                         </div>
                         <div class="bg-white bg-opacity-50 p-2 rounded-lg">
                             <p class="text-xs text-gray-600">Interest Rate</p>
@@ -345,7 +345,7 @@ const Loans = {
                         </div>
                         <div class="bg-white bg-opacity-50 p-2 rounded-lg">
                             <p class="text-xs text-gray-600">Monthly EMI</p>
-                            <p class="font-bold text-blue-900">₹${emi.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                            <p class="font-bold text-blue-900">₹${Utils.formatIndianNumber(emi)}</p>
                         </div>
                         <div class="bg-white bg-opacity-50 p-2 rounded-lg">
                             <p class="text-xs text-gray-600">Tenure</p>
@@ -357,15 +357,15 @@ const Loans = {
                     <div class="space-y-2 bg-white bg-opacity-70 p-3 rounded-lg">
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-700">Total Payable:</span>
-                            <span class="font-bold text-blue-900">₹${totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span class="font-bold text-blue-900">₹${Utils.formatIndianNumber(totalAmount)}</span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-700">Total Interest:</span>
-                            <span class="font-bold text-orange-700">₹${totalInterest.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span class="font-bold text-orange-700">₹${Utils.formatIndianNumber(totalInterest)}</span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-700">Balance Remaining:</span>
-                            <span class="font-bold ${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${remaining.remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span class="font-bold ${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</span>
                         </div>
                         <div class="flex justify-between text-sm pt-2 border-t border-gray-200">
                             <span class="text-gray-700">Closure Date:</span>

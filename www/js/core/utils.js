@@ -34,19 +34,49 @@ const Utils = {
 
     /**
      * Format number with Indian style commas (lakhs, crores) with decimals
+     * Complete rewrite for reliability
      */
     formatIndianNumber(num) {
-        if (!num && num !== 0) return '0';
+        // Handle null/undefined/NaN
+        if (num === null || num === undefined || num === '') return '0';
         
-        // Convert to number and handle decimals
-        const number = typeof num === 'string' ? parseFloat(num) : num;
+        // Convert to number
+        const number = typeof num === 'string' ? parseFloat(num) : Number(num);
+        
+        // Check if valid number
         if (isNaN(number)) return '0';
         
-        // Use native toLocaleString for proper Indian formatting
-        return number.toLocaleString('en-IN', { 
-            minimumFractionDigits: 0, 
-            maximumFractionDigits: 2 
-        });
+        // Handle negative numbers
+        const isNegative = number < 0;
+        const absNumber = Math.abs(number);
+        
+        // Split into integer and decimal parts
+        let [integerPart, decimalPart] = absNumber.toFixed(2).split('.');
+        
+        // Remove leading zeros but keep at least one digit
+        integerPart = integerPart.replace(/^0+/, '') || '0';
+        
+        // Format integer part with Indian grouping
+        // Indian format: X,XX,XX,XXX (rightmost 3 digits, then groups of 2)
+        let result = '';
+        let count = 0;
+        
+        // Process from right to left
+        for (let i = integerPart.length - 1; i >= 0; i--) {
+            if (count === 3 || (count > 3 && (count - 3) % 2 === 0)) {
+                result = ',' + result;
+            }
+            result = integerPart[i] + result;
+            count++;
+        }
+        
+        // Add decimal part if not .00
+        if (decimalPart && decimalPart !== '00') {
+            result += '.' + decimalPart;
+        }
+        
+        // Add negative sign back if needed
+        return isNegative ? '-' + result : result;
     },
 
     /**
