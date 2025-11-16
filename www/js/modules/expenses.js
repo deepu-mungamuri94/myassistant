@@ -249,6 +249,103 @@ const Expenses = {
     },
     
     /**
+     * Format category display (EMI uppercase)
+     */
+    formatCategoryDisplay(category) {
+        if (category === 'emi') return 'EMI';
+        return category;
+    },
+    
+    /**
+     * Get full details link for auto-recurring expense
+     */
+    getFullDetailsLink(expense) {
+        if (!this.isAutoRecurringExpense(expense)) return '';
+        
+        // Loan EMI - navigate to loans page
+        if (this.isLoanEMIExpense(expense)) {
+            return `<button onclick="Expenses.showLoanDetails('${Utils.escapeHtml(expense.title)}')" class="text-xs text-blue-600 hover:text-blue-800 underline mt-1">📋 Full Details</button>`;
+        }
+        
+        // Card EMI - navigate to cards page
+        if (expense.category === 'emi' && expense.title && expense.title.startsWith('EMI:')) {
+            const cardName = expense.title.replace('EMI:', '').trim();
+            return `<button onclick="Expenses.showCardDetails('${Utils.escapeHtml(cardName)}')" class="text-xs text-blue-600 hover:text-blue-800 underline mt-1">📋 Full Details</button>`;
+        }
+        
+        // Custom recurring expense - navigate to recurring page
+        if (expense.category === 'recurring') {
+            return `<button onclick="Expenses.showRecurringDetails('${Utils.escapeHtml(expense.title)}')" class="text-xs text-blue-600 hover:text-blue-800 underline mt-1">📋 Full Details</button>`;
+        }
+        
+        return '';
+    },
+    
+    /**
+     * Show loan details
+     */
+    showLoanDetails(loanTitle) {
+        // Navigate to Recurring/Loans tab and highlight the loan
+        window.App.showSection('recurring-section');
+        // Switch to loans tab
+        if (window.Loans && window.Loans.render) {
+            // Trigger loans tab
+            const loansTabBtn = document.querySelector('[onclick="showRecurringTab(\'loans\')"]');
+            if (loansTabBtn) loansTabBtn.click();
+            
+            // Find and scroll to the loan
+            setTimeout(() => {
+                const loanCards = document.querySelectorAll('[data-loan-title]');
+                loanCards.forEach(card => {
+                    if (card.dataset.loanTitle && loanTitle.includes(card.dataset.loanTitle)) {
+                        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        card.style.animation = 'pulse 1s ease-in-out 2';
+                    }
+                });
+            }, 300);
+        }
+    },
+    
+    /**
+     * Show card details
+     */
+    showCardDetails(cardName) {
+        // Navigate to Credit/Debit Cards page
+        window.App.showSection('cards-section');
+        
+        // Find and open the card
+        setTimeout(() => {
+            const cards = window.DB.cards || [];
+            const card = cards.find(c => c.name && c.name.includes(cardName));
+            if (card && window.openCardModal) {
+                window.openCardModal(card.id);
+            }
+        }, 300);
+    },
+    
+    /**
+     * Show recurring expense details
+     */
+    showRecurringDetails(recurringName) {
+        // Navigate to Recurring/Loans tab
+        window.App.showSection('recurring-section');
+        // Switch to recurring tab
+        const recurringTabBtn = document.querySelector('[onclick="showRecurringTab(\'recurring\')"]');
+        if (recurringTabBtn) recurringTabBtn.click();
+        
+        // Find and highlight the recurring expense
+        setTimeout(() => {
+            const recurringItems = document.querySelectorAll('[data-recurring-name]');
+            recurringItems.forEach(item => {
+                if (item.dataset.recurringName === recurringName) {
+                    item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    item.style.animation = 'pulse 1s ease-in-out 2';
+                }
+            });
+        }, 300);
+    },
+    
+    /**
      * Check if a recurring expense has been dismissed
      */
     isDismissed(title, date, amount) {
@@ -762,7 +859,7 @@ const Expenses = {
                                         <div class="flex justify-between items-start mb-1">
                                             <div class="flex-1 flex items-center gap-2">
                                                 <h4 class="font-bold text-purple-800 text-sm">${Utils.escapeHtml(expense.title || expense.description)}</h4>
-                                                <span class="text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded">${Utils.escapeHtml(expense.category)}</span>
+                                                <span class="text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded">${Utils.escapeHtml(this.formatCategoryDisplay(expense.category))}</span>
                                             </div>
                                             <div class="flex gap-1">
                                                 ${!isAutoRecurring ? `
@@ -784,6 +881,7 @@ const Expenses = {
                                         <div class="flex justify-between items-start">
                                             <div class="flex-1">
                                                 ${expense.description ? `<p class="text-xs text-gray-600">${Utils.escapeHtml(expense.description)}</p>` : '<p class="text-xs text-gray-400 italic">No description</p>'}
+                                                ${this.getFullDetailsLink(expense)}
                                             </div>
                                             <div class="text-right ml-3">
                                                 <p class="text-base font-bold text-purple-700">₹${parseFloat(expense.amount).toLocaleString()}</p>
@@ -807,7 +905,7 @@ const Expenses = {
                     <div class="flex justify-between items-start mb-1">
                         <div class="flex-1 flex items-center gap-2 flex-wrap">
                             <h4 class="font-bold text-purple-800">${Utils.escapeHtml(expense.title || expense.description)}</h4>
-                            <span class="text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded">${Utils.escapeHtml(expense.category)}</span>
+                            <span class="text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded">${Utils.escapeHtml(this.formatCategoryDisplay(expense.category))}</span>
                         </div>
                         <div class="flex gap-2">
                             ${!isAutoRecurring ? `
@@ -830,6 +928,7 @@ const Expenses = {
                         <div class="flex-1">
                             ${expense.description ? `<p class="text-sm text-gray-600">${Utils.escapeHtml(expense.description)}</p>` : '<p class="text-sm text-gray-400 italic">No description</p>'}
                             ${expense.suggestedCard ? `<p class="text-xs text-green-600 mt-1">💳 ${Utils.escapeHtml(expense.suggestedCard)}</p>` : ''}
+                            ${this.getFullDetailsLink(expense)}
                         </div>
                         <div class="text-right ml-4">
                             <p class="text-lg font-bold text-purple-700">₹${parseFloat(expense.amount).toLocaleString()}</p>
