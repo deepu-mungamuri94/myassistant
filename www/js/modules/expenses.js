@@ -199,6 +199,7 @@ const Expenses = {
     
     /**
      * Check if viewing a single month (for recurring expenses display)
+     * Only returns true for "Current Month" filter (starts from 1st of month)
      */
     isSingleMonth() {
         if (!this.startDate || !this.endDate) return false;
@@ -206,8 +207,13 @@ const Expenses = {
         const start = new Date(this.startDate);
         const end = new Date(this.endDate);
         
-        // Check if same month and year
-        return start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+        // Must be same month and year
+        if (start.getMonth() !== end.getMonth() || start.getFullYear() !== end.getFullYear()) {
+            return false;
+        }
+        
+        // Must start from the 1st day of the month (not "Today" or "This Week")
+        return start.getDate() === 1;
     },
     
     /**
