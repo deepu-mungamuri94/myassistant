@@ -73,7 +73,9 @@ const Credentials = {
      * Get credential by ID
      */
     getById(id) {
-        return window.DB.credentials.find(c => c.id === id);
+        // Convert to string to handle both string and number IDs
+        const searchId = String(id);
+        return window.DB.credentials.find(c => String(c.id) === searchId);
     },
 
     /**

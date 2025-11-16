@@ -2168,8 +2168,10 @@
             document.getElementById('credential-modal-additional-details').value = '';
             
             if (id) {
-                // Edit mode - populate with existing data (use loose equality to handle both string and number IDs)
-                const cred = window.DB.credentials.find(c => c.id == id || String(c.id) === String(id));
+                // Edit mode - populate with existing data
+                // Convert both to string for type-safe comparison
+                const searchId = String(id);
+                const cred = window.DB.credentials.find(c => String(c.id) === searchId);
                 
                 if (cred) {
                     document.getElementById('credential-modal-title').textContent = 'Edit Credential';
