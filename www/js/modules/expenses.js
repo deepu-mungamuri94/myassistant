@@ -262,20 +262,23 @@ const Expenses = {
     getFullDetailsLink(expense) {
         if (!this.isAutoRecurringExpense(expense)) return '';
         
+        // Escape for JavaScript context (replace single quotes with escaped quotes)
+        const escapeJs = (str) => str.replace(/'/g, "\\'").replace(/"/g, '\\"');
+        
         // Loan EMI - navigate to loans page
         if (this.isLoanEMIExpense(expense)) {
-            return `<button onclick="Expenses.showLoanDetails('${Utils.escapeHtml(expense.title)}')" class="text-xs text-blue-600 hover:text-blue-800 underline mt-1">📋 Full Details</button>`;
+            return `<button onclick="Expenses.showLoanDetails('${escapeJs(expense.title)}')" class="text-xs text-blue-600 hover:text-blue-800 mt-1" style="text-decoration:none;">🔗 More Info...</button>`;
         }
         
         // Card EMI - navigate to cards page
         if (expense.category === 'emi' && expense.title && expense.title.startsWith('EMI:')) {
             const cardName = expense.title.replace('EMI:', '').trim();
-            return `<button onclick="Expenses.showCardDetails('${Utils.escapeHtml(cardName)}')" class="text-xs text-blue-600 hover:text-blue-800 underline mt-1">📋 Full Details</button>`;
+            return `<button onclick="Expenses.showCardDetails('${escapeJs(cardName)}')" class="text-xs text-blue-600 hover:text-blue-800 mt-1" style="text-decoration:none;">🔗 More Info...</button>`;
         }
         
         // Custom recurring expense - navigate to recurring page
         if (expense.category === 'recurring') {
-            return `<button onclick="Expenses.showRecurringDetails('${Utils.escapeHtml(expense.title)}')" class="text-xs text-blue-600 hover:text-blue-800 underline mt-1">📋 Full Details</button>`;
+            return `<button onclick="Expenses.showRecurringDetails('${escapeJs(expense.title)}')" class="text-xs text-blue-600 hover:text-blue-800 mt-1" style="text-decoration:none;">🔗 More Info...</button>`;
         }
         
         return '';
