@@ -1618,6 +1618,9 @@
         }
         
         window.openCardModal = function(id = null) {
+            console.log('=== OPEN CARD MODAL DEBUG ===');
+            console.log('Received ID:', id, 'Type:', typeof id);
+            
             // Always clear fields first
             document.getElementById('card-modal-title').textContent = 'Add Card';
             document.getElementById('card-modal-id').value = '';
@@ -1628,7 +1631,14 @@
             
             if (id) {
                 // Edit mode - populate with existing data
-                const card = window.DB.cards.find(c => c.id === id);
+                // Convert both to string for type-safe comparison
+                const searchId = String(id);
+                console.log('Searching for card with ID:', searchId);
+                console.log('Available cards:', window.DB.cards.map(c => ({ id: c.id, type: typeof c.id, name: c.name })));
+                
+                const card = window.DB.cards.find(c => String(c.id) === searchId);
+                console.log('Found card:', card);
+                
                 if (card) {
                     document.getElementById('card-modal-title').textContent = 'Edit Card';
                     document.getElementById('card-modal-id').value = card.id;
@@ -1636,6 +1646,9 @@
                     document.getElementById('card-modal-number').value = card.cardNumber;
                     document.getElementById('card-modal-expiry').value = card.expiry;
                     document.getElementById('card-modal-cvv').value = card.cvv;
+                    console.log('Modal populated with card data. Hidden ID field value:', document.getElementById('card-modal-id').value);
+                } else {
+                    console.error('Card not found in openCardModal! ID:', id);
                 }
             }
             

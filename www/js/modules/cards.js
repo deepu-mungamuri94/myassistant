@@ -286,6 +286,11 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             throw new Error('Please fill in all required fields');
         }
         
+        // Debug logging
+        console.log('=== UPDATE DEBUG ===');
+        console.log('Received ID:', id, 'Type:', typeof id);
+        console.log('All card IDs in DB:', window.DB.cards.map(c => ({ id: c.id, type: typeof c.id, name: c.name })));
+        
         // Basic card number validation (remove spaces)
         const cleanCardNumber = cardNumber.replace(/\s/g, '');
         if (!/^\d{13,19}$/.test(cleanCardNumber)) {
@@ -303,7 +308,9 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         }
         
         const card = this.getById(id);
+        console.log('Found card:', card);
         if (!card) {
+            console.error('Card not found! Searched for ID:', id);
             throw new Error('Card not found');
         }
         
@@ -346,7 +353,15 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
     getById(id) {
         // Convert to string to handle both string and number IDs
         const searchId = String(id);
-        return window.DB.cards.find(c => String(c.id) === searchId);
+        console.log('getById - Searching for:', searchId, 'Original:', id, 'Type:', typeof id);
+        const result = window.DB.cards.find(c => {
+            const cardIdStr = String(c.id);
+            const match = cardIdStr === searchId;
+            console.log(`  Comparing: "${cardIdStr}" === "${searchId}" = ${match}`);
+            return match;
+        });
+        console.log('getById - Result:', result ? `Found: ${result.name}` : 'NOT FOUND');
+        return result;
     },
 
     /**
