@@ -250,7 +250,7 @@ const Loans = {
         // Render summary
         html += `
             <div class="mb-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl p-4 shadow-lg">
-                <div class="grid grid-cols-2 gap-4 mb-3">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
                         <p class="text-sm opacity-90">Total Borrowed</p>
                         <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(totalAmountTaken)}</p>
@@ -261,9 +261,8 @@ const Loans = {
                     </div>
                 </div>
                 ${latestClosureDate ? `
-                    <div class="pt-3 border-t border-white border-opacity-30">
-                        <p class="text-sm opacity-90">All Loans Paid By</p>
-                        <p class="text-lg font-bold">📅 ${latestClosureDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'long' })}</p>
+                    <div class="mt-3 pt-3 border-t border-white border-opacity-30">
+                        <p class="text-sm font-medium opacity-90">All loans will be cleared by <strong>${latestClosureDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}</strong></p>
                     </div>
                 ` : ''}
             </div>
