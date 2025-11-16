@@ -289,10 +289,12 @@ const Expenses = {
      */
     showLoanDetails(loanTitle) {
         // Navigate to Recurring/Loans tab and highlight the loan
-        window.App.showSection('recurring-section');
+        if (window.Navigation && window.Navigation.navigateTo) {
+            window.Navigation.navigateTo('recurring');
+        }
+        
         // Switch to loans tab
-        if (window.Loans && window.Loans.render) {
-            // Trigger loans tab
+        setTimeout(() => {
             const loansTabBtn = document.querySelector('[onclick="showRecurringTab(\'loans\')"]');
             if (loansTabBtn) loansTabBtn.click();
             
@@ -306,7 +308,7 @@ const Expenses = {
                     }
                 });
             }, 300);
-        }
+        }, 100);
     },
     
     /**
@@ -314,7 +316,9 @@ const Expenses = {
      */
     showCardDetails(cardName) {
         // Navigate to Credit/Debit Cards page
-        window.App.showSection('cards-section');
+        if (window.Navigation && window.Navigation.navigateTo) {
+            window.Navigation.navigateTo('cards');
+        }
         
         // Find and open the card
         setTimeout(() => {
@@ -331,21 +335,26 @@ const Expenses = {
      */
     showRecurringDetails(recurringName) {
         // Navigate to Recurring/Loans tab
-        window.App.showSection('recurring-section');
-        // Switch to recurring tab
-        const recurringTabBtn = document.querySelector('[onclick="showRecurringTab(\'recurring\')"]');
-        if (recurringTabBtn) recurringTabBtn.click();
+        if (window.Navigation && window.Navigation.navigateTo) {
+            window.Navigation.navigateTo('recurring');
+        }
         
-        // Find and highlight the recurring expense
+        // Switch to recurring tab
         setTimeout(() => {
-            const recurringItems = document.querySelectorAll('[data-recurring-name]');
-            recurringItems.forEach(item => {
-                if (item.dataset.recurringName === recurringName) {
-                    item.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    item.style.animation = 'pulse 1s ease-in-out 2';
-                }
-            });
-        }, 300);
+            const recurringTabBtn = document.querySelector('[onclick="showRecurringTab(\'recurring\')"]');
+            if (recurringTabBtn) recurringTabBtn.click();
+            
+            // Find and highlight the recurring expense
+            setTimeout(() => {
+                const recurringItems = document.querySelectorAll('[data-recurring-name]');
+                recurringItems.forEach(item => {
+                    if (item.dataset.recurringName === recurringName) {
+                        item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        item.style.animation = 'pulse 1s ease-in-out 2';
+                    }
+                });
+            }, 300);
+        }, 100);
     },
     
     /**
