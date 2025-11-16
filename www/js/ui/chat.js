@@ -24,10 +24,13 @@ const Chat = {
         const mode = this.getCurrentMode();
         
         // Validation based on mode
-        if (mode === 'cards' && (!window.DB.cards || window.DB.cards.length === 0)) {
-            this.addMessage('assistant', `⚠️ **No Credit Cards Found**\n\nPlease add at least one credit card first to get personalized recommendations.\n\n📍 Go to Menu → Credit Cards → Add New`);
-            if (input) input.value = '';
-            return;
+        if (mode === 'cards') {
+            const creditCards = window.DB.cards.filter(c => !c.cardType || c.cardType === 'credit');
+            if (!creditCards || creditCards.length === 0) {
+                this.addMessage('assistant', `⚠️ **No Credit Cards Found**\n\nPlease add at least one credit card first to get personalized recommendations.\n\n📍 Go to Menu → Credit/Debit Cards → Add New`);
+                if (input) input.value = '';
+                return;
+            }
         }
         
         if (mode === 'expenses' && (!window.DB.expenses || window.DB.expenses.length === 0)) {

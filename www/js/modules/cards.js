@@ -4,10 +4,12 @@
  */
 
 const Cards = {
+    currentTab: 'credit', // Track current tab: 'credit' or 'debit'
+    
     /**
-     * Add a new card (fetches benefits automatically)
+     * Add a new card (fetches benefits automatically for credit cards)
      */
-    async add(name, cardNumber, expiry, cvv, additionalData = '', creditLimit = '') {
+    async add(name, cardNumber, expiry, cvv, additionalData = '', creditLimit = '', cardType = 'credit') {
         if (!name || !cardNumber || !expiry || !cvv) {
             throw new Error('Please fill in all required fields');
         }
@@ -34,10 +36,12 @@ const Cards = {
             cardNumber: cleanCardNumber,
             expiry,
             cvv,
-            creditLimit: creditLimit || '',
+            cardType: cardType || 'credit', // 'credit' or 'debit'
+            creditLimit: (cardType === 'credit' && creditLimit) ? creditLimit : '', // Only for credit cards
             additionalData: additionalData || '',
-            benefits: null, // Will be fetched
+            benefits: null, // Will be fetched (credit cards only)
             benefitsFetchedAt: null,
+            emis: [], // Only relevant for credit cards
             createdAt: Utils.getCurrentTimestamp()
         };
         
@@ -45,10 +49,12 @@ const Cards = {
         window.DB.cards.push(card);
         window.Storage.save();
         
-        // Fetch benefits in background (don't block)
-        this.fetchAndStoreBenefits(card.id, name).catch(err => {
-            console.error('Failed to fetch card benefits:', err);
-        });
+        // Fetch benefits in background (credit cards only)
+        if (cardType === 'credit') {
+            this.fetchAndStoreBenefits(card.id, name).catch(err => {
+                console.error('Failed to fetch card benefits:', err);
+            });
+        }
         
         return card;
     },
@@ -343,7 +349,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
     /**
      * Update a card
      */
-    async update(id, name, cardNumber, expiry, cvv, additionalData = '', creditLimit = '') {
+    async update(id, name, cardNumber, expiry, cvv, additionalData = '', creditLimit = '', cardType = 'credit') {
         if (!name || !cardNumber || !expiry || !cvv) {
             throw new Error('Please fill in all required fields');
         }
@@ -376,7 +382,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             throw new Error('Card not found');
         }
         
-        // Check if card name changed (only fetch benefits if name changed)
+        // Check if card name changed (only fetch benefits if name changed for credit cards)
         const nameChanged = card.name !== name;
         console.log('Card name changed:', nameChanged, 'Old:', card.name, 'New:', name);
         
@@ -385,15 +391,16 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         card.cardNumber = cleanCardNumber;
         card.expiry = expiry;
         card.cvv = cvv;
-        card.creditLimit = creditLimit || '';
+        card.cardType = cardType || card.cardType || 'credit'; // Preserve or set type
+        card.creditLimit = (cardType === 'credit' && creditLimit) ? creditLimit : ''; // Only for credit cards
         card.additionalData = additionalData || '';
         card.lastUpdated = Utils.getCurrentTimestamp();
         
         // Save to storage
         window.Storage.save();
         
-        // Only re-fetch benefits if card name changed
-        if (nameChanged) {
+        // Only re-fetch benefits if card name changed AND it's a credit card
+        if (nameChanged && card.cardType === 'credit') {
             console.log('Card name changed - fetching new benefits...');
             this.fetchAndStoreBenefits(card.id, name).catch(err => {
                 console.error('Failed to fetch benefits for updated card:', err);
@@ -479,17 +486,47 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
     /**
      * Render cards list
      */
+    /**
+     * Switch card tab
+     */
+    switchTab(tab) {
+        this.currentTab = tab;
+        
+        // Update tab button styles
+        const creditTab = document.getElementById('credit-tab');
+        const debitTab = document.getElementById('debit-tab');
+        
+        if (tab === 'credit') {
+            creditTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md';
+            debitTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300';
+        } else {
+            creditTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300';
+            debitTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md';
+        }
+        
+        this.render();
+    },
+    
     render() {
         const list = document.getElementById('cards-list');
         
         if (!list) return;
         
-        if (window.DB.cards.length === 0) {
-            list.innerHTML = '<p class="text-gray-500 text-center py-8">No cards yet. Add your first one above!</p>';
+        // Filter cards by current tab
+        const filteredCards = window.DB.cards.filter(card => {
+            const cardType = card.cardType || 'credit'; // Default to credit for old cards
+            return cardType === this.currentTab;
+        });
+        
+        if (filteredCards.length === 0) {
+            const cardTypeName = this.currentTab === 'credit' ? 'credit' : 'debit';
+            list.innerHTML = `<p class="text-gray-500 text-center py-8">No ${cardTypeName} cards yet. Add your first one above!</p>`;
             return;
         }
         
-        list.innerHTML = window.DB.cards.map(card => `
+        list.innerHTML = filteredCards.map(card => {
+            const isCredit = card.cardType === 'credit' || !card.cardType; // Default to credit for old cards
+            return `
             <div class="p-4 bg-gradient-to-br from-slate-100 via-blue-50 to-purple-100 rounded-xl border-2 border-slate-300 hover:shadow-2xl hover:border-purple-300 transition-all duration-300 backdrop-blur-sm" data-card-id="${card.id}" style="background-image: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 25%, #e0e7ff 50%, #ddd6f3 75%, #faaca8 100%); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.4);">
                 <!-- Top Row: Card Name (Left) and Actions (Right) -->
                 <div class="flex justify-between items-start mb-2">
@@ -519,24 +556,25 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 <!-- Card Number -->
                 <p class="text-sm text-slate-700 font-mono font-semibold" id="card-num-${card.id}">${this.maskCardNumber(card.cardNumber)}</p>
                 
-                <!-- Expiry & CVV (Left) and Credit Limit (Right, below actions) -->
+                <!-- Expiry & CVV (Left) and Credit Limit (Right, below actions) - Credit limit only for credit cards -->
                 <div class="flex justify-between items-center mt-1">
                     <div class="flex items-center gap-3">
                         <span class="text-xs text-slate-600 font-medium">Expiry: ${Utils.escapeHtml(card.expiry)}</span>
                         <span class="text-xs text-slate-600 font-medium">CVV: <span id="card-cvv-${card.id}">•••</span></span>
                     </div>
-                    ${card.creditLimit ? `<span class="text-xs text-slate-600 font-medium">💳 Limit: ₹${Utils.formatIndianNumber(card.creditLimit)}</span>` : '<span></span>'}
+                    ${isCredit && card.creditLimit ? `<span class="text-xs text-slate-600 font-medium">💳 Limit: ₹${Utils.formatIndianNumber(card.creditLimit)}</span>` : '<span></span>'}
                 </div>
                 
-                <!-- Note (Left) and Used Limit (Right, inline) -->
+                <!-- Note (Left) and Used Limit (Right, inline) - Used limit only for credit cards -->
                 <div class="flex justify-between items-start mt-1">
                     <div class="flex-1">
                         ${card.additionalData ? `<p class="text-xs text-slate-700 font-medium">${Utils.escapeHtml(card.additionalData)}</p>` : '<p class="text-xs text-slate-700">&nbsp;</p>'}
                     </div>
-                    ${this.calculateUsedLimit(card) > 0 ? `<span class="text-xs text-orange-600 font-medium ml-2">Used: ₹${Utils.formatIndianNumber(this.calculateUsedLimit(card))}</span>` : ''}
+                    ${isCredit && this.calculateUsedLimit(card) > 0 ? `<span class="text-xs text-orange-600 font-medium ml-2">Used: ₹${Utils.formatIndianNumber(this.calculateUsedLimit(card))}</span>` : ''}
                 </div>
                 
-                <!-- Bottom Section: EMIs, Terms (View), Terms (Update) -->
+                <!-- Bottom Section: EMIs, Terms - Only for credit cards -->
+                ${isCredit ? `
                 <div class="pt-3 border-t border-slate-300 border-opacity-50">
                     <div class="flex justify-between items-center gap-2">
                         <button onclick="Cards.openEMIModal(${card.id})" class="flex-1 text-xs bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-3 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 shadow-md">
@@ -567,8 +605,9 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                         </button>
                     </div>
                 </div>
+                ` : ''}
             </div>
-        `).join('');
+        `}).join('');
     },
 
     /**

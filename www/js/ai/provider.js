@@ -244,9 +244,11 @@ const AIProvider = {
                 };
                 
             case 'cards':
+                // Only include credit cards (not debit cards) for AI advisor
+                const creditCards = window.DB.cards.filter(c => !c.cardType || c.cardType === 'credit');
                 return {
                     mode: 'credit_cards',
-                    available_cards: window.DB.cards.map(c => ({
+                    available_cards: creditCards.map(c => ({
                         name: c.name,
                         benefits: c.benefits || 'Benefits not yet fetched',
                         benefitsFetchedAt: c.benefitsFetchedAt || null

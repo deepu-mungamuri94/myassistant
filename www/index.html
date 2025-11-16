@@ -604,12 +604,22 @@
                             <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
                             <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/>
                         </svg>
-                        Credit Cards
+                        Credit/Debit Cards
                     </h2>
                     <button onclick="openCardModal()" class="px-3 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center">
                         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                         </svg>
+                    </button>
+                </div>
+                
+                <!-- Card Type Tabs -->
+                <div class="flex gap-2 mb-4">
+                    <button id="credit-tab" onclick="Cards.switchTab('credit')" class="flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md">
+                        💳 Credit Cards
+                    </button>
+                    <button id="debit-tab" onclick="Cards.switchTab('debit')" class="flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300">
+                        💸 Debit Cards
                     </button>
                 </div>
                 
@@ -1193,13 +1203,25 @@
             <h2 id="card-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Add Card</h2>
             
             <input type="hidden" id="card-modal-id">
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">Card Type</label>
+            <select id="card-modal-type" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" onchange="toggleCreditOnlyFields()">
+                <option value="credit">💳 Credit Card</option>
+                <option value="debit">💸 Debit Card</option>
+            </select>
+            
             <input type="text" id="card-modal-name" placeholder="Card Name (e.g., HDFC Regalia)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
             <input type="text" id="card-modal-number" placeholder="Card Number (16 digits)" maxlength="19" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
             <div class="flex gap-2">
                 <input type="text" id="card-modal-expiry" placeholder="MM/YY" maxlength="5" class="flex-1 p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" oninput="formatCardExpiry(this)">
                 <input type="text" id="card-modal-cvv" placeholder="CVV" maxlength="4" class="w-24 p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
-            <input type="text" id="card-modal-credit-limit" placeholder="Credit Limit (optional, e.g., 50000)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+            
+            <!-- Credit Card Only Fields -->
+            <div id="credit-only-fields">
+                <input type="text" id="card-modal-credit-limit" placeholder="Credit Limit (optional, e.g., 50000)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            
             <textarea id="card-modal-additional-data" placeholder="Note (optional)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" rows="2"></textarea>
             
             <div class="flex space-x-3">
@@ -1877,6 +1899,18 @@
             input.value = value;
         }
         
+        // Toggle credit-only fields based on card type
+        window.toggleCreditOnlyFields = function() {
+            const cardType = document.getElementById('card-modal-type').value;
+            const creditOnlyFields = document.getElementById('credit-only-fields');
+            
+            if (cardType === 'debit') {
+                creditOnlyFields.style.display = 'none';
+            } else {
+                creditOnlyFields.style.display = 'block';
+            }
+        }
+        
         window.openCardModal = function(id = null) {
             console.log('=== OPEN CARD MODAL DEBUG ===');
             console.log('Received ID:', id, 'Type:', typeof id);
@@ -1884,6 +1918,7 @@
             // Always clear fields first
             document.getElementById('card-modal-title').textContent = 'Add Card';
             document.getElementById('card-modal-id').value = '';
+            document.getElementById('card-modal-type').value = Cards.currentTab; // Default to current tab
             document.getElementById('card-modal-name').value = '';
             document.getElementById('card-modal-number').value = '';
             document.getElementById('card-modal-expiry').value = '';
@@ -1904,6 +1939,7 @@
                 if (card) {
                     document.getElementById('card-modal-title').textContent = 'Edit Card';
                     document.getElementById('card-modal-id').value = card.id;
+                    document.getElementById('card-modal-type').value = card.cardType || 'credit';
                     document.getElementById('card-modal-name').value = card.name;
                     document.getElementById('card-modal-number').value = card.cardNumber;
                     document.getElementById('card-modal-expiry').value = card.expiry;
@@ -1916,6 +1952,7 @@
                 }
             }
             
+            toggleCreditOnlyFields(); // Show/hide credit-only fields
             document.getElementById('card-modal').classList.remove('hidden');
         }
         
@@ -1928,6 +1965,7 @@
                 Loading.show('Saving card...');
                 
                 const id = document.getElementById('card-modal-id').value;
+                const cardType = document.getElementById('card-modal-type').value;
                 const name = document.getElementById('card-modal-name').value.trim();
                 const cardNumber = document.getElementById('card-modal-number').value.trim();
                 const expiry = document.getElementById('card-modal-expiry').value.trim();
@@ -1937,11 +1975,11 @@
                 
                 if (id) {
                     // Update existing
-                    await Cards.update(id, name, cardNumber, expiry, cvv, additionalData, creditLimit);
+                    await Cards.update(id, name, cardNumber, expiry, cvv, additionalData, creditLimit, cardType);
                     Toast.success('Card updated!');
                 } else {
                     // Add new
-                    await Cards.add(name, cardNumber, expiry, cvv, additionalData, creditLimit);
+                    await Cards.add(name, cardNumber, expiry, cvv, additionalData, creditLimit, cardType);
                     Toast.success('Card added!');
                 }
                 
