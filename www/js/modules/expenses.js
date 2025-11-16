@@ -225,6 +225,55 @@ const Expenses = {
     },
     
     /**
+     * Get planned expenses (upcoming EMIs in current month)
+     */
+    getPlannedExpenses() {
+        if (!window.Cards || !window.DB.cards) return [];
+        
+        const today = new Date();
+        const plannedExpenses = [];
+        
+        window.DB.cards.forEach(card => {
+            if (!card.emis || card.emis.length === 0) return;
+            
+            card.emis.forEach(emi => {
+                if (!emi.firstEmiDate || emi.completed || !emi.emiAmount) return;
+                
+                const firstDate = new Date(emi.firstEmiDate);
+                
+                // Calculate which EMI payment number this month would be
+                let monthsElapsed = (today.getFullYear() - firstDate.getFullYear()) * 12 
+                                  + (today.getMonth() - firstDate.getMonth());
+                
+                // If current date hasn't reached the EMI day this month
+                if (today.getDate() < firstDate.getDate()) {
+                    // This month's EMI is upcoming - include it
+                    const emiDate = new Date(today.getFullYear(), today.getMonth(), firstDate.getDate());
+                    const emiNumber = monthsElapsed + 1;
+                    
+                    // Only if this EMI number is within total EMIs
+                    if (emiNumber > 0 && emiNumber <= emi.totalCount) {
+                        plannedExpenses.push({
+                            title: `EMI: ${emi.reason}`,
+                            amount: parseFloat(emi.emiAmount),
+                            category: 'emi',
+                            date: emiDate.toISOString().split('T')[0],
+                            description: `Upcoming EMI payment ${emiNumber}/${emi.totalCount}`,
+                            suggestedCard: card.name,
+                            isPlanned: true
+                        });
+                    }
+                }
+            });
+        });
+        
+        // Sort by date
+        plannedExpenses.sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        return plannedExpenses;
+    },
+    
+    /**
      * Render expenses list with pagination
      */
     render() {
@@ -256,7 +305,10 @@ const Expenses = {
         
         const filteredExpenses = this.getFilteredExpenses();
         
-        if (filteredExpenses.length === 0) {
+        // Get planned expenses (upcoming EMIs in current month)
+        const plannedExpenses = this.getPlannedExpenses();
+        
+        if (filteredExpenses.length === 0 && plannedExpenses.length === 0) {
             list.innerHTML = `
                 <p class="text-gray-500 text-center py-8">
                     ${window.DB.expenses.length === 0 
@@ -276,6 +328,7 @@ const Expenses = {
         
         // Calculate total
         const total = this.getTotalAmount(filteredExpenses);
+        const plannedTotal = plannedExpenses.reduce((sum, e) => sum + e.amount, 0);
         
         // Render total summary
         list.innerHTML = `
@@ -290,6 +343,42 @@ const Expenses = {
                 ` : ''}
             </div>
         `;
+        
+        // Render planned expenses section (if any)
+        if (plannedExpenses.length > 0) {
+            list.innerHTML += `
+                <details class="mb-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border-2 border-blue-300 overflow-hidden">
+                    <summary class="cursor-pointer p-4 hover:bg-blue-100 transition-colors">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="font-bold text-blue-900 text-lg inline">📅 Planned Expenses</h3>
+                                <span class="text-sm text-blue-600 ml-2">(${plannedExpenses.length} upcoming)</span>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xl font-bold text-blue-800">${Utils.formatCurrency(plannedTotal)}</p>
+                            </div>
+                        </div>
+                    </summary>
+                    <div class="p-4 pt-0 space-y-2">
+                        ${plannedExpenses.map(exp => `
+                            <div class="p-3 bg-white rounded-lg border border-blue-200 opacity-75">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex-1">
+                                        <p class="font-semibold text-gray-800">${Utils.escapeHtml(exp.title)}</p>
+                                        <p class="text-xs text-gray-600 mt-1">📅 ${Utils.formatDate(exp.date)} • ${Utils.escapeHtml(exp.category)}</p>
+                                        ${exp.description ? `<p class="text-xs text-gray-500 mt-1">${Utils.escapeHtml(exp.description)}</p>` : ''}
+                                    </div>
+                                    <div class="text-right ml-4">
+                                        <p class="font-bold text-blue-700">${Utils.formatCurrency(exp.amount)}</p>
+                                        ${exp.suggestedCard ? `<p class="text-xs text-gray-500">${Utils.escapeHtml(exp.suggestedCard)}</p>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </details>
+            `;
+        }
         
         // Check if multi-month view
         const useMonthGrouping = this.isMultiMonth();
