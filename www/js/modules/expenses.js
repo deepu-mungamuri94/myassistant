@@ -225,11 +225,12 @@ const Expenses = {
     },
     
     /**
-     * Get recurring expenses (upcoming EMIs and custom recurring in current month)
+     * Get recurring expenses (both upcoming and completed in current month)
      */
     getRecurringExpenses() {
         const today = new Date();
-        const recurringExpenses = [];
+        const upcoming = [];
+        const completed = [];
         
         // Get upcoming EMIs
         if (window.Cards && window.DB.cards) {
@@ -245,34 +246,60 @@ const Expenses = {
                     let monthsElapsed = (today.getFullYear() - firstDate.getFullYear()) * 12 
                                       + (today.getMonth() - firstDate.getMonth());
                     
-                    // If current date hasn't reached the EMI day this month
-                    if (today.getDate() < firstDate.getDate()) {
-                        // This month's EMI is upcoming - include it
+                    const emiNumber = monthsElapsed + 1;
+                    
+                    // Only if this EMI number is within total EMIs
+                    if (emiNumber > 0 && emiNumber <= emi.totalCount) {
                         const emiDate = new Date(today.getFullYear(), today.getMonth(), firstDate.getDate());
-                        const emiNumber = monthsElapsed + 1;
+                        const emiDateStr = emiDate.toISOString().split('T')[0];
                         
-                        // Only if this EMI number is within total EMIs
-                        if (emiNumber > 0 && emiNumber <= emi.totalCount) {
-                            recurringExpenses.push({
-                                title: `EMI: ${emi.reason}`,
-                                amount: parseFloat(emi.emiAmount),
-                                category: 'emi',
-                                date: emiDate.toISOString().split('T')[0],
-                                description: `Upcoming EMI payment ${emiNumber}/${emi.totalCount}`,
-                                suggestedCard: card.name,
-                                isRecurring: true
-                            });
+                        const emiExpense = {
+                            title: `EMI: ${emi.reason}`,
+                            amount: parseFloat(emi.emiAmount),
+                            category: 'emi',
+                            date: emiDateStr,
+                            description: `EMI payment ${emiNumber}/${emi.totalCount}`,
+                            suggestedCard: card.name,
+                            isRecurring: true
+                        };
+                        
+                        // Check if date has passed
+                        if (today.getDate() < firstDate.getDate()) {
+                            upcoming.push(emiExpense);
+                        } else {
+                            // Check if it exists in expenses
+                            const exists = window.DB.expenses.find(exp => 
+                                exp.title === emiExpense.title &&
+                                exp.date === emiDateStr &&
+                                exp.amount === emiExpense.amount
+                            );
+                            if (exists) {
+                                completed.push(emiExpense);
+                            }
                         }
                     }
                 });
             });
         }
         
-        // Get upcoming custom recurring expenses
+        // Get custom recurring expenses
         if (window.RecurringExpenses) {
             const upcomingRecurring = window.RecurringExpenses.getUpcoming();
             upcomingRecurring.forEach(recurring => {
-                recurringExpenses.push({
+                upcoming.push({
+                    title: recurring.name,
+                    amount: recurring.amount,
+                    category: 'recurring',
+                    date: recurring.dueDate,
+                    description: recurring.description || 'Recurring expense',
+                    suggestedCard: null,
+                    isRecurring: true
+                });
+            });
+            
+            const completedRecurring = window.RecurringExpenses.getCompleted();
+            completedRecurring.forEach(recurring => {
+                completed.push({
                     title: recurring.name,
                     amount: recurring.amount,
                     category: 'recurring',
@@ -285,9 +312,10 @@ const Expenses = {
         }
         
         // Sort by date
-        recurringExpenses.sort((a, b) => new Date(a.date) - new Date(b.date));
+        upcoming.sort((a, b) => new Date(a.date) - new Date(b.date));
+        completed.sort((a, b) => new Date(a.date) - new Date(b.date));
         
-        return recurringExpenses;
+        return { upcoming, completed };
     },
     
     /**
@@ -335,10 +363,13 @@ const Expenses = {
         
         const filteredExpenses = this.getFilteredExpenses();
         
-        // Get recurring expenses (upcoming EMIs and custom recurring in current month)
-        const recurringExpenses = this.getRecurringExpenses();
+        // Get recurring expenses (upcoming and completed)
+        const recurringData = this.getRecurringExpenses();
+        const upcomingRecurring = recurringData.upcoming;
+        const completedRecurring = recurringData.completed;
+        const totalRecurring = upcomingRecurring.length + completedRecurring.length;
         
-        if (filteredExpenses.length === 0 && recurringExpenses.length === 0) {
+        if (filteredExpenses.length === 0 && totalRecurring === 0) {
             list.innerHTML = `
                 <p class="text-gray-500 text-center py-8">
                     ${window.DB.expenses.length === 0 
@@ -358,7 +389,7 @@ const Expenses = {
         
         // Calculate total
         const total = this.getTotalAmount(filteredExpenses);
-        const recurringTotal = recurringExpenses.reduce((sum, e) => sum + e.amount, 0);
+        const recurringTotal = [...upcomingRecurring, ...completedRecurring].reduce((sum, e) => sum + e.amount, 0);
         
         // Render total summary
         list.innerHTML = `
@@ -375,36 +406,76 @@ const Expenses = {
         `;
         
         // Render recurring expenses section (if any)
-        if (recurringExpenses.length > 0) {
+        if (totalRecurring > 0) {
             list.innerHTML += `
                 <details class="mb-4 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border-2 border-orange-300 overflow-hidden">
                     <summary class="cursor-pointer p-4 hover:bg-orange-100 transition-colors">
                         <div class="flex justify-between items-center">
                             <div>
                                 <h3 class="font-bold text-orange-900 text-lg inline">🔁 Recurring Expenses</h3>
-                                <span class="text-sm text-orange-600 ml-2">(${recurringExpenses.length} upcoming)</span>
+                                <span class="text-sm text-orange-600 ml-2">(${totalRecurring} total)</span>
                             </div>
                             <div class="text-right">
                                 <p class="text-xl font-bold text-orange-800">${Utils.formatCurrency(recurringTotal)}</p>
                             </div>
                         </div>
                     </summary>
-                    <div class="p-4 pt-0 space-y-2">
-                        ${recurringExpenses.map(exp => `
-                            <div class="p-3 bg-white rounded-lg border border-orange-200 opacity-75">
-                                <div class="flex justify-between items-start">
-                                    <div class="flex-1">
-                                        <p class="font-semibold text-gray-800">${Utils.escapeHtml(exp.title)}</p>
-                                        <p class="text-xs text-gray-600 mt-1">📅 ${Utils.formatDate(exp.date)} • ${Utils.escapeHtml(exp.category)}</p>
-                                        ${exp.description ? `<p class="text-xs text-gray-500 mt-1">${Utils.escapeHtml(exp.description)}</p>` : ''}
-                                    </div>
-                                    <div class="text-right ml-4">
-                                        <p class="font-bold text-orange-700">${Utils.formatCurrency(exp.amount)}</p>
-                                        ${exp.suggestedCard ? `<p class="text-xs text-gray-500">${Utils.escapeHtml(exp.suggestedCard)}</p>` : ''}
-                                    </div>
+                    <div class="p-4 pt-0">
+                        ${upcomingRecurring.length > 0 ? `
+                            <div class="mb-3">
+                                <h4 class="text-sm font-semibold text-blue-700 mb-2 flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    Upcoming (${upcomingRecurring.length})
+                                </h4>
+                                <div class="space-y-2">
+                                    ${upcomingRecurring.map(exp => `
+                                        <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                            <div class="flex justify-between items-start">
+                                                <div class="flex-1">
+                                                    <p class="font-semibold text-gray-800">${Utils.escapeHtml(exp.title)}</p>
+                                                    <p class="text-xs text-gray-600 mt-1">📅 ${Utils.formatDate(exp.date)} • ${Utils.escapeHtml(exp.category)}</p>
+                                                    ${exp.description ? `<p class="text-xs text-gray-500 mt-1">${Utils.escapeHtml(exp.description)}</p>` : ''}
+                                                </div>
+                                                <div class="text-right ml-4">
+                                                    <p class="font-bold text-blue-700">${Utils.formatCurrency(exp.amount)}</p>
+                                                    ${exp.suggestedCard ? `<p class="text-xs text-gray-500">${Utils.escapeHtml(exp.suggestedCard)}</p>` : ''}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
                                 </div>
                             </div>
-                        `).join('')}
+                        ` : ''}
+                        
+                        ${completedRecurring.length > 0 ? `
+                            <div>
+                                <h4 class="text-sm font-semibold text-green-700 mb-2 flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    Completed (${completedRecurring.length})
+                                </h4>
+                                <div class="space-y-2">
+                                    ${completedRecurring.map(exp => `
+                                        <div class="p-3 bg-green-50 rounded-lg border border-green-200">
+                                            <div class="flex justify-between items-start">
+                                                <div class="flex-1">
+                                                    <p class="font-semibold text-gray-700">${Utils.escapeHtml(exp.title)}</p>
+                                                    <p class="text-xs text-gray-600 mt-1">📅 ${Utils.formatDate(exp.date)} • ${Utils.escapeHtml(exp.category)}</p>
+                                                    ${exp.description ? `<p class="text-xs text-gray-500 mt-1">${Utils.escapeHtml(exp.description)}</p>` : ''}
+                                                </div>
+                                                <div class="text-right ml-4">
+                                                    <p class="font-bold text-green-700">${Utils.formatCurrency(exp.amount)}</p>
+                                                    ${exp.suggestedCard ? `<p class="text-xs text-gray-500">${Utils.escapeHtml(exp.suggestedCard)}</p>` : ''}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
                 </details>
             `;

@@ -117,6 +117,9 @@ const RecurringExpenses = {
         const upcoming = [];
         
         this.getAll().forEach(recurring => {
+            // Skip inactive
+            if (recurring.isActive === false) return;
+            
             // Check if due this month
             if (!this.isDueInMonth(recurring, currentYear, currentMonth)) {
                 return;
@@ -133,6 +136,66 @@ const RecurringExpenses = {
         });
         
         return upcoming.sort((a, b) => a.day - b.day);
+    },
+    
+    /**
+     * Get completed recurring expenses (already added to expenses in current month)
+     */
+    getCompleted() {
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth() + 1; // 1-12
+        const currentDay = today.getDate();
+        const currentMonthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+        
+        const completed = [];
+        
+        this.getAll().forEach(recurring => {
+            // Skip inactive
+            if (recurring.isActive === false) return;
+            
+            // Check if due this month
+            if (!this.isDueInMonth(recurring, currentYear, currentMonth)) {
+                return;
+            }
+            
+            // Check if date has passed AND was added to expenses
+            if (currentDay >= recurring.day && recurring.addedToExpenses && recurring.addedToExpenses.includes(currentMonthKey)) {
+                const dueDate = new Date(currentYear, currentMonth - 1, recurring.day);
+                completed.push({
+                    ...recurring,
+                    dueDate: dueDate.toISOString().split('T')[0]
+                });
+            }
+        });
+        
+        return completed.sort((a, b) => a.day - b.day);
+    },
+    
+    /**
+     * Calculate total recurring expenses for a specific month
+     */
+    getMonthlyTotal(year, month) {
+        let total = 0;
+        
+        this.getAll().forEach(recurring => {
+            // Skip inactive
+            if (recurring.isActive === false) return;
+            
+            // Skip if end date is before this month
+            if (recurring.endDate) {
+                const endDate = new Date(recurring.endDate);
+                const checkDate = new Date(year, month - 1, 1);
+                if (checkDate > endDate) return;
+            }
+            
+            // Check if due in this month
+            if (this.isDueInMonth(recurring, year, month)) {
+                total += recurring.amount;
+            }
+        });
+        
+        return total;
     },
 
     /**
@@ -266,11 +329,41 @@ const RecurringExpenses = {
             return;
         }
         
+        // Calculate monthly totals
+        const today = new Date();
+        const currentMonth = today.getMonth() + 1;
+        const currentYear = today.getFullYear();
+        const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
+        const nextMonthYear = currentMonth === 12 ? currentYear + 1 : currentYear;
+        
+        const currentMonthTotal = this.getMonthlyTotal(currentYear, currentMonth);
+        const nextMonthTotal = this.getMonthlyTotal(nextMonthYear, nextMonth);
+        
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const currentMonthName = monthNames[currentMonth - 1];
+        const nextMonthName = monthNames[nextMonth - 1];
+        
         // Separate active and inactive
         const activeExpenses = recurringExpenses.filter(r => r.isActive !== false);
         const inactiveExpenses = recurringExpenses.filter(r => r.isActive === false);
         
         let html = '';
+        
+        // Monthly Estimation Banner
+        html += `
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div class="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border-2 border-blue-300">
+                    <p class="text-xs font-semibold text-blue-600 mb-1">This Month (${currentMonthName})</p>
+                    <p class="text-2xl font-bold text-blue-800">₹${Utils.formatIndianNumber(currentMonthTotal)}</p>
+                    <p class="text-xs text-blue-500 mt-1">Expected recurring</p>
+                </div>
+                <div class="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border-2 border-purple-300">
+                    <p class="text-xs font-semibold text-purple-600 mb-1">Next Month (${nextMonthName})</p>
+                    <p class="text-2xl font-bold text-purple-800">₹${Utils.formatIndianNumber(nextMonthTotal)}</p>
+                    <p class="text-xs text-purple-500 mt-1">Expected recurring</p>
+                </div>
+            </div>
+        `;
         
         // Render active expenses
         if (activeExpenses.length > 0) {
