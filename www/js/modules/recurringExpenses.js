@@ -10,10 +10,11 @@ const RecurringExpenses = {
      * @param {number} amount - Amount
      * @param {string} frequency - 'monthly', 'yearly', 'custom'
      * @param {number} day - Day of month (1-31)
-     * @param {array} months - For custom frequency, array of month numbers (1-12). Empty for monthly/yearly.
+     * @param {array} months - For yearly/custom frequency, array of month numbers (1-12). Empty for monthly.
      * @param {string} description - Optional description
+     * @param {string} endDate - Optional end date (YYYY-MM-DD), null for indefinite
      */
-    add(name, amount, frequency, day, months = [], description = '') {
+    add(name, amount, frequency, day, months = [], description = '', endDate = null) {
         if (!name || !amount || !frequency || !day) {
             throw new Error('Please fill in all required fields');
         }
@@ -26,6 +27,8 @@ const RecurringExpenses = {
             day: parseInt(day),
             months: frequency === 'monthly' ? [] : months, // Empty for monthly (all months)
             description,
+            endDate: endDate || null, // null = indefinite
+            isActive: true, // Becomes false when end date is reached
             addedToExpenses: [], // Track which months were added (format: 'YYYY-MM')
             createdAt: Utils.getCurrentTimestamp()
         };
@@ -39,7 +42,7 @@ const RecurringExpenses = {
     /**
      * Update a recurring expense
      */
-    update(id, name, amount, frequency, day, months, description) {
+    update(id, name, amount, frequency, day, months, description, endDate = null) {
         const recurring = this.getById(id);
         if (!recurring) {
             throw new Error('Recurring expense not found');
@@ -55,6 +58,8 @@ const RecurringExpenses = {
         recurring.day = parseInt(day);
         recurring.months = frequency === 'monthly' ? [] : months;
         recurring.description = description;
+        recurring.endDate = endDate || null;
+        // Keep isActive unchanged during manual updates
         
         window.Storage.save();
         return recurring;
@@ -136,6 +141,7 @@ const RecurringExpenses = {
     autoAddToExpenses() {
         const today = new Date();
         let addedCount = 0;
+        let updatedCount = 0;
         
         this.getAll().forEach(recurring => {
             // Initialize tracking array if not exists
@@ -143,17 +149,47 @@ const RecurringExpenses = {
                 recurring.addedToExpenses = [];
             }
             
-            // Check all months from creation date to now
+            // Initialize isActive if not exists
+            if (recurring.isActive === undefined) {
+                recurring.isActive = true;
+            }
+            
+            // Check if end date has passed
+            if (recurring.endDate && recurring.isActive) {
+                const endDate = new Date(recurring.endDate);
+                const endOfMonth = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0); // Last day of end month
+                if (today > endOfMonth) {
+                    recurring.isActive = false;
+                    updatedCount++;
+                    return; // Skip adding more expenses
+                }
+            }
+            
+            // Skip inactive recurring expenses
+            if (!recurring.isActive) {
+                return;
+            }
+            
+            // Check all months from creation date to now (or end date if specified)
             const createdDate = new Date(recurring.createdAt);
             const startYear = createdDate.getFullYear();
             const startMonth = createdDate.getMonth() + 1;
-            const currentYear = today.getFullYear();
-            const currentMonth = today.getMonth() + 1;
             
-            // Iterate through each month from creation to now
-            for (let year = startYear; year <= currentYear; year++) {
+            // Determine the end point for checking
+            let checkEndYear = today.getFullYear();
+            let checkEndMonth = today.getMonth() + 1;
+            if (recurring.endDate) {
+                const endDate = new Date(recurring.endDate);
+                if (endDate < today) {
+                    checkEndYear = endDate.getFullYear();
+                    checkEndMonth = endDate.getMonth() + 1;
+                }
+            }
+            
+            // Iterate through each month from creation to check end point
+            for (let year = startYear; year <= checkEndYear; year++) {
                 const monthStart = (year === startYear) ? startMonth : 1;
-                const monthEnd = (year === currentYear) ? currentMonth : 12;
+                const monthEnd = (year === checkEndYear) ? checkEndMonth : 12;
                 
                 for (let month = monthStart; month <= monthEnd; month++) {
                     // Check if due in this month
@@ -208,9 +244,9 @@ const RecurringExpenses = {
             }
         });
         
-        if (addedCount > 0) {
+        if (addedCount > 0 || updatedCount > 0) {
             window.Storage.save();
-            console.log(`Auto-added ${addedCount} recurring expense(s)`);
+            console.log(`Auto-added ${addedCount} recurring expense(s), marked ${updatedCount} as inactive`);
         }
         
         return addedCount;
@@ -230,42 +266,122 @@ const RecurringExpenses = {
             return;
         }
         
-        list.innerHTML = recurringExpenses.map(recurring => {
-            // Format frequency display
-            let frequencyText = '';
-            if (recurring.frequency === 'monthly') {
-                frequencyText = `Monthly on ${recurring.day}${this.getOrdinalSuffix(recurring.day)}`;
-            } else if (recurring.frequency === 'yearly' || recurring.frequency === 'custom') {
-                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                const monthsList = recurring.months.map(m => monthNames[m - 1]).join(', ');
-                frequencyText = `${monthsList} ${recurring.day}${this.getOrdinalSuffix(recurring.day)}`;
-            }
-            
-            return `
-                <div class="p-4 bg-white rounded-xl border-2 border-orange-300 hover:shadow-lg transition-all">
-                    <div class="flex justify-between items-start">
-                        <div class="flex-1">
-                            <h4 class="font-bold text-gray-800 text-lg">${Utils.escapeHtml(recurring.name)}</h4>
-                            <p class="text-sm text-gray-600 mt-1">₹${Utils.formatIndianNumber(recurring.amount)}</p>
-                            <p class="text-xs text-orange-600 mt-1">${frequencyText}</p>
-                            ${recurring.description ? `<p class="text-xs text-gray-500 mt-1">${Utils.escapeHtml(recurring.description)}</p>` : ''}
-                        </div>
-                        <div class="flex gap-2 ml-3">
-                            <button onclick="openRecurringExpenseModal(${recurring.id})" class="text-blue-600 hover:text-blue-800 p-2" title="Edit">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                </svg>
-                            </button>
-                            <button onclick="RecurringExpenses.deleteWithConfirm(${recurring.id})" class="text-red-600 hover:text-red-800 p-2" title="Delete">
-                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                </svg>
-                            </button>
+        // Separate active and inactive
+        const activeExpenses = recurringExpenses.filter(r => r.isActive !== false);
+        const inactiveExpenses = recurringExpenses.filter(r => r.isActive === false);
+        
+        let html = '';
+        
+        // Render active expenses
+        if (activeExpenses.length > 0) {
+            html += activeExpenses.map(recurring => {
+                // Format frequency display
+                let frequencyText = '';
+                if (recurring.frequency === 'monthly') {
+                    frequencyText = `Monthly on ${recurring.day}${this.getOrdinalSuffix(recurring.day)}`;
+                } else if (recurring.frequency === 'yearly') {
+                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const monthName = recurring.months && recurring.months[0] ? monthNames[recurring.months[0] - 1] : '';
+                    frequencyText = `Yearly on ${monthName} ${recurring.day}${this.getOrdinalSuffix(recurring.day)}`;
+                } else if (recurring.frequency === 'custom') {
+                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const monthsList = recurring.months.map(m => monthNames[m - 1]).join(', ');
+                    frequencyText = `${monthsList} ${recurring.day}${this.getOrdinalSuffix(recurring.day)}`;
+                }
+                
+                // Format end date
+                let endDateText = 'Indefinite';
+                if (recurring.endDate) {
+                    const endDate = new Date(recurring.endDate);
+                    endDateText = `Until ${endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+                }
+                
+                return `
+                    <div class="p-4 bg-white rounded-xl border-2 border-orange-300 hover:shadow-lg transition-all">
+                        <div class="flex justify-between items-start">
+                            <!-- Left Side: Name and Description -->
+                            <div class="flex-1">
+                                <h4 class="font-bold text-gray-800 text-lg">${Utils.escapeHtml(recurring.name)}</h4>
+                                ${recurring.description ? `<p class="text-sm text-gray-600 mt-1">${Utils.escapeHtml(recurring.description)}</p>` : '<p class="text-sm text-gray-400 mt-1 italic">No description</p>'}
+                            </div>
+                            
+                            <!-- Right Side: Actions, Amount, Schedule -->
+                            <div class="ml-4 flex flex-col items-end">
+                                <!-- Actions -->
+                                <div class="flex gap-2 mb-2">
+                                    <button onclick="openRecurringExpenseModal(${recurring.id})" class="text-blue-600 hover:text-blue-800 p-1" title="Edit">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                        </svg>
+                                    </button>
+                                    <button onclick="RecurringExpenses.deleteWithConfirm(${recurring.id})" class="text-red-600 hover:text-red-800 p-1" title="Delete">
+                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                
+                                <!-- Amount -->
+                                <p class="text-lg font-bold text-orange-700">₹${Utils.formatIndianNumber(recurring.amount)}</p>
+                                
+                                <!-- Schedule -->
+                                <p class="text-xs text-orange-600 mt-1">${frequencyText}</p>
+                                <p class="text-xs text-gray-500 mt-0.5">${endDateText}</p>
+                            </div>
                         </div>
                     </div>
-                </div>
+                `;
+            }).join('');
+        }
+        
+        // Render inactive expenses (collapsed)
+        if (inactiveExpenses.length > 0) {
+            html += `
+                <details class="mt-4">
+                    <summary class="text-sm font-semibold text-gray-500 cursor-pointer p-3 bg-gray-100 rounded-lg hover:bg-gray-200">
+                        Inactive Recurring Expenses (${inactiveExpenses.length})
+                    </summary>
+                    <div class="mt-2 space-y-2">
+                        ${inactiveExpenses.map(recurring => {
+                            let frequencyText = '';
+                            if (recurring.frequency === 'monthly') {
+                                frequencyText = `Monthly on ${recurring.day}${this.getOrdinalSuffix(recurring.day)}`;
+                            } else if (recurring.frequency === 'yearly') {
+                                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                const monthName = recurring.months && recurring.months[0] ? monthNames[recurring.months[0] - 1] : '';
+                                frequencyText = `Yearly on ${monthName} ${recurring.day}${this.getOrdinalSuffix(recurring.day)}`;
+                            } else if (recurring.frequency === 'custom') {
+                                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                const monthsList = recurring.months.map(m => monthNames[m - 1]).join(', ');
+                                frequencyText = `${monthsList} ${recurring.day}${this.getOrdinalSuffix(recurring.day)}`;
+                            }
+                            
+                            return `
+                                <div class="p-3 bg-gray-50 rounded-lg border border-gray-300 opacity-75">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <h4 class="font-semibold text-gray-700 text-sm">${Utils.escapeHtml(recurring.name)} <span class="text-xs text-gray-500">(Ended)</span></h4>
+                                            ${recurring.description ? `<p class="text-xs text-gray-500 mt-1">${Utils.escapeHtml(recurring.description)}</p>` : ''}
+                                        </div>
+                                        <div class="ml-4 flex flex-col items-end">
+                                            <button onclick="RecurringExpenses.deleteWithConfirm(${recurring.id})" class="text-red-600 hover:text-red-800 p-1 mb-1" title="Delete">
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                </svg>
+                                            </button>
+                                            <p class="text-sm font-semibold text-gray-600">₹${Utils.formatIndianNumber(recurring.amount)}</p>
+                                            <p class="text-xs text-gray-500 mt-0.5">${frequencyText}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </details>
             `;
-        }).join('');
+        }
+        
+        list.innerHTML = html;
     },
 
     /**

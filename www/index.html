@@ -925,12 +925,21 @@
             <select id="recurring-modal-frequency" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" onchange="updateRecurringFrequency()">
                 <option value="">Select Frequency</option>
                 <option value="monthly">Monthly (Every Month)</option>
-                <option value="yearly">Yearly (Specific Months)</option>
-                <option value="custom">Custom (Select Months)</option>
+                <option value="yearly">Yearly (One Specific Month)</option>
+                <option value="custom">Custom (Multiple Months)</option>
             </select>
             
             <label class="block text-sm font-medium text-gray-700 mb-1">Day of Month *</label>
             <input type="number" id="recurring-modal-day" placeholder="Day (1-31)" min="1" max="31" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">End Date (Optional)</label>
+            <div class="flex items-center gap-2 mb-3">
+                <input type="month" id="recurring-modal-end-date" class="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                <label class="flex items-center text-sm text-gray-600">
+                    <input type="checkbox" id="recurring-modal-indefinite" class="mr-2" onchange="toggleEndDate()">
+                    Indefinite
+                </label>
+            </div>
             
             <div id="recurring-months-section" class="hidden mb-3">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Select Months *</label>
@@ -2158,6 +2167,9 @@
             document.getElementById('recurring-modal-amount').value = '';
             document.getElementById('recurring-modal-frequency').value = '';
             document.getElementById('recurring-modal-day').value = '';
+            document.getElementById('recurring-modal-end-date').value = '';
+            document.getElementById('recurring-modal-indefinite').checked = true;
+            document.getElementById('recurring-modal-end-date').disabled = true;
             document.getElementById('recurring-modal-description').value = '';
             document.getElementById('recurring-modal-title').textContent = 'Add Recurring Expense';
             
@@ -2179,18 +2191,44 @@
                     document.getElementById('recurring-modal-description').value = recurring.description || '';
                     document.getElementById('recurring-modal-title').textContent = 'Edit Recurring Expense';
                     
+                    // Handle end date
+                    if (recurring.endDate) {
+                        const endDate = new Date(recurring.endDate);
+                        const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}`;
+                        document.getElementById('recurring-modal-end-date').value = endDateStr;
+                        document.getElementById('recurring-modal-indefinite').checked = false;
+                        document.getElementById('recurring-modal-end-date').disabled = false;
+                    } else {
+                        document.getElementById('recurring-modal-indefinite').checked = true;
+                        document.getElementById('recurring-modal-end-date').disabled = true;
+                    }
+                    
                     // Show months section if needed and check appropriate months
                     if (recurring.frequency === 'yearly' || recurring.frequency === 'custom') {
                         document.getElementById('recurring-months-section').classList.remove('hidden');
-                        recurring.months.forEach(month => {
-                            const checkbox = document.querySelector(`#recurring-months-section input[value="${month}"]`);
-                            if (checkbox) checkbox.checked = true;
-                        });
+                        if (recurring.months && recurring.months.length > 0) {
+                            recurring.months.forEach(month => {
+                                const checkbox = document.querySelector(`#recurring-months-section input[value="${month}"]`);
+                                if (checkbox) checkbox.checked = true;
+                            });
+                        }
                     }
                 }
             }
             
             document.getElementById('recurring-expense-modal').classList.remove('hidden');
+        }
+        
+        window.toggleEndDate = function() {
+            const indefiniteChecked = document.getElementById('recurring-modal-indefinite').checked;
+            const endDateInput = document.getElementById('recurring-modal-end-date');
+            
+            if (indefiniteChecked) {
+                endDateInput.value = '';
+                endDateInput.disabled = true;
+            } else {
+                endDateInput.disabled = false;
+            }
         }
         
         window.closeRecurringExpenseModal = function() {
@@ -2216,6 +2254,19 @@
                 const frequency = document.getElementById('recurring-modal-frequency').value;
                 const day = document.getElementById('recurring-modal-day').value.trim();
                 const description = document.getElementById('recurring-modal-description').value.trim();
+                const indefinite = document.getElementById('recurring-modal-indefinite').checked;
+                
+                // Get end date
+                let endDate = null;
+                if (!indefinite) {
+                    const endDateValue = document.getElementById('recurring-modal-end-date').value;
+                    if (endDateValue) {
+                        // Convert YYYY-MM to YYYY-MM-01 (last day of the month)
+                        const [year, month] = endDateValue.split('-');
+                        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+                        endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+                    }
+                }
                 
                 // Get selected months
                 const months = [];
@@ -2226,6 +2277,11 @@
                     
                     if (months.length === 0) {
                         throw new Error('Please select at least one month');
+                    }
+                    
+                    // For yearly, ensure only one month is selected
+                    if (frequency === 'yearly' && months.length > 1) {
+                        throw new Error('Yearly frequency should have only ONE month selected. Use Custom for multiple months.');
                     }
                 }
                 
@@ -2239,11 +2295,11 @@
                 
                 if (id) {
                     // Update existing
-                    window.RecurringExpenses.update(id, name, amount, frequency, day, months, description);
+                    window.RecurringExpenses.update(id, name, amount, frequency, day, months, description, endDate);
                     Toast.success('Recurring expense updated!');
                 } else {
                     // Add new
-                    window.RecurringExpenses.add(name, amount, frequency, day, months, description);
+                    window.RecurringExpenses.add(name, amount, frequency, day, months, description, endDate);
                     Toast.success('Recurring expense added!');
                 }
                 
