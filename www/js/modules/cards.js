@@ -314,6 +314,10 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             throw new Error('Card not found');
         }
         
+        // Check if card name changed (only fetch benefits if name changed)
+        const nameChanged = card.name !== name;
+        console.log('Card name changed:', nameChanged, 'Old:', card.name, 'New:', name);
+        
         // Update card fields
         card.name = name;
         card.cardNumber = cleanCardNumber;
@@ -324,10 +328,15 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         // Save to storage
         window.Storage.save();
         
-        // Re-fetch benefits for the updated card in background
-        this.fetchAndStoreBenefits(card.id, name).catch(err => {
-            console.error('Failed to fetch benefits for updated card:', err);
-        });
+        // Only re-fetch benefits if card name changed
+        if (nameChanged) {
+            console.log('Card name changed - fetching new benefits...');
+            this.fetchAndStoreBenefits(card.id, name).catch(err => {
+                console.error('Failed to fetch benefits for updated card:', err);
+            });
+        } else {
+            console.log('Card name unchanged - skipping benefits fetch');
+        }
         
         return card;
     },
