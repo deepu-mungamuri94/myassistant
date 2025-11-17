@@ -121,6 +121,8 @@ const Security = {
      */
     async authenticateWithBiometric() {
         try {
+            console.log('🔐 authenticateWithBiometric: Starting...');
+            
             if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
                 throw new Error('Biometric not available in web mode');
             }
@@ -132,6 +134,13 @@ const Security = {
                 throw new Error('BiometricAuth plugin not found');
             }
             
+            console.log('🔐 BiometricAuth plugin found, calling authenticate...');
+            console.log('🔐 Authentication params:', {
+                reason: 'Unlock My Assistant',
+                cancelTitle: 'Use PIN',
+                allowDeviceCredential: false
+            });
+            
             const result = await BiometricAuth.authenticate({
                 reason: 'Unlock My Assistant',
                 cancelTitle: 'Use PIN',
@@ -142,14 +151,24 @@ const Security = {
                 androidConfirmationRequired: false
             });
             
+            console.log('🔐 Authentication result:', result);
+            console.log('🔐 Result verified:', result.verified);
+            
             if (result.verified) {
                 this.isUnlocked = true;
+                console.log('✅ Biometric authentication successful!');
                 return true;
             }
             
+            console.log('❌ Biometric verification failed');
             return false;
         } catch (error) {
-            console.error('Biometric authentication failed:', error);
+            console.error('❌ Biometric authentication failed:', error);
+            console.error('Error details:', {
+                message: error.message,
+                code: error.code,
+                type: error.constructor.name
+            });
             throw error;
         }
     },

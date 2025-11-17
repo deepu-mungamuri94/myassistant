@@ -3495,9 +3495,11 @@
          */
         async function unlockWithBiometric() {
             try {
+                console.log('🔐 Starting biometric unlock...');
                 Loading.show('Authenticating...');
                 
                 const success = await window.Security.authenticateWithBiometric();
+                console.log('🔐 Biometric authentication result:', success);
                 
                 Loading.hide();
                 
@@ -3510,12 +3512,16 @@
                 }
             } catch (error) {
                 Loading.hide();
-                console.error('Biometric unlock error:', error);
+                console.error('❌ Biometric unlock error:', error);
+                console.error('Error type:', error.constructor.name);
+                console.error('Error message:', error.message);
+                console.error('Error code:', error.code);
+                console.error('Full error object:', JSON.stringify(error, null, 2));
                 
                 if (error.message && error.message.includes('cancelled')) {
                     Toast.show('Biometric cancelled. Use PIN instead.', 'info');
                 } else {
-                    Toast.error('Biometric failed. Use PIN instead.');
+                    Toast.error(`Biometric failed: ${error.message || error.code || 'Unknown error'}. Use PIN instead.`);
                 }
             }
         }
