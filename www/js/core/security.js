@@ -134,14 +134,14 @@ const Security = {
                 throw new Error('BiometricAuth plugin not found');
             }
             
-            console.log('🔐 BiometricAuth plugin found, calling authenticate...');
+            console.log('🔐 BiometricAuth plugin found, calling internalAuthenticate...');
             console.log('🔐 Authentication params:', {
                 reason: 'Unlock My Assistant',
                 cancelTitle: 'Use PIN',
                 allowDeviceCredential: false
             });
             
-            const result = await BiometricAuth.authenticate({
+            const result = await BiometricAuth.internalAuthenticate({
                 reason: 'Unlock My Assistant',
                 cancelTitle: 'Use PIN',
                 allowDeviceCredential: false,
