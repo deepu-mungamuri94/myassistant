@@ -242,9 +242,9 @@ const Loans = {
         const today = new Date();
         const startDate = new Date(firstEmiDate);
         
-        // Calculate months elapsed
+        // Calculate months elapsed (including start month)
         let monthsElapsed = (today.getFullYear() - startDate.getFullYear()) * 12 
-                          + (today.getMonth() - startDate.getMonth());
+                          + (today.getMonth() - startDate.getMonth()) + 1;
         
         // If today's date is before the EMI date in the month, subtract 1
         if (today.getDate() < startDate.getDate()) {
