@@ -86,18 +86,34 @@ const Navigation = {
             }
             
             // Check biometric availability and show toggle if available
+            console.log('⚙️ Opening settings, checking biometric...');
             const biometricToggle = document.getElementById('biometric-settings-toggle');
             const biometricCheckbox = document.getElementById('biometric-enabled-checkbox');
             
+            console.log('Biometric toggle element:', biometricToggle);
+            console.log('Biometric checkbox element:', biometricCheckbox);
+            console.log('Security module available:', !!window.Security);
+            
             if (biometricToggle && biometricCheckbox && window.Security) {
+                console.log('🔍 Calling isBiometricAvailable...');
                 const isAvailable = await window.Security.isBiometricAvailable();
+                console.log('📊 Biometric available result:', isAvailable);
                 
                 if (isAvailable) {
+                    console.log('✅ Biometric available! Showing toggle');
                     biometricToggle.classList.remove('hidden');
                     biometricCheckbox.checked = window.DB.security.biometricEnabled || false;
+                    console.log('Current biometric enabled state:', window.DB.security.biometricEnabled);
                 } else {
+                    console.log('❌ Biometric not available, hiding toggle');
                     biometricToggle.classList.add('hidden');
                 }
+            } else {
+                console.warn('⚠️ Missing elements or Security module:', {
+                    toggle: !!biometricToggle,
+                    checkbox: !!biometricCheckbox,
+                    security: !!window.Security
+                });
             }
             
             modal.classList.remove('hidden');

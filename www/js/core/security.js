@@ -53,15 +53,28 @@ const Security = {
      */
     async isBiometricAvailable() {
         try {
+            console.log('🔍 Checking biometric availability...');
+            console.log('Capacitor available:', !!window.Capacitor);
+            console.log('Is native platform:', window.Capacitor?.isNativePlatform());
+            
             if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
+                console.log('❌ Not a native platform, biometric unavailable');
                 return false;
             }
             
+            console.log('📱 Native platform detected, checking biometric hardware...');
             const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
+            console.log('✅ BiometricAuth plugin imported');
+            
             const result = await BiometricAuth.checkBiometry();
+            console.log('🔐 Biometry check result:', result);
+            console.log('Is available:', result.isAvailable);
+            console.log('Biometry type:', result.biometryType);
+            
             return result.isAvailable;
         } catch (error) {
-            console.warn('Biometric check failed:', error);
+            console.error('❌ Biometric check failed:', error);
+            console.error('Error details:', error.message, error.stack);
             return false;
         }
     },
