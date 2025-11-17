@@ -869,49 +869,33 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 
                 <!-- Bottom Section: EMI & Benefits Actions - Only for credit cards -->
                 ${isCredit ? `
-                <div class="pt-3 mt-2 border-t border-slate-300 border-opacity-50">
-                    ${card.emis && card.emis.filter(e => !e.completed).length > 0 ? `
-                    <!-- EMI Row -->
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-sm font-semibold text-slate-800">💳 EMIs (${card.emis.filter(e => !e.completed).length})</span>
+                ${card.emis && card.emis.filter(e => !e.completed).length > 0 ? `
+                <!-- EMI, View Terms, Reload Benefits - ALL ON SAME LINE -->
+                <div class="pt-3 mt-2 border-t border-slate-300 border-opacity-50 flex justify-between items-center">
+                    <span class="text-sm font-semibold text-slate-800">💳 EMIs (${card.emis.filter(e => !e.completed).length})</span>
+                    <div class="flex gap-2">
                         <button onclick="Cards.showEMIModal(${card.id})" class="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
                             View Terms
                         </button>
-                    </div>
-                    ` : `
-                    <!-- Add EMI Button -->
-                    <div class="mb-2">
-                        <button onclick="Cards.openEMIModal(${card.id})" class="w-full text-xs bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-3 py-2 rounded-lg transition-all flex items-center justify-center gap-1 shadow-md">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                            </svg>
-                            Add EMI
-                        </button>
-                    </div>
-                    `}
-                    <!-- Benefits Actions Row -->
-                    <div class="flex gap-2">
-                        <button onclick="${card.benefits ? `Cards.showBenefitsModal(${card.id})` : 'void(0)'}"
-                                class="flex-1 text-xs ${card.benefits ? 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700' : 'bg-gray-400 cursor-not-allowed opacity-60'} text-white px-3 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 shadow-md"
-                                title="${card.benefits ? 'View card benefits' : 'No benefits fetched yet'}"
-                                ${!card.benefits ? 'disabled' : ''}>
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                            </svg>
-                            Benefits
-                        </button>
-                        <button onclick="Cards.refreshBenefits(${card.id})"
-                                id="refresh-btn-${card.id}"
-                                class="flex-1 text-xs bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-3 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 shadow-md"
-                                title="Reload card benefits">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                            </svg>
-                            <span id="refresh-text-${card.id}">Update</span>
+                        <button onclick="Cards.refreshBenefits(${card.id})" id="refresh-btn-${card.id}" class="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
+                            Reload Benefits
                         </button>
                     </div>
                 </div>
+                ` : `
+                <!-- No EMIs - Show Add EMI Button and Reload Benefits on same line -->
+                <div class="pt-3 mt-2 border-t border-slate-300 border-opacity-50 flex justify-between items-center">
+                    <button onclick="Cards.openEMIModal(${card.id})" class="text-xs bg-blue-500 text-white px-3 py-1.5 rounded hover:bg-blue-600 transition-colors flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                        Add EMI
+                    </button>
+                    <button onclick="Cards.refreshBenefits(${card.id})" id="refresh-btn-${card.id}" class="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
+                        Reload Benefits
+                    </button>
+                </div>
+                `}
                 ` : ''}
             </div>
         `}).join('');
