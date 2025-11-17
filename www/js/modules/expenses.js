@@ -240,8 +240,9 @@ const Expenses = {
         // Loan EMIs
         if (this.isLoanEMIExpense(expense)) return true;
         
-        // Card EMIs (start with "EMI:")
-        if (expense.category === 'emi' && expense.title && expense.title.startsWith('EMI:')) return true;
+        // Card EMIs (start with "Card EMI:" or "EMI:")
+        if (expense.category === 'emi' && expense.title && 
+            (expense.title.startsWith('Card EMI:') || expense.title.startsWith('EMI:'))) return true;
         
         // Custom recurring expenses (category is 'recurring')
         if (expense.category === 'recurring') return true;
