@@ -766,29 +766,24 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 ${isCredit ? `
                 <!-- EMIs Section -->
                 ${card.emis && card.emis.length > 0 ? `
-                <div class="mt-3 pt-3 border-t border-slate-300">
-                    <h5 class="text-sm font-bold text-slate-800 mb-2">💳 EMIs</h5>
-                    ${card.emis.filter(e => !e.completed).map(emi => {
-                        const firstDate = new Date(emi.firstEmiDate);
-                        const lastDate = new Date(firstDate);
-                        lastDate.setMonth(lastDate.getMonth() + emi.totalCount - 1);
-                        const remaining = emi.totalCount - (emi.paidCount || 0);
-                        return `
-                        <div class="bg-white bg-opacity-50 rounded-lg p-2 mb-2">
-                            <div class="flex justify-between items-center">
-                                <div>
-                                    <p class="text-xs font-semibold text-slate-800">${Utils.escapeHtml(emi.reason || 'EMI')}</p>
-                                    <p class="text-xs text-slate-600">${firstDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })} - ${lastDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}</p>
-                                    <p class="text-xs text-slate-600">Total: ₹${Utils.formatIndianNumber(emi.emiAmount * emi.totalCount)}</p>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-sm font-bold text-green-700">₹${Utils.formatIndianNumber(emi.emiAmount)}</p>
-                                    <p class="text-xs text-slate-600">${remaining}/${emi.totalCount}</p>
-                                </div>
-                            </div>
-                        </div>
-                        `;
-                    }).join('')}
+                <div class="mt-3 pt-3 border-t border-slate-300 flex justify-between items-center">
+                    <span class="text-sm font-semibold text-slate-800">💳 EMIs (${card.emis.filter(e => !e.completed).length})</span>
+                    <div class="flex gap-2">
+                        <button onclick="Cards.showEMIModal('${card.id}')" class="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+                            View Terms
+                        </button>
+                        ${card.benefits ? `
+                        <button onclick="Cards.fetchAndStoreBenefits('${card.id}', '${Utils.escapeHtml(card.name).replace(/'/g, "\\'")}').then(() => Cards.render())" class="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
+                            Reload Benefits
+                        </button>
+                        ` : ''}
+                    </div>
+                </div>
+                ` : card.benefits ? `
+                <div class="mt-3 pt-3 border-t border-slate-300 flex justify-end">
+                    <button onclick="Cards.fetchAndStoreBenefits('${card.id}', '${Utils.escapeHtml(card.name).replace(/'/g, "\\'")}').then(() => Cards.render())" class="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
+                        Reload Benefits
+                    </button>
                 </div>
                 ` : ''}
                 
