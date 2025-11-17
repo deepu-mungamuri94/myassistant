@@ -152,15 +152,18 @@ const Security = {
             });
             
             console.log('🔐 Authentication result:', result);
-            console.log('🔐 Result verified:', result.verified);
+            console.log('🔐 Result type:', typeof result);
+            console.log('🔐 Result keys:', result ? Object.keys(result) : 'null/undefined');
             
-            if (result.verified) {
+            // The result might be a boolean or an object with different properties
+            // Check various possible success indicators
+            if (result === true || result?.verified === true || result?.success === true) {
                 this.isUnlocked = true;
                 console.log('✅ Biometric authentication successful!');
                 return true;
             }
             
-            console.log('❌ Biometric verification failed');
+            console.log('❌ Biometric verification failed or cancelled');
             return false;
         } catch (error) {
             console.error('❌ Biometric authentication failed:', error);
