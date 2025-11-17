@@ -83,8 +83,15 @@ const Credentials = {
      */
     render() {
         const list = document.getElementById('credentials-list');
+        const countEl = document.getElementById('credentials-count');
         
         if (!list) return;
+        
+        // Update count
+        const totalCount = window.DB.credentials.length;
+        if (countEl) {
+            countEl.textContent = `${totalCount} credential${totalCount !== 1 ? 's' : ''}`;
+        }
         
         if (window.DB.credentials.length === 0) {
             list.innerHTML = '<p class="text-gray-500 text-center py-8">No credentials yet. Add your first one above!</p>';

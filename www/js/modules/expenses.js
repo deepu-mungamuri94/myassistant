@@ -4,9 +4,7 @@
  */
 
 const Expenses = {
-    // Pagination and filter state
-    currentPage: 1,
-    itemsPerPage: 10,
+    // Filter state (pagination removed)
     startDate: null,
     endDate: null,
     searchTerm: '',
@@ -24,7 +22,6 @@ const Expenses = {
         
         this.startDate = `${year}-${month}-01`; // First day of current month
         this.endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`; // Last day of current month
-        this.currentPage = 1;
     },
     
     /**
@@ -189,7 +186,11 @@ const Expenses = {
             }
             
             groups[monthKey].expenses.push(expense);
-            groups[monthKey].total += expense.amount;
+            
+            // Only add to total if it's not a loan EMI OR if loans are included
+            if (this.includeLoansInTotal || !this.isLoanEMIExpense(expense)) {
+                groups[monthKey].total += expense.amount;
+            }
         });
         
         // Convert to array and sort by month (newest first)
@@ -495,24 +496,6 @@ const Expenses = {
         if (startDate !== undefined) this.startDate = startDate;
         if (endDate !== undefined) this.endDate = endDate;
         if (searchTerm !== undefined) this.searchTerm = searchTerm;
-        this.currentPage = 1; // Reset to first page on filter change
-        this.render();
-    },
-    
-    /**
-     * Change page
-     */
-    goToPage(page) {
-        this.currentPage = page;
-        this.render();
-    },
-    
-    /**
-     * Change items per page
-     */
-    setItemsPerPage(count) {
-        this.itemsPerPage = parseInt(count);
-        this.currentPage = 1;
         this.render();
     },
     
@@ -766,12 +749,8 @@ const Expenses = {
             return;
         }
         
-        // Calculate pagination
-        const totalItems = filteredExpenses.length;
-        const totalPages = Math.ceil(totalItems / this.itemsPerPage);
-        const startIndex = (this.currentPage - 1) * this.itemsPerPage;
-        const endIndex = startIndex + this.itemsPerPage;
-        const paginatedExpenses = filteredExpenses.slice(startIndex, endIndex);
+        // Use all filtered expenses (no pagination)
+        const paginatedExpenses = filteredExpenses;
         
         // Calculate total
         const total = this.getTotalAmount(filteredExpenses);
@@ -975,52 +954,6 @@ const Expenses = {
             }).join('');
         }
         
-        // Render pagination controls if needed
-        if (totalPages > 1) {
-            list.innerHTML += `
-                <div class="mt-6 flex items-center justify-between bg-white/90 p-4 rounded-xl border border-purple-200">
-                    <div class="flex items-center gap-2">
-                        <label class="text-sm text-gray-600">Per page:</label>
-                        <select onchange="Expenses.setItemsPerPage(this.value)" class="px-2 py-1 border border-gray-300 rounded text-sm">
-                            <option value="5" ${this.itemsPerPage === 5 ? 'selected' : ''}>5</option>
-                            <option value="10" ${this.itemsPerPage === 10 ? 'selected' : ''}>10</option>
-                            <option value="20" ${this.itemsPerPage === 20 ? 'selected' : ''}>20</option>
-                            <option value="50" ${this.itemsPerPage === 50 ? 'selected' : ''}>50</option>
-                        </select>
-                        <span class="text-sm text-gray-600 ml-2">
-                            Showing ${startIndex + 1}-${Math.min(endIndex, totalItems)} of ${totalItems}
-                        </span>
-                    </div>
-                    
-                    <div class="flex gap-1">
-                        <button onclick="Expenses.goToPage(1)" 
-                                ${this.currentPage === 1 ? 'disabled' : ''}
-                                class="px-3 py-1 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm">
-                            ««
-                        </button>
-                        <button onclick="Expenses.goToPage(${this.currentPage - 1})" 
-                                ${this.currentPage === 1 ? 'disabled' : ''}
-                                class="px-3 py-1 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm">
-                            «
-                        </button>
-                        
-                        ${this.renderPaginationButtons(totalPages)}
-                        
-                        <button onclick="Expenses.goToPage(${this.currentPage + 1})" 
-                                ${this.currentPage === totalPages ? 'disabled' : ''}
-                                class="px-3 py-1 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm">
-                            »
-                        </button>
-                        <button onclick="Expenses.goToPage(${totalPages})" 
-                                ${this.currentPage === totalPages ? 'disabled' : ''}
-                                class="px-3 py-1 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm">
-                            »»
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-        
         // Enable/disable filter and toggle buttons based on expenses existence
         this.updateControlsState();
     },
@@ -1054,35 +987,6 @@ const Expenses = {
         }
     },
     
-    /**
-     * Render pagination buttons (show max 5 buttons)
-     */
-    renderPaginationButtons(totalPages) {
-        let buttons = '';
-        const maxButtons = 5;
-        let startPage = Math.max(1, this.currentPage - Math.floor(maxButtons / 2));
-        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-        
-        // Adjust start if we're near the end
-        if (endPage - startPage < maxButtons - 1) {
-            startPage = Math.max(1, endPage - maxButtons + 1);
-        }
-        
-        for (let i = startPage; i <= endPage; i++) {
-            const isActive = i === this.currentPage;
-            buttons += `
-                <button onclick="Expenses.goToPage(${i})" 
-                        class="px-3 py-1 rounded text-sm ${isActive 
-                            ? 'bg-purple-600 text-white font-semibold' 
-                            : 'bg-purple-100 text-purple-700 hover:bg-purple-200'}">
-                    ${i}
-                </button>
-            `;
-        }
-        
-        return buttons;
-    },
-
     /**
      * Delete with confirmation
      */
