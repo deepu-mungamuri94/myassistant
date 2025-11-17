@@ -1525,7 +1525,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     const expenseDate = new Date(emiDate.getFullYear(), emiDate.getMonth(), firstDate.getDate());
                     const expenseDateStr = expenseDate.toISOString().split('T')[0];
                     
-                    const emiTitle = `EMI: ${emi.reason}`;
+                    const emiTitle = `Card EMI: ${emi.reason}`;
                     
                     // Check if dismissed by user
                     const isDismissed = window.Expenses && window.Expenses.isDismissed(emiTitle, expenseDateStr, parseFloat(emi.emiAmount));
@@ -1535,9 +1535,10 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                         continue;
                     }
                     
-                    // Check if expense already exists for this EMI and month (check both old and new format)
+                    // Check if expense already exists for this EMI and month (check old and new formats)
                     const existingExpense = window.DB.expenses.find(exp => {
                         const titleMatch = exp.title === emiTitle || 
+                                          exp.title === `EMI: ${emi.reason}` ||
                                           exp.title === `EMI: ${card.name} - ${emi.reason}`;
                         const dateMatch = exp.date === expenseDateStr;
                         const amountMatch = exp.amount === parseFloat(emi.emiAmount);

@@ -272,7 +272,7 @@ const Expenses = {
         }
         
         // Card EMI - show EMI details modal (pass expense ID to access suggestedCard)
-        if (expense.category === 'emi' && expense.title && expense.title.startsWith('EMI:')) {
+        if (expense.category === 'emi' && expense.title && (expense.title.startsWith('Card EMI:') || expense.title.startsWith('EMI:'))) {
             return `<button onclick="Expenses.showCardEMIDetails(${expense.id})" class="text-xs text-blue-600 hover:text-blue-800 mt-1" style="text-decoration:none;">🔗 More Info...</button>`;
         }
         
@@ -319,8 +319,8 @@ const Expenses = {
             return;
         }
         
-        // Get EMI reason from title (remove "EMI: " prefix)
-        let emiReason = expense.title.replace('EMI: ', '').trim();
+        // Get EMI reason from title (remove "Card EMI: " or "EMI: " prefix)
+        let emiReason = expense.title.replace('Card EMI: ', '').replace('EMI: ', '').trim();
         let cardName = expense.suggestedCard;
         
         // Handle old format "CardName - Reason" if suggestedCard is missing
@@ -563,7 +563,7 @@ const Expenses = {
                         const emiDateStr = emiDate.toISOString().split('T')[0];
                         
                         const emiExpense = {
-                            title: `EMI: ${emi.reason}`,
+                            title: `Card EMI: ${emi.reason}`,
                             amount: parseFloat(emi.emiAmount),
                             category: 'emi',
                             date: emiDateStr,
@@ -572,9 +572,10 @@ const Expenses = {
                             isRecurring: true
                         };
                         
-                        // Check if it exists in expenses already (check both old and new format)
+                        // Check if it exists in expenses already (check old and new formats)
                         const exists = window.DB.expenses.find(exp => {
                             const titleMatch = exp.title === emiExpense.title || 
+                                               exp.title === `EMI: ${emi.reason}` ||
                                                exp.title === `EMI: ${card.name} - ${emi.reason}`;
                             const dateMatch = exp.date === emiDateStr;
                             const amountMatch = Math.abs(exp.amount - emiExpense.amount) < 0.01;
@@ -1141,28 +1142,40 @@ function migrateOldEMIExpenses(showToast = false) {
     
     let migrated = 0;
     window.DB.expenses.forEach(expense => {
-        // Check if it's an EMI expense with old format "EMI: CardName - Reason"
-        if (expense.category === 'emi' && expense.title && expense.title.startsWith('EMI:')) {
-            const titleWithoutPrefix = expense.title.replace('EMI: ', '').trim();
+        // Check if it's a card EMI expense with old format
+        if (expense.category === 'emi' && expense.title) {
+            let needsMigration = false;
+            let emiReason = '';
+            let cardName = '';
             
-            // If it contains " - ", it's the old format
-            if (titleWithoutPrefix.includes(' - ')) {
+            // Old format 1: "EMI: CardName - Reason"
+            if (expense.title.startsWith('EMI:') && expense.title.includes(' - ')) {
+                const titleWithoutPrefix = expense.title.replace('EMI: ', '').trim();
                 const parts = titleWithoutPrefix.split(' - ');
-                const cardName = parts[0].trim();
-                const emiReason = parts.slice(1).join(' - ').trim();
+                cardName = parts[0].trim();
+                emiReason = parts.slice(1).join(' - ').trim();
+                needsMigration = true;
+            }
+            // Old format 2: "EMI: Reason" (without card name)
+            else if (expense.title.startsWith('EMI:') && !expense.title.startsWith('Card EMI:')) {
+                emiReason = expense.title.replace('EMI: ', '').trim();
+                cardName = expense.suggestedCard || '';
+                needsMigration = true;
+            }
+            
+            if (needsMigration && emiReason) {
+                console.log(`Migrating: "${expense.title}" -> "Card EMI: ${emiReason}"`);
                 
-                console.log(`Migrating: "${expense.title}" -> "EMI: ${emiReason}"`);
-                
-                // Update title to only have EMI reason
-                expense.title = `EMI: ${emiReason}`;
+                // Update title to new format
+                expense.title = `Card EMI: ${emiReason}`;
                 
                 // Ensure suggestedCard is set
-                if (!expense.suggestedCard) {
+                if (cardName && !expense.suggestedCard) {
                     expense.suggestedCard = cardName;
                 }
                 
                 // Update description to include card name if not already
-                if (expense.description && !expense.description.includes(cardName)) {
+                if (cardName && expense.description && !expense.description.includes(cardName)) {
                     expense.description = `${cardName} - ${expense.description}`;
                 }
                 
