@@ -63,8 +63,14 @@ const Security = {
             }
             
             console.log('📱 Native platform detected, checking biometric hardware...');
-            const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
-            console.log('✅ BiometricAuth plugin imported');
+            
+            // Access BiometricAuth through Capacitor Plugins
+            const BiometricAuth = window.Capacitor.Plugins.BiometricAuth;
+            if (!BiometricAuth) {
+                console.error('❌ BiometricAuth plugin not found in Capacitor.Plugins');
+                return false;
+            }
+            console.log('✅ BiometricAuth plugin found');
             
             const result = await BiometricAuth.checkBiometry();
             console.log('🔐 Biometry check result:', result);
@@ -111,7 +117,11 @@ const Security = {
                 throw new Error('Biometric not available in web mode');
             }
             
-            const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
+            // Access BiometricAuth through Capacitor Plugins
+            const BiometricAuth = window.Capacitor.Plugins.BiometricAuth;
+            if (!BiometricAuth) {
+                throw new Error('BiometricAuth plugin not found');
+            }
             
             const result = await BiometricAuth.authenticate({
                 reason: 'Unlock My Assistant',
