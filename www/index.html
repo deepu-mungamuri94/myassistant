@@ -320,8 +320,8 @@
                         <span class="text-xl font-bold text-white group-hover:text-purple-500 transition-colors">₹</span>
                     </div>
                     <div class="flex-1">
-                        <span class="font-bold text-sm">Expenses</span>
-                        <p class="text-[11px] opacity-70 group-hover:opacity-90">Track spending</p>
+                        <span class="font-bold text-sm">Income & Expenses</span>
+                        <p class="text-[11px] opacity-70 group-hover:opacity-90">Track income & spending</p>
                     </div>
                 </button>
                 
@@ -527,17 +527,31 @@
         <!-- EXPENSES VIEW -->
         <div id="expenses-view" class="hidden">
             <div class="bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl p-5">
+                <!-- Title and Add Button -->
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent flex items-center">
                         <span class="text-2xl mr-2 text-purple-600">₹</span>
-                        Expenses
+                        Income & Expenses
                     </h2>
-                    <button onclick="openExpenseModal()" class="px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center">
+                    <button id="expenses-add-btn" onclick="openExpenseModal()" class="px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center">
                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                         </svg>
                     </button>
                 </div>
+                
+                <!-- Tabs -->
+                <div class="flex gap-2 mb-4">
+                    <button id="expenses-tab" onclick="switchIncomeExpenseTab('expenses')" class="flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md">
+                        💰 Expenses
+                    </button>
+                    <button id="income-tab" onclick="switchIncomeExpenseTab('income')" class="flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300">
+                        💵 Income
+                    </button>
+                </div>
+                
+                <!-- Expenses Tab Content -->
+                <div id="expenses-tab-content">
                 
                 <!-- Search and Filter -->
                 <div class="mb-3 flex gap-2">
@@ -576,9 +590,17 @@
                     </div>
                 </div>
                 
-                <!-- Expenses List -->
-                <div id="expenses-list" class="space-y-3">
-                    <!-- Expenses will be listed here -->
+                    <!-- Expenses List -->
+                    <div id="expenses-list" class="space-y-3">
+                        <!-- Expenses will be listed here -->
+                    </div>
+                </div>
+                
+                <!-- Income Tab Content -->
+                <div id="income-tab-content" class="hidden">
+                    <div id="income-content">
+                        <!-- Income details will be rendered here -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -985,6 +1007,269 @@
                     Add
                 </button>
                 <button onclick="closeExpenseModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- INCOME MODAL -->
+    <div id="income-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Income.closeForm()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Income Details</h2>
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">Annual CTC *</label>
+            <input type="number" id="income-ctc" placeholder="e.g., 2400000" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" oninput="Income.updateBasicPreview()">
+            
+            <div class="bg-green-50 p-3 rounded-lg mb-3 border border-green-200">
+                <p class="text-xs text-green-700 mb-1">Total Basic (40% of CTC)</p>
+                <p id="basic-preview" class="text-lg font-bold text-green-800">₹0</p>
+            </div>
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">Bonus Percent (%)</label>
+            <input type="number" id="income-bonus-percent" placeholder="e.g., 20" step="0.1" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">ESPP Percent (%)</label>
+            <input type="number" id="income-espp-percent" placeholder="e.g., 10" step="0.1" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+            
+            <label class="block text-sm font-medium text-gray-700 mb-1">PF Percent (%)</label>
+            <input type="number" id="income-pf-percent" placeholder="e.g., 12" step="0.1" value="12" class="w-full p-2 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+            
+            <div class="flex gap-2">
+                <button onclick="Income.saveForm()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-semibold">
+                    Save
+                </button>
+                <button onclick="Income.closeForm()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- TAX SLABS MODAL -->
+    <div id="tax-slabs-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Income.closeTaxSlabsModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Manage Tax Slabs</h2>
+            
+            <p class="text-sm text-gray-600 mb-4 bg-orange-50 p-3 rounded-lg border border-orange-200">
+                Configure income tax slabs according to your country's tax regime
+            </p>
+            
+            <!-- Tax Slabs List -->
+            <div id="tax-slabs-list" class="space-y-2 mb-4">
+                <!-- Slabs will be rendered here -->
+            </div>
+            
+            <!-- Actions -->
+            <div class="flex gap-2">
+                <button onclick="Income.addTaxSlab()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-semibold">
+                    + Add Slab
+                </button>
+                <button onclick="Income.resetToDefaultSlabs()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-200 font-semibold">
+                    Reset
+                </button>
+                <button onclick="Income.closeTaxSlabsModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- TAX SLAB EDIT MODAL -->
+    <div id="slab-edit-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Income.closeSlabEditModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 id="slab-edit-title" class="text-xl font-bold mb-4 bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Add Tax Slab</h2>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Label (e.g., "₹4L - ₹8L")</label>
+                    <input type="text" id="slab-edit-label" placeholder="Label" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Minimum Amount (₹)</label>
+                    <input type="number" id="slab-edit-min" placeholder="0" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Maximum Amount (₹) - Leave empty for unlimited</label>
+                    <input type="number" id="slab-edit-max" placeholder="Leave empty for Infinity" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tax Rate (%)</label>
+                    <input type="number" id="slab-edit-rate" placeholder="0" step="0.01" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+            </div>
+            
+            <div class="flex gap-2 mt-6">
+                <button onclick="Income.saveSlab()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-semibold">
+                    Save
+                </button>
+                <button onclick="Income.closeSlabEditModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- STD DEDUCTION MODAL -->
+    <div id="std-deduction-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Income.closeStdDeductionModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 class="text-xl font-bold mb-4 bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Edit Standard Deduction</h2>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Standard Deduction Amount (₹)</label>
+                <input type="number" id="std-deduction-input" placeholder="75000" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                <p class="text-xs text-gray-500 mt-1">Standard deduction is subtracted from your CTC before calculating tax</p>
+            </div>
+            
+            <div class="flex gap-2">
+                <button onclick="Income.saveStdDeduction()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-semibold">
+                    Save
+                </button>
+                <button onclick="Income.closeStdDeductionModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- DEDUCTIONS MANAGEMENT MODAL -->
+    <div id="deductions-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Income.closeDeductionsModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <h2 class="text-xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Manage Tax Deductions</h2>
+            
+            <p class="text-xs text-gray-600 mb-4 bg-green-50 p-3 rounded-lg border border-green-200">
+                Configure all tax deductions to calculate accurate taxable income. Note: In New Tax Regime, most deductions (80C, 80D, HRA) are not allowed.
+            </p>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Standard Deduction (₹)</label>
+                    <input type="number" id="deductions-std" placeholder="75000" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <p class="text-xs text-gray-500 mt-1">Default: ₹75,000 (Allowed in New Tax Regime)</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">HRA Exemption (₹)</label>
+                    <input type="number" id="deductions-hra" placeholder="0" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <p class="text-xs text-gray-500 mt-1">House Rent Allowance exemption (Old Tax Regime only)</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Section 80C (₹)</label>
+                    <input type="number" id="deductions-80c" placeholder="0" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <p class="text-xs text-gray-500 mt-1">Investments, PF, PPF, ELSS, etc. Max: ₹1.5L (Old Tax Regime only)</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Section 80D (₹)</label>
+                    <input type="number" id="deductions-80d" placeholder="0" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <p class="text-xs text-gray-500 mt-1">Health Insurance premiums (Old Tax Regime only)</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Other Deductions (₹)</label>
+                    <input type="number" id="deductions-other" placeholder="0" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <p class="text-xs text-gray-500 mt-1">Any other applicable deductions</p>
+                </div>
+            </div>
+            
+            <div class="flex gap-2 mt-6">
+                <button onclick="Income.saveDeductions()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-semibold">
+                    Save
+                </button>
+                <button onclick="Income.closeDeductionsModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- CESS MODAL -->
+    <div id="cess-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Income.closeCessModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 class="text-xl font-bold mb-4 bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Edit Cess Percentage</h2>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Cess Percentage (%)</label>
+                <input type="number" id="cess-percent-input" placeholder="4" step="0.01" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                <p class="text-xs text-gray-500 mt-1">Cess is calculated on (Base Tax + Surcharge)</p>
+            </div>
+            
+            <div class="flex gap-2">
+                <button onclick="Income.saveCessPercent()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-semibold">
+                    Save
+                </button>
+                <button onclick="Income.closeCessModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- SURCHARGE SLABS MODAL -->
+    <div id="surcharge-slabs-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Income.closeSurchargeSlabsModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Manage Surcharge Slabs</h2>
+            
+            <p class="text-sm text-gray-600 mb-4 bg-orange-50 p-3 rounded-lg border border-orange-200">
+                Configure surcharge brackets based on your tax regime. The active bracket for your CTC is highlighted.
+            </p>
+            
+            <!-- Surcharge Slabs List -->
+            <div id="surcharge-slabs-list" class="space-y-2 mb-4">
+                <!-- Slabs will be rendered here -->
+            </div>
+            
+            <!-- Actions -->
+            <div class="flex gap-2">
+                <button onclick="Income.addSurchargeSlab()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-semibold">
+                    + Add Slab
+                </button>
+                <button onclick="Income.resetSurchargeSlabs()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-200 font-semibold">
+                    Reset
+                </button>
+                <button onclick="Income.closeSurchargeSlabsModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- SURCHARGE EDIT MODAL -->
+    <div id="surcharge-edit-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Income.closeSurchargeEditModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 id="surcharge-edit-title" class="text-xl font-bold mb-4 bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Add Surcharge Slab</h2>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Label (e.g., "₹50L - ₹1 Cr")</label>
+                    <input type="text" id="surcharge-edit-label" placeholder="Label" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Minimum Amount (₹)</label>
+                    <input type="number" id="surcharge-edit-min" placeholder="0" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Maximum Amount (₹) - Leave empty for unlimited</label>
+                    <input type="number" id="surcharge-edit-max" placeholder="Leave empty for Infinity" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Surcharge Rate (%)</label>
+                    <input type="number" id="surcharge-edit-rate" placeholder="0" step="0.01" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+            </div>
+            
+            <div class="flex gap-2 mt-6">
+                <button onclick="Income.saveSurchargeSlab()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-semibold">
+                    Save
+                </button>
+                <button onclick="Income.closeSurchargeEditModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
                     Cancel
                 </button>
             </div>
@@ -1880,6 +2165,7 @@
     <script src="js/modules/credentials.js"></script>
     <script src="js/modules/cards.js"></script>
     <script src="js/modules/expenses.js"></script>
+    <script src="js/modules/income.js"></script>
     <script src="js/modules/recurringExpenses.js"></script>
     <script src="js/modules/loans.js"></script>
     <script src="js/modules/investments.js"></script>
@@ -2184,6 +2470,63 @@
         function searchInvestments() {
             Investments.render(); // Just re-render using module's built-in logic
         }
+        
+        // Switch between Income and Expenses tabs
+        function switchIncomeExpenseTab(tab) {
+            const expensesTab = document.getElementById('expenses-tab');
+            const incomeTab = document.getElementById('income-tab');
+            const expensesContent = document.getElementById('expenses-tab-content');
+            const incomeContent = document.getElementById('income-tab-content');
+            const addButton = document.getElementById('expenses-add-btn');
+            
+            if (tab === 'expenses') {
+                // Show expenses tab
+                expensesTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md';
+                incomeTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300';
+                expensesContent.classList.remove('hidden');
+                incomeContent.classList.add('hidden');
+                
+                // Always show + button for expenses
+                addButton.onclick = openExpenseModal;
+                addButton.className = 'px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center';
+                addButton.innerHTML = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>';
+                addButton.classList.remove('hidden');
+                
+                // Render expenses if not already rendered
+                if (window.Expenses) {
+                    window.Expenses.render();
+                }
+            } else if (tab === 'income') {
+                // Show income tab
+                expensesTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300';
+                incomeTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md';
+                expensesContent.classList.add('hidden');
+                incomeContent.classList.remove('hidden');
+                
+                // Check if income data exists
+                const incomeData = window.DB.income || {};
+                const hasIncome = incomeData.ctc && incomeData.ctc > 0;
+                
+                if (hasIncome) {
+                    // Income exists - hide + button completely
+                    addButton.classList.add('hidden');
+                } else {
+                    // No income - show + button
+                    addButton.onclick = function() { Income.openForm(); };
+                    addButton.className = 'px-3 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center';
+                    addButton.innerHTML = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>';
+                    addButton.classList.remove('hidden');
+                }
+                
+                // Render income if not already rendered
+                if (window.Income) {
+                    window.Income.render();
+                }
+            }
+        }
+        
+        // Make it globally accessible
+        window.switchIncomeExpenseTab = switchIncomeExpenseTab;
         
         // Expense modal functions
         window.openExpenseModal = function(id = null) {
