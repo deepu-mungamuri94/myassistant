@@ -66,16 +66,16 @@ const Security = {
             
             // Debug: Log all available plugins
             console.log('Available Capacitor Plugins:', Object.keys(window.Capacitor.Plugins || {}));
-            console.log('Checking window.BiometricAuth:', !!window.BiometricAuth);
             
-            // Try multiple ways to access BiometricAuth
-            let BiometricAuth = window.Capacitor.Plugins?.BiometricAuth || 
-                                window.BiometricAuth ||
-                                window.Capacitor?.Plugins?.['@aparajita/capacitor-biometric-auth'];
+            // Try multiple ways to access BiometricAuth (the native plugin is called BiometricAuthNative)
+            let BiometricAuth = window.Capacitor.Plugins?.BiometricAuthNative || 
+                                window.Capacitor.Plugins?.BiometricAuth || 
+                                window.BiometricAuth;
             
             if (!BiometricAuth) {
                 console.error('❌ BiometricAuth plugin not found');
-                console.log('Tried: Capacitor.Plugins.BiometricAuth, window.BiometricAuth');
+                console.log('Tried: BiometricAuthNative, BiometricAuth, window.BiometricAuth');
+                console.log('Available plugins:', Object.keys(window.Capacitor.Plugins || {}));
                 return false;
             }
             console.log('✅ BiometricAuth plugin found:', BiometricAuth);
@@ -125,8 +125,9 @@ const Security = {
                 throw new Error('Biometric not available in web mode');
             }
             
-            // Access BiometricAuth through Capacitor Plugins
-            const BiometricAuth = window.Capacitor.Plugins.BiometricAuth;
+            // Access BiometricAuth through Capacitor Plugins (native plugin is called BiometricAuthNative)
+            const BiometricAuth = window.Capacitor.Plugins.BiometricAuthNative || 
+                                 window.Capacitor.Plugins.BiometricAuth;
             if (!BiometricAuth) {
                 throw new Error('BiometricAuth plugin not found');
             }
