@@ -931,7 +931,16 @@
             <h2 id="expense-modal-title-header" class="text-2xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Add Expense</h2>
             
             <input type="hidden" id="expense-modal-id">
-            <input type="text" id="expense-modal-title" placeholder="Title (e.g., Grocery Shopping)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+            
+            <!-- Title Input with Autocomplete -->
+            <div class="relative mb-3">
+                <input type="text" id="expense-modal-title" placeholder="Title (e.g., Grocery Shopping)" 
+                       class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                       oninput="showExpenseSuggestions(this.value)"
+                       onfocus="showExpenseSuggestions(this.value)"
+                       autocomplete="off">
+                <div id="expense-suggestions" class="hidden absolute w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10 mt-1"></div>
+            </div>
             
             <input type="number" id="expense-modal-amount" placeholder="Amount (₹)" step="0.01" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
             
@@ -2195,7 +2204,93 @@
         
         window.closeExpenseModal = function() {
             document.getElementById('expense-modal').classList.add('hidden');
+            hideExpenseSuggestions();
         }
+        
+        // Expense Autocomplete Functions
+        window.showExpenseSuggestions = function(searchTerm) {
+            const suggestionsDiv = document.getElementById('expense-suggestions');
+            
+            if (!searchTerm || searchTerm.length < 2) {
+                hideExpenseSuggestions();
+                return;
+            }
+            
+            // Get unique expense titles with their details
+            const expensesMap = new Map();
+            window.DB.expenses.forEach(exp => {
+                const title = exp.title || exp.description;
+                if (title && title.toLowerCase().includes(searchTerm.toLowerCase())) {
+                    if (!expensesMap.has(title)) {
+                        expensesMap.set(title, {
+                            title: title,
+                            category: exp.category,
+                            amount: exp.amount,
+                            description: exp.description
+                        });
+                    }
+                }
+            });
+            
+            const suggestions = Array.from(expensesMap.values());
+            
+            if (suggestions.length === 0) {
+                hideExpenseSuggestions();
+                return;
+            }
+            
+            // Limit to 8 suggestions
+            const limitedSuggestions = suggestions.slice(0, 8);
+            
+            suggestionsDiv.innerHTML = limitedSuggestions.map(suggestion => `
+                <div class="p-3 hover:bg-purple-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
+                     onclick="selectExpenseSuggestion(${JSON.stringify(suggestion).replace(/"/g, '&quot;')})">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-800 text-sm">${Utils.escapeHtml(suggestion.title)}</p>
+                            ${suggestion.category ? `<p class="text-xs text-gray-500">${Utils.escapeHtml(suggestion.category)}</p>` : ''}
+                        </div>
+                        ${suggestion.amount ? `<span class="text-sm font-medium text-purple-600">₹${suggestion.amount.toLocaleString()}</span>` : ''}
+                    </div>
+                </div>
+            `).join('');
+            
+            suggestionsDiv.classList.remove('hidden');
+        }
+        
+        window.hideExpenseSuggestions = function() {
+            const suggestionsDiv = document.getElementById('expense-suggestions');
+            suggestionsDiv.classList.add('hidden');
+            suggestionsDiv.innerHTML = '';
+        }
+        
+        window.selectExpenseSuggestion = function(suggestion) {
+            document.getElementById('expense-modal-title').value = suggestion.title;
+            if (suggestion.category) {
+                document.getElementById('expense-modal-category').value = suggestion.category;
+            }
+            if (suggestion.amount) {
+                document.getElementById('expense-modal-amount').value = suggestion.amount;
+            }
+            if (suggestion.description) {
+                document.getElementById('expense-modal-description').value = suggestion.description;
+            }
+            hideExpenseSuggestions();
+            // Focus on amount field if it's empty
+            if (!suggestion.amount) {
+                document.getElementById('expense-modal-amount').focus();
+            }
+        }
+        
+        // Close suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            const suggestionsDiv = document.getElementById('expense-suggestions');
+            const titleInput = document.getElementById('expense-modal-title');
+            if (suggestionsDiv && titleInput && 
+                !suggestionsDiv.contains(e.target) && e.target !== titleInput) {
+                hideExpenseSuggestions();
+            }
+        });
         
         window.saveExpenseModal = function() {
             try {
