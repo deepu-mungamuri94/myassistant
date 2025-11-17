@@ -16,7 +16,10 @@
         import { Capacitor } from 'https://cdn.jsdelivr.net/npm/@capacitor/core@latest/dist/index.js';
         import { StatusBar } from 'https://cdn.jsdelivr.net/npm/@capacitor/status-bar@latest/dist/index.js';
         import { CapacitorHttp } from 'https://cdn.jsdelivr.net/npm/@capacitor/core@latest/dist/index.js';
-        window.Capacitor = { ...Capacitor, Plugins: { StatusBar, Http: CapacitorHttp } };
+        // Preserve existing native plugins and add web-specific ones
+        const existingPlugins = window.Capacitor?.Plugins || {};
+        window.Capacitor = { ...Capacitor, Plugins: { ...existingPlugins, StatusBar, Http: CapacitorHttp } };
+        console.log('🔌 Capacitor initialized with plugins:', Object.keys(window.Capacitor.Plugins));
     </script>
 </head>
 <body class="flex flex-col items-center">

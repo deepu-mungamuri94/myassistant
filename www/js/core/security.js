@@ -64,13 +64,21 @@ const Security = {
             
             console.log('📱 Native platform detected, checking biometric hardware...');
             
-            // Access BiometricAuth through Capacitor Plugins
-            const BiometricAuth = window.Capacitor.Plugins.BiometricAuth;
+            // Debug: Log all available plugins
+            console.log('Available Capacitor Plugins:', Object.keys(window.Capacitor.Plugins || {}));
+            console.log('Checking window.BiometricAuth:', !!window.BiometricAuth);
+            
+            // Try multiple ways to access BiometricAuth
+            let BiometricAuth = window.Capacitor.Plugins?.BiometricAuth || 
+                                window.BiometricAuth ||
+                                window.Capacitor?.Plugins?.['@aparajita/capacitor-biometric-auth'];
+            
             if (!BiometricAuth) {
-                console.error('❌ BiometricAuth plugin not found in Capacitor.Plugins');
+                console.error('❌ BiometricAuth plugin not found');
+                console.log('Tried: Capacitor.Plugins.BiometricAuth, window.BiometricAuth');
                 return false;
             }
-            console.log('✅ BiometricAuth plugin found');
+            console.log('✅ BiometricAuth plugin found:', BiometricAuth);
             
             const result = await BiometricAuth.checkBiometry();
             console.log('🔐 Biometry check result:', result);
