@@ -89,5 +89,5 @@
             android:pathData="M0,17 m-0.5,0 a0.5,0.5 0 1,0 1,0 a0.5,0.5 0 1,0 -1,0 Z"/>
         <path android:fillColor="#667eea"
             android:pathData="M3,17 m-0.5,0 a0.5,0.5 0 1,0 1,0 a0.5,0.5 0 1,0 -1,0 Z"/>
-    </group>
+  </group>
 </vector>

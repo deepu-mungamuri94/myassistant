@@ -507,6 +507,128 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         this.render();
     },
     
+    /**
+     * Show card details in a view-only modal
+     */
+    showDetailsModal(cardId) {
+        const card = window.DB.cards.find(c => c.id === cardId || String(c.id) === String(cardId));
+        if (!card) {
+            window.Toast.error('Card not found');
+            return;
+        }
+        
+        const isCredit = card.cardType === 'credit' || !card.cardType;
+        const cardHtml = this.renderCardForModal(card, isCredit);
+        
+        // Create and show modal
+        const modalHtml = `
+            <div id="card-details-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-[1001] flex items-center justify-center p-4" onclick="if(event.target===this) Cards.closeDetailsModal()">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div class="sticky top-0 bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 flex justify-between items-center rounded-t-2xl">
+                        <h2 class="text-xl font-bold text-white">Card Details</h2>
+                        <button onclick="Cards.closeDetailsModal()" class="text-white hover:text-gray-200 p-1">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        ${cardHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if any
+        const existing = document.getElementById('card-details-modal');
+        if (existing) existing.remove();
+        
+        // Add to body
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+    
+    /**
+     * Close card details modal
+     */
+    closeDetailsModal() {
+        const modal = document.getElementById('card-details-modal');
+        if (modal) modal.remove();
+    },
+    
+    /**
+     * Render card for view modal (same design as list but read-only)
+     */
+    renderCardForModal(card, isCredit) {
+        return `
+            <div class="p-4 bg-gradient-to-br from-slate-100 via-blue-50 to-purple-100 rounded-xl border-2 border-slate-300 shadow-xl" style="background-image: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 25%, #e0e7ff 50%, #ddd6f3 75%, #faaca8 100%); box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.2), inset 0 1px 0 0 rgba(255, 255, 255, 0.4);">
+                <!-- Top Row: Card Name -->
+                <div class="flex justify-between items-start mb-2">
+                    <h4 class="font-bold text-slate-800 text-lg drop-shadow-sm">${Utils.escapeHtml(card.name)}</h4>
+                </div>
+                
+                <!-- Card Number -->
+                <p class="text-sm text-slate-700 font-mono font-semibold mb-2">${this.maskCardNumber(card.cardNumber)}</p>
+                
+                <!-- Expiry & CVV and Credit Limit -->
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-slate-600 font-medium">Expiry: ${Utils.escapeHtml(card.expiry)}</span>
+                        <span class="text-xs text-slate-600 font-medium">CVV: •••</span>
+                    </div>
+                    ${isCredit && card.creditLimit ? `<span class="text-xs text-slate-600 font-medium">💳 Limit: ₹${Utils.formatIndianNumber(card.creditLimit)}</span>` : ''}
+                </div>
+                
+                <!-- Note and Used Limit -->
+                <div class="flex justify-between items-start mt-1">
+                    <div class="flex-1">
+                        ${card.additionalData ? `<p class="text-xs text-slate-700 font-medium">${Utils.escapeHtml(card.additionalData)}</p>` : ''}
+                    </div>
+                    ${isCredit && this.calculateUsedLimit(card) > 0 ? `<span class="text-xs text-orange-600 font-medium ml-2">Used: ₹${Utils.formatIndianNumber(this.calculateUsedLimit(card))}</span>` : ''}
+                </div>
+                
+                ${isCredit ? `
+                <!-- EMIs Section -->
+                ${card.emis && card.emis.length > 0 ? `
+                <div class="mt-3 pt-3 border-t border-slate-300">
+                    <h5 class="text-sm font-bold text-slate-800 mb-2">💳 EMIs</h5>
+                    ${card.emis.filter(e => !e.completed).map(emi => {
+                        const firstDate = new Date(emi.firstEmiDate);
+                        const lastDate = new Date(firstDate);
+                        lastDate.setMonth(lastDate.getMonth() + emi.totalCount - 1);
+                        const remaining = emi.totalCount - (emi.paidCount || 0);
+                        return `
+                        <div class="bg-white bg-opacity-50 rounded-lg p-2 mb-2">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="text-xs font-semibold text-slate-800">${Utils.escapeHtml(emi.reason || 'EMI')}</p>
+                                    <p class="text-xs text-slate-600">${firstDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })} - ${lastDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}</p>
+                                    <p class="text-xs text-slate-600">Total: ₹${Utils.formatIndianNumber(emi.emiAmount * emi.totalCount)}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm font-bold text-green-700">₹${Utils.formatIndianNumber(emi.emiAmount)}</p>
+                                    <p class="text-xs text-slate-600">${remaining}/${emi.totalCount}</p>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+                ` : ''}
+                
+                <!-- Benefits Section -->
+                ${card.benefits ? `
+                <div class="mt-3 pt-3 border-t border-slate-300">
+                    <h5 class="text-sm font-bold text-slate-800 mb-2">📋 Card Benefits</h5>
+                    <div class="bg-white bg-opacity-50 rounded-lg p-3">
+                        <div class="text-xs text-slate-700 leading-relaxed">${card.benefits}</div>
+                    </div>
+                </div>
+                ` : ''}
+                ` : ''}
+            </div>
+        `;
+    },
+    
     render() {
         const list = document.getElementById('cards-list');
         

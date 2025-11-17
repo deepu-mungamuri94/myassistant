@@ -324,6 +324,126 @@ const RecurringExpenses = {
     },
 
     /**
+     * Show recurring expense details in a view-only modal
+     */
+    showDetailsModal(id) {
+        const recurring = window.DB.recurringExpenses.find(r => r.id === id || String(r.id) === String(id));
+        if (!recurring) {
+            window.Toast.error('Recurring expense not found');
+            return;
+        }
+        
+        const html = this.renderRecurringForModal(recurring);
+        
+        // Create and show modal
+        const modalHtml = `
+            <div id="recurring-details-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-[1001] flex items-center justify-center p-4" onclick="if(event.target===this) RecurringExpenses.closeDetailsModal()">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div class="sticky top-0 bg-gradient-to-r from-orange-600 to-amber-600 px-6 py-4 flex justify-between items-center rounded-t-2xl">
+                        <h2 class="text-xl font-bold text-white">Recurring Expense Details</h2>
+                        <button onclick="RecurringExpenses.closeDetailsModal()" class="text-white hover:text-gray-200 p-1">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        ${html}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if any
+        const existing = document.getElementById('recurring-details-modal');
+        if (existing) existing.remove();
+        
+        // Add to body
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+    
+    /**
+     * Close recurring expense details modal
+     */
+    closeDetailsModal() {
+        const modal = document.getElementById('recurring-details-modal');
+        if (modal) modal.remove();
+    },
+    
+    /**
+     * Render recurring expense for view modal
+     */
+    renderRecurringForModal(recurring) {
+        // Format frequency display
+        let frequencyText = '';
+        if (recurring.frequency === 'monthly') {
+            frequencyText = `Monthly on ${recurring.day}${this.getOrdinalSuffix(recurring.day)}`;
+        } else if (recurring.frequency === 'yearly') {
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthName = recurring.months && recurring.months[0] ? monthNames[recurring.months[0] - 1] : '';
+            frequencyText = `Yearly on ${monthName} ${recurring.day}${this.getOrdinalSuffix(recurring.day)}`;
+        } else if (recurring.frequency === 'custom') {
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthsList = recurring.months.map(m => monthNames[m - 1]).join(', ');
+            frequencyText = `${monthsList} ${recurring.day}${this.getOrdinalSuffix(recurring.day)}`;
+        }
+        
+        // Format end date
+        let endDateText = 'Indefinite';
+        if (recurring.endDate) {
+            const endDate = new Date(recurring.endDate);
+            endDateText = `Until ${endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+        }
+        
+        return `
+            <div class="p-4 bg-white rounded-xl border-2 border-orange-300 shadow-xl">
+                <!-- Name and Description -->
+                <div class="mb-3">
+                    <h4 class="font-bold text-gray-800 text-xl mb-1">${Utils.escapeHtml(recurring.name)}</h4>
+                    ${recurring.description ? `<p class="text-sm text-gray-600">${Utils.escapeHtml(recurring.description)}</p>` : '<p class="text-sm text-gray-400 italic">No description</p>'}
+                </div>
+                
+                <!-- Amount and Schedule -->
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    <div class="bg-orange-50 p-3 rounded-lg">
+                        <p class="text-xs text-orange-600 font-semibold mb-1">Amount</p>
+                        <p class="text-2xl font-bold text-orange-800">₹${Utils.formatIndianNumber(recurring.amount)}</p>
+                    </div>
+                    <div class="bg-orange-50 p-3 rounded-lg">
+                        <p class="text-xs text-orange-600 font-semibold mb-1">Frequency</p>
+                        <p class="text-sm font-semibold text-orange-800">${Utils.escapeHtml(frequencyText)}</p>
+                    </div>
+                </div>
+                
+                <!-- Duration -->
+                <div class="bg-gray-50 p-3 rounded-lg">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Duration</span>
+                        <span class="text-sm font-semibold text-gray-800">${Utils.escapeHtml(endDateText)}</span>
+                    </div>
+                </div>
+                
+                <!-- Status -->
+                ${recurring.isActive !== false ? `
+                <div class="mt-3 flex items-center gap-2 text-green-700">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    <span class="text-sm font-semibold">Active</span>
+                </div>
+                ` : `
+                <div class="mt-3 flex items-center gap-2 text-gray-500">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                    <span class="text-sm font-semibold">Inactive</span>
+                </div>
+                `}
+            </div>
+        `;
+    },
+    
+    /**
      * Render recurring expenses list
      */
     render() {

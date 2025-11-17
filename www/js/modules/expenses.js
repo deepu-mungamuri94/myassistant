@@ -314,7 +314,12 @@ const Expenses = {
     showCardDetails(cardName) {
         // Find the card
         const cards = window.DB.cards || [];
-        const card = cards.find(c => c.name && c.name.includes(cardName));
+        // Parse card name from title (format: "EMI: CardName - Reason")
+        let searchName = cardName;
+        if (cardName.includes(' - ')) {
+            searchName = cardName.split(' - ')[0]; // Get "CardName" part
+        }
+        const card = cards.find(c => c.name && (c.name === searchName || c.name.includes(searchName) || searchName.includes(c.name)));
         
         if (card && window.Cards && window.Cards.showDetailsModal) {
             // Show card details in view modal
@@ -491,49 +496,63 @@ const Expenses = {
         const upcoming = [];
         const completed = [];
         
-        // Get upcoming EMIs
+        // Get credit card EMIs
         if (window.Cards && window.DB.cards) {
             window.DB.cards.forEach(card => {
+                // Only process credit cards (not debit cards)
+                if (card.cardType === 'debit') return;
                 if (!card.emis || card.emis.length === 0) return;
                 
                 card.emis.forEach(emi => {
                     if (!emi.firstEmiDate || emi.completed || !emi.emiAmount) return;
                     
                     const firstDate = new Date(emi.firstEmiDate);
+                    const emiDay = firstDate.getDate();
                     
                     // Calculate which EMI payment number this month would be
                     let monthsElapsed = (today.getFullYear() - firstDate.getFullYear()) * 12 
                                       + (today.getMonth() - firstDate.getMonth());
                     
+                    // If current date hasn't reached the EMI day this month, subtract 1
+                    if (today.getDate() < emiDay) {
+                        monthsElapsed--;
+                    }
+                    
                     const emiNumber = monthsElapsed + 1;
                     
-                    // Only if this EMI number is within total EMIs
+                    // Only if this EMI number is within total EMIs and not already completed
                     if (emiNumber > 0 && emiNumber <= emi.totalCount) {
-                        const emiDate = new Date(today.getFullYear(), today.getMonth(), firstDate.getDate());
+                        const emiDate = new Date(today.getFullYear(), today.getMonth(), emiDay);
                         const emiDateStr = emiDate.toISOString().split('T')[0];
                         
                         const emiExpense = {
-                            title: `EMI: ${emi.reason}`,
+                            title: `EMI: ${card.name} - ${emi.reason}`,
                             amount: parseFloat(emi.emiAmount),
                             category: 'emi',
                             date: emiDateStr,
-                            description: `EMI payment ${emiNumber}/${emi.totalCount}`,
+                            description: `${card.name} EMI payment ${emiNumber}/${emi.totalCount}`,
                             suggestedCard: card.name,
                             isRecurring: true
                         };
                         
-                        // Check if date has passed
-                        if (today.getDate() < firstDate.getDate()) {
-                            upcoming.push(emiExpense);
+                        // Check if it exists in expenses already
+                        const exists = window.DB.expenses.find(exp => 
+                            (exp.title === emiExpense.title || exp.title === `EMI: ${emi.reason}`) &&
+                            exp.date === emiDateStr &&
+                            Math.abs(exp.amount - emiExpense.amount) < 0.01
+                        );
+                        
+                        if (exists) {
+                            // Already added to expenses
+                            completed.push(emiExpense);
                         } else {
-                            // Check if it exists in expenses
-                            const exists = window.DB.expenses.find(exp => 
-                                exp.title === emiExpense.title &&
-                                exp.date === emiDateStr &&
-                                exp.amount === emiExpense.amount
-                            );
-                            if (exists) {
-                                completed.push(emiExpense);
+                            // Not yet added
+                            if (today.getDate() < emiDay) {
+                                // Date hasn't arrived yet
+                                upcoming.push(emiExpense);
+                            } else {
+                                // Date passed but not added (should be auto-added)
+                                upcoming.push(emiExpense);
                             }
                         }
                     }
