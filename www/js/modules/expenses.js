@@ -249,10 +249,11 @@ const Expenses = {
     },
     
     /**
-     * Format category display (EMI uppercase)
+     * Format category display (EMI uppercase, Recurring capitalized)
      */
     formatCategoryDisplay(category) {
         if (category === 'emi') return 'EMI';
+        if (category === 'recurring') return 'Recurring';
         return category;
     },
     
@@ -270,10 +271,9 @@ const Expenses = {
             return `<button onclick="Expenses.showLoanDetails('${escapeJs(expense.title)}')" class="text-xs text-blue-600 hover:text-blue-800 mt-1" style="text-decoration:none;">🔗 More Info...</button>`;
         }
         
-        // Card EMI - navigate to cards page
+        // Card EMI - show EMI details modal (pass expense ID to access suggestedCard)
         if (expense.category === 'emi' && expense.title && expense.title.startsWith('EMI:')) {
-            const cardName = expense.title.replace('EMI:', '').trim();
-            return `<button onclick="Expenses.showCardDetails('${escapeJs(cardName)}')" class="text-xs text-blue-600 hover:text-blue-800 mt-1" style="text-decoration:none;">🔗 More Info...</button>`;
+            return `<button onclick="Expenses.showCardEMIDetails(${expense.id})" class="text-xs text-blue-600 hover:text-blue-800 mt-1" style="text-decoration:none;">🔗 More Info...</button>`;
         }
         
         // Custom recurring expense - navigate to recurring page
@@ -309,26 +309,53 @@ const Expenses = {
     },
     
     /**
-     * Show card details in view-only modal
+     * Show card EMI details in view-only modal
      */
-    showCardDetails(cardName) {
+    showCardEMIDetails(expenseId) {
+        // Get the expense
+        const expense = this.getById(expenseId);
+        if (!expense) {
+            window.Toast.error('Expense not found');
+            return;
+        }
+        
+        // Get EMI reason from title (remove "EMI: " prefix)
+        let emiReason = expense.title.replace('EMI: ', '').trim();
+        let cardName = expense.suggestedCard;
+        
+        // Handle old format "CardName - Reason" if suggestedCard is missing
+        if (!cardName && emiReason.includes(' - ')) {
+            const parts = emiReason.split(' - ');
+            cardName = parts[0].trim();
+            emiReason = parts.slice(1).join(' - ').trim();
+        }
+        
+        if (!cardName) {
+            // Try to find the card by searching all cards for this EMI reason
+            const cards = window.DB.cards || [];
+            const foundCard = cards.find(c => c.emis && c.emis.some(e => e.reason === emiReason));
+            if (foundCard) {
+                cardName = foundCard.name;
+            } else {
+                window.Toast.error('Card information not found');
+                return;
+            }
+        }
+        
         // Find the card
         const cards = window.DB.cards || [];
-        // Parse card name from title (format: "EMI: CardName - Reason")
-        let searchName = cardName;
-        if (cardName.includes(' - ')) {
-            searchName = cardName.split(' - ')[0]; // Get "CardName" part
-        }
-        const card = cards.find(c => c.name && (c.name === searchName || c.name.includes(searchName) || searchName.includes(c.name)));
+        const card = cards.find(c => c.name === cardName);
         
-        if (card && window.Cards && window.Cards.showDetailsModal) {
-            // Show card details in view modal
-            window.Cards.showDetailsModal(card.id);
-        } else if (card && window.openCardModal) {
-            // Fallback to edit modal if view modal doesn't exist
-            window.openCardModal(card.id);
-        } else {
+        if (!card) {
             window.Toast.error('Card not found');
+            return;
+        }
+        
+        if (window.Cards && window.Cards.showEMIDetailsModal) {
+            // Show specific EMI details in modal
+            window.Cards.showEMIDetailsModal(card.name, emiReason);
+        } else {
+            window.Toast.error('EMI details not available');
         }
     },
     
@@ -497,13 +524,23 @@ const Expenses = {
         const completed = [];
         
         // Get credit card EMIs
+        console.log('Cards module available:', !!window.Cards, 'DB cards:', window.DB.cards?.length || 0);
         if (window.Cards && window.DB.cards) {
+            console.log('Checking card EMIs...', window.DB.cards.length, 'cards found');
             window.DB.cards.forEach(card => {
+                console.log('Processing card:', card.name, 'Type:', card.cardType, 'EMIs:', card.emis?.length || 0);
                 // Only process credit cards (not debit cards)
-                if (card.cardType === 'debit') return;
-                if (!card.emis || card.emis.length === 0) return;
+                if (card.cardType === 'debit') {
+                    console.log('Skipping debit card:', card.name);
+                    return;
+                }
+                if (!card.emis || card.emis.length === 0) {
+                    console.log('No EMIs for card:', card.name);
+                    return;
+                }
                 
                 card.emis.forEach(emi => {
+                    console.log('Processing EMI:', emi.reason, 'Completed:', emi.completed, 'Amount:', emi.emiAmount);
                     if (!emi.firstEmiDate || emi.completed || !emi.emiAmount) return;
                     
                     const firstDate = new Date(emi.firstEmiDate);
@@ -526,7 +563,7 @@ const Expenses = {
                         const emiDateStr = emiDate.toISOString().split('T')[0];
                         
                         const emiExpense = {
-                            title: `EMI: ${card.name} - ${emi.reason}`,
+                            title: `EMI: ${emi.reason}`,
                             amount: parseFloat(emi.emiAmount),
                             category: 'emi',
                             date: emiDateStr,
@@ -535,29 +572,38 @@ const Expenses = {
                             isRecurring: true
                         };
                         
-                        // Check if it exists in expenses already
-                        const exists = window.DB.expenses.find(exp => 
-                            (exp.title === emiExpense.title || exp.title === `EMI: ${emi.reason}`) &&
-                            exp.date === emiDateStr &&
-                            Math.abs(exp.amount - emiExpense.amount) < 0.01
-                        );
+                        // Check if it exists in expenses already (check both old and new format)
+                        const exists = window.DB.expenses.find(exp => {
+                            const titleMatch = exp.title === emiExpense.title || 
+                                               exp.title === `EMI: ${card.name} - ${emi.reason}`;
+                            const dateMatch = exp.date === emiDateStr;
+                            const amountMatch = Math.abs(exp.amount - emiExpense.amount) < 0.01;
+                            return titleMatch && dateMatch && amountMatch;
+                        });
+                        
+                        console.log('Card EMI:', emiExpense.title, 'Date:', emiDateStr, 'Exists:', !!exists);
                         
                         if (exists) {
                             // Already added to expenses
+                            console.log('Card EMI already in expenses (completed):', emiExpense.title);
                             completed.push(emiExpense);
                         } else {
                             // Not yet added
                             if (today.getDate() < emiDay) {
                                 // Date hasn't arrived yet
+                                console.log('Card EMI upcoming (future):', emiExpense.title);
                                 upcoming.push(emiExpense);
                             } else {
                                 // Date passed but not added (should be auto-added)
+                                console.log('Card EMI upcoming (past, should be added):', emiExpense.title);
                                 upcoming.push(emiExpense);
                             }
                         }
                     }
                 });
             });
+        } else {
+            console.log('Cards module or DB.cards not available');
         }
         
         // Get loan EMIs
@@ -1084,8 +1130,91 @@ const Expenses = {
     }
 };
 
+/**
+ * Migration: Fix old EMI expense titles
+ */
+function migrateOldEMIExpenses(showToast = false) {
+    if (!window.DB || !window.DB.expenses) {
+        console.log('No expenses to migrate');
+        return 0;
+    }
+    
+    let migrated = 0;
+    window.DB.expenses.forEach(expense => {
+        // Check if it's an EMI expense with old format "EMI: CardName - Reason"
+        if (expense.category === 'emi' && expense.title && expense.title.startsWith('EMI:')) {
+            const titleWithoutPrefix = expense.title.replace('EMI: ', '').trim();
+            
+            // If it contains " - ", it's the old format
+            if (titleWithoutPrefix.includes(' - ')) {
+                const parts = titleWithoutPrefix.split(' - ');
+                const cardName = parts[0].trim();
+                const emiReason = parts.slice(1).join(' - ').trim();
+                
+                console.log(`Migrating: "${expense.title}" -> "EMI: ${emiReason}"`);
+                
+                // Update title to only have EMI reason
+                expense.title = `EMI: ${emiReason}`;
+                
+                // Ensure suggestedCard is set
+                if (!expense.suggestedCard) {
+                    expense.suggestedCard = cardName;
+                }
+                
+                // Update description to include card name if not already
+                if (expense.description && !expense.description.includes(cardName)) {
+                    expense.description = `${cardName} - ${expense.description}`;
+                }
+                
+                migrated++;
+            }
+        }
+    });
+    
+    if (migrated > 0) {
+        window.Storage.save();
+        console.log(`✅ Migrated ${migrated} EMI expense(s) to new format`);
+        if (showToast && window.Toast) {
+            window.Toast.success(`Migrated ${migrated} EMI expense(s) to new format`);
+        }
+    } else {
+        console.log('No EMI expenses to migrate');
+    }
+    
+    return migrated;
+}
+
 // Export for use in other modules
 if (typeof window !== 'undefined') {
     window.Expenses = Expenses;
+    window.Expenses.migrateOldEMIExpenses = migrateOldEMIExpenses;
+    
+    // Run migration immediately when expenses module loads
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                try {
+                    const count = migrateOldEMIExpenses(false);
+                    if (count > 0 && window.Expenses.render) {
+                        window.Expenses.render(); // Re-render if expenses are being viewed
+                    }
+                } catch (error) {
+                    console.error('EMI migration error:', error);
+                }
+            }, 500);
+        });
+    } else {
+        // Document already loaded
+        setTimeout(() => {
+            try {
+                const count = migrateOldEMIExpenses(false);
+                if (count > 0 && window.Expenses.render) {
+                    window.Expenses.render(); // Re-render if expenses are being viewed
+                }
+            } catch (error) {
+                console.error('EMI migration error:', error);
+            }
+        }, 500);
+    }
 }
 

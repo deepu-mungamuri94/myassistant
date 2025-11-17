@@ -484,6 +484,57 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
     },
 
     /**
+     * Get EMI summary for display
+     */
+    getEMISummary(card) {
+        if (!card.emis || card.emis.length === 0) return null;
+        
+        const activeEMIs = card.emis.filter(e => !e.completed);
+        if (activeEMIs.length === 0) return null;
+        
+        let totalEMIAmount = 0;
+        let totalPending = 0;
+        let totalPaid = 0;
+        let totalCount = 0;
+        let nextEMIDate = null;
+        
+        activeEMIs.forEach(emi => {
+            if (emi.emiAmount) {
+                const total = parseFloat(emi.emiAmount) * emi.totalCount;
+                const pending = parseFloat(emi.emiAmount) * (emi.totalCount - emi.paidCount);
+                const paid = parseFloat(emi.emiAmount) * emi.paidCount;
+                
+                totalEMIAmount += total;
+                totalPending += pending;
+                totalPaid += paid;
+                totalCount += emi.totalCount;
+                
+                // Find next EMI date (earliest upcoming EMI)
+                if (emi.firstEmiDate) {
+                    const firstDate = new Date(emi.firstEmiDate);
+                    const nextDate = new Date(firstDate);
+                    nextDate.setMonth(nextDate.getMonth() + emi.paidCount);
+                    
+                    if (!nextEMIDate || nextDate < nextEMIDate) {
+                        nextEMIDate = nextDate;
+                    }
+                }
+            }
+        });
+        
+        const progress = totalEMIAmount > 0 ? (totalPaid / totalEMIAmount) * 100 : 0;
+        
+        return {
+            totalEMIAmount: Math.round(totalEMIAmount),
+            totalPending: Math.round(totalPending),
+            totalPaid: Math.round(totalPaid),
+            progress: Math.round(progress),
+            nextEMIDate: nextEMIDate ? nextEMIDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null,
+            activeCount: activeEMIs.length
+        };
+    },
+
+    /**
      * Render cards list
      */
     /**
@@ -497,11 +548,11 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         const debitTab = document.getElementById('debit-tab');
         
         if (tab === 'credit') {
-            creditTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md';
-            debitTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300';
+            creditTab.className = 'flex-1 py-2.5 px-4 rounded-xl transition-all font-semibold bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white shadow-lg hover:shadow-xl hover:shadow-emerald-300/50 transform hover:scale-105';
+            debitTab.className = 'flex-1 py-2.5 px-4 rounded-xl transition-all font-semibold bg-gradient-to-r from-gray-300 to-gray-400 text-gray-700 hover:from-gray-400 hover:to-gray-500 hover:text-white shadow-md hover:shadow-lg transform hover:scale-105';
         } else {
-            creditTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300';
-            debitTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md';
+            creditTab.className = 'flex-1 py-2.5 px-4 rounded-xl transition-all font-semibold bg-gradient-to-r from-gray-300 to-gray-400 text-gray-700 hover:from-gray-400 hover:to-gray-500 hover:text-white shadow-md hover:shadow-lg transform hover:scale-105';
+            debitTab.className = 'flex-1 py-2.5 px-4 rounded-xl transition-all font-semibold bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white shadow-lg hover:shadow-xl hover:shadow-emerald-300/50 transform hover:scale-105';
         }
         
         this.render();
@@ -552,6 +603,151 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
      */
     closeDetailsModal() {
         const modal = document.getElementById('card-details-modal');
+        if (modal) modal.remove();
+    },
+
+    /**
+     * Show specific EMI details in a modal (called from expenses page)
+     */
+    showEMIDetailsModal(cardName, emiReason) {
+        // Find the card
+        const card = window.DB.cards.find(c => c.name === cardName || cardName.includes(c.name) || c.name.includes(cardName));
+        if (!card) {
+            window.Toast.error('Card not found');
+            return;
+        }
+
+        // Find the specific EMI
+        const emi = card.emis?.find(e => e.reason === emiReason);
+        if (!emi) {
+            window.Toast.error('EMI not found');
+            return;
+        }
+
+        // Calculate EMI details
+        const totalAmount = emi.emiAmount ? (parseFloat(emi.emiAmount) * emi.totalCount).toFixed(0) : 0;
+        const paidAmount = emi.emiAmount ? (parseFloat(emi.emiAmount) * emi.paidCount).toFixed(0) : 0;
+        const pendingAmount = totalAmount - paidAmount;
+        const progress = emi.totalCount > 0 ? Math.round((emi.paidCount / emi.totalCount) * 100) : 0;
+
+        // Calculate dates
+        let startDateStr = 'N/A';
+        let endDateStr = 'N/A';
+        let nextEMIDateStr = 'N/A';
+        
+        if (emi.firstEmiDate) {
+            const firstDate = new Date(emi.firstEmiDate);
+            startDateStr = firstDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            
+            const endDate = new Date(firstDate);
+            endDate.setMonth(endDate.getMonth() + emi.totalCount - 1);
+            endDateStr = endDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            
+            // Next EMI date
+            if (emi.paidCount < emi.totalCount) {
+                const nextDate = new Date(firstDate);
+                nextDate.setMonth(nextDate.getMonth() + emi.paidCount);
+                nextEMIDateStr = nextDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            } else {
+                nextEMIDateStr = 'Completed';
+            }
+        }
+
+        // Create modal HTML
+        const modalHtml = `
+            <div id="emi-details-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-[1001] flex items-center justify-center p-4" onclick="if(event.target===this) Cards.closeEMIDetailsModal()">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+                    <div class="sticky top-0 bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-4 flex justify-between items-center rounded-t-2xl">
+                        <h2 class="text-xl font-bold text-white">💳 EMI Details</h2>
+                        <button onclick="Cards.closeEMIDetailsModal()" class="text-white hover:text-gray-200 p-1">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <!-- Card & EMI Name -->
+                        <div class="mb-4">
+                            <h3 class="text-lg font-bold text-gray-800">${Utils.escapeHtml(card.name)}</h3>
+                            <p class="text-sm text-gray-600 mt-1">${Utils.escapeHtml(emi.reason)}</p>
+                        </div>
+
+                        <!-- EMI Progress -->
+                        <div class="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-4 mb-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm font-semibold text-gray-700">Progress</span>
+                                <span class="text-sm font-bold text-blue-700">${emi.paidCount}/${emi.totalCount} EMIs</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                                <div class="bg-gradient-to-r from-blue-500 to-cyan-600 h-3 rounded-full transition-all" style="width: ${progress}%"></div>
+                            </div>
+                            <p class="text-xs text-center text-gray-600">${progress}% completed</p>
+                        </div>
+
+                        <!-- Amount Details -->
+                        <div class="space-y-3 mb-4">
+                            <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                                <span class="text-sm text-gray-600">Monthly EMI</span>
+                                <span class="text-base font-semibold text-gray-800">₹${Utils.formatIndianNumber(emi.emiAmount)}</span>
+                            </div>
+                            <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                                <span class="text-sm text-gray-600">Total Amount</span>
+                                <span class="text-base font-semibold text-gray-800">₹${Utils.formatIndianNumber(totalAmount)}</span>
+                            </div>
+                            <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                                <span class="text-sm text-gray-600">Paid Amount</span>
+                                <span class="text-base font-semibold text-green-600">₹${Utils.formatIndianNumber(paidAmount)}</span>
+                            </div>
+                            <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                                <span class="text-sm text-gray-600">Pending Amount</span>
+                                <span class="text-base font-semibold text-orange-600">₹${Utils.formatIndianNumber(pendingAmount)}</span>
+                            </div>
+                        </div>
+
+                        <!-- Date Details -->
+                        <div class="bg-gray-50 rounded-xl p-4">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-3">📅 Timeline</h4>
+                            <div class="space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs text-gray-600">Start Date</span>
+                                    <span class="text-sm font-medium text-gray-800">${startDateStr}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs text-gray-600">End Date</span>
+                                    <span class="text-sm font-medium text-gray-800">${endDateStr}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs text-gray-600">Next EMI</span>
+                                    <span class="text-sm font-medium ${nextEMIDateStr === 'Completed' ? 'text-green-600' : 'text-blue-600'}">${nextEMIDateStr}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-6 py-4 rounded-b-2xl flex gap-2">
+                        <button onclick="Cards.openEMIModal(${card.id}); Cards.closeEMIDetailsModal();" class="flex-1 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-all">
+                            View All EMIs
+                        </button>
+                        <button onclick="Cards.closeEMIDetailsModal()" class="px-4 py-2 bg-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-400 transition-all">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Remove existing modal if any
+        const existing = document.getElementById('emi-details-modal');
+        if (existing) existing.remove();
+
+        // Add to body
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+
+    /**
+     * Close EMI details modal
+     */
+    closeEMIDetailsModal() {
+        const modal = document.getElementById('emi-details-modal');
         if (modal) modal.remove();
     },
     
@@ -695,17 +891,51 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     ${isCredit && this.calculateUsedLimit(card) > 0 ? `<span class="text-xs text-orange-600 font-medium ml-2">Used: ₹${Utils.formatIndianNumber(this.calculateUsedLimit(card))}</span>` : ''}
                 </div>
                 
-                <!-- Bottom Section: EMIs, Terms - Only for credit cards -->
+                <!-- Bottom Section: EMI Summary & Actions - Only for credit cards -->
                 ${isCredit ? `
-                <div class="pt-3 border-t border-slate-300 border-opacity-50">
-                    <div class="flex justify-between items-center gap-2">
-                        <button onclick="Cards.openEMIModal(${card.id})" class="flex-1 text-xs bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-3 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 shadow-md">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                            </svg>
-                            EMIs ${card.emis && card.emis.filter(e => !e.completed).length > 0 ? `(${card.emis.filter(e => !e.completed).length})` : ''}
-                        </button>
+                ${(() => {
+                    const emiSummary = this.getEMISummary(card);
+                    if (emiSummary) {
+                        return `
+                        <!-- EMI Summary -->
+                        <div class="pt-3 mt-2 border-t border-slate-300 border-opacity-50">
+                            <div class="bg-white bg-opacity-50 rounded-lg p-2.5 mb-2">
+                                <div class="flex justify-between items-center mb-1.5">
+                                    <span class="text-xs font-semibold text-slate-800">💳 Active EMIs (${emiSummary.activeCount})</span>
+                                    <button onclick="Cards.openEMIModal(${card.id})" class="text-xs text-blue-600 hover:text-blue-800 font-medium" title="Manage EMIs">
+                                        Manage
+                                    </button>
+                                </div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <div class="flex-1">
+                                        <p class="text-xs text-slate-600">Total: <span class="font-semibold text-slate-800">₹${Utils.formatIndianNumber(emiSummary.totalEMIAmount)}</span></p>
+                                        <p class="text-xs text-slate-600">Pending: <span class="font-semibold text-orange-600">₹${Utils.formatIndianNumber(emiSummary.totalPending)}</span></p>
+                                    </div>
+                                    ${emiSummary.nextEMIDate ? `<p class="text-xs text-slate-600 ml-2">📅 ${emiSummary.nextEMIDate}</p>` : ''}
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2 mt-1.5">
+                                    <div class="bg-gradient-to-r from-green-500 to-emerald-600 h-2 rounded-full transition-all" style="width: ${emiSummary.progress}%"></div>
+                                </div>
+                                <p class="text-xs text-slate-600 mt-1 text-center">${emiSummary.progress}% paid</p>
+                            </div>
+                        </div>
+                        `;
+                    } else {
+                        return `
+                        <div class="pt-3 mt-2 border-t border-slate-300 border-opacity-50">
+                            <button onclick="Cards.openEMIModal(${card.id})" class="w-full text-xs bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-3 py-2 rounded-lg transition-all flex items-center justify-center gap-1 shadow-md">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                </svg>
+                                Add EMI
+                            </button>
+                        </div>
+                        `;
+                    }
+                })()}
+                <!-- Terms Actions -->
+                <div class="pt-2">
+                    <div class="flex gap-2">
                         <button onclick="${card.benefits ? `Cards.showBenefitsModal(${card.id})` : 'void(0)'}"
                                 class="flex-1 text-xs ${card.benefits ? 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700' : 'bg-gray-400 cursor-not-allowed opacity-60'} text-white px-3 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 shadow-md"
                                 title="${card.benefits ? 'View terms' : 'No terms fetched yet'}"
@@ -723,7 +953,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                             </svg>
-                            <span id="refresh-text-${card.id}">Terms</span>
+                            <span id="refresh-text-${card.id}">Update</span>
                         </button>
                     </div>
                 </div>
@@ -1305,12 +1535,14 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                         continue;
                     }
                     
-                    // Check if expense already exists for this EMI and month
-                    const existingExpense = window.DB.expenses.find(exp => 
-                        exp.title === emiTitle &&
-                        exp.date === expenseDateStr &&
-                        exp.amount === parseFloat(emi.emiAmount)
-                    );
+                    // Check if expense already exists for this EMI and month (check both old and new format)
+                    const existingExpense = window.DB.expenses.find(exp => {
+                        const titleMatch = exp.title === emiTitle || 
+                                          exp.title === `EMI: ${card.name} - ${emi.reason}`;
+                        const dateMatch = exp.date === expenseDateStr;
+                        const amountMatch = exp.amount === parseFloat(emi.emiAmount);
+                        return titleMatch && dateMatch && amountMatch;
+                    });
                     
                     if (!existingExpense) {
                         // Add as expense
