@@ -529,11 +529,11 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         const debitTab = document.getElementById('debit-tab');
         
         if (tab === 'credit') {
-            creditTab.className = 'flex-1 py-2.5 px-4 rounded-xl transition-all font-semibold bg-gradient-to-r from-green-600 to-green-400 text-white shadow-lg hover:shadow-xl hover:shadow-green-300/50 transform hover:scale-105';
-            debitTab.className = 'flex-1 py-2.5 px-4 rounded-xl transition-all font-semibold bg-gradient-to-r from-gray-300 to-gray-400 text-gray-700 hover:from-gray-400 hover:to-gray-500 hover:text-white shadow-md hover:shadow-lg transform hover:scale-105';
+            creditTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-green-700 to-green-500 text-white shadow-md';
+            debitTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300';
         } else {
-            creditTab.className = 'flex-1 py-2.5 px-4 rounded-xl transition-all font-semibold bg-gradient-to-r from-gray-300 to-gray-400 text-gray-700 hover:from-gray-400 hover:to-gray-500 hover:text-white shadow-md hover:shadow-lg transform hover:scale-105';
-            debitTab.className = 'flex-1 py-2.5 px-4 rounded-xl transition-all font-semibold bg-gradient-to-r from-green-600 to-green-400 text-white shadow-lg hover:shadow-xl hover:shadow-green-300/50 transform hover:scale-105';
+            creditTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300';
+            debitTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-green-700 to-green-500 text-white shadow-md';
         }
         
         this.render();
@@ -556,8 +556,8 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         const modalHtml = `
             <div id="card-details-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-[1001] flex items-center justify-center p-4" onclick="if(event.target===this) Cards.closeDetailsModal()">
                 <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                    <div class="sticky top-0 bg-gradient-to-r from-green-600 to-green-400 px-6 py-4 flex justify-between items-center rounded-t-2xl shadow-lg">
-                        <h2 class="text-xl font-bold text-white drop-shadow-sm">Card Details</h2>
+                    <div class="sticky top-0 bg-gradient-to-r from-green-700 to-green-500 px-6 py-4 flex justify-between items-center rounded-t-2xl">
+                        <h2 class="text-xl font-bold text-white">Card Details</h2>
                         <button onclick="Cards.closeDetailsModal()" class="text-white hover:text-gray-200 p-1">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
