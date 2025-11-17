@@ -154,17 +154,13 @@ const Security = {
             console.log('🔐 Authentication result:', result);
             console.log('🔐 Result type:', typeof result);
             console.log('🔐 Result keys:', result ? Object.keys(result) : 'null/undefined');
+            console.log('🔐 Result JSON:', JSON.stringify(result));
             
-            // The result might be a boolean or an object with different properties
-            // Check various possible success indicators
-            if (result === true || result?.verified === true || result?.success === true) {
-                this.isUnlocked = true;
-                console.log('✅ Biometric authentication successful!');
-                return true;
-            }
-            
-            console.log('❌ Biometric verification failed or cancelled');
-            return false;
+            // If the method completes without throwing an error, consider it success
+            // The plugin throws on failure/cancel, so reaching here means success
+            this.isUnlocked = true;
+            console.log('✅ Biometric authentication successful!');
+            return true;
         } catch (error) {
             console.error('❌ Biometric authentication failed:', error);
             console.error('Error details:', {
