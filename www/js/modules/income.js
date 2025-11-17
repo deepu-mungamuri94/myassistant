@@ -247,14 +247,12 @@ const Income = {
         const midYearAfterTax = midYearBeforeTax * (1 - effectiveTaxRate);
         const yearEndAfterTax = yearEndBeforeTax * (1 - effectiveTaxRate);
         
-        // ESPP and PF cuts
+        // Only ESPP is deducted from bonus, no PF on bonus
         const midYearEsppCut = (midYearBeforeTax * esppPercent) / 100;
-        const midYearPfCut = (basic / 12 * pfPercent) / 100;
-        const midYearNet = midYearAfterTax - midYearEsppCut - midYearPfCut;
+        const midYearNet = midYearAfterTax - midYearEsppCut;
         
         const yearEndEsppCut = (yearEndBeforeTax * esppPercent) / 100;
-        const yearEndPfCut = (basic / 12 * pfPercent) / 100;
-        const yearEndNet = yearEndAfterTax - yearEndEsppCut - yearEndPfCut;
+        const yearEndNet = yearEndAfterTax - yearEndEsppCut;
         
         return {
             totalBonusBeforeTax,
@@ -263,14 +261,12 @@ const Income = {
                 beforeTax: midYearBeforeTax,
                 afterTax: midYearAfterTax,
                 esppCut: midYearEsppCut,
-                pfCut: midYearPfCut,
                 net: midYearNet
             },
             yearEnd: {
                 beforeTax: yearEndBeforeTax,
                 afterTax: yearEndAfterTax,
                 esppCut: yearEndEsppCut,
-                pfCut: yearEndPfCut,
                 net: yearEndNet
             }
         };
@@ -291,19 +287,23 @@ const Income = {
         const payslips = months.map((month, index) => {
             let payslip = { ...basePayslip };
             let bonusAmount = 0;
+            let bonusEspp = 0;
             
             // Add bonus in September (mid-year)
             if (month === 'September') {
                 bonusAmount = bonus.midYear.net;
+                bonusEspp = bonus.midYear.esppCut;
             }
             // Add bonus in April (year-end)
             else if (month === 'April') {
                 bonusAmount = bonus.yearEnd.net;
+                bonusEspp = bonus.yearEnd.esppCut;
             }
             
             return {
                 month,
                 ...payslip,
+                espp: payslip.espp + bonusEspp,
                 bonus: bonusAmount,
                 totalNetPay: payslip.netPay + bonusAmount
             };
@@ -518,10 +518,6 @@ const Income = {
                                     <span class="text-gray-600">ESPP Cut</span>
                                     <span class="text-red-600">-₹${Utils.formatIndianNumber(bonus.midYear.esppCut)}</span>
                                 </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">PF Cut</span>
-                                    <span class="text-red-600">-₹${Utils.formatIndianNumber(bonus.midYear.pfCut)}</span>
-                                </div>
                                 <div class="flex justify-between pt-2 border-t border-cyan-200">
                                     <span class="font-bold text-cyan-800">Net Bonus</span>
                                     <span class="font-bold text-cyan-800">₹${Utils.formatIndianNumber(bonus.midYear.net)}</span>
@@ -544,10 +540,6 @@ const Income = {
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">ESPP Cut</span>
                                     <span class="text-red-600">-₹${Utils.formatIndianNumber(bonus.yearEnd.esppCut)}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">PF Cut</span>
-                                    <span class="text-red-600">-₹${Utils.formatIndianNumber(bonus.yearEnd.pfCut)}</span>
                                 </div>
                                 <div class="flex justify-between pt-2 border-t border-indigo-200">
                                     <span class="font-bold text-indigo-800">Net Bonus</span>
