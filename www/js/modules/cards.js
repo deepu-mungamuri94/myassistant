@@ -649,15 +649,15 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     <div class="p-6">
                         <!-- Card & EMI Name -->
                         <div class="mb-4">
-                            <h3 class="text-lg font-bold text-gray-800">${Utils.escapeHtml(card.name)}</h3>
-                            <p class="text-sm text-gray-600 mt-1">${Utils.escapeHtml(emi.reason)}</p>
+                            <h3 class="text-sm font-bold text-gray-800">${Utils.escapeHtml(card.name)}</h3>
+                            <p class="text-xs text-gray-600 mt-1">${Utils.escapeHtml(emi.reason)}</p>
                         </div>
 
                         <!-- EMI Progress -->
                         <div class="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-4 mb-4">
                             <div class="flex justify-between items-center mb-2">
-                                <span class="text-sm font-semibold text-gray-700">Progress</span>
-                                <span class="text-sm font-bold text-blue-700">${emi.paidCount}/${emi.totalCount} EMIs</span>
+                                <span class="text-xs font-semibold text-gray-700">Progress</span>
+                                <span class="text-xs font-bold text-blue-700">${emi.paidCount}/${emi.totalCount} EMIs</span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
                                 <div class="bg-gradient-to-r from-blue-500 to-cyan-600 h-3 rounded-full transition-all" style="width: ${progress}%"></div>
@@ -668,38 +668,38 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                         <!-- Amount Details -->
                         <div class="space-y-3 mb-4">
                             <div class="flex justify-between items-center py-2 border-b border-gray-200">
-                                <span class="text-sm text-gray-600">Monthly EMI</span>
+                                <span class="text-xs text-gray-600">Monthly EMI</span>
                                 <span class="text-base font-semibold text-gray-800">₹${Utils.formatIndianNumber(emi.emiAmount)}</span>
                             </div>
                             <div class="flex justify-between items-center py-2 border-b border-gray-200">
-                                <span class="text-sm text-gray-600">Total Amount</span>
+                                <span class="text-xs text-gray-600">Total Amount</span>
                                 <span class="text-base font-semibold text-gray-800">₹${Utils.formatIndianNumber(totalAmount)}</span>
                             </div>
                             <div class="flex justify-between items-center py-2 border-b border-gray-200">
-                                <span class="text-sm text-gray-600">Paid Amount</span>
+                                <span class="text-xs text-gray-600">Paid Amount</span>
                                 <span class="text-base font-semibold text-green-600">₹${Utils.formatIndianNumber(paidAmount)}</span>
                             </div>
                             <div class="flex justify-between items-center py-2 border-b border-gray-200">
-                                <span class="text-sm text-gray-600">Pending Amount</span>
+                                <span class="text-xs text-gray-600">Pending Amount</span>
                                 <span class="text-base font-semibold text-orange-600">₹${Utils.formatIndianNumber(pendingAmount)}</span>
                             </div>
                         </div>
 
                         <!-- Date Details -->
                         <div class="bg-gray-50 rounded-xl p-4">
-                            <h4 class="text-sm font-semibold text-gray-700 mb-3">📅 Timeline</h4>
+                            <h4 class="text-xs font-semibold text-gray-700 mb-3">📅 Timeline</h4>
                             <div class="space-y-2">
                                 <div class="flex justify-between items-center">
                                     <span class="text-xs text-gray-600">Start Date</span>
-                                    <span class="text-sm font-medium text-gray-800">${startDateStr}</span>
+                                    <span class="text-xs font-medium text-gray-800">${startDateStr}</span>
                                 </div>
                                 <div class="flex justify-between items-center">
                                     <span class="text-xs text-gray-600">End Date</span>
-                                    <span class="text-sm font-medium text-gray-800">${endDateStr}</span>
+                                    <span class="text-xs font-medium text-gray-800">${endDateStr}</span>
                                 </div>
                                 <div class="flex justify-between items-center">
                                     <span class="text-xs text-gray-600">Next EMI</span>
-                                    <span class="text-sm font-medium ${nextEMIDateStr === 'Completed' ? 'text-green-600' : 'text-blue-600'}">${nextEMIDateStr}</span>
+                                    <span class="text-xs font-medium ${nextEMIDateStr === 'Completed' ? 'text-green-600' : 'text-blue-600'}">${nextEMIDateStr}</span>
                                 </div>
                             </div>
                         </div>
@@ -824,7 +824,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             <div class="p-4 bg-gradient-to-br from-slate-100 via-blue-50 to-purple-100 rounded-xl border-2 border-slate-300 hover:shadow-2xl hover:border-purple-300 transition-all duration-300 backdrop-blur-sm" data-card-id="${card.id}" style="background-image: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 25%, #e0e7ff 50%, #ddd6f3 75%, #faaca8 100%); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.4);">
                 <!-- Top Row: Card Name (Left) and Actions (Right) -->
                 <div class="flex justify-between items-start mb-2">
-                    <h4 class="font-bold text-slate-800 text-lg drop-shadow-sm">${Utils.escapeHtml(card.name)}</h4>
+                    <h4 class="font-bold text-slate-800 text-sm drop-shadow-sm">${Utils.escapeHtml(card.name)}</h4>
                     
                     <!-- Top Right Actions: View, Edit, Delete -->
                     <div class="flex gap-2">

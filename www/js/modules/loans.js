@@ -327,12 +327,12 @@ const Loans = {
             <div class="mb-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl p-4 shadow-lg">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <p class="text-sm opacity-90">Total Borrowed</p>
-                        <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(totalAmountTaken)}</p>
+                        <p class="text-xs opacity-90">Total Borrowed</p>
+                        <p class="text-base font-bold">₹${Utils.formatIndianNumber(totalAmountTaken)}</p>
                     </div>
                     <div>
-                        <p class="text-sm opacity-90">Remaining to Pay</p>
-                        <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(totalRemainingAmount)}</p>
+                        <p class="text-xs opacity-90">Remaining to Pay</p>
+                        <p class="text-base font-bold">₹${Utils.formatIndianNumber(totalRemainingAmount)}</p>
                     </div>
                 </div>
                 ${latestClosureDate ? `
@@ -421,12 +421,12 @@ const Loans = {
                         <div class="flex-1">
                             <div class="flex items-center justify-between gap-2 mb-1">
                                 <div class="flex items-center gap-2">
-                                    <h4 class="font-bold text-blue-900 text-lg">${Utils.escapeHtml(loan.bankName)}</h4>
+                                    <h4 class="font-bold text-blue-900 text-sm">${Utils.escapeHtml(loan.bankName)}</h4>
                                     ${isCompleted ? '<span class="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-semibold">✓</span>' : ''}
                                 </div>
-                                <span class="font-bold text-blue-900 text-lg">₹${Utils.formatIndianNumber(loan.amount)}</span>
+                                <span class="font-bold text-blue-900 text-base">₹${Utils.formatIndianNumber(loan.amount)}</span>
                             </div>
-                            <p class="text-sm text-gray-700 mb-2">
+                            <p class="text-xs text-gray-700 mb-2">
                                 <strong>${Utils.escapeHtml(loan.loanType || 'Loan')}</strong>${loan.reason ? ': ' + Utils.escapeHtml(loan.reason) : ''}
                             </p>
                             
