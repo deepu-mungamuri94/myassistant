@@ -74,7 +74,6 @@ const Expenses = {
             
             // Add to dismissed list
             window.DB.dismissedRecurringExpenses.push(dismissal);
-            console.log('Marked as dismissed:', dismissal);
         }
         
         window.DB.expenses = window.DB.expenses.filter(e => e.id !== id);
@@ -321,32 +320,24 @@ const Expenses = {
             return;
         }
         
-        console.log('showCardEMIDetails - Expense:', expense);
-        
         // Get EMI reason from title (remove "Card EMI: " or "EMI: " prefix)
         let emiReason = expense.title.replace('Card EMI: ', '').replace('EMI: ', '').trim();
         let cardName = expense.suggestedCard;
-        
-        console.log('showCardEMIDetails - Initial emiReason:', emiReason, 'cardName:', cardName);
         
         // Handle old format "CardName - Reason" if suggestedCard is missing
         if (!cardName && emiReason.includes(' - ')) {
             const parts = emiReason.split(' - ');
             cardName = parts[0].trim();
             emiReason = parts.slice(1).join(' - ').trim();
-            console.log('showCardEMIDetails - Parsed from title, cardName:', cardName, 'emiReason:', emiReason);
         }
         
         if (!cardName) {
             // Try to find the card by searching all cards for this EMI reason
             const cards = window.DB.cards || [];
-            console.log('showCardEMIDetails - Searching in cards:', cards.map(c => c.name));
             const foundCard = cards.find(c => c.emis && c.emis.some(e => e.reason === emiReason));
             if (foundCard) {
                 cardName = foundCard.name;
-                console.log('showCardEMIDetails - Found card by EMI reason:', cardName);
             } else {
-                console.error('showCardEMIDetails - Card not found by EMI reason:', emiReason);
                 window.Toast.error('Card information not found');
                 return;
             }
@@ -354,16 +345,12 @@ const Expenses = {
         
         // Find the card
         const cards = window.DB.cards || [];
-        console.log('showCardEMIDetails - Looking for card:', cardName, 'in:', cards.map(c => c.name));
         const card = cards.find(c => c.name === cardName);
         
         if (!card) {
-            console.error('showCardEMIDetails - Card not found:', cardName);
             window.Toast.error(`Card not found: ${cardName}`);
             return;
         }
-        
-        console.log('showCardEMIDetails - Found card, showing modal for:', card.name, 'emiReason:', emiReason);
         
         if (window.Cards && window.Cards.showEMIDetailsModal) {
             // Show specific EMI details in modal
@@ -538,23 +525,17 @@ const Expenses = {
         const completed = [];
         
         // Get credit card EMIs
-        console.log('Cards module available:', !!window.Cards, 'DB cards:', window.DB.cards?.length || 0);
         if (window.Cards && window.DB.cards) {
-            console.log('Checking card EMIs...', window.DB.cards.length, 'cards found');
             window.DB.cards.forEach(card => {
-                console.log('Processing card:', card.name, 'Type:', card.cardType, 'EMIs:', card.emis?.length || 0);
                 // Only process credit cards (not debit cards)
                 if (card.cardType === 'debit') {
-                    console.log('Skipping debit card:', card.name);
                     return;
                 }
                 if (!card.emis || card.emis.length === 0) {
-                    console.log('No EMIs for card:', card.name);
                     return;
                 }
                 
                 card.emis.forEach(emi => {
-                    console.log('Processing EMI:', emi.reason, 'Completed:', emi.completed, 'Amount:', emi.emiAmount);
                     if (!emi.firstEmiDate || emi.completed || !emi.emiAmount) return;
                     
                     const firstDate = new Date(emi.firstEmiDate);
@@ -596,49 +577,30 @@ const Expenses = {
                             return titleMatch && dateMatch && amountMatch;
                         });
                         
-                        console.log('Card EMI:', emiExpense.title, 'Date:', emiDateStr, 'Exists:', !!exists);
-                        
                         if (exists) {
                             // Already added to expenses
-                            console.log('Card EMI already in expenses (completed):', emiExpense.title);
                             completed.push(emiExpense);
                         } else {
                             // Not yet added
-                            if (today.getDate() < emiDay) {
-                                // Date hasn't arrived yet
-                                console.log('Card EMI upcoming (future):', emiExpense.title);
-                                upcoming.push(emiExpense);
-                            } else {
-                                // Date passed but not added (should be auto-added)
-                                console.log('Card EMI upcoming (past, should be added):', emiExpense.title);
-                                upcoming.push(emiExpense);
-                            }
+                            upcoming.push(emiExpense);
                         }
                     }
                 });
             });
-        } else {
-            console.log('Cards module or DB.cards not available');
         }
         
         // Get loan EMIs
         if (window.Loans && window.DB.loans) {
-            console.log('Checking loans...', window.DB.loans.length, 'loans found');
             window.DB.loans.forEach(loan => {
-                console.log('Processing loan:', loan.bankName, loan.loanType);
-                
                 // Check if loan has started yet
                 const firstDate = new Date(loan.firstEmiDate);
                 if (firstDate > today) {
-                    console.log('Loan not started yet:', loan.bankName);
                     return; // Loan hasn't started yet
                 }
                 
                 const remaining = window.Loans.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
-                console.log('Remaining EMIs:', remaining.emisRemaining);
                 
                 if (remaining.emisRemaining === 0) {
-                    console.log('Loan closed:', loan.bankName);
                     return; // Skip closed loans
                 }
                 
@@ -648,8 +610,6 @@ const Expenses = {
                 // Check if EMI is due this month
                 const thisMonthEmiDate = new Date(today.getFullYear(), today.getMonth(), emiDay);
                 const emiDateStr = thisMonthEmiDate.toISOString().split('T')[0];
-                
-                console.log('Loan EMI date:', emiDateStr, 'Amount:', emi);
                 
                 const loanEmi = {
                     title: `${loan.bankName} ${loan.loanType || 'Loan'} EMI`,
@@ -670,16 +630,12 @@ const Expenses = {
                 );
                 
                 if (exists) {
-                    console.log('Loan EMI already in expenses (completed):', loanEmi.title);
                     completed.push(loanEmi);
                 } else {
                     // If date has passed but not added to expenses, still show as upcoming
-                    console.log('Loan EMI upcoming:', loanEmi.title);
                     upcoming.push(loanEmi);
                 }
             });
-        } else {
-            console.log('No Loans module or no loans in DB');
         }
         
         // Get custom recurring expenses
@@ -786,7 +742,6 @@ const Expenses = {
         
         // Check if viewing a single month (for recurring expenses display)
         const isSingleMonth = this.isSingleMonth();
-        console.log('isSingleMonth:', isSingleMonth, 'startDate:', this.startDate, 'endDate:', this.endDate);
         
         // Get recurring expenses (upcoming and completed) - only for monthly view
         let upcomingRecurring = [];
@@ -798,7 +753,6 @@ const Expenses = {
             upcomingRecurring = recurringData.upcoming;
             completedRecurring = recurringData.completed;
             totalRecurring = upcomingRecurring.length + completedRecurring.length;
-            console.log('Recurring data:', { upcoming: upcomingRecurring.length, completed: completedRecurring.length, total: totalRecurring });
         }
         
         if (filteredExpenses.length === 0 && totalRecurring === 0) {
@@ -1150,7 +1104,6 @@ const Expenses = {
  */
 function migrateOldEMIExpenses(showToast = false) {
     if (!window.DB || !window.DB.expenses) {
-        console.log('No expenses to migrate');
         return 0;
     }
     
@@ -1211,15 +1164,12 @@ function migrateOldEMIExpenses(showToast = false) {
             }
             
             if (needsMigration && emiReason) {
-                console.log(`Migrating: "${expense.title}" -> "Card EMI: ${emiReason}" with card: ${cardName}`);
-                
                 // Update title to new format
                 expense.title = `Card EMI: ${emiReason}`;
                 
                 // Ensure suggestedCard is set
                 if (cardName && !expense.suggestedCard) {
                     expense.suggestedCard = cardName;
-                    console.log(`  Set suggestedCard: ${cardName}`);
                 }
                 
                 // Update description to include card name if not already
@@ -1238,8 +1188,6 @@ function migrateOldEMIExpenses(showToast = false) {
         if (showToast && window.Toast) {
             window.Toast.success(`Migrated ${migrated} EMI expense(s) to new format`);
         }
-    } else {
-        console.log('No EMI expenses to migrate');
     }
     
     return migrated;

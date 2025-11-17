@@ -354,11 +354,6 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             throw new Error('Please fill in all required fields');
         }
         
-        // Debug logging
-        console.log('=== UPDATE DEBUG ===');
-        console.log('Received ID:', id, 'Type:', typeof id);
-        console.log('All card IDs in DB:', window.DB.cards.map(c => ({ id: c.id, type: typeof c.id, name: c.name })));
-        
         // Basic card number validation (remove spaces)
         const cleanCardNumber = cardNumber.replace(/\s/g, '');
         if (!/^\d{13,19}$/.test(cleanCardNumber)) {
@@ -376,15 +371,12 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         }
         
         const card = this.getById(id);
-        console.log('Found card:', card);
         if (!card) {
-            console.error('Card not found! Searched for ID:', id);
             throw new Error('Card not found');
         }
         
         // Check if card name changed (only fetch benefits if name changed for credit cards)
         const nameChanged = card.name !== name;
-        console.log('Card name changed:', nameChanged, 'Old:', card.name, 'New:', name);
         
         // Update card fields
         card.name = name;
@@ -401,12 +393,9 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         
         // Only re-fetch benefits if card name changed AND it's a credit card
         if (nameChanged && card.cardType === 'credit') {
-            console.log('Card name changed - fetching new benefits...');
             this.fetchAndStoreBenefits(card.id, name).catch(err => {
                 console.error('Failed to fetch benefits for updated card:', err);
             });
-        } else {
-            console.log('Card name unchanged - skipping benefits fetch');
         }
         
         return card;
@@ -433,15 +422,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
     getById(id) {
         // Convert to string to handle both string and number IDs
         const searchId = String(id);
-        console.log('getById - Searching for:', searchId, 'Original:', id, 'Type:', typeof id);
-        const result = window.DB.cards.find(c => {
-            const cardIdStr = String(c.id);
-            const match = cardIdStr === searchId;
-            console.log(`  Comparing: "${cardIdStr}" === "${searchId}" = ${match}`);
-            return match;
-        });
-        console.log('getById - Result:', result ? `Found: ${result.name}` : 'NOT FOUND');
-        return result;
+        return window.DB.cards.find(c => String(c.id) === searchId);
     },
 
     /**
@@ -1531,7 +1512,6 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     const isDismissed = window.Expenses && window.Expenses.isDismissed(emiTitle, expenseDateStr, parseFloat(emi.emiAmount));
                     
                     if (isDismissed) {
-                        console.log('Card EMI dismissed by user, skipping:', emiTitle);
                         continue;
                     }
                     
@@ -1574,7 +1554,6 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         // Save if any EMIs were updated
         if (addedCount > 0) {
             window.Storage.save();
-            console.log(`Auto-added ${addedCount} EMI payment(s) to expenses`);
         }
         
         return addedCount;
