@@ -76,13 +76,28 @@ const Navigation = {
     /**
      * Open Settings modal (for PIN and Master Password)
      */
-    openSettings() {
+    async openSettings() {
         const modal = document.getElementById('settings-modal');
         if (modal) {
             // Load master password
             const masterPasswordInput = document.getElementById('master-password');
             if (masterPasswordInput) {
                 masterPasswordInput.value = window.DB.security.masterPassword || '';
+            }
+            
+            // Check biometric availability and show toggle if available
+            const biometricToggle = document.getElementById('biometric-settings-toggle');
+            const biometricCheckbox = document.getElementById('biometric-enabled-checkbox');
+            
+            if (biometricToggle && biometricCheckbox && window.Security) {
+                const isAvailable = await window.Security.isBiometricAvailable();
+                
+                if (isAvailable) {
+                    biometricToggle.classList.remove('hidden');
+                    biometricCheckbox.checked = window.DB.security.biometricEnabled || false;
+                } else {
+                    biometricToggle.classList.add('hidden');
+                }
             }
             
             modal.classList.remove('hidden');
@@ -100,9 +115,9 @@ const Navigation = {
     },
     
     /**
-     * Save Settings (PIN and Master Password)
+     * Save Settings (PIN, Master Password, and Biometric)
      */
-    saveSettings() {
+    async saveSettings() {
         const masterPasswordInput = document.getElementById('master-password');
         
         if (masterPasswordInput) {
@@ -114,6 +129,32 @@ const Navigation = {
             }
             
             window.DB.security.masterPassword = masterPassword;
+        }
+        
+        // Handle biometric toggle
+        const biometricCheckbox = document.getElementById('biometric-enabled-checkbox');
+        if (biometricCheckbox && window.Security) {
+            const shouldEnable = biometricCheckbox.checked;
+            const currentlyEnabled = window.DB.security.biometricEnabled;
+            
+            // Only update if changed
+            if (shouldEnable !== currentlyEnabled) {
+                try {
+                    if (shouldEnable) {
+                        await window.Security.enableBiometric();
+                        window.Toast.show('✅ Biometric authentication enabled!', 'success');
+                    } else {
+                        await window.Security.disableBiometric();
+                        window.Toast.show('✅ Biometric authentication disabled!', 'success');
+                    }
+                } catch (error) {
+                    console.error('Biometric toggle error:', error);
+                    window.Toast.show('⚠️ ' + error.message, 'error');
+                    // Revert checkbox state
+                    biometricCheckbox.checked = currentlyEnabled;
+                    return;
+                }
+            }
         }
         
         if (window.Storage.save()) {
