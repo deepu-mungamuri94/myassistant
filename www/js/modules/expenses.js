@@ -1156,7 +1156,7 @@ function migrateOldEMIExpenses(showToast = false) {
     
     let migrated = 0;
     window.DB.expenses.forEach(expense => {
-        // Check if it's a card EMI expense with old format
+        // Check if it's a card EMI expense
         if (expense.category === 'emi' && expense.title) {
             let needsMigration = false;
             let emiReason = '';
@@ -1176,9 +1176,42 @@ function migrateOldEMIExpenses(showToast = false) {
                 cardName = expense.suggestedCard || '';
                 needsMigration = true;
             }
+            // New format but missing suggestedCard: "Card EMI: Reason"
+            else if (expense.title.startsWith('Card EMI:') && !expense.suggestedCard) {
+                emiReason = expense.title.replace('Card EMI: ', '').trim();
+                
+                // Try to extract card name from description
+                if (expense.description) {
+                    // Description format: "CardName EMI payment X/Y" or "Auto-added EMI payment X/Y for CardName"
+                    const forMatch = expense.description.match(/for (.+)$/);
+                    if (forMatch) {
+                        cardName = forMatch[1].trim();
+                    } else {
+                        // Try to match "CardName EMI payment"
+                        const emiMatch = expense.description.match(/^(.+?)\s+EMI payment/);
+                        if (emiMatch) {
+                            cardName = emiMatch[1].trim();
+                        }
+                    }
+                }
+                
+                // If still no card name, try to find by EMI reason in cards
+                if (!cardName && window.DB.cards) {
+                    const foundCard = window.DB.cards.find(c => 
+                        c.emis && c.emis.some(e => e.reason === emiReason)
+                    );
+                    if (foundCard) {
+                        cardName = foundCard.name;
+                    }
+                }
+                
+                if (cardName) {
+                    needsMigration = true;
+                }
+            }
             
             if (needsMigration && emiReason) {
-                console.log(`Migrating: "${expense.title}" -> "Card EMI: ${emiReason}"`);
+                console.log(`Migrating: "${expense.title}" -> "Card EMI: ${emiReason}" with card: ${cardName}`);
                 
                 // Update title to new format
                 expense.title = `Card EMI: ${emiReason}`;
@@ -1186,6 +1219,7 @@ function migrateOldEMIExpenses(showToast = false) {
                 // Ensure suggestedCard is set
                 if (cardName && !expense.suggestedCard) {
                     expense.suggestedCard = cardName;
+                    console.log(`  Set suggestedCard: ${cardName}`);
                 }
                 
                 // Update description to include card name if not already
