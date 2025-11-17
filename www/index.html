@@ -466,58 +466,58 @@
     <div class="w-full" style="margin-top: calc(3.5rem + env(safe-area-inset-top)); padding-bottom: env(safe-area-inset-bottom);">
         
         <!-- AI ADVISOR VIEW -->
-        <div id="chat-view" class="hidden">
-            <div class="bg-white/90 backdrop-blur-md shadow-2xl p-5">
-                <div class="flex justify-between items-center mb-4">
+        <div id="chat-view" class="hidden flex flex-col" style="height: calc(100vh - 3.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-purple-700 to-pink-700 p-4 shadow-lg">
+                <div class="flex justify-between items-center">
                     <div class="flex items-center gap-3">
-                        <h2 class="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">AI Advisor</h2>
-                        <select id="chat-mode" onchange="Chat.updateWelcomeMessage(); Chat.clear();" class="px-3 py-1.5 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-800 rounded-lg text-sm font-semibold border-2 border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
-                            <option value="cards" selected>💳 Credit Cards</option>
+                        <h2 class="text-lg font-bold text-white">AI Advisor</h2>
+                        <select id="chat-mode" onchange="Chat.updateWelcomeMessage(); Chat.clear();" class="px-2 py-1 bg-white/20 backdrop-blur-md text-white rounded-lg text-xs font-semibold border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all">
+                            <option value="cards">💳 Cards</option>
                             <option value="general">💬 General</option>
                             <option value="expenses">📊 Expenses</option>
-                            <option value="investments">💰 Investments</option>
+                            <option value="investments">💰 Invest</option>
                         </select>
                     </div>
-                    <button onclick="Chat.clear()" class="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 rounded-lg transition-all duration-200 text-sm font-medium flex items-center gap-1.5" title="Clear chat history">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button onclick="Chat.clear()" class="px-2 py-1 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-lg transition-all duration-200 text-xs font-medium flex items-center gap-1" title="Clear chat">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                         </svg>
                         Clear
                     </button>
                 </div>
-                
-                <!-- Chat Messages -->
-                <div id="chat-messages" class="chat-container mb-4 p-4 bg-gray-50 rounded-xl">
-                    <div class="text-center text-gray-500 text-sm px-4">
-                        <p class="text-lg mb-3">💳 <strong>AI Credit Card Advisor</strong></p>
-                        <p class="mb-2">I'll help you choose the best credit card for your spending!</p>
-                        <p class="text-xs mb-3">I search online for current card benefits and offers from bank websites.</p>
-                        
-                        <div class="bg-blue-50 p-3 rounded-lg text-left mb-3">
-                            <p class="text-xs font-semibold text-blue-800 mb-2">💡 Try asking:</p>
-                            <ul class="text-xs space-y-1 text-blue-700">
-                                <li>• "₹5000 on groceries at BigBasket"</li>
-                                <li>• "₹10,000 for flight tickets"</li>
-                                <li>• "₹2000 for dining at restaurants"</li>
-                                <li>• "₹15,000 for online shopping"</li>
-                            </ul>
-                        </div>
-                        
-                        <p class="text-xs text-gray-400 mt-2">
-                            🔒 Secure: Only card names are shared, never numbers or CVV
-                        </p>
+            </div>
+            
+            <!-- Chat Messages (Scrollable) -->
+            <div id="chat-messages" class="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white">
+                <div class="text-center text-gray-500 text-sm px-4 py-8">
+                    <p class="text-base mb-3">💳 <strong>AI Credit Card Advisor</strong></p>
+                    <p class="mb-2 text-sm">I'll help you choose the best credit card for your spending!</p>
+                    <p class="text-xs mb-3 text-gray-400">I search online for current card benefits and offers from bank websites.</p>
+                    
+                    <div class="bg-blue-50 p-3 rounded-lg text-left mb-3 max-w-md mx-auto">
+                        <p class="text-xs font-semibold text-blue-800 mb-2">💡 Try asking:</p>
+                        <ul class="text-xs space-y-1 text-blue-700">
+                            <li>• "₹5000 on groceries at BigBasket"</li>
+                            <li>• "₹10,000 for flight tickets"</li>
+                            <li>• "₹2000 for dining at restaurants"</li>
+                            <li>• "₹15,000 for online shopping"</li>
+                        </ul>
                     </div>
+                    
+                    <p class="text-xs text-gray-400 mt-2">
+                        🔒 Secure: Only card names are shared, never numbers or CVV
+                    </p>
                 </div>
-                
-                <!-- Chat Input -->
-                <div class="flex space-x-2">
-                    <textarea id="chat-input" placeholder="Describe your spending plan... (e.g., ₹5000 on groceries at BigBasket)" class="flex-1 p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none" rows="2" onkeypress="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); Chat.send(); }"></textarea>
-                    <button onclick="Chat.send()" class="p-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center" title="Ask AI">
-                        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white" stroke="white" stroke-width="2" stroke-linejoin="round"/>
-                            <path d="M2 17L12 22L22 17" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M2 12L12 17L22 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <circle cx="12" cy="7" r="2" fill="#667eea"/>
+            </div>
+            
+            <!-- Chat Input (Fixed at bottom) -->
+            <div class="border-t border-gray-200 bg-white p-3 shadow-lg">
+                <div class="flex gap-2">
+                    <textarea id="chat-input" placeholder="Ask me anything..." class="flex-1 p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none" rows="1" onkeypress="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); Chat.send(); }"></textarea>
+                    <button onclick="Chat.send()" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center" title="Send">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 8L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </button>
                 </div>
@@ -772,15 +772,19 @@
     
     <!-- AI SETTINGS MODAL -->
     <div id="ai-settings-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Navigation.closeAISettings()">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent flex items-center gap-2">
-                <svg class="w-6 h-6 text-pink-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
-                </svg>
-                AI Provider Settings
-            </h2>
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col">
+            <!-- Header -->
+            <div class="p-6 border-b border-gray-200">
+                <h2 class="text-2xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent flex items-center gap-2">
+                    <svg class="w-6 h-6 text-pink-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
+                    </svg>
+                    AI Provider Settings
+                </h2>
+            </div>
             
-            <div class="space-y-4">
+            <!-- Scrollable Content -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-4">
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">AI Provider</label>
                     <select id="ai-provider" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
@@ -825,8 +829,11 @@
                     <input type="password" id="perplexity-api-key" placeholder="Enter your Perplexity API key" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
                     <p class="text-xs text-gray-500 mt-1">Get your API key from <a href="https://www.perplexity.ai/settings/api" target="_blank" class="text-purple-600 underline">Perplexity Settings</a></p>
                 </div>
-                
-                <div class="flex space-x-3 pt-4">
+            </div>
+            
+            <!-- Fixed Footer Buttons -->
+            <div class="p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+                <div class="flex space-x-3">
                     <button onclick="Navigation.saveAISettings()" class="flex-1 px-4 py-2 bg-gradient-to-r from-pink-600 to-rose-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
                         Save
                     </button>

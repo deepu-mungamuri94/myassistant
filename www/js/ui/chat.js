@@ -17,9 +17,20 @@ const Chat = {
      */
     async send() {
         const input = document.getElementById('chat-input');
+        const sendButton = document.querySelector('#chat-view button[onclick="Chat.send()"]');
         const message = input ? input.value.trim() : '';
         
         if (!message) return;
+        
+        // Disable input and button while processing
+        if (input) {
+            input.disabled = true;
+            input.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+        if (sendButton) {
+            sendButton.disabled = true;
+            sendButton.classList.add('opacity-50', 'cursor-not-allowed');
+        }
         
         const mode = this.getCurrentMode();
         
@@ -28,20 +39,44 @@ const Chat = {
             const creditCards = window.DB.cards.filter(c => !c.cardType || c.cardType === 'credit');
             if (!creditCards || creditCards.length === 0) {
                 this.addMessage('assistant', `⚠️ **No Credit Cards Found**\n\nPlease add at least one credit card first to get personalized recommendations.\n\n📍 Go to Menu → Credit/Debit Cards → Add New`);
-                if (input) input.value = '';
+                if (input) {
+                    input.value = '';
+                    input.disabled = false;
+                    input.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+                if (sendButton) {
+                    sendButton.disabled = false;
+                    sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
                 return;
             }
         }
         
         if (mode === 'expenses' && (!window.DB.expenses || window.DB.expenses.length === 0)) {
             this.addMessage('assistant', `⚠️ **No Expenses Found**\n\nPlease add some expenses first to analyze your spending.\n\n📍 Go to Menu → Expenses → Add New`);
-            if (input) input.value = '';
+            if (input) {
+                input.value = '';
+                input.disabled = false;
+                input.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+            if (sendButton) {
+                sendButton.disabled = false;
+                sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
             return;
         }
         
         if (mode === 'investments' && (!window.DB.investments || window.DB.investments.length === 0)) {
             this.addMessage('assistant', `⚠️ **No Investments Found**\n\nPlease add some investments first to analyze your portfolio.\n\n📍 Go to Menu → Investments → Add New`);
-            if (input) input.value = '';
+            if (input) {
+                input.value = '';
+                input.disabled = false;
+                input.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+            if (sendButton) {
+                sendButton.disabled = false;
+                sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
             return;
         }
         
@@ -77,6 +112,17 @@ const Chat = {
             if (loadingElement) loadingElement.remove();
             this.addMessage('assistant', `❌ Error: ${error.message}`);
             console.error('Chat error:', error);
+        } finally {
+            // Re-enable input and button
+            if (input) {
+                input.disabled = false;
+                input.classList.remove('opacity-50', 'cursor-not-allowed');
+                input.focus();
+            }
+            if (sendButton) {
+                sendButton.disabled = false;
+                sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
         }
     },
 
@@ -309,6 +355,27 @@ const Chat = {
                     
                     <p class="text-xs text-gray-400 mt-2">
                         💼 Analyzing ${window.DB.investments.length} investments
+                    </p>
+                </div>`;
+        } else if (mode === 'general') {
+            welcomeHTML = `
+                <div class="text-center text-gray-500 text-sm px-4">
+                    <p class="text-lg mb-3">💬 <strong>General Assistant</strong></p>
+                    <p class="mb-2">I can help with general questions and tasks!</p>
+                    <p class="text-xs mb-3 text-gray-400">Ask me anything - from calculations to general information.</p>
+                    
+                    <div class="bg-green-50 p-3 rounded-lg text-left mb-3">
+                        <p class="text-xs font-semibold text-green-800 mb-2">💡 Try asking:</p>
+                        <ul class="text-xs space-y-1 text-green-700">
+                            <li>• "What's the compound interest on ₹10L at 8%?"</li>
+                            <li>• "Convert 50 USD to INR"</li>
+                            <li>• "Best tax saving strategies in India"</li>
+                            <li>• "Explain SIP vs lump sum investing"</li>
+                        </ul>
+                    </div>
+                    
+                    <p class="text-xs text-gray-400 mt-2">
+                        🤖 Powered by AI - Ask me anything!
                     </p>
                 </div>`;
         }
