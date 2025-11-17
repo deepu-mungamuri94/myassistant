@@ -787,7 +787,7 @@ const Expenses = {
                     <summary class="cursor-pointer px-4 py-3 hover:bg-orange-50 transition-colors flex justify-between items-center">
                         <div class="flex items-center gap-2">
                             <span class="text-orange-600">🔁</span>
-                            <span class="font-semibold text-orange-900 text-sm">Recurring (${totalRecurring})</span>
+                            <span class="font-semibold text-orange-900 text-sm">Recurring expenses / Loans (${totalRecurring})</span>
                         </div>
                         <span class="font-bold text-orange-800 text-sm">${Utils.formatCurrency(recurringTotal)}</span>
                     </summary>
