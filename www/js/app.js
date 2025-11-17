@@ -62,13 +62,23 @@ const App = {
                     if (window.DB.security.biometricEnabled) {
                         document.getElementById('biometric-unlock-btn').classList.remove('hidden');
                         
-                        // Auto-trigger biometric if available
+                        // Auto-trigger biometric only if hardware is available and enrolled
                         if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-                            setTimeout(() => {
-                                if (window.unlockWithBiometric) {
-                                    window.unlockWithBiometric().catch(() => {
-                                        // Silently fail, user can use PIN
-                                    });
+                            setTimeout(async () => {
+                                try {
+                                    // Check if biometric is actually available before auto-triggering
+                                    const isAvailable = await window.Security.isBiometricAvailable();
+                                    if (isAvailable && window.unlockWithBiometric) {
+                                        console.log('🔐 Auto-triggering biometric authentication');
+                                        window.unlockWithBiometric().catch(() => {
+                                            // Silently fail, user can use PIN
+                                            console.log('ℹ️ Biometric auto-trigger cancelled/failed');
+                                        });
+                                    } else {
+                                        console.log('ℹ️ Biometric not available, skipping auto-trigger');
+                                    }
+                                } catch (error) {
+                                    console.log('ℹ️ Could not check biometric availability:', error);
                                 }
                             }, 500);
                         }
