@@ -321,24 +321,32 @@ const Expenses = {
             return;
         }
         
+        console.log('showCardEMIDetails - Expense:', expense);
+        
         // Get EMI reason from title (remove "Card EMI: " or "EMI: " prefix)
         let emiReason = expense.title.replace('Card EMI: ', '').replace('EMI: ', '').trim();
         let cardName = expense.suggestedCard;
+        
+        console.log('showCardEMIDetails - Initial emiReason:', emiReason, 'cardName:', cardName);
         
         // Handle old format "CardName - Reason" if suggestedCard is missing
         if (!cardName && emiReason.includes(' - ')) {
             const parts = emiReason.split(' - ');
             cardName = parts[0].trim();
             emiReason = parts.slice(1).join(' - ').trim();
+            console.log('showCardEMIDetails - Parsed from title, cardName:', cardName, 'emiReason:', emiReason);
         }
         
         if (!cardName) {
             // Try to find the card by searching all cards for this EMI reason
             const cards = window.DB.cards || [];
+            console.log('showCardEMIDetails - Searching in cards:', cards.map(c => c.name));
             const foundCard = cards.find(c => c.emis && c.emis.some(e => e.reason === emiReason));
             if (foundCard) {
                 cardName = foundCard.name;
+                console.log('showCardEMIDetails - Found card by EMI reason:', cardName);
             } else {
+                console.error('showCardEMIDetails - Card not found by EMI reason:', emiReason);
                 window.Toast.error('Card information not found');
                 return;
             }
@@ -346,12 +354,16 @@ const Expenses = {
         
         // Find the card
         const cards = window.DB.cards || [];
+        console.log('showCardEMIDetails - Looking for card:', cardName, 'in:', cards.map(c => c.name));
         const card = cards.find(c => c.name === cardName);
         
         if (!card) {
-            window.Toast.error('Card not found');
+            console.error('showCardEMIDetails - Card not found:', cardName);
+            window.Toast.error(`Card not found: ${cardName}`);
             return;
         }
+        
+        console.log('showCardEMIDetails - Found card, showing modal for:', card.name, 'emiReason:', emiReason);
         
         if (window.Cards && window.Cards.showEMIDetailsModal) {
             // Show specific EMI details in modal
