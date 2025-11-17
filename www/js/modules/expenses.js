@@ -225,10 +225,11 @@ const Expenses = {
     isLoanEMIExpense(expense) {
         // Check if title matches loan EMI pattern: "<Bank> <Type> EMI"
         // Examples: "HDFC Home EMI", "SBI Car EMI", "ICICI Personal EMI"
-        // Exclude card EMIs which start with "EMI:"
+        // Exclude card EMIs which start with "Card EMI:" or "EMI:"
         return expense.title && 
                expense.title.includes(' EMI') && 
                expense.category === 'emi' && 
+               !expense.title.startsWith('Card EMI:') &&
                !expense.title.startsWith('EMI:');
     },
     
