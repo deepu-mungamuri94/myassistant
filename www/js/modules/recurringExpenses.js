@@ -518,18 +518,18 @@ const RecurringExpenses = {
                 }
                 
                 return `
-                    <div class="p-4 bg-white rounded-xl border-2 border-orange-300 hover:shadow-lg transition-all">
-                        <div class="flex justify-between items-start">
-                            <!-- Left Side: Name and Description -->
+                    <div class="p-3 bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 rounded-xl border-2 border-orange-300 hover:shadow-lg transition-all">
+                        <div class="flex justify-between items-start mb-2">
+                            <!-- Left Side: Name and Amount -->
                             <div class="flex-1">
                                 <h4 class="font-bold text-gray-800 text-sm">${Utils.escapeHtml(recurring.name)}</h4>
-                                ${recurring.description ? `<p class="text-xs text-gray-600 mt-1">${Utils.escapeHtml(recurring.description)}</p>` : '<p class="text-xs text-gray-400 mt-1 italic">No description</p>'}
+                                ${recurring.description ? `<p class="text-xs text-gray-600 mt-0.5">${Utils.escapeHtml(recurring.description)}</p>` : '<p class="text-xs text-gray-400 mt-0.5 italic">No description</p>'}
                             </div>
                             
-                            <!-- Right Side: Actions, Amount, Schedule -->
-                            <div class="ml-4 flex flex-col items-end">
-                                <!-- Actions -->
-                                <div class="flex gap-2 mb-2">
+                            <!-- Right Side: Actions and Amount -->
+                            <div class="ml-4 flex items-start gap-3">
+                                <p class="text-base font-bold text-orange-700">₹${Utils.formatIndianNumber(recurring.amount)}</p>
+                                <div class="flex gap-2">
                                     <button onclick="openRecurringExpenseModal(${recurring.id})" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
@@ -541,14 +541,13 @@ const RecurringExpenses = {
                                         </svg>
                                     </button>
                                 </div>
-                                
-                                <!-- Amount -->
-                                <p class="text-base font-bold text-orange-700">₹${Utils.formatIndianNumber(recurring.amount)}</p>
-                                
-                                <!-- Schedule -->
-                                <p class="text-xs text-orange-600 mt-1">${frequencyText}</p>
-                                <p class="text-xs text-gray-500 mt-0.5">${endDateText}</p>
                             </div>
+                        </div>
+                        
+                        <!-- Frequency and End Date on same line -->
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-orange-600 font-medium">📅 ${frequencyText}</span>
+                            <span class="text-gray-500">${endDateText}</span>
                         </div>
                     </div>
                 `;
@@ -578,21 +577,23 @@ const RecurringExpenses = {
                             }
                             
                             return `
-                                <div class="p-3 bg-gray-50 rounded-lg border border-gray-300 opacity-75">
-                                    <div class="flex justify-between items-start">
+                                <div class="p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-300 opacity-75">
+                                    <div class="flex justify-between items-start mb-2">
                                         <div class="flex-1">
                                             <h4 class="font-semibold text-gray-700 text-sm">${Utils.escapeHtml(recurring.name)} <span class="text-xs text-gray-500">(Ended)</span></h4>
-                                            ${recurring.description ? `<p class="text-xs text-gray-500 mt-1">${Utils.escapeHtml(recurring.description)}</p>` : ''}
+                                            ${recurring.description ? `<p class="text-xs text-gray-500 mt-0.5">${Utils.escapeHtml(recurring.description)}</p>` : ''}
                                         </div>
-                                        <div class="ml-4 flex flex-col items-end">
-                                            <button onclick="RecurringExpenses.deleteWithConfirm(${recurring.id})" class="text-red-600 hover:text-red-800 p-1 mb-1" title="Delete">
+                                        <div class="ml-4 flex items-start gap-3">
+                                            <p class="text-sm font-semibold text-gray-600">₹${Utils.formatIndianNumber(recurring.amount)}</p>
+                                            <button onclick="RecurringExpenses.deleteWithConfirm(${recurring.id})" class="text-red-600 hover:text-red-800 p-0.5" title="Delete">
                                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                                 </svg>
                                             </button>
-                                            <p class="text-sm font-semibold text-gray-600">₹${Utils.formatIndianNumber(recurring.amount)}</p>
-                                            <p class="text-xs text-gray-500 mt-0.5">${frequencyText}</p>
                                         </div>
+                                    </div>
+                                    <div class="text-xs text-gray-500">
+                                        📅 ${frequencyText}
                                     </div>
                                 </div>
                             `;
