@@ -22,17 +22,29 @@ const Dashboard = {
         
         container.innerHTML = `
             <!-- Income vs Expense Chart -->
-            <div class="bg-white rounded-xl shadow-lg p-4 border-2 border-green-200">
-                <h2 class="text-lg font-bold text-green-900 mb-3">Income vs Expenses (Last 6 Months)</h2>
+            <div class="mb-6">
                 <div style="height: 400px;">
                     <canvas id="income-expense-chart"></canvas>
                 </div>
             </div>
             
+            <!-- Category Expenses Chart -->
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-base font-semibold text-gray-700">Category-wise Expenses</h3>
+                    <select id="category-month-selector" onchange="Dashboard.renderCategoryChart()" class="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        ${this.getMonthOptions()}
+                    </select>
+                </div>
+                <div style="height: 350px;">
+                    <canvas id="category-chart"></canvas>
+                </div>
+            </div>
+            
             <!-- EMI/Loan Progress -->
             ${loans.length > 0 ? `
-            <div class="bg-white rounded-xl shadow-lg p-4 border-2 border-blue-200 mt-4">
-                <h2 class="text-lg font-bold text-blue-900 mb-3">EMI/Loan Progress</h2>
+            <div>
+                <h3 class="text-base font-semibold text-gray-700 mb-3">EMI/Loan Progress</h3>
                 <div style="height: ${Math.max(200, Math.min(400, loans.length * 60))}px;">
                     <canvas id="loans-chart"></canvas>
                 </div>
@@ -56,6 +68,14 @@ const Dashboard = {
                 this.incomeExpenseChartInstance = null;
             } catch (e) {
                 console.error('Error destroying income/expense chart:', e);
+            }
+        }
+        if (this.categoryChartInstance) {
+            try {
+                this.categoryChartInstance.destroy();
+                this.categoryChartInstance = null;
+            } catch (e) {
+                console.error('Error destroying category chart:', e);
             }
         }
         if (this.loansChartInstance) {
@@ -198,6 +218,7 @@ const Dashboard = {
         
         try {
             this.renderIncomeExpenseChart();
+            this.renderCategoryChart();
             this.renderLoansChart();
         } catch (error) {
             console.error('Error initializing charts:', error);
@@ -274,7 +295,7 @@ const Dashboard = {
                             callback: function(value) {
                                 return '₹' + (value >= 100000 ? (value/100000).toFixed(1) + 'L' : (value >= 1000 ? (value/1000).toFixed(0) + 'k' : value));
                             },
-                            stepSize: 20000
+                            stepSize: 50000
                         },
                         grid: {
                             display: true,
@@ -343,6 +364,149 @@ const Dashboard = {
                         title: {
                             display: true,
                             text: 'Months Remaining'
+                        }
+                    }
+                }
+            }
+        });
+    },
+    
+    /**
+     * Get month options for selector (last 12 months)
+     */
+    getMonthOptions() {
+        const now = new Date();
+        const options = [];
+        
+        for (let i = 0; i < 12; i++) {
+            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthName = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            options.push(`<option value="${value}" ${i === 0 ? 'selected' : ''}>${monthName}</option>`);
+        }
+        
+        return options.join('');
+    },
+    
+    /**
+     * Get category-wise expenses for selected month
+     */
+    getCategoryData() {
+        const selector = document.getElementById('category-month-selector');
+        if (!selector) return [];
+        
+        const [year, month] = selector.value.split('-').map(Number);
+        
+        // Get all expenses for the selected month
+        const expenses = window.DB.expenses.filter(exp => {
+            const expDate = new Date(exp.date);
+            return expDate.getFullYear() === year && expDate.getMonth() + 1 === month;
+        });
+        
+        // Get all recurring expenses for the selected month
+        const recurringExpenses = window.DB.recurringExpenses.filter(rec => {
+            const scheduleDay = rec.dayOfMonth;
+            const expDate = new Date(year, month - 1, scheduleDay);
+            return expDate <= new Date();
+        });
+        
+        // Group by category
+        const categoryMap = {};
+        
+        expenses.forEach(exp => {
+            const category = exp.category || 'Uncategorized';
+            categoryMap[category] = (categoryMap[category] || 0) + exp.amount;
+        });
+        
+        recurringExpenses.forEach(rec => {
+            const category = rec.category || 'Uncategorized';
+            categoryMap[category] = (categoryMap[category] || 0) + rec.amount;
+        });
+        
+        // Convert to array and sort by amount
+        return Object.entries(categoryMap)
+            .map(([category, amount]) => ({ category, amount }))
+            .sort((a, b) => b.amount - a.amount);
+    },
+    
+    /**
+     * Render category expenses chart
+     */
+    renderCategoryChart() {
+        const canvas = document.getElementById('category-chart');
+        if (!canvas) {
+            console.warn('Category chart canvas not found');
+            return;
+        }
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            console.error('Cannot get 2d context from category chart canvas');
+            return;
+        }
+        
+        const data = this.getCategoryData();
+        
+        // Destroy existing chart
+        if (this.categoryChartInstance) {
+            try {
+                this.categoryChartInstance.destroy();
+                this.categoryChartInstance = null;
+            } catch (e) {
+                console.error('Error destroying existing category chart:', e);
+            }
+        }
+        
+        // Color palette for categories
+        const colors = [
+            'rgba(147, 51, 234, 0.6)', // Purple
+            'rgba(239, 68, 68, 0.6)',  // Red
+            'rgba(34, 197, 94, 0.6)',  // Green
+            'rgba(59, 130, 246, 0.6)', // Blue
+            'rgba(251, 146, 60, 0.6)', // Orange
+            'rgba(236, 72, 153, 0.6)', // Pink
+            'rgba(14, 165, 233, 0.6)', // Cyan
+            'rgba(168, 85, 247, 0.6)', // Violet
+            'rgba(234, 179, 8, 0.6)',  // Yellow
+            'rgba(132, 204, 22, 0.6)'  // Lime
+        ];
+        
+        this.categoryChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(d => d.category),
+                datasets: [{
+                    label: 'Amount',
+                    data: data.map(d => d.amount),
+                    backgroundColor: data.map((_, i) => colors[i % colors.length]),
+                    borderColor: data.map((_, i) => colors[i % colors.length].replace('0.6', '1')),
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₹' + (value >= 100000 ? (value/100000).toFixed(1) + 'L' : (value >= 1000 ? (value/1000).toFixed(0) + 'k' : value));
+                            }
+                        },
+                        grid: {
+                            display: true,
+                            color: 'rgba(0, 0, 0, 0.1)'
                         }
                     }
                 }
