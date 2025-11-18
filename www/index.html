@@ -5,11 +5,103 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>My Assistant - Smart Credit Card Advisor</title>
     
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS - with loading detection and retry logic -->
+    <script>
+        window.tailwindLoaded = false;
+        window.tailwindRetries = 0;
+        
+        function loadTailwind() {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.tailwindcss.com';
+            script.async = true;
+            
+            script.onload = function() {
+                window.tailwindLoaded = true;
+                console.log('✅ Tailwind CSS loaded successfully');
+                const errorDiv = document.getElementById('css-error');
+                if (errorDiv) errorDiv.style.display = 'none';
+            };
+            
+            script.onerror = function() {
+                window.tailwindRetries++;
+                console.error('❌ Tailwind CSS failed to load (attempt ' + window.tailwindRetries + ')');
+                
+                if (window.tailwindRetries < 3) {
+                    console.log('🔄 Retrying Tailwind CSS load...');
+                    setTimeout(loadTailwind, 2000); // Retry after 2 seconds
+                } else {
+                    console.error('❌ Tailwind CSS failed after 3 attempts');
+                    const errorDiv = document.getElementById('css-error');
+                    if (errorDiv) errorDiv.style.display = 'block';
+                }
+            };
+            
+            document.head.appendChild(script);
+        }
+        
+        // Start loading Tailwind
+        loadTailwind();
+        
+        // Check after page load
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                if (!window.tailwindLoaded) {
+                    console.warn('⚠️ Tailwind CSS may not have loaded properly');
+                }
+            }, 3000);
+        });
+    </script>
+    
+    <!-- Fallback CSS for basic styling if Tailwind fails -->
+    <style id="fallback-styles">
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0; padding: 0; background: #f3f4f6; line-height: 1.5;
+        }
+        .hidden { display: none !important; }
+        .fixed { position: fixed !important; }
+        .flex { display: flex !important; }
+        .items-center { align-items: center !important; }
+        .justify-between { justify-content: space-between !important; }
+        .space-y-4 > * + * { margin-top: 1rem !important; }
+        .gap-2 { gap: 0.5rem !important; }
+        button { 
+            padding: 10px 20px; border-radius: 8px; border: none; 
+            cursor: pointer; background: #3b82f6; color: white;
+            font-weight: 600; transition: all 0.2s;
+        }
+        button:hover { background: #2563eb; }
+        input, select, textarea { 
+            padding: 8px 12px; border: 1px solid #d1d5db; 
+            border-radius: 6px; width: 100%; font-size: 14px;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none; border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+        .p-4 { padding: 1rem !important; }
+        .mb-4 { margin-bottom: 1rem !important; }
+        .rounded-lg { border-radius: 0.5rem !important; }
+        .shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important; }
+        .bg-white { background: white !important; }
+        .text-center { text-align: center !important; }
+        .font-bold { font-weight: 700 !important; }
+        .text-xl { font-size: 1.25rem !important; }
+        .text-sm { font-size: 0.875rem !important; }
+        .text-gray-600 { color: #4b5563 !important; }
+        .w-full { width: 100% !important; }
+        .max-w-md { max-width: 28rem !important; }
+    </style>
     
     <!-- Custom Styles -->
     <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- CSS Loading Error Message -->
+    <div id="css-error" style="display: none; position: fixed; top: 0; left: 0; right: 0; background: #dc2626; color: white; padding: 10px; text-align: center; z-index: 9999;">
+        ⚠️ Styles failed to load. Please check your internet connection and refresh.
+    </div>
     
     <!-- Capacitor Core (for native features) -->
     <script type="module">
