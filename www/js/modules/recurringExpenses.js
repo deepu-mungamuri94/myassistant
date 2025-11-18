@@ -485,9 +485,13 @@ const RecurringExpenses = {
         const currentMonthName = monthNames[currentMonth - 1];
         const nextMonthName = monthNames[nextMonth - 1];
         
-        // Separate active and inactive
-        const activeExpenses = recurringExpenses.filter(r => r.isActive !== false);
-        const inactiveExpenses = recurringExpenses.filter(r => r.isActive === false);
+        // Separate active and inactive, sort by day of month ascending
+        const activeExpenses = recurringExpenses
+            .filter(r => r.isActive !== false)
+            .sort((a, b) => a.day - b.day);
+        const inactiveExpenses = recurringExpenses
+            .filter(r => r.isActive === false)
+            .sort((a, b) => a.day - b.day);
         
         let html = '';
         

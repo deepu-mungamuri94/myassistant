@@ -330,6 +330,10 @@ const Loans = {
             }
         });
         
+        // Sort loans by first EMI date (earliest first)
+        activeLoans.sort((a, b) => new Date(a.firstEmiDate) - new Date(b.firstEmiDate));
+        closedLoans.sort((a, b) => new Date(a.firstEmiDate) - new Date(b.firstEmiDate));
+        
         let html = '';
         
         // Render summary

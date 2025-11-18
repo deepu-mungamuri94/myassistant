@@ -87,7 +87,7 @@ const StockAPI = {
                                 currency: ticker.currency,
                                 exchange: ticker.exchange,
                                 source: 'Yahoo Finance',
-                                lastUpdated: new Date().toISOString()
+                                lastUpdated: Utils.formatLocalDateTime(new Date())
                             };
                         }
                     }
@@ -102,7 +102,7 @@ const StockAPI = {
                             currency: ticker.currency,
                             exchange: ticker.exchange,
                             source: 'Yahoo Finance',
-                            lastUpdated: new Date().toISOString()
+                            lastUpdated: Utils.formatLocalDateTime(new Date())
                         };
                     }
                     throw new Error('No data');
@@ -192,7 +192,7 @@ const StockAPI = {
                 price: data.c, // Current price
                 currency: 'USD',
                 exchange: 'Finnhub',
-                lastUpdated: new Date().toISOString()
+                lastUpdated: Utils.formatLocalDateTime(new Date())
             };
         } catch (error) {
             console.error('Finnhub fetch failed:', error);
@@ -224,7 +224,7 @@ const StockAPI = {
                 price: parseFloat(quote['05. price']),
                 currency: 'USD',
                 exchange: 'Alpha Vantage',
-                lastUpdated: new Date().toISOString()
+                lastUpdated: Utils.formatLocalDateTime(new Date())
             };
         } catch (error) {
             console.error('Alpha Vantage fetch failed:', error);
@@ -417,7 +417,7 @@ const StockAPI = {
                         price: price,
                         currency: this.getCurrency(meta.exchangeName || ticker),
                         exchange: meta.exchangeName || (ticker.includes('.NS') ? 'NSE' : ticker.includes('.BO') ? 'BSE' : 'Unknown'),
-                        lastUpdated: new Date().toISOString()
+                        lastUpdated: Utils.formatLocalDateTime(new Date())
                     };
                 }
             }
@@ -438,7 +438,7 @@ const StockAPI = {
                     price: data.c,
                     currency: 'USD',
                     exchange: 'Finnhub',
-                    lastUpdated: new Date().toISOString()
+                    lastUpdated: Utils.formatLocalDateTime(new Date())
                 };
             }
         } catch (e) {

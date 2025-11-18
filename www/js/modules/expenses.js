@@ -538,7 +538,7 @@ const Expenses = {
                     // Only if this EMI number is within total EMIs and not already completed
                     if (emiNumber > 0 && emiNumber <= emi.totalCount) {
                         const emiDate = new Date(today.getFullYear(), today.getMonth(), emiDay);
-                        const emiDateStr = emiDate.toISOString().split('T')[0];
+                        const emiDateStr = Utils.formatLocalDate(emiDate);
                         
                         const emiExpense = {
                             title: `Card EMI: ${emi.reason}`,
@@ -592,7 +592,7 @@ const Expenses = {
                 
                 // Check if EMI is due this month
                 const thisMonthEmiDate = new Date(today.getFullYear(), today.getMonth(), emiDay);
-                const emiDateStr = thisMonthEmiDate.toISOString().split('T')[0];
+                const emiDateStr = Utils.formatLocalDate(thisMonthEmiDate);
                 
                 const loanEmi = {
                     title: `${loan.bankName} ${loan.loanType || 'Loan'} EMI`,
