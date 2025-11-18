@@ -2287,35 +2287,13 @@
     
     <!-- Form Handlers -->
     <script>
-        // Format input as Indian currency (with commas)
+        // Format input as Indian currency (reuses Utils.formatIndianNumber)
         function formatIndianCurrency(input) {
             let value = input.value.replace(/,/g, ''); // Remove existing commas
             if (!value || isNaN(value)) {
                 return;
             }
-            
-            // Format with Indian numbering system
-            let parts = value.split('.');
-            let intPart = parts[0];
-            let decPart = parts.length > 1 ? '.' + parts[1] : '';
-            
-            // Indian numbering: last 3 digits, then groups of 2
-            let lastThree = intPart.substring(intPart.length - 3);
-            let otherNumbers = intPart.substring(0, intPart.length - 3);
-            if (otherNumbers !== '') {
-                lastThree = ',' + lastThree;
-            }
-            let formatted = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + lastThree + decPart;
-            
-            input.value = formatted;
-        }
-        
-        // Get numeric value from formatted currency input
-        function getNumericValue(input) {
-            if (typeof input === 'string') {
-                return parseFloat(input.replace(/,/g, '')) || 0;
-            }
-            return parseFloat(input.value.replace(/,/g, '')) || 0;
+            input.value = Utils.formatIndianNumber(value);
         }
         
         // Form handler functions that call the module methods
