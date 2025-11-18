@@ -776,64 +776,76 @@ const Expenses = {
                         <span class="font-bold text-orange-800 text-sm">${Utils.formatCurrency(recurringTotal)}</span>
                     </summary>
                     <div class="px-4 pb-3">
+                        <!-- Tabs for Upcoming and Completed -->
+                        <div class="border-b border-orange-200 mb-3">
+                            <div class="flex gap-2">
+                                ${upcomingRecurring.length > 0 ? `
+                                    <button onclick="Expenses.switchRecurringTab('upcoming')" 
+                                            id="recurring-tab-upcoming"
+                                            class="px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-blue-500 text-blue-600">
+                                        🕐 Upcoming (${upcomingRecurring.length})
+                                    </button>
+                                ` : ''}
+                                ${completedRecurring.length > 0 ? `
+                                    <button onclick="Expenses.switchRecurringTab('completed')" 
+                                            id="recurring-tab-completed"
+                                            class="px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                                        ✓ Completed (${completedRecurring.length})
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                        
+                        <!-- Tab Content: Upcoming -->
                         ${upcomingRecurring.length > 0 ? `
-                            <details class="mb-2">
-                                <summary class="cursor-pointer text-xs font-semibold text-blue-600 mb-1.5 hover:text-blue-800 flex items-center gap-1">
-                                    <span>▶</span> 🕐 Upcoming (${upcomingRecurring.length})
-                                </summary>
-                                <div class="space-y-1.5 mt-1.5">
-                                    ${upcomingRecurring.map(exp => {
-                                        // Check if this expense is already in expenses list
-                                        const existsInExpenses = window.DB.expenses.find(e => 
-                                            e.title === exp.title && 
-                                            e.date === exp.date && 
-                                            Math.abs(e.amount - exp.amount) < 0.01
-                                        );
-                                        
-                                        return `
-                                        <div class="flex justify-between items-center py-1.5 px-2 bg-blue-50 rounded border border-blue-100">
-                                            <div class="flex-1 min-w-0">
-                                                <p class="text-sm font-medium text-gray-800 truncate">${Utils.escapeHtml(exp.title)}</p>
-                                                <p class="text-xs text-gray-500">${exp.description ? Utils.escapeHtml(exp.description) + ' • ' : ''}${Utils.formatDate(exp.date)}</p>
-                                            </div>
-                                            <div class="flex items-center gap-2 ml-2">
-                                                <span class="text-sm font-semibold text-blue-700">${Utils.formatCurrency(exp.amount)}</span>
-                                                ${!existsInExpenses ? `
-                                                    <button onclick="Expenses.addRecurringExpense('${Utils.escapeHtml(exp.title).replace(/'/g, "\\'")}', ${exp.amount}, '${exp.category}', '${exp.date}', '${Utils.escapeHtml(exp.description || '').replace(/'/g, "\\'")}'); event.stopPropagation();" 
-                                                            class="px-2 py-0.5 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors flex items-center gap-1" 
-                                                            title="Add to Expenses">
-                                                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
-                                                        </svg>
-                                                        Add
-                                                    </button>
-                                                ` : `
-                                                    <span class="text-xs text-green-600 font-medium">✓ Added</span>
-                                                `}
-                                            </div>
+                            <div id="recurring-content-upcoming" class="space-y-1.5">
+                                ${upcomingRecurring.map(exp => {
+                                    // Check if this expense is already in expenses list
+                                    const existsInExpenses = window.DB.expenses.find(e => 
+                                        e.title === exp.title && 
+                                        e.date === exp.date && 
+                                        Math.abs(e.amount - exp.amount) < 0.01
+                                    );
+                                    
+                                    return `
+                                    <div class="flex justify-between items-center py-1.5 px-2 bg-blue-50 rounded border border-blue-100">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-800 truncate">${Utils.escapeHtml(exp.title)}</p>
+                                            <p class="text-xs text-gray-500">${exp.description ? Utils.escapeHtml(exp.description) + ' • ' : ''}${Utils.formatDate(exp.date)}</p>
                                         </div>
-                                    `}).join('')}
-                                </div>
-                            </details>
+                                        <div class="flex items-center gap-2 ml-2">
+                                            <span class="text-sm font-semibold text-blue-700">${Utils.formatCurrency(exp.amount)}</span>
+                                            ${!existsInExpenses ? `
+                                                <button onclick="Expenses.addRecurringExpense('${Utils.escapeHtml(exp.title).replace(/'/g, "\\'")}', ${exp.amount}, '${exp.category}', '${exp.date}', '${Utils.escapeHtml(exp.description || '').replace(/'/g, "\\'")}'); event.stopPropagation();" 
+                                                        class="px-2 py-0.5 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors flex items-center gap-1" 
+                                                        title="Add to Expenses">
+                                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                    Add
+                                                </button>
+                                            ` : `
+                                                <span class="text-xs text-green-600 font-medium">✓ Added</span>
+                                            `}
+                                        </div>
+                                    </div>
+                                `}).join('')}
+                            </div>
                         ` : ''}
                         
+                        <!-- Tab Content: Completed -->
                         ${completedRecurring.length > 0 ? `
-                            <details>
-                                <summary class="cursor-pointer text-xs font-semibold text-green-600 mb-1.5 hover:text-green-800 flex items-center gap-1">
-                                    <span>▶</span> ✓ Completed (${completedRecurring.length})
-                                </summary>
-                                <div class="space-y-1.5 mt-1.5">
-                                    ${completedRecurring.map(exp => `
-                                        <div class="flex justify-between items-center py-1.5 px-2 bg-green-50 rounded border border-green-100">
-                                            <div class="flex-1 min-w-0">
-                                                <p class="text-sm font-medium text-gray-700 truncate">${Utils.escapeHtml(exp.title)}</p>
-                                                <p class="text-xs text-gray-500">${Utils.formatDate(exp.date)}</p>
-                                            </div>
-                                            <span class="text-sm font-semibold text-green-700 ml-2">${Utils.formatCurrency(exp.amount)}</span>
+                            <div id="recurring-content-completed" class="space-y-1.5 hidden">
+                                ${completedRecurring.map(exp => `
+                                    <div class="flex justify-between items-center py-1.5 px-2 bg-green-50 rounded border border-green-100">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-700 truncate">${Utils.escapeHtml(exp.title)}</p>
+                                            <p class="text-xs text-gray-500">${Utils.formatDate(exp.date)}</p>
                                         </div>
-                                    `).join('')}
-                                </div>
-                            </details>
+                                        <span class="text-sm font-semibold text-green-700 ml-2">${Utils.formatCurrency(exp.amount)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
                         ` : ''}
                     </div>
                 </details>
@@ -1009,6 +1021,45 @@ const Expenses = {
         this.delete(id);
         this.render();
         window.Toast.show('Expense deleted', 'success');
+    },
+    
+    /**
+     * Switch between Upcoming and Completed tabs in recurring expenses
+     */
+    switchRecurringTab(tab) {
+        // Tab buttons
+        const upcomingTab = document.getElementById('recurring-tab-upcoming');
+        const completedTab = document.getElementById('recurring-tab-completed');
+        
+        // Tab contents
+        const upcomingContent = document.getElementById('recurring-content-upcoming');
+        const completedContent = document.getElementById('recurring-content-completed');
+        
+        if (tab === 'upcoming') {
+            // Activate upcoming tab
+            if (upcomingTab) {
+                upcomingTab.className = 'px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-blue-500 text-blue-600';
+            }
+            if (completedTab) {
+                completedTab.className = 'px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+            }
+            
+            // Show upcoming content
+            if (upcomingContent) upcomingContent.classList.remove('hidden');
+            if (completedContent) completedContent.classList.add('hidden');
+        } else if (tab === 'completed') {
+            // Activate completed tab
+            if (upcomingTab) {
+                upcomingTab.className = 'px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+            }
+            if (completedTab) {
+                completedTab.className = 'px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-green-500 text-green-600';
+            }
+            
+            // Show completed content
+            if (upcomingContent) upcomingContent.classList.add('hidden');
+            if (completedContent) completedContent.classList.remove('hidden');
+        }
     }
 };
 
