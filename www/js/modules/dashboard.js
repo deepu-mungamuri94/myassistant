@@ -36,8 +36,10 @@ const Dashboard = {
                         ${this.getMonthOptions()}
                     </select>
                 </div>
-                <div style="height: 300px;">
-                    <canvas id="category-chart"></canvas>
+                <div class="flex justify-center" style="height: 210px;">
+                    <div style="width: 70%; max-width: 500px;">
+                        <canvas id="category-chart"></canvas>
+                    </div>
                 </div>
             </div>
             
@@ -500,11 +502,12 @@ const Dashboard = {
                     legend: {
                         display: true,
                         position: 'right',
+                        align: 'center',
                         labels: {
-                            boxWidth: 15,
-                            padding: 10,
+                            boxWidth: 12,
+                            padding: 8,
                             font: {
-                                size: 11
+                                size: 10
                             },
                             usePointStyle: true,
                             pointStyle: 'circle'
