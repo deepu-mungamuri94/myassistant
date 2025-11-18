@@ -424,27 +424,32 @@ Return tickers for ALL stocks in a JSON array.`;
         const longTermHTML = this.renderGroupedInvestments(longTerm);
         
         list.innerHTML = `
-            <div class="p-4 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-xl border-2 border-yellow-400 mb-4">
-                <h3 class="font-bold text-yellow-900 text-lg">Total Portfolio Value</h3>
-                <p class="text-3xl font-bold text-yellow-800 mt-2">${Utils.formatCurrency(total)}</p>
-                ${hasStocks ? `
-                    <div class="mt-3 flex items-center gap-2">
-                        <button onclick="Investments.refreshAllStockPrices()" 
-                                class="px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-all duration-200 text-xs font-medium flex items-center gap-1 whitespace-nowrap"
-                                title="Refresh all stock prices">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                            </svg>
-                            Stocks
-                        </button>
-                        <button onclick="openExchangeRateModal()" 
-                                id="update-rate-btn"
-                                class="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg transition-all duration-200 text-xs font-medium flex items-center gap-1 whitespace-nowrap"
-                                title="Update USD to INR exchange rate">
-                            💱 ₹${(window.DB.exchangeRate && window.DB.exchangeRate.rate) ? window.DB.exchangeRate.rate.toFixed(2) : '83'}
-                        </button>
+            <div class="bg-gradient-to-r from-yellow-100 via-orange-50 to-yellow-100 rounded-xl border-2 border-yellow-400 mb-4 overflow-hidden">
+                <div class="p-5">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-yellow-900 text-base">💰 Total Portfolio Value</h3>
+                        <p class="text-2xl font-bold text-yellow-800">${Utils.formatCurrency(total)}</p>
                     </div>
-                ` : ''}
+                    ${hasStocks ? `
+                        <div class="flex justify-center gap-3 pt-3 border-t border-yellow-300">
+                            <button onclick="Investments.refreshAllStockPrices()" 
+                                    class="flex-1 px-3 py-2 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
+                                    title="Refresh all stock prices">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                </svg>
+                                <span>Refresh Stocks</span>
+                            </button>
+                            <button onclick="openExchangeRateModal()" 
+                                    id="update-rate-btn"
+                                    class="flex-1 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
+                                    title="Update USD to INR exchange rate">
+                                <span>💱</span>
+                                <span>₹${(window.DB.exchangeRate && window.DB.exchangeRate.rate) ? window.DB.exchangeRate.rate.toFixed(2) : '83'}/USD</span>
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
             </div>
             
             <!-- Tabs for Short Term / Long Term -->
@@ -549,23 +554,27 @@ Return tickers for ALL stocks in a JSON array.`;
             'general': '💰 General'
         };
         
-        // Render each group
+        // Render each group as collapsible (collapsed by default)
         return Object.entries(grouped).map(([type, items]) => {
             const typeName = typeNames[type] || `💰 ${type}`;
             const total = items.reduce((sum, inv) => sum + this.calculateValue(inv), 0);
             
             return `
-                <div class="mb-3">
-                    <div class="bg-gradient-to-r from-gray-100 to-gray-50 px-3 py-2 rounded-t-lg border-b-2 border-gray-300">
+                <details class="mb-3 border-2 border-gray-200 rounded-lg overflow-hidden">
+                    <summary class="bg-gradient-to-r from-gray-100 to-gray-50 px-3 py-3 cursor-pointer hover:from-gray-200 hover:to-gray-100 transition-all">
                         <div class="flex justify-between items-center">
-                            <span class="font-semibold text-gray-800 text-sm">${typeName}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-gray-500">▶</span>
+                                <span class="font-semibold text-gray-800 text-sm">${typeName}</span>
+                                <span class="text-xs text-gray-500">(${items.length})</span>
+                            </div>
                             <span class="font-bold text-gray-700">${Utils.formatCurrency(total)}</span>
                         </div>
-                    </div>
-                    <div class="space-y-2 bg-gray-50 p-2 rounded-b-lg">
+                    </summary>
+                    <div class="space-y-2 bg-gray-50 p-2">
                         ${this.renderInvestmentCards(items)}
                     </div>
-                </div>
+                </details>
             `;
         }).join('');
     },
