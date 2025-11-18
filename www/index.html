@@ -111,14 +111,15 @@
     </div>
     
     <!-- HEADER -->
-    <header class="fixed top-0 left-0 right-0 z-40 w-full py-4 px-4 flex items-center justify-start bg-white shadow-lg" style="padding-top: max(1rem, env(safe-area-inset-top))">
-        <!-- Menu Button -->
-        <button onclick="Navigation.openMenu()" class="p-2 text-gray-600 hover:text-white hover:bg-gradient-to-r hover:from-purple-600 hover:to-pink-600 rounded-lg transition-all duration-200 shadow-sm hover:shadow-lg transform hover:scale-110" title="Menu">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-            </svg>
-        </button>
-        
+    <header class="fixed top-0 left-0 right-0 z-40 w-full py-4 px-4 flex items-center justify-between bg-white shadow-lg" style="padding-top: max(1rem, env(safe-area-inset-top))">
+        <div class="flex items-center">
+            <!-- Menu Button -->
+            <button onclick="Navigation.openMenu()" class="p-2 text-gray-600 hover:text-white hover:bg-gradient-to-r hover:from-purple-600 hover:to-pink-600 rounded-lg transition-all duration-200 shadow-sm hover:shadow-lg transform hover:scale-110" title="Menu">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
+            
             <!-- App Icon and Name -->
             <div class="flex items-center ml-2">
                 <svg class="w-9 h-9 mr-2" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -193,6 +194,15 @@
                 </svg>
                 <h1 class="text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">My Assistant</h1>
             </div>
+        </div>
+        
+        <!-- Dashboard Button -->
+        <button onclick="Navigation.navigateTo('dashboard')" class="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 text-sm font-semibold">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+            <span>Dashboard</span>
+        </button>
     </header>
     
     <!-- SIDE MENU -->
@@ -464,6 +474,18 @@
     
     <!-- MAIN CONTENT -->
     <div class="w-full" style="margin-top: calc(3.5rem + env(safe-area-inset-top)); padding-bottom: env(safe-area-inset-bottom);">
+        
+        <!-- DASHBOARD VIEW -->
+        <div id="dashboard-view" class="p-4 space-y-4">
+            <div class="flex justify-between items-center mb-4">
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">Dashboard</h1>
+            </div>
+            
+            <!-- Dashboard Content -->
+            <div id="dashboard-content" class="space-y-4">
+                <!-- Charts will be rendered here -->
+            </div>
+        </div>
         
         <!-- AI ADVISOR VIEW -->
         <div id="chat-view" class="hidden flex flex-col fixed inset-0" style="top: calc(3.5rem + env(safe-area-inset-top)); bottom: env(safe-area-inset-bottom);">
@@ -2268,7 +2290,11 @@
     <script src="js/ai/perplexity.js"></script>
     <script src="js/ai/provider.js"></script>
     
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
     <!-- Data modules -->
+    <script src="js/modules/dashboard.js"></script>
     <script src="js/modules/credentials.js"></script>
     <script src="js/modules/cards.js"></script>
     <script src="js/modules/expenses.js"></script>

@@ -4,7 +4,7 @@
  */
 
 const Navigation = {
-    currentView: 'chat',
+    currentView: 'dashboard',
 
     /**
      * Navigate to a specific view
@@ -31,6 +31,9 @@ const Navigation = {
      */
     refreshView(view) {
         switch(view) {
+            case 'dashboard':
+                if (window.Dashboard) window.Dashboard.render();
+                break;
             case 'credentials':
                 if (window.Credentials) window.Credentials.render();
                 break;
