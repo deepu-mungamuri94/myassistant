@@ -419,13 +419,9 @@ Return tickers for ALL stocks in a JSON array.`;
         const longTermSum = longTerm.reduce((sum, inv) => sum + this.calculateValue(inv), 0);
         const shortTermSum = shortTerm.reduce((sum, inv) => sum + this.calculateValue(inv), 0);
         
-        // Check expanded state (use instance variable or default to both collapsed)
-        if (!this.expandedTerms) {
-            this.expandedTerms = new Set(); // Start collapsed by default
-        }
-        
-        const isLongExpanded = this.expandedTerms.has('long');
-        const isShortExpanded = this.expandedTerms.has('short');
+        // Build grouped investments HTML
+        const shortTermHTML = this.renderGroupedInvestments(shortTerm);
+        const longTermHTML = this.renderGroupedInvestments(longTerm);
         
         list.innerHTML = `
             <div class="p-4 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-xl border-2 border-yellow-400 mb-4">
@@ -451,65 +447,42 @@ Return tickers for ALL stocks in a JSON array.`;
                 ` : ''}
             </div>
             
-            <!-- LONG-TERM INVESTMENTS -->
-            ${longTerm.length > 0 ? `
-                <div class="mb-4 bg-white rounded-xl border-2 border-green-300 overflow-hidden">
-                    <!-- Header -->
-                    <div class="p-4 bg-gradient-to-r from-green-200 to-emerald-200 cursor-pointer hover:from-green-300 hover:to-emerald-300 transition-all"
-                         onclick="Investments.toggleTerm('long')">
-                        <div class="flex justify-between items-center">
-                            <div class="flex items-center gap-3">
-                                <svg class="w-5 h-5 text-green-700 transition-transform ${isLongExpanded ? 'rotate-90' : ''}" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                                </svg>
-                                <div>
-                                    <h3 class="font-bold text-green-900">Long Term (>3Y)</h3>
-                                    <p class="text-xs text-green-600">${longTerm.length} investment${longTerm.length !== 1 ? 's' : ''}</p>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-xl font-bold text-green-900">${Utils.formatCurrency(longTermSum)}</p>
-                                <p class="text-xs text-green-600">${isLongExpanded ? 'Click to collapse' : 'Click to expand'}</p>
-                            </div>
+            <!-- Tabs for Short Term / Long Term -->
+            ${(shortTerm.length > 0 || longTerm.length > 0) ? `
+                <div class="bg-white rounded-xl border-2 border-blue-200 overflow-hidden">
+                    <!-- Tabs -->
+                    <div class="border-b border-blue-200">
+                        <div class="flex justify-evenly">
+                            ${shortTerm.length > 0 ? `
+                                <button onclick="Investments.switchInvestmentTab('short')" 
+                                        id="investments-tab-short"
+                                        class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600">
+                                    <div>Short Term (${shortTerm.length})</div>
+                                    <div class="text-xs font-normal opacity-75">Less than 3 years</div>
+                                </button>
+                            ` : ''}
+                            ${longTerm.length > 0 ? `
+                                <button onclick="Investments.switchInvestmentTab('long')" 
+                                        id="investments-tab-long"
+                                        class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                                    <div>Long Term (${longTerm.length})</div>
+                                    <div class="text-xs font-normal opacity-75">More than 3 years</div>
+                                </button>
+                            ` : ''}
                         </div>
                     </div>
                     
-                    <!-- Investments List (Collapsible) -->
-                    ${isLongExpanded ? `
-                        <div class="p-3 space-y-2 bg-green-50">
-                            ${this.renderInvestmentCards(longTerm)}
+                    <!-- Tab Content: Short Term -->
+                    ${shortTerm.length > 0 ? `
+                        <div id="investments-content-short" class="p-3">
+                            ${shortTermHTML}
                         </div>
                     ` : ''}
-                </div>
-            ` : ''}
-            
-            <!-- SHORT-TERM INVESTMENTS -->
-            ${shortTerm.length > 0 ? `
-                <div class="mb-4 bg-white rounded-xl border-2 border-blue-300 overflow-hidden">
-                    <!-- Header -->
-                    <div class="p-4 bg-gradient-to-r from-blue-200 to-cyan-200 cursor-pointer hover:from-blue-300 hover:to-cyan-300 transition-all"
-                         onclick="Investments.toggleTerm('short')">
-                        <div class="flex justify-between items-center">
-                            <div class="flex items-center gap-3">
-                                <svg class="w-5 h-5 text-blue-700 transition-transform ${isShortExpanded ? 'rotate-90' : ''}" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                                </svg>
-                                <div>
-                                    <h3 class="font-bold text-blue-900">Short Term (<3Y)</h3>
-                                    <p class="text-xs text-blue-600">${shortTerm.length} investment${shortTerm.length !== 1 ? 's' : ''}</p>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-xl font-bold text-blue-900">${Utils.formatCurrency(shortTermSum)}</p>
-                                <p class="text-xs text-blue-600">${isShortExpanded ? 'Click to collapse' : 'Click to expand'}</p>
-                            </div>
-                        </div>
-                    </div>
                     
-                    <!-- Investments List (Collapsible) -->
-                    ${isShortExpanded ? `
-                        <div class="p-3 space-y-2 bg-blue-50">
-                            ${this.renderInvestmentCards(shortTerm)}
+                    <!-- Tab Content: Long Term -->
+                    ${longTerm.length > 0 ? `
+                        <div id="investments-content-long" class="p-3 hidden">
+                            ${longTermHTML}
                         </div>
                     ` : ''}
                 </div>
@@ -518,20 +491,83 @@ Return tickers for ALL stocks in a JSON array.`;
     },
     
     /**
-     * Toggle term expansion
+     * Switch between Short Term and Long Term tabs
      */
-    toggleTerm(term) {
-        if (!this.expandedTerms) {
-            this.expandedTerms = new Set(); // Start collapsed by default
+    switchInvestmentTab(tab) {
+        // Update tab buttons
+        const shortBtn = document.getElementById('investments-tab-short');
+        const longBtn = document.getElementById('investments-tab-long');
+        const shortContent = document.getElementById('investments-content-short');
+        const longContent = document.getElementById('investments-content-long');
+        
+        if (tab === 'short') {
+            if (shortBtn) {
+                shortBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600';
+            }
+            if (longBtn) {
+                longBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+            }
+            if (shortContent) shortContent.classList.remove('hidden');
+            if (longContent) longContent.classList.add('hidden');
+        } else if (tab === 'long') {
+            if (shortBtn) {
+                shortBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+            }
+            if (longBtn) {
+                longBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600';
+            }
+            if (shortContent) shortContent.classList.add('hidden');
+            if (longContent) longContent.classList.remove('hidden');
+        }
+    },
+    
+    /**
+     * Render investments grouped by type
+     */
+    renderGroupedInvestments(investments) {
+        if (!investments || investments.length === 0) {
+            return '<p class="text-gray-500 text-center py-4">No investments in this category.</p>';
         }
         
-        if (this.expandedTerms.has(term)) {
-            this.expandedTerms.delete(term);
-        } else {
-            this.expandedTerms.add(term);
-        }
+        // Group investments by type
+        const grouped = {};
+        investments.forEach(inv => {
+            const type = inv.type || 'general';
+            if (!grouped[type]) {
+                grouped[type] = [];
+            }
+            grouped[type].push(inv);
+        });
         
-        this.render();
+        // Type names map
+        const typeNames = {
+            'stock': '📈 Stocks',
+            'mutual_fund': '📊 Mutual Funds',
+            'fd': '🏦 Fixed Deposits',
+            'epf': '💼 EPF',
+            'gold': '🪙 Gold',
+            'general': '💰 General'
+        };
+        
+        // Render each group
+        return Object.entries(grouped).map(([type, items]) => {
+            const typeName = typeNames[type] || `💰 ${type}`;
+            const total = items.reduce((sum, inv) => sum + this.calculateValue(inv), 0);
+            
+            return `
+                <div class="mb-3">
+                    <div class="bg-gradient-to-r from-gray-100 to-gray-50 px-3 py-2 rounded-t-lg border-b-2 border-gray-300">
+                        <div class="flex justify-between items-center">
+                            <span class="font-semibold text-gray-800 text-sm">${typeName}</span>
+                            <span class="font-bold text-gray-700">${Utils.formatCurrency(total)}</span>
+                        </div>
+                    </div>
+                    <div class="space-y-2 bg-gray-50 p-2 rounded-b-lg">
+                        ${this.renderInvestmentCards(items)}
+                    </div>
+                </div>
+            `;
+        }).join('');
     },
     
     /**
