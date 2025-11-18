@@ -41,7 +41,8 @@ const Income = {
             window.DB.income = {
                 ctc: 0,
                 bonusPercent: 0,
-                esppPercent: 0,
+                esppPercentCycle1: 0, // Dec to May
+                esppPercentCycle2: 0, // Jun to Nov
                 pfPercent: 12, // Default PF is 12%
                 taxSlabs: this.getDefaultTaxSlabs(),
                 stdDeduction: 75000,
@@ -53,6 +54,12 @@ const Income = {
                 section80D: 0,
                 otherDeductions: 0
             };
+        }
+        // Migrate old esppPercent to new dual cycle format
+        if (window.DB.income.esppPercent !== undefined && window.DB.income.esppPercentCycle1 === undefined) {
+            window.DB.income.esppPercentCycle1 = window.DB.income.esppPercent;
+            window.DB.income.esppPercentCycle2 = window.DB.income.esppPercent;
+            delete window.DB.income.esppPercent;
         }
         // Ensure tax slabs exist
         if (!window.DB.income.taxSlabs || window.DB.income.taxSlabs.length === 0) {
@@ -94,7 +101,8 @@ const Income = {
             ...existingData,
             ctc: parseFloat(data.ctc) || 0,
             bonusPercent: parseFloat(data.bonusPercent) || 0,
-            esppPercent: parseFloat(data.esppPercent) || 0,
+            esppPercentCycle1: parseFloat(data.esppPercentCycle1) || 0,
+            esppPercentCycle2: parseFloat(data.esppPercentCycle2) || 0,
             pfPercent: parseFloat(data.pfPercent) || 12,
             hasInsurance: data.hasInsurance || false,
             insuranceTotal: parseFloat(data.insuranceTotal) || 0,
@@ -109,6 +117,28 @@ const Income = {
         if (window.switchIncomeExpenseTab) {
             window.switchIncomeExpenseTab('income');
         }
+    },
+    
+    /**
+     * Get ESPP percent for a specific month
+     * Cycle 1 (Dec-May): Dec, Jan, Feb, Mar, Apr, May (calendar months 12, 1, 2, 3, 4, 5)
+     * Cycle 2 (Jun-Nov): Jun, Jul, Aug, Sep, Oct, Nov (calendar months 6, 7, 8, 9, 10, 11)
+     */
+    getESPPPercentForMonth(month, esppPercentCycle1, esppPercentCycle2) {
+        // month is financial year month name or calendar month number
+        const monthMap = {
+            'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6,
+            'July': 7, 'August': 8, 'September': 9, 'October': 10, 'November': 11, 'December': 12
+        };
+        
+        const calendarMonth = typeof month === 'string' ? monthMap[month] : month;
+        
+        // Cycle 1: Dec-May (12, 1-5)
+        if (calendarMonth === 12 || (calendarMonth >= 1 && calendarMonth <= 5)) {
+            return esppPercentCycle1;
+        }
+        // Cycle 2: Jun-Nov (6-11)
+        return esppPercentCycle2;
     },
     
     /**
@@ -211,8 +241,9 @@ const Income = {
     
     /**
      * Calculate monthly payslip
+     * For base calculation, we use average ESPP from both cycles
      */
-    calculatePayslip(ctc, bonusPercent, esppPercent, pfPercent) {
+    calculatePayslip(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent) {
         const basic = this.calculateBasic(ctc);
         const basicPay = basic / 12;
         const hra = basicPay / 2;
@@ -221,7 +252,10 @@ const Income = {
         const pfEmployee = (basic * pfPercent) / 100 / 12;
         const grossEarnings = ctcPerMonth - pfEmployer;
         const allowances = grossEarnings - basicPay - hra;
-        const espp = (grossEarnings * esppPercent) / 100;
+        
+        // Use average ESPP for base calculation
+        const avgEspp = (esppPercentCycle1 + esppPercentCycle2) / 2;
+        const espp = (grossEarnings * avgEspp) / 100;
         
         const taxInfo = this.calculateIncomeTax(ctc);
         const incomeTax = taxInfo.totalTax / 12;
@@ -247,8 +281,9 @@ const Income = {
     
     /**
      * Calculate bonus details
+     * September (mid-year) uses Cycle 2, April (year-end) uses Cycle 1
      */
-    calculateBonus(ctc, bonusPercent, esppPercent, pfPercent) {
+    calculateBonus(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent) {
         const totalBonusBeforeTax = (ctc * bonusPercent) / 100;
         const midYearBeforeTax = totalBonusBeforeTax * 0.25;
         const yearEndBeforeTax = totalBonusBeforeTax * 0.75;
@@ -262,10 +297,11 @@ const Income = {
         const yearEndAfterTax = yearEndBeforeTax * (1 - effectiveTaxRate);
         
         // Only ESPP is deducted from bonus, no PF on bonus
-        const midYearEsppCut = (midYearBeforeTax * esppPercent) / 100;
+        // September uses Cycle 2, April uses Cycle 1
+        const midYearEsppCut = (midYearBeforeTax * esppPercentCycle2) / 100;
         const midYearNet = midYearAfterTax - midYearEsppCut;
         
-        const yearEndEsppCut = (yearEndBeforeTax * esppPercent) / 100;
+        const yearEndEsppCut = (yearEndBeforeTax * esppPercentCycle1) / 100;
         const yearEndNet = yearEndAfterTax - yearEndEsppCut;
         
         return {
@@ -319,15 +355,15 @@ const Income = {
     /**
      * Generate monthly payslips for financial year (April to March)
      */
-    generateYearlyPayslips(ctc, bonusPercent, esppPercent, pfPercent) {
+    generateYearlyPayslips(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent) {
         const months = [
             'April', 'May', 'June', 'July', 'August', 'September',
             'October', 'November', 'December', 'January', 'February', 'March'
         ];
         
         const data = this.getData();
-        const basePayslip = this.calculatePayslip(ctc, bonusPercent, esppPercent, pfPercent);
-        const bonus = this.calculateBonus(ctc, bonusPercent, esppPercent, pfPercent);
+        const basePayslip = this.calculatePayslip(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent);
+        const bonus = this.calculateBonus(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent);
         
         // Calculate leave encashment for January
         const leaveDays = data.leaveDays || 0;
@@ -342,7 +378,41 @@ const Income = {
             // Calendar month mapping (1=Jan, 4=Apr, etc.)
             const calendarMonth = index < 9 ? index + 4 : index - 8;
             
-            let payslip = { ...basePayslip };
+            // Get the correct ESPP percent for this month
+            const monthEsppPercent = this.getESPPPercentForMonth(month, esppPercentCycle1, esppPercentCycle2);
+            
+            // Recalculate payslip for this specific month with its ESPP rate
+            const basic = this.calculateBasic(ctc);
+            const basicPay = basic / 12;
+            const hra = basicPay / 2;
+            const ctcPerMonth = ctc / 12;
+            const pfEmployer = (basic * pfPercent) / 100 / 12;
+            const pfEmployee = (basic * pfPercent) / 100 / 12;
+            const grossEarnings = ctcPerMonth - pfEmployer;
+            const allowances = grossEarnings - basicPay - hra;
+            const espp = (grossEarnings * monthEsppPercent) / 100;
+            
+            const taxInfo = this.calculateIncomeTax(ctc);
+            const incomeTax = taxInfo.totalTax / 12;
+            const professionalTax = 200;
+            
+            const grossDeductions = incomeTax + professionalTax + espp + pfEmployee;
+            const netPay = grossEarnings - grossDeductions;
+            
+            let payslip = {
+                basicPay,
+                hra,
+                allowances,
+                grossEarnings,
+                pfEmployer,
+                pfEmployee,
+                espp,
+                incomeTax,
+                professionalTax,
+                grossDeductions,
+                netPay
+            };
+            
             let bonusAmount = 0;
             let bonusEspp = 0;
             let grossLeaveAmount = 0;
@@ -369,13 +439,12 @@ const Income = {
                 insuranceDeduction = insurancePerMonth;
             }
             
-            // Calculate tax and ESPP on leave encashment
+            // Calculate tax and ESPP on leave encashment (January uses Cycle 1)
             let leaveEspp = 0;
             let leaveTax = 0;
             if (grossLeaveAmount > 0) {
-                leaveEspp = (grossLeaveAmount * esppPercent) / 100;
+                leaveEspp = (grossLeaveAmount * esppPercentCycle1) / 100;
                 // Tax is applied at same monthly rate
-                const taxInfo = this.calculateIncomeTax(ctc);
                 const monthlyTaxRate = (taxInfo.totalTax / ctc) || 0;
                 leaveTax = grossLeaveAmount * monthlyTaxRate;
             }
@@ -407,7 +476,7 @@ const Income = {
         if (!container) return;
         
         const data = this.getData();
-        const { ctc, bonusPercent, esppPercent, pfPercent } = data;
+        const { ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent } = data;
         
         // If no data, show form
         if (!ctc || ctc === 0) {
@@ -425,9 +494,9 @@ const Income = {
         // Calculate all values
         const basic = this.calculateBasic(ctc);
         const taxInfo = this.calculateIncomeTax(ctc);
-        const payslip = this.calculatePayslip(ctc, bonusPercent, esppPercent, pfPercent);
-        const bonus = this.calculateBonus(ctc, bonusPercent, esppPercent, pfPercent);
-        const yearlyPayslips = this.generateYearlyPayslips(ctc, bonusPercent, esppPercent, pfPercent);
+        const payslip = this.calculatePayslip(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent);
+        const bonus = this.calculateBonus(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent);
+        const yearlyPayslips = this.generateYearlyPayslips(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent);
         
         // Aggregate totals from all 12 months
         const aggregated = yearlyPayslips.reduce((acc, slip) => ({
@@ -823,7 +892,8 @@ const Income = {
         
         document.getElementById('income-ctc').value = data.ctc || '';
         document.getElementById('income-bonus-percent').value = data.bonusPercent || '';
-        document.getElementById('income-espp-percent').value = data.esppPercent || '';
+        document.getElementById('income-espp-cycle1').value = data.esppPercentCycle1 || '';
+        document.getElementById('income-espp-cycle2').value = data.esppPercentCycle2 || '';
         document.getElementById('income-pf-percent').value = data.pfPercent || 12;
         document.getElementById('income-has-insurance').checked = data.hasInsurance || false;
         document.getElementById('income-insurance-total').value = data.insuranceTotal || '';
@@ -879,7 +949,8 @@ const Income = {
         const data = {
             ctc: document.getElementById('income-ctc').value,
             bonusPercent: document.getElementById('income-bonus-percent').value,
-            esppPercent: document.getElementById('income-espp-percent').value,
+            esppPercentCycle1: document.getElementById('income-espp-cycle1').value,
+            esppPercentCycle2: document.getElementById('income-espp-cycle2').value,
             pfPercent: document.getElementById('income-pf-percent').value,
             hasInsurance: document.getElementById('income-has-insurance').checked,
             insuranceTotal: parseFloat(document.getElementById('income-insurance-total').value) || 0,

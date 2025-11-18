@@ -954,7 +954,10 @@
             
             <!-- Non-stock amount field -->
             <div id="amount-field" class="mb-3">
-                <input type="number" id="investment-modal-amount" placeholder="Amount (₹)" step="0.01" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
+                    <input type="number" id="investment-modal-amount" placeholder="10000" step="0.01" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                </div>
             </div>
             
             <textarea id="investment-modal-notes" placeholder="Notes (optional)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" rows="2"></textarea>
@@ -987,7 +990,10 @@
                 <div id="expense-suggestions" class="hidden absolute w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10 mt-1"></div>
             </div>
             
-            <input type="number" id="expense-modal-amount" placeholder="Amount (₹)" step="0.01" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+            <div class="relative mb-3">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
+                <input type="number" id="expense-modal-amount" placeholder="100" step="0.01" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+            </div>
             
             <select id="expense-modal-category" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
                 <option value="">Select Category</option>
@@ -1026,21 +1032,45 @@
             <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Income Details</h2>
             
             <label class="block text-sm font-medium text-gray-700 mb-1">Annual CTC *</label>
-            <input type="number" id="income-ctc" placeholder="e.g., 2400000" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" oninput="Income.updateBasicPreview()">
+            <div class="relative mb-3">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
+                <input type="number" id="income-ctc" placeholder="2400000" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" oninput="Income.updateBasicPreview()">
+            </div>
             
             <div class="bg-green-50 p-3 rounded-lg mb-3 border border-green-200">
                 <p class="text-xs text-green-700 mb-1">Total Basic (40% of CTC)</p>
                 <p id="basic-preview" class="text-lg font-bold text-green-800">₹0</p>
             </div>
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">Bonus Percent (%)</label>
-            <input type="number" id="income-bonus-percent" placeholder="e.g., 20" step="0.1" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Bonus Percent</label>
+            <div class="relative mb-3">
+                <input type="number" id="income-bonus-percent" placeholder="e.g., 20" step="0.1" class="w-full p-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">%</span>
+            </div>
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">ESPP Percent (%)</label>
-            <input type="number" id="income-espp-percent" placeholder="e.g., 10" step="0.1" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+            <label class="block text-sm font-medium text-gray-700 mb-1">ESPP Percent (Two Cycles)</label>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <div>
+                    <label class="block text-xs text-gray-600 mb-1">Dec-May</label>
+                    <div class="relative">
+                        <input type="number" id="income-espp-cycle1" placeholder="e.g., 10" step="0.1" class="w-full p-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">%</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-600 mb-1">Jun-Nov</label>
+                    <div class="relative">
+                        <input type="number" id="income-espp-cycle2" placeholder="e.g., 10" step="0.1" class="w-full p-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">%</span>
+                    </div>
+                </div>
+            </div>
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">PF Percent (%)</label>
-            <input type="number" id="income-pf-percent" placeholder="e.g., 12" step="0.1" value="12" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+            <label class="block text-sm font-medium text-gray-700 mb-1">PF Percent</label>
+            <div class="relative mb-3">
+                <input type="number" id="income-pf-percent" placeholder="e.g., 12" step="0.1" value="12" class="w-full p-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">%</span>
+            </div>
             
             <!-- Health Insurance Premium (Optional) -->
             <div class="mb-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
@@ -1049,7 +1079,10 @@
                     <span class="text-sm font-medium text-purple-900">Include Health Insurance Premium</span>
                 </label>
                 <div id="insurance-fields" class="hidden space-y-2">
-                    <input type="number" id="income-insurance-total" placeholder="Total annual premium (e.g., 15000)" class="w-full p-2 text-sm border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <div class="relative">
+                        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs pointer-events-none">₹</span>
+                        <input type="number" id="income-insurance-total" placeholder="15000" class="w-full p-2 pl-6 text-sm border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    </div>
                     <input type="number" id="income-insurance-months" placeholder="Number of months (e.g., 3)" min="1" max="12" class="w-full p-2 text-sm border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" oninput="Income.updateInsuranceMonths()">
                     <div id="insurance-months-checkboxes" class="grid grid-cols-3 gap-2 text-xs">
                         <!-- Month checkboxes will be generated here -->
@@ -1063,7 +1096,10 @@
                 <label class="block text-sm font-medium text-cyan-900 mb-1">Leave Encashment (January)</label>
                 <input type="number" id="income-leave-days" placeholder="Days to cash out (optional)" step="0.5" min="0" class="w-full p-2 mb-2 text-sm border border-cyan-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500">
                 <label class="block text-xs text-cyan-700 mb-1">Override Allowances (optional)</label>
-                <input type="number" id="income-leave-allowances-override" placeholder="Leave blank to use calculated allowances" class="w-full p-2 text-sm border border-cyan-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                <div class="relative">
+                    <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs pointer-events-none">₹</span>
+                    <input type="number" id="income-leave-allowances-override" placeholder="Leave blank to use calculated" class="w-full p-2 pl-6 text-sm border border-cyan-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                </div>
                 <p class="text-xs text-cyan-600 mt-1">Formula: Days × (Basic + HRA + Allowances) / 27</p>
                 <p class="text-xs text-cyan-500 mt-0.5">Default uses payslip allowances. Override if company uses different amount.</p>
             </div>
@@ -1318,8 +1354,11 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
             <input type="text" id="recurring-modal-name" placeholder="e.g., LIC Premium, Car Insurance" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">Amount (₹) *</label>
-            <input type="number" id="recurring-modal-amount" placeholder="Amount" step="0.01" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Amount *</label>
+            <div class="relative mb-3">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
+                <input type="number" id="recurring-modal-amount" placeholder="1000" step="0.01" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+            </div>
             
             <label class="block text-sm font-medium text-gray-700 mb-1">Frequency *</label>
             <select id="recurring-modal-frequency" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" onchange="updateRecurringFrequency()">
@@ -1425,11 +1464,17 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
             <input type="text" id="loan-modal-reason" placeholder="e.g., New car purchase, House renovation" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">Total Amount (₹) *</label>
-            <input type="number" id="loan-modal-amount" placeholder="Principal amount" step="0.01" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Total Amount *</label>
+            <div class="relative mb-3">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
+                <input type="number" id="loan-modal-amount" placeholder="100000" step="0.01" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">Interest Rate (% per annum) *</label>
-            <input type="number" id="loan-modal-interest" placeholder="e.g., 8.5" step="0.01" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Interest Rate (per annum) *</label>
+            <div class="relative mb-3">
+                <input type="number" id="loan-modal-interest" placeholder="8.5" step="0.01" class="w-full p-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">%</span>
+            </div>
             
             <label class="block text-sm font-medium text-gray-700 mb-1">Tenure (Months) *</label>
             <input type="number" id="loan-modal-tenure" placeholder="e.g., 60 (5 years)" min="1" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -1651,7 +1696,10 @@
             
             <!-- Credit Card Only Fields -->
             <div id="credit-only-fields">
-                <input type="text" id="card-modal-credit-limit" placeholder="Credit Limit (optional, e.g., 50000)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                <div class="relative mb-3">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
+                    <input type="text" id="card-modal-credit-limit" placeholder="50000 (optional)" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
             </div>
             
             <textarea id="card-modal-additional-data" placeholder="Note (optional)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" rows="2"></textarea>
@@ -1701,7 +1749,10 @@
             <input type="date" id="emi-form-first-date" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="calculateRemainingEMIs()">
             
             <label class="block text-sm font-medium text-gray-700 mb-1">Monthly EMI Amount (optional)</label>
-            <input type="number" id="emi-form-amount" placeholder="e.g., 5000" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="relative mb-3">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
+                <input type="number" id="emi-form-amount" placeholder="5000" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
             
             <div class="grid grid-cols-2 gap-2 mb-3">
                 <div>
