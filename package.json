@@ -26,5 +26,9 @@
     "@capacitor/filesystem": "^7.1.4",
     "@capacitor/share": "^7.0.2",
     "@capacitor/status-bar": "^7.0.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.17",
+    "tailwindcss": "^4.1.17"
   }
 }
