@@ -161,8 +161,8 @@ const Expenses = {
             );
         }
         
-        // Sort by createdAt (most recently added first)
-        return filtered.sort((a, b) => b.createdAt - a.createdAt);
+        // Sort by expense date (ascending - earliest first)
+        return filtered.sort((a, b) => new Date(a.date) - new Date(b.date));
     },
     
     /**
@@ -191,6 +191,11 @@ const Expenses = {
             if (this.includeLoansInTotal || !this.isLoanEMIExpense(expense)) {
                 groups[monthKey].total += expense.amount;
             }
+        });
+        
+        // Sort expenses within each month by date (ascending - earliest first)
+        Object.values(groups).forEach(group => {
+            group.expenses.sort((a, b) => new Date(a.date) - new Date(b.date));
         });
         
         // Convert to array and sort by month (newest first)
