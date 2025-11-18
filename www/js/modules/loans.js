@@ -5,8 +5,6 @@
 
 const Loans = {
     expandedLoans: new Set(), // Track which loans are expanded
-    activeSectionExpanded: false, // Track active loans section
-    closedSectionExpanded: false, // Track closed loans section
     viewModalExpanded: false, // Track expansion in view modal
     
     /**
@@ -94,11 +92,42 @@ const Loans = {
     },
     
     /**
-     * Toggle active loans section
+     * Switch between Active and Closed tabs in loans page
      */
-    toggleActiveSection() {
-        this.activeSectionExpanded = !this.activeSectionExpanded;
-        this.render();
+    switchLoansTab(tab) {
+        // Tab buttons
+        const activeTab = document.getElementById('loans-tab-active');
+        const closedTab = document.getElementById('loans-tab-closed');
+        
+        // Tab contents
+        const activeContent = document.getElementById('loans-content-active');
+        const closedContent = document.getElementById('loans-content-closed');
+        
+        if (tab === 'active') {
+            // Activate active tab
+            if (activeTab) {
+                activeTab.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600 flex items-center justify-center gap-2';
+            }
+            if (closedTab) {
+                closedTab.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center justify-center gap-2';
+            }
+            
+            // Show active content
+            if (activeContent) activeContent.classList.remove('hidden');
+            if (closedContent) closedContent.classList.add('hidden');
+        } else if (tab === 'closed') {
+            // Activate closed tab
+            if (activeTab) {
+                activeTab.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center justify-center gap-2';
+            }
+            if (closedTab) {
+                closedTab.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600 flex items-center justify-center gap-2';
+            }
+            
+            // Show closed content
+            if (activeContent) activeContent.classList.add('hidden');
+            if (closedContent) closedContent.classList.remove('hidden');
+        }
     },
     
     /**
@@ -347,50 +376,49 @@ const Loans = {
             </div>
         `;
         
-        // Render active loans section
-        if (activeLoans.length > 0) {
+        // Render tabs for Active and Closed loans
+        if (activeLoans.length > 0 || closedLoans.length > 0) {
             html += `
-                <div class="mb-4">
-                    <div class="bg-blue-50 rounded-xl border-2 border-blue-200">
-                        <div class="p-3 cursor-pointer flex justify-between items-center" onclick="Loans.toggleActiveSection()">
-                            <h3 class="font-bold text-blue-800 flex items-center gap-2">
-                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"/>
-                                </svg>
-                                Active Loans (${activeLoans.length})
-                            </h3>
-                            <svg class="w-5 h-5 text-blue-700 transition-transform ${this.activeSectionExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
+                <div class="bg-white rounded-xl border-2 border-blue-200 overflow-hidden">
+                    <!-- Tabs -->
+                    <div class="border-b border-blue-200">
+                        <div class="flex justify-evenly">
+                            ${activeLoans.length > 0 ? `
+                                <button onclick="Loans.switchLoansTab('active')" 
+                                        id="loans-tab-active"
+                                        class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600 flex items-center justify-center gap-2">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Active (${activeLoans.length})
+                                </button>
+                            ` : ''}
+                            ${closedLoans.length > 0 ? `
+                                <button onclick="Loans.switchLoansTab('closed')" 
+                                        id="loans-tab-closed"
+                                        class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center justify-center gap-2">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Closed (${closedLoans.length})
+                                </button>
+                            ` : ''}
                         </div>
-                        <div class="${this.activeSectionExpanded ? '' : 'hidden'} px-3 pb-3 space-y-3">
+                    </div>
+                    
+                    <!-- Tab Content: Active Loans -->
+                    ${activeLoans.length > 0 ? `
+                        <div id="loans-content-active" class="p-3 space-y-3">
                             ${activeLoans.map(loan => this.renderLoanCard(loan, false)).join('')}
                         </div>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // Render closed loans section
-        if (closedLoans.length > 0) {
-            html += `
-                <div class="mt-4">
-                    <div class="bg-green-50 rounded-xl border-2 border-green-200">
-                        <div class="p-3 cursor-pointer flex justify-between items-center" onclick="Loans.toggleClosedSection()">
-                            <h3 class="font-bold text-green-800 flex items-center gap-2">
-                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                </svg>
-                                Closed Loans (${closedLoans.length})
-                            </h3>
-                            <svg class="w-5 h-5 text-green-700 transition-transform ${this.closedSectionExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </div>
-                        <div class="${this.closedSectionExpanded ? '' : 'hidden'} px-3 pb-3 space-y-3">
+                    ` : ''}
+                    
+                    <!-- Tab Content: Closed Loans -->
+                    ${closedLoans.length > 0 ? `
+                        <div id="loans-content-closed" class="p-3 space-y-3 hidden">
                             ${closedLoans.map(loan => this.renderLoanCard(loan, true)).join('')}
                         </div>
-                    </div>
+                    ` : ''}
                 </div>
             `;
         }
@@ -643,13 +671,6 @@ const Loans = {
         `;
     },
     
-    /**
-     * Toggle closed loans section
-     */
-    toggleClosedSection() {
-        this.closedSectionExpanded = !this.closedSectionExpanded;
-        this.render();
-    },
     
     /**
      * Auto-add loan EMI expenses that are due
