@@ -192,3 +192,18 @@ header {
     animation: shake 0.5s ease-in-out;
 }
 
+/* ========================================
+   DETAILS ARROW ROTATION
+   ======================================== */
+
+/* Rotate arrow when details is open */
+details[open] > summary span:first-child {
+    transform: rotate(90deg);
+    transition: transform 0.2s ease;
+}
+
+details > summary span:first-child {
+    display: inline-block;
+    transition: transform 0.2s ease;
+}
+

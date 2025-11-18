@@ -777,9 +777,11 @@ const Expenses = {
                     </summary>
                     <div class="px-4 pb-3">
                         ${upcomingRecurring.length > 0 ? `
-                            <div class="mb-2">
-                                <p class="text-xs font-semibold text-blue-600 mb-1.5">🕐 Upcoming (${upcomingRecurring.length})</p>
-                                <div class="space-y-1.5">
+                            <details class="mb-2">
+                                <summary class="cursor-pointer text-xs font-semibold text-blue-600 mb-1.5 hover:text-blue-800 flex items-center gap-1">
+                                    <span>▶</span> 🕐 Upcoming (${upcomingRecurring.length})
+                                </summary>
+                                <div class="space-y-1.5 mt-1.5">
                                     ${upcomingRecurring.map(exp => {
                                         // Check if this expense is already in expenses list
                                         const existsInExpenses = window.DB.expenses.find(e => 
@@ -812,13 +814,15 @@ const Expenses = {
                                         </div>
                                     `}).join('')}
                                 </div>
-                            </div>
+                            </details>
                         ` : ''}
                         
                         ${completedRecurring.length > 0 ? `
-                            <div>
-                                <p class="text-xs font-semibold text-green-600 mb-1.5">✓ Completed (${completedRecurring.length})</p>
-                                <div class="space-y-1.5">
+                            <details>
+                                <summary class="cursor-pointer text-xs font-semibold text-green-600 mb-1.5 hover:text-green-800 flex items-center gap-1">
+                                    <span>▶</span> ✓ Completed (${completedRecurring.length})
+                                </summary>
+                                <div class="space-y-1.5 mt-1.5">
                                     ${completedRecurring.map(exp => `
                                         <div class="flex justify-between items-center py-1.5 px-2 bg-green-50 rounded border border-green-100">
                                             <div class="flex-1 min-w-0">
@@ -829,7 +833,7 @@ const Expenses = {
                                         </div>
                                     `).join('')}
                                 </div>
-                            </div>
+                            </details>
                         ` : ''}
                     </div>
                 </details>
