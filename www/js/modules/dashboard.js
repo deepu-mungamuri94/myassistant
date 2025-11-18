@@ -24,26 +24,32 @@ const Dashboard = {
             <!-- Expenses Chart -->
             <div class="bg-white rounded-xl shadow-lg p-4 border-2 border-purple-200">
                 <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-lg font-bold text-purple-900">Monthly Expenses</h2>
+                    <h2 class="text-lg font-bold text-purple-900">Monthly Expenses (Last 6 Months)</h2>
                     <label class="flex items-center gap-2 text-sm">
                         <input type="checkbox" id="include-loans-toggle" onchange="Dashboard.toggleLoans()" class="w-4 h-4">
                         <span class="text-gray-700">Include Loans</span>
                     </label>
                 </div>
-                <canvas id="expenses-chart" class="w-full" height="200"></canvas>
+                <div style="height: ${Math.min(300, expenses.length * 50)}px;">
+                    <canvas id="expenses-chart"></canvas>
+                </div>
             </div>
             
             <!-- Income vs Expense Chart -->
             <div class="bg-white rounded-xl shadow-lg p-4 border-2 border-green-200">
-                <h2 class="text-lg font-bold text-green-900 mb-3">Income vs Expenses</h2>
-                <canvas id="income-expense-chart" class="w-full" height="200"></canvas>
+                <h2 class="text-lg font-bold text-green-900 mb-3">Income vs Expenses (Last 6 Months)</h2>
+                <div style="height: ${Math.min(350, expenses.length * 50)}px;">
+                    <canvas id="income-expense-chart"></canvas>
+                </div>
             </div>
             
             <!-- EMI/Loan Progress -->
             ${loans.length > 0 ? `
             <div class="bg-white rounded-xl shadow-lg p-4 border-2 border-blue-200">
                 <h2 class="text-lg font-bold text-blue-900 mb-3">EMI/Loan Progress</h2>
-                <canvas id="loans-chart" class="w-full" height="${Math.max(200, loans.length * 40)}"></canvas>
+                <div style="height: ${Math.max(200, Math.min(400, loans.length * 60))}px;">
+                    <canvas id="loans-chart"></canvas>
+                </div>
             </div>
             ` : ''}
         `;
@@ -270,6 +276,7 @@ const Dashboard = {
                 }]
             },
             options: {
+                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
@@ -278,12 +285,26 @@ const Dashboard = {
                     }
                 },
                 scales: {
-                    y: {
+                    x: {
                         beginAtZero: true,
+                        max: function(context) {
+                            const maxValue = Math.max(...context.chart.data.datasets[0].data);
+                            return Math.ceil(maxValue / 100000) * 100000; // Round to nearest 100k
+                        },
                         ticks: {
                             callback: function(value) {
-                                return '₹' + (value >= 1000 ? (value/1000).toFixed(0) + 'k' : value);
-                            }
+                                return '₹' + (value >= 100000 ? (value/100000).toFixed(1) + 'L' : (value >= 1000 ? (value/1000).toFixed(0) + 'k' : value));
+                            },
+                            stepSize: 100000
+                        },
+                        grid: {
+                            display: true,
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            display: false
                         }
                     }
                 }
@@ -342,6 +363,7 @@ const Dashboard = {
                 ]
             },
             options: {
+                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
@@ -350,12 +372,27 @@ const Dashboard = {
                     }
                 },
                 scales: {
-                    y: {
+                    x: {
                         beginAtZero: true,
+                        max: function(context) {
+                            const allValues = context.chart.data.datasets.flatMap(ds => ds.data);
+                            const maxValue = Math.max(...allValues);
+                            return Math.ceil(maxValue / 100000) * 100000; // Round to nearest 100k
+                        },
                         ticks: {
                             callback: function(value) {
-                                return '₹' + (value >= 1000 ? (value/1000).toFixed(0) + 'k' : value);
-                            }
+                                return '₹' + (value >= 100000 ? (value/100000).toFixed(1) + 'L' : (value >= 1000 ? (value/1000).toFixed(0) + 'k' : value));
+                            },
+                            stepSize: 100000
+                        },
+                        grid: {
+                            display: true,
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            display: false
                         }
                     }
                 }
