@@ -301,10 +301,16 @@ const Income = {
         if (data.leaveAllowancesOverride && data.leaveAllowancesOverride > 0) {
             allowances = data.leaveAllowancesOverride;
         } else {
-            allowances = (ctc / 12) - basic - hra; // Default: remaining amount from payslip
+            // Default: remaining amount from monthly payslip
+            const monthlyBasic = basic / 12;
+            const monthlyHra = hra / 12;
+            allowances = (ctc / 12) - monthlyBasic - monthlyHra;
         }
         
-        const dailyRate = (basic + hra + allowances) / 27;
+        // Use monthly values for calculation
+        const monthlyBasic = basic / 12;
+        const monthlyHra = hra / 12;
+        const dailyRate = (monthlyBasic + monthlyHra + allowances) / 27;
         const grossLeaveAmount = days * dailyRate;
         
         return Math.round(grossLeaveAmount);
@@ -540,12 +546,29 @@ const Income = {
     renderPayslipsTab(yearlyPayslips, bonus) {
         return `
             <div class="space-y-2">
-                ${yearlyPayslips.map(monthlySlip => `
-                    <details class="border-2 ${monthlySlip.bonus > 0 ? 'border-yellow-300 bg-yellow-50' : 'border-blue-100 bg-blue-50'} rounded-lg">
+                ${yearlyPayslips.map(monthlySlip => {
+                    // Determine border and background color
+                    let borderColor = 'border-blue-100';
+                    let bgColor = 'bg-blue-50';
+                    
+                    if (monthlySlip.bonus > 0 || monthlySlip.leaveEncashment > 0) {
+                        // Green for additional income
+                        borderColor = 'border-green-300';
+                        bgColor = 'bg-green-50';
+                    } else if (monthlySlip.insuranceDeduction > 0) {
+                        // Light red for insurance deduction
+                        borderColor = 'border-red-200';
+                        bgColor = 'bg-red-50';
+                    }
+                    
+                    return `
+                    <details class="border-2 ${borderColor} ${bgColor} rounded-lg">
                         <summary class="p-3 cursor-pointer flex justify-between items-center hover:bg-blue-100 rounded-lg transition-all">
                             <div class="flex items-center gap-2">
                                 <span class="font-bold text-blue-900">${monthlySlip.month}</span>
-                                ${monthlySlip.bonus > 0 ? '<span class="text-xs bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full font-semibold">🎁 Bonus</span>' : ''}
+                                ${monthlySlip.bonus > 0 ? '<span class="text-xs bg-green-400 text-green-900 px-2 py-0.5 rounded-full font-semibold">🎁 Bonus</span>' : ''}
+                                ${monthlySlip.leaveEncashment > 0 ? '<span class="text-xs bg-green-400 text-green-900 px-2 py-0.5 rounded-full font-semibold">🏖️ Leave</span>' : ''}
+                                ${monthlySlip.insuranceDeduction > 0 ? '<span class="text-xs bg-red-300 text-red-900 px-2 py-0.5 rounded-full font-semibold">🏥 Insurance</span>' : ''}
                             </div>
                             <span class="font-bold text-blue-900">₹${Utils.formatIndianNumber(monthlySlip.totalNetPay)}</span>
                         </summary>
@@ -680,7 +703,8 @@ const Income = {
                                 ` : ''}
                         </div>
                     </details>
-                `).join('')}
+                `;
+                }).join('')}
             </div>
         `;
     },
