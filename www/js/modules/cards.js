@@ -7,16 +7,6 @@ const Cards = {
     currentTab: 'credit', // Track current tab: 'credit' or 'debit'
     
     /**
-     * Format date as YYYY-MM-DD in local timezone (not UTC)
-     */
-    formatLocalDate(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    },
-    
-    /**
      * Add a new card (fetches benefits automatically for credit cards)
      */
     async add(name, cardNumber, expiry, cvv, additionalData = '', creditLimit = '', cardType = 'credit') {
@@ -1185,7 +1175,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     const firstDate = new Date(emi.firstEmiDate);
                     const endDate = new Date(firstDate);
                     endDate.setMonth(endDate.getMonth() + emi.totalCount - 1);
-                    endDateStr = this.formatLocalDate(endDate);
+                    endDateStr = Utils.formatLocalDate(endDate);
                 }
                 
                 // Calculate total amount
@@ -1247,7 +1237,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                                 const firstDate = new Date(emi.firstEmiDate);
                                 const endDate = new Date(firstDate);
                                 endDate.setMonth(endDate.getMonth() + emi.totalCount - 1);
-                                endDateStr = this.formatLocalDate(endDate);
+                                endDateStr = Utils.formatLocalDate(endDate);
                             }
                             
                             // Calculate total amount
@@ -1475,7 +1465,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     
                     // Create the EMI date (use the day from firstEmiDate)
                     const expenseDate = new Date(emiDate.getFullYear(), emiDate.getMonth(), firstDate.getDate());
-                    const expenseDateStr = this.formatLocalDate(expenseDate);
+                    const expenseDateStr = Utils.formatLocalDate(expenseDate);
                     
                     const emiTitle = `Card EMI: ${emi.reason}`;
                     

@@ -5,15 +5,6 @@
 
 const RecurringExpenses = {
     /**
-     * Format date as YYYY-MM-DD in local timezone (not UTC)
-     */
-    formatLocalDate(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    },
-    /**
      * Add a new recurring expense
      * @param {string} name - Name of the recurring expense
      * @param {number} amount - Amount
@@ -139,7 +130,7 @@ const RecurringExpenses = {
                 const dueDate = new Date(currentYear, currentMonth - 1, recurring.day);
                 upcoming.push({
                     ...recurring,
-                    dueDate: this.formatLocalDate(dueDate)
+                    dueDate: Utils.formatLocalDate(dueDate)
                 });
             }
         });
@@ -174,7 +165,7 @@ const RecurringExpenses = {
                 const wasAdded = recurring.addedToExpenses && recurring.addedToExpenses.includes(currentMonthKey);
                 completed.push({
                     ...recurring,
-                    dueDate: this.formatLocalDate(dueDate),
+                    dueDate: Utils.formatLocalDate(dueDate),
                     wasAdded: wasAdded
                 });
             }
@@ -284,7 +275,7 @@ const RecurringExpenses = {
                         continue; // Future date, don't add yet
                     }
                     
-                    const dueDateStr = this.formatLocalDate(dueDate);
+                    const dueDateStr = Utils.formatLocalDate(dueDate);
                     
                     // Check if dismissed by user
                     const isDismissed = window.Expenses && window.Expenses.isDismissed(recurring.name, dueDateStr, recurring.amount);
