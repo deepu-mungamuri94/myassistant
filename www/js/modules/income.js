@@ -890,16 +890,22 @@ const Income = {
         const modal = document.getElementById('income-modal');
         if (!modal) return;
         
-        document.getElementById('income-ctc').value = data.ctc || '';
+        // Helper to format number as Indian currency
+        const formatValue = (num) => {
+            if (!num) return '';
+            return Utils.formatIndianNumber(num);
+        };
+        
+        document.getElementById('income-ctc').value = formatValue(data.ctc);
         document.getElementById('income-bonus-percent').value = data.bonusPercent || '';
         document.getElementById('income-espp-cycle1').value = data.esppPercentCycle1 || '';
         document.getElementById('income-espp-cycle2').value = data.esppPercentCycle2 || '';
         document.getElementById('income-pf-percent').value = data.pfPercent || 12;
         document.getElementById('income-has-insurance').checked = data.hasInsurance || false;
-        document.getElementById('income-insurance-total').value = data.insuranceTotal || '';
+        document.getElementById('income-insurance-total').value = formatValue(data.insuranceTotal);
         document.getElementById('income-insurance-months').value = data.insuranceMonths ? data.insuranceMonths.length : '';
         document.getElementById('income-leave-days').value = data.leaveDays || '';
-        document.getElementById('income-leave-allowances-override').value = data.leaveAllowancesOverride || '';
+        document.getElementById('income-leave-allowances-override').value = formatValue(data.leaveAllowancesOverride);
         
         // Auto-calculate basic
         this.updateBasicPreview();
@@ -934,7 +940,8 @@ const Income = {
      * Update basic pay preview
      */
     updateBasicPreview() {
-        const ctc = parseFloat(document.getElementById('income-ctc').value) || 0;
+        const ctcValue = document.getElementById('income-ctc').value;
+        const ctc = ctcValue ? parseFloat(ctcValue.replace(/,/g, '')) : 0;
         const basic = this.calculateBasic(ctc);
         const preview = document.getElementById('basic-preview');
         if (preview) {
@@ -946,20 +953,26 @@ const Income = {
      * Save income form
      */
     saveForm() {
+        // Helper to get numeric value from potentially formatted input
+        const getNumeric = (id) => {
+            const value = document.getElementById(id).value;
+            return value ? parseFloat(value.replace(/,/g, '')) : 0;
+        };
+        
         const data = {
-            ctc: document.getElementById('income-ctc').value,
+            ctc: getNumeric('income-ctc'),
             bonusPercent: document.getElementById('income-bonus-percent').value,
             esppPercentCycle1: document.getElementById('income-espp-cycle1').value,
             esppPercentCycle2: document.getElementById('income-espp-cycle2').value,
             pfPercent: document.getElementById('income-pf-percent').value,
             hasInsurance: document.getElementById('income-has-insurance').checked,
-            insuranceTotal: parseFloat(document.getElementById('income-insurance-total').value) || 0,
+            insuranceTotal: getNumeric('income-insurance-total'),
             insuranceMonths: this.getSelectedInsuranceMonths(),
             leaveDays: parseFloat(document.getElementById('income-leave-days').value) || 0,
-            leaveAllowancesOverride: document.getElementById('income-leave-allowances-override').value ? parseFloat(document.getElementById('income-leave-allowances-override').value) : null
+            leaveAllowancesOverride: document.getElementById('income-leave-allowances-override').value ? getNumeric('income-leave-allowances-override') : null
         };
         
-        if (!data.ctc || parseFloat(data.ctc) <= 0) {
+        if (!data.ctc || data.ctc <= 0) {
             window.Toast.show('Please enter a valid CTC', 'error');
             return;
         }
