@@ -31,7 +31,7 @@ const Dashboard = {
             <!-- Category Expenses Chart -->
             <div class="mb-6">
                 <div class="flex justify-between items-center mb-2">
-                    <h3 class="text-sm font-semibold text-gray-700">Category-wise Expenses</h3>
+                    <h3 class="text-sm font-semibold text-gray-700">Expenses by Category</h3>
                     <select id="category-month-selector" onchange="Dashboard.renderCategoryChart()" class="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                         ${this.getMonthOptions()}
                     </select>
@@ -281,6 +281,9 @@ const Dashboard = {
                 plugins: {
                     legend: {
                         position: 'top'
+                    },
+                    datalabels: {
+                        display: false
                     }
                 },
                 scales: {
@@ -355,6 +358,9 @@ const Dashboard = {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
+                        display: false
+                    },
+                    datalabels: {
                         display: false
                     }
                 },
@@ -479,7 +485,7 @@ const Dashboard = {
                     label: 'Amount',
                     data: data.map(d => d.amount),
                     backgroundColor: data.map((_, i) => colors[i % colors.length]),
-                    borderColor: data.map((_, i) => colors[i % colors.length].replace('0.6', '1')),
+                    borderColor: data.map((_, i) => colors[i % colors.length].replace('0.85', '1')),
                     borderWidth: 2
                 }]
             },
@@ -489,6 +495,18 @@ const Dashboard = {
                 plugins: {
                     legend: {
                         display: false
+                    },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'top',
+                        formatter: function(value) {
+                            return '₹' + (value >= 100000 ? (value/100000).toFixed(1) + 'L' : (value >= 1000 ? (value/1000).toFixed(1) + 'k' : value));
+                        },
+                        font: {
+                            size: 10,
+                            weight: 'bold'
+                        },
+                        color: '#374151'
                     }
                 },
                 scales: {
