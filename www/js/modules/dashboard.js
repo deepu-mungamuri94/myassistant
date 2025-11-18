@@ -478,7 +478,7 @@ const Dashboard = {
         ];
         
         this.categoryChartInstance = new Chart(ctx, {
-            type: 'doughnut',
+            type: 'pie',
             data: {
                 labels: data.map(d => d.category),
                 datasets: [{
@@ -492,6 +492,10 @@ const Dashboard = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: {
+                    animateRotate: true,
+                    animateScale: true
+                },
                 plugins: {
                     legend: {
                         display: true,
@@ -501,7 +505,9 @@ const Dashboard = {
                             padding: 10,
                             font: {
                                 size: 11
-                            }
+                            },
+                            usePointStyle: true,
+                            pointStyle: 'circle'
                         }
                     },
                     datalabels: {
