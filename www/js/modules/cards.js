@@ -1165,9 +1165,36 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         
         let html = '';
         
+        // Tabs for Active and Completed EMIs
+        html += `
+            <div class="bg-white rounded-xl border-2 border-blue-200 overflow-hidden mb-3">
+                <!-- Tabs -->
+                <div class="border-b border-blue-200">
+                    <div class="flex justify-evenly">
+                        ${activeEMIs.length > 0 ? `
+                            <button onclick="Cards.switchEMITab(${cardId}, 'active')" 
+                                    id="emi-tab-${cardId}-active"
+                                    class="flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-blue-500 text-blue-600">
+                                Active (${activeEMIs.length})
+                            </button>
+                        ` : ''}
+                        ${completedEMIs.length > 0 ? `
+                            <button onclick="Cards.switchEMITab(${cardId}, 'completed')" 
+                                    id="emi-tab-${cardId}-completed"
+                                    class="flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                                Completed (${completedEMIs.length})
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+                
+                <!-- Tab Content: Active EMIs -->
+                ${activeEMIs.length > 0 ? `
+                    <div id="emi-content-${cardId}-active" class="p-3">
+        `;
+        
         // Active EMIs
         if (activeEMIs.length > 0) {
-            html += '<h3 class="text-sm font-semibold text-gray-700 mb-2">Active EMIs</h3>';
             html += activeEMIs.map(emi => {
                 // Calculate end date (first date + total EMIs months)
                 let endDateStr = 'N/A';
@@ -1222,15 +1249,20 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 </div>
                 `;
             }).join('');
+            
+            // Close active tab content
+            html += `
+                    </div>
+                ` : ''}
+            `;
         }
         
-        // Completed EMIs (collapsed by default)
+        // Completed EMIs tab content
         if (completedEMIs.length > 0) {
             html += `
-                <details class="mt-4">
-                    <summary class="text-sm font-semibold text-gray-500 cursor-pointer">Completed EMIs (${completedEMIs.length})</summary>
-                    <div class="mt-2">
-                        ${completedEMIs.map(emi => {
+                <!-- Tab Content: Completed EMIs -->
+                <div id="emi-content-${cardId}-completed" class="p-3 hidden">
+                    ${completedEMIs.map(emi => {
                             // Calculate end date (first date + total EMIs months)
                             let endDateStr = 'N/A';
                             if (emi.firstEmiDate) {
@@ -1269,13 +1301,56 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                                 <p class="text-xs text-gray-600 mt-1">${emi.totalCount}/${emi.totalCount} EMIs paid ${emi.emiAmount ? `(₹${Utils.formatIndianNumber(emi.emiAmount)}/month)` : ''}</p>
                             </div>
                             `;
-                        }).join('')}
-                    </div>
-                </details>
+                    }).join('')}
+                </div>
             `;
         }
         
+        // Close the tabs container
+        html += `
+            </div>
+        `;
+        
         list.innerHTML = html;
+    },
+
+    /**
+     * Switch between Active and Completed tabs in EMIs
+     */
+    switchEMITab(cardId, tab) {
+        // Tab buttons
+        const activeTab = document.getElementById(`emi-tab-${cardId}-active`);
+        const completedTab = document.getElementById(`emi-tab-${cardId}-completed`);
+        
+        // Tab contents
+        const activeContent = document.getElementById(`emi-content-${cardId}-active`);
+        const completedContent = document.getElementById(`emi-content-${cardId}-completed`);
+        
+        if (tab === 'active') {
+            // Activate active tab
+            if (activeTab) {
+                activeTab.className = 'flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-blue-500 text-blue-600';
+            }
+            if (completedTab) {
+                completedTab.className = 'flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+            }
+            
+            // Show active content
+            if (activeContent) activeContent.classList.remove('hidden');
+            if (completedContent) completedContent.classList.add('hidden');
+        } else if (tab === 'completed') {
+            // Activate completed tab
+            if (activeTab) {
+                activeTab.className = 'flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+            }
+            if (completedTab) {
+                completedTab.className = 'flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-green-500 text-green-600';
+            }
+            
+            // Show completed content
+            if (activeContent) activeContent.classList.add('hidden');
+            if (completedContent) completedContent.classList.remove('hidden');
+        }
     },
 
     /**
