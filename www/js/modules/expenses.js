@@ -778,18 +778,18 @@ const Expenses = {
                     <div class="px-4 pb-3">
                         <!-- Tabs for Upcoming and Completed -->
                         <div class="border-b border-orange-200 mb-3">
-                            <div class="flex gap-2">
+                            <div class="flex justify-evenly">
                                 ${upcomingRecurring.length > 0 ? `
                                     <button onclick="Expenses.switchRecurringTab('upcoming')" 
                                             id="recurring-tab-upcoming"
-                                            class="px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-blue-500 text-blue-600">
+                                            class="flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-blue-500 text-blue-600">
                                         🕐 Upcoming (${upcomingRecurring.length})
                                     </button>
                                 ` : ''}
                                 ${completedRecurring.length > 0 ? `
                                     <button onclick="Expenses.switchRecurringTab('completed')" 
                                             id="recurring-tab-completed"
-                                            class="px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                                            class="flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
                                         ✓ Completed (${completedRecurring.length})
                                     </button>
                                 ` : ''}
