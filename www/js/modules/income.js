@@ -613,7 +613,7 @@ const Income = {
                                 <div class="bg-blue-100 p-3 rounded-lg">
                                     <div class="flex justify-between items-center">
                                         <span class="font-bold text-blue-900 text-sm">Monthly Net Pay</span>
-                                        <span class="text-base font-bold text-blue-900">₹${Utils.formatIndianNumber(monthlySlip.netPay)}</span>
+                                        <span class="text-base font-bold text-blue-900">₹${Utils.formatIndianNumber(monthlySlip.grossEarnings - monthlySlip.grossDeductions - (monthlySlip.insuranceDeduction || 0))}</span>
                                     </div>
                                 </div>
                                 ${monthlySlip.bonus > 0 ? `
