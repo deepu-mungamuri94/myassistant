@@ -21,31 +21,17 @@ const Dashboard = {
         const loans = this.getLoansData();
         
         container.innerHTML = `
-            <!-- Expenses Chart -->
-            <div class="bg-white rounded-xl shadow-lg p-4 border-2 border-purple-200">
-                <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-lg font-bold text-purple-900">Monthly Expenses (Last 6 Months)</h2>
-                    <label class="flex items-center gap-2 text-sm">
-                        <input type="checkbox" id="include-loans-toggle" onchange="Dashboard.toggleLoans()" class="w-4 h-4">
-                        <span class="text-gray-700">Include Loans</span>
-                    </label>
-                </div>
-                <div style="height: ${Math.min(300, expenses.length * 50)}px;">
-                    <canvas id="expenses-chart"></canvas>
-                </div>
-            </div>
-            
             <!-- Income vs Expense Chart -->
             <div class="bg-white rounded-xl shadow-lg p-4 border-2 border-green-200">
                 <h2 class="text-lg font-bold text-green-900 mb-3">Income vs Expenses (Last 6 Months)</h2>
-                <div style="height: ${Math.min(350, expenses.length * 50)}px;">
+                <div style="height: 400px;">
                     <canvas id="income-expense-chart"></canvas>
                 </div>
             </div>
             
             <!-- EMI/Loan Progress -->
             ${loans.length > 0 ? `
-            <div class="bg-white rounded-xl shadow-lg p-4 border-2 border-blue-200">
+            <div class="bg-white rounded-xl shadow-lg p-4 border-2 border-blue-200 mt-4">
                 <h2 class="text-lg font-bold text-blue-900 mb-3">EMI/Loan Progress</h2>
                 <div style="height: ${Math.max(200, Math.min(400, loans.length * 60))}px;">
                     <canvas id="loans-chart"></canvas>
@@ -64,14 +50,6 @@ const Dashboard = {
      * Destroy all chart instances
      */
     destroyAllCharts() {
-        if (this.expensesChartInstance) {
-            try {
-                this.expensesChartInstance.destroy();
-                this.expensesChartInstance = null;
-            } catch (e) {
-                console.error('Error destroying expenses chart:', e);
-            }
-        }
         if (this.incomeExpenseChartInstance) {
             try {
                 this.incomeExpenseChartInstance.destroy();
@@ -219,97 +197,11 @@ const Dashboard = {
         }
         
         try {
-            this.renderExpensesChart(false);
             this.renderIncomeExpenseChart();
             this.renderLoansChart();
         } catch (error) {
             console.error('Error initializing charts:', error);
         }
-    },
-    
-    /**
-     * Toggle loans in expenses chart
-     */
-    toggleLoans() {
-        const includeLoans = document.getElementById('include-loans-toggle').checked;
-        this.renderExpensesChart(includeLoans);
-    },
-    
-    /**
-     * Render expenses chart
-     */
-    renderExpensesChart(includeLoans) {
-        const canvas = document.getElementById('expenses-chart');
-        if (!canvas) {
-            console.warn('Expenses chart canvas not found');
-            return;
-        }
-        
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            console.error('Cannot get 2d context from expenses chart canvas');
-            return;
-        }
-        
-        const data = this.getExpensesData();
-        
-        // Destroy existing chart
-        if (this.expensesChartInstance) {
-            try {
-                this.expensesChartInstance.destroy();
-                this.expensesChartInstance = null;
-            } catch (e) {
-                console.error('Error destroying existing expenses chart:', e);
-            }
-        }
-        
-        this.expensesChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.map(d => d.label),
-                datasets: [{
-                    label: 'Expenses',
-                    data: data.map(d => includeLoans ? d.withLoans : d.withoutLoans),
-                    backgroundColor: 'rgba(147, 51, 234, 0.6)',
-                    borderColor: 'rgba(147, 51, 234, 1)',
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        max: function(context) {
-                            const maxValue = Math.max(...context.chart.data.datasets[0].data);
-                            return Math.ceil(maxValue / 100000) * 100000; // Round to nearest 100k
-                        },
-                        ticks: {
-                            callback: function(value) {
-                                return '₹' + (value >= 100000 ? (value/100000).toFixed(1) + 'L' : (value >= 1000 ? (value/1000).toFixed(0) + 'k' : value));
-                            },
-                            stepSize: 100000
-                        },
-                        grid: {
-                            display: true,
-                            color: 'rgba(0, 0, 0, 0.05)'
-                        }
-                    },
-                    y: {
-                        grid: {
-                            display: false
-                        }
-                    }
-                }
-            }
-        });
     },
     
     /**
@@ -363,7 +255,6 @@ const Dashboard = {
                 ]
             },
             options: {
-                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
@@ -373,26 +264,21 @@ const Dashboard = {
                 },
                 scales: {
                     x: {
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
                         beginAtZero: true,
-                        max: function(context) {
-                            const allValues = context.chart.data.datasets.flatMap(ds => ds.data);
-                            const maxValue = Math.max(...allValues);
-                            return Math.ceil(maxValue / 100000) * 100000; // Round to nearest 100k
-                        },
                         ticks: {
                             callback: function(value) {
                                 return '₹' + (value >= 100000 ? (value/100000).toFixed(1) + 'L' : (value >= 1000 ? (value/1000).toFixed(0) + 'k' : value));
                             },
-                            stepSize: 100000
+                            stepSize: 20000
                         },
                         grid: {
                             display: true,
-                            color: 'rgba(0, 0, 0, 0.05)'
-                        }
-                    },
-                    y: {
-                        grid: {
-                            display: false
+                            color: 'rgba(0, 0, 0, 0.1)'
                         }
                     }
                 }
