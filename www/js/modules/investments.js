@@ -427,8 +427,8 @@ Return tickers for ALL stocks in a JSON array.`;
             <div class="bg-gradient-to-r from-yellow-100 via-orange-50 to-yellow-100 rounded-xl border-2 border-yellow-400 mb-4 overflow-hidden">
                 <div class="p-5">
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="font-bold text-yellow-900 text-base">💰 Total Portfolio Value</h3>
-                        <p class="text-2xl font-bold text-yellow-800">${Utils.formatCurrency(total)}</p>
+                        <h3 class="font-bold text-yellow-900 text-base">💰 Portfolio Total</h3>
+                        <p class="text-base font-bold text-yellow-800">${Utils.formatCurrency(total)}</p>
                     </div>
                     ${hasStocks ? `
                         <div class="flex justify-center gap-3 pt-3 border-t border-yellow-300">
@@ -461,17 +461,25 @@ Return tickers for ALL stocks in a JSON array.`;
                             ${shortTerm.length > 0 ? `
                                 <button onclick="Investments.switchInvestmentTab('short')" 
                                         id="investments-tab-short"
-                                        class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600">
-                                    <div>Short Term (${shortTerm.length})</div>
-                                    <div class="text-xs font-normal opacity-75">Less than 3 years</div>
+                                        class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600"
+                                        title="Investments held for less than 3 years">
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <span>Short Term (${shortTerm.length})</span>
+                                        <span class="text-xs opacity-75">ℹ️</span>
+                                    </div>
+                                    <div class="text-xs font-bold mt-1">${Utils.formatCurrency(shortTermSum)}</div>
                                 </button>
                             ` : ''}
                             ${longTerm.length > 0 ? `
                                 <button onclick="Investments.switchInvestmentTab('long')" 
                                         id="investments-tab-long"
-                                        class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-                                    <div>Long Term (${longTerm.length})</div>
-                                    <div class="text-xs font-normal opacity-75">More than 3 years</div>
+                                        class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700"
+                                        title="Investments held for more than 3 years">
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <span>Long Term (${longTerm.length})</span>
+                                        <span class="text-xs opacity-75">ℹ️</span>
+                                    </div>
+                                    <div class="text-xs font-bold mt-1">${Utils.formatCurrency(longTermSum)}</div>
                                 </button>
                             ` : ''}
                         </div>
@@ -507,19 +515,19 @@ Return tickers for ALL stocks in a JSON array.`;
         
         if (tab === 'short') {
             if (shortBtn) {
-                shortBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600';
+                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600';
             }
             if (longBtn) {
-                longBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
             }
             if (shortContent) shortContent.classList.remove('hidden');
             if (longContent) longContent.classList.add('hidden');
         } else if (tab === 'long') {
             if (shortBtn) {
-                shortBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
             }
             if (longBtn) {
-                longBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600';
+                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600';
             }
             if (shortContent) shortContent.classList.add('hidden');
             if (longContent) longContent.classList.remove('hidden');
@@ -544,34 +552,76 @@ Return tickers for ALL stocks in a JSON array.`;
             grouped[type].push(inv);
         });
         
-        // Type names map
-        const typeNames = {
-            'stock': '📈 Stocks',
-            'mutual_fund': '📊 Mutual Funds',
-            'fd': '🏦 Fixed Deposits',
-            'epf': '💼 EPF',
-            'gold': '🪙 Gold',
-            'general': '💰 General'
+        // Type names and color schemes map
+        const typeConfig = {
+            'stock': {
+                name: '📈 Stocks',
+                borderColor: 'border-blue-300',
+                bgGradient: 'from-blue-100 to-blue-50',
+                hoverGradient: 'hover:from-blue-200 hover:to-blue-100',
+                textColor: 'text-blue-900',
+                bgColor: 'bg-blue-50'
+            },
+            'mutual_fund': {
+                name: '📊 Mutual Funds',
+                borderColor: 'border-purple-300',
+                bgGradient: 'from-purple-100 to-purple-50',
+                hoverGradient: 'hover:from-purple-200 hover:to-purple-100',
+                textColor: 'text-purple-900',
+                bgColor: 'bg-purple-50'
+            },
+            'fd': {
+                name: '🏦 Fixed Deposits',
+                borderColor: 'border-green-300',
+                bgGradient: 'from-green-100 to-green-50',
+                hoverGradient: 'hover:from-green-200 hover:to-green-100',
+                textColor: 'text-green-900',
+                bgColor: 'bg-green-50'
+            },
+            'epf': {
+                name: '💼 EPF',
+                borderColor: 'border-indigo-300',
+                bgGradient: 'from-indigo-100 to-indigo-50',
+                hoverGradient: 'hover:from-indigo-200 hover:to-indigo-100',
+                textColor: 'text-indigo-900',
+                bgColor: 'bg-indigo-50'
+            },
+            'gold': {
+                name: '🪙 Gold',
+                borderColor: 'border-yellow-300',
+                bgGradient: 'from-yellow-100 to-yellow-50',
+                hoverGradient: 'hover:from-yellow-200 hover:to-yellow-100',
+                textColor: 'text-yellow-900',
+                bgColor: 'bg-yellow-50'
+            },
+            'general': {
+                name: '💰 General',
+                borderColor: 'border-gray-300',
+                bgGradient: 'from-gray-100 to-gray-50',
+                hoverGradient: 'hover:from-gray-200 hover:to-gray-100',
+                textColor: 'text-gray-900',
+                bgColor: 'bg-gray-50'
+            }
         };
         
         // Render each group as collapsible (collapsed by default)
         return Object.entries(grouped).map(([type, items]) => {
-            const typeName = typeNames[type] || `💰 ${type}`;
+            const config = typeConfig[type] || typeConfig['general'];
             const total = items.reduce((sum, inv) => sum + this.calculateValue(inv), 0);
             
             return `
-                <details class="mb-3 border-2 border-gray-200 rounded-lg overflow-hidden">
-                    <summary class="bg-gradient-to-r from-gray-100 to-gray-50 px-3 py-3 cursor-pointer hover:from-gray-200 hover:to-gray-100 transition-all">
+                <details class="mb-3 border-2 ${config.borderColor} rounded-lg overflow-hidden">
+                    <summary class="bg-gradient-to-r ${config.bgGradient} px-3 py-3 cursor-pointer ${config.hoverGradient} transition-all" style="list-style: none;">
                         <div class="flex justify-between items-center">
                             <div class="flex items-center gap-2">
-                                <span class="text-gray-500">▶</span>
-                                <span class="font-semibold text-gray-800 text-sm">${typeName}</span>
-                                <span class="text-xs text-gray-500">(${items.length})</span>
+                                <span class="${config.textColor} transform transition-transform" style="display: inline-block;">▶</span>
+                                <span class="font-semibold ${config.textColor} text-sm">${config.name}</span>
+                                <span class="text-xs ${config.textColor} opacity-60">(${items.length})</span>
                             </div>
-                            <span class="font-bold text-gray-700">${Utils.formatCurrency(total)}</span>
+                            <span class="font-bold ${config.textColor}">${Utils.formatCurrency(total)}</span>
                         </div>
                     </summary>
-                    <div class="space-y-2 bg-gray-50 p-2">
+                    <div class="space-y-2 ${config.bgColor} p-2">
                         ${this.renderInvestmentCards(items)}
                     </div>
                 </details>

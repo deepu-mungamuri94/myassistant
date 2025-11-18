@@ -196,6 +196,15 @@ header {
    DETAILS ARROW ROTATION
    ======================================== */
 
+/* Hide default browser triangle/marker */
+summary {
+    list-style: none;
+}
+
+summary::-webkit-details-marker {
+    display: none;
+}
+
 /* Rotate arrow when details is open */
 details[open] > summary span:first-child {
     transform: rotate(90deg);
