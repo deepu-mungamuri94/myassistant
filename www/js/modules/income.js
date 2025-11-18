@@ -78,8 +78,9 @@ const Income = {
         if (window.DB.income.hasInsurance === undefined) window.DB.income.hasInsurance = false;
         if (window.DB.income.insuranceTotal === undefined) window.DB.income.insuranceTotal = 0;
         if (window.DB.income.insuranceMonths === undefined) window.DB.income.insuranceMonths = [];
-        // Ensure leave encashment field exists
+        // Ensure leave encashment fields exist
         if (window.DB.income.leaveDays === undefined) window.DB.income.leaveDays = 0;
+        if (window.DB.income.leaveAllowancesOverride === undefined) window.DB.income.leaveAllowancesOverride = null;
         
         return window.DB.income;
     },
@@ -98,7 +99,8 @@ const Income = {
             hasInsurance: data.hasInsurance || false,
             insuranceTotal: parseFloat(data.insuranceTotal) || 0,
             insuranceMonths: data.insuranceMonths || [],
-            leaveDays: parseFloat(data.leaveDays) || 0
+            leaveDays: parseFloat(data.leaveDays) || 0,
+            leaveAllowancesOverride: data.leaveAllowancesOverride ? parseFloat(data.leaveAllowancesOverride) : null
         };
         window.Storage.save();
         this.render();
@@ -290,9 +292,17 @@ const Income = {
      * This is added to gross income, then tax and ESPP are applied normally
      */
     calculateLeaveEncashment(ctc, days) {
+        const data = this.getData();
         const basic = this.calculateBasic(ctc);
         const hra = basic * 0.5; // 50% of basic
-        const allowances = (ctc / 12) - basic - hra; // Remaining amount
+        
+        // Use override if provided, otherwise use calculated allowances
+        let allowances;
+        if (data.leaveAllowancesOverride && data.leaveAllowancesOverride > 0) {
+            allowances = data.leaveAllowancesOverride;
+        } else {
+            allowances = (ctc / 12) - basic - hra; // Default: remaining amount from payslip
+        }
         
         const dailyRate = (basic + hra + allowances) / 27;
         const grossLeaveAmount = days * dailyRate;
@@ -608,14 +618,8 @@ const Income = {
                                         </div>
                                     </div>
                                     
-                            <!-- Net Salary + Bonus -->
+                            <!-- Bonus (if applicable) -->
                             <div class="space-y-2">
-                                <div class="bg-blue-100 p-3 rounded-lg">
-                                    <div class="flex justify-between items-center">
-                                        <span class="font-bold text-blue-900 text-sm">Monthly Net Pay</span>
-                                        <span class="text-base font-bold text-blue-900">₹${Utils.formatIndianNumber(monthlySlip.grossEarnings - monthlySlip.grossDeductions - (monthlySlip.insuranceDeduction || 0))}</span>
-                                    </div>
-                                </div>
                                 ${monthlySlip.bonus > 0 ? `
                                 <!-- Bonus with inline breakdown -->
                                 <details class="bg-yellow-100 rounded-lg">
@@ -797,6 +801,7 @@ const Income = {
         document.getElementById('income-insurance-total').value = data.insuranceTotal || '';
         document.getElementById('income-insurance-months').value = data.insuranceMonths ? data.insuranceMonths.length : '';
         document.getElementById('income-leave-days').value = data.leaveDays || '';
+        document.getElementById('income-leave-allowances-override').value = data.leaveAllowancesOverride || '';
         
         // Auto-calculate basic
         this.updateBasicPreview();
@@ -851,7 +856,8 @@ const Income = {
             hasInsurance: document.getElementById('income-has-insurance').checked,
             insuranceTotal: parseFloat(document.getElementById('income-insurance-total').value) || 0,
             insuranceMonths: this.getSelectedInsuranceMonths(),
-            leaveDays: parseFloat(document.getElementById('income-leave-days').value) || 0
+            leaveDays: parseFloat(document.getElementById('income-leave-days').value) || 0,
+            leaveAllowancesOverride: document.getElementById('income-leave-allowances-override').value ? parseFloat(document.getElementById('income-leave-allowances-override').value) : null
         };
         
         if (!data.ctc || parseFloat(data.ctc) <= 0) {
