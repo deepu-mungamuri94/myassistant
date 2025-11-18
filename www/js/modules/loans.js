@@ -10,6 +10,16 @@ const Loans = {
     viewModalExpanded: false, // Track expansion in view modal
     
     /**
+     * Format date as YYYY-MM-DD in local timezone (not UTC)
+     */
+    formatLocalDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    },
+    
+    /**
      * Show loan details in a view-only modal
      */
     showDetailsModal(loanId) {
@@ -671,7 +681,7 @@ const Loans = {
             // Check if EMI is due this month and date has passed
             if (today.getDate() >= emiDay) {
                 const thisMonthEmiDate = new Date(today.getFullYear(), today.getMonth(), emiDay);
-                const emiDateStr = thisMonthEmiDate.toISOString().split('T')[0];
+                const emiDateStr = this.formatLocalDate(thisMonthEmiDate);
                 
                 const loanEmiTitle = `${loan.bankName} ${loan.loanType || 'Loan'} EMI`;
                 
