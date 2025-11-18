@@ -285,8 +285,9 @@ const Income = {
     },
     
     /**
-     * Calculate leave encashment amount
+     * Calculate leave encashment amount (gross amount before deductions)
      * Formula: Days × (Basic + HRA + Allowances) / 27
+     * This is added to gross income, then tax and ESPP are applied normally
      */
     calculateLeaveEncashment(ctc, days) {
         const basic = this.calculateBasic(ctc);
@@ -294,19 +295,9 @@ const Income = {
         const allowances = (ctc / 12) - basic - hra; // Remaining amount
         
         const dailyRate = (basic + hra + allowances) / 27;
-        const leaveAmount = days * dailyRate;
+        const grossLeaveAmount = days * dailyRate;
         
-        // This amount is taxable, so we need to apply tax and ESPP
-        const data = this.getData();
-        const esppPercent = data.esppPercent || 0;
-        const esppCut = (leaveAmount * esppPercent) / 100;
-        
-        // Tax calculation - use same tax rate as regular income
-        const taxInfo = this.calculateIncomeTax(ctc + leaveAmount);
-        const regularTaxInfo = this.calculateIncomeTax(ctc);
-        const additionalTax = (taxInfo.totalTax - regularTaxInfo.totalTax) / 12; // Monthly impact
-        
-        return Math.round(leaveAmount - esppCut - additionalTax);
+        return Math.round(grossLeaveAmount);
     },
     
     /**
@@ -332,11 +323,13 @@ const Income = {
         const insurancePerMonth = insuranceMonths.length > 0 ? insuranceTotal / insuranceMonths.length : 0;
         
         const payslips = months.map((month, index) => {
-            const monthNumber = index + 1; // 1 for April, 10 for January
+            // Calendar month mapping (1=Jan, 4=Apr, etc.)
+            const calendarMonth = index < 9 ? index + 4 : index - 8;
+            
             let payslip = { ...basePayslip };
             let bonusAmount = 0;
             let bonusEspp = 0;
-            let leaveAmount = 0;
+            let grossLeaveAmount = 0;
             let insuranceDeduction = 0;
             
             // Add bonus in September (mid-year)
@@ -350,24 +343,40 @@ const Income = {
                 bonusEspp = bonus.yearEnd.esppCut;
             }
             
-            // Add leave encashment in January
+            // Add leave encashment in January (gross amount)
             if (month === 'January' && leaveEncashment > 0) {
-                leaveAmount = leaveEncashment;
+                grossLeaveAmount = leaveEncashment;
             }
             
             // Add insurance deduction in selected months
-            if (data.hasInsurance && insuranceMonths.includes(monthNumber)) {
+            if (data.hasInsurance && insuranceMonths.includes(calendarMonth)) {
                 insuranceDeduction = insurancePerMonth;
             }
+            
+            // Calculate tax and ESPP on leave encashment
+            let leaveEspp = 0;
+            let leaveTax = 0;
+            if (grossLeaveAmount > 0) {
+                leaveEspp = (grossLeaveAmount * esppPercent) / 100;
+                // Tax is applied at same monthly rate
+                const taxInfo = this.calculateIncomeTax(ctc);
+                const monthlyTaxRate = (taxInfo.totalTax / ctc) || 0;
+                leaveTax = grossLeaveAmount * monthlyTaxRate;
+            }
+            
+            const netLeaveAmount = grossLeaveAmount - leaveEspp - leaveTax;
             
             return {
                 month,
                 ...payslip,
-                espp: payslip.espp + bonusEspp,
+                grossEarnings: payslip.grossEarnings + grossLeaveAmount,
+                espp: payslip.espp + bonusEspp + leaveEspp,
+                incomeTax: payslip.incomeTax + leaveTax,
+                grossDeductions: payslip.grossDeductions + leaveEspp + leaveTax,
                 bonus: bonusAmount,
-                leaveEncashment: leaveAmount,
+                leaveEncashment: grossLeaveAmount,
                 insuranceDeduction: insuranceDeduction,
-                totalNetPay: payslip.netPay + bonusAmount + leaveAmount - insuranceDeduction
+                totalNetPay: payslip.netPay + bonusAmount + netLeaveAmount - insuranceDeduction
             };
         });
         
