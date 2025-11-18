@@ -1450,7 +1450,9 @@ const Income = {
      */
     updateInsuranceMonths() {
         const numMonths = parseInt(document.getElementById('income-insurance-months').value) || 0;
-        const total = parseFloat(document.getElementById('income-insurance-total').value) || 0;
+        const totalValue = document.getElementById('income-insurance-total').value || '';
+        // Remove commas from formatted currency before parsing
+        const total = parseFloat(totalValue.replace(/,/g, '')) || 0;
         const container = document.getElementById('insurance-months-checkboxes');
         const perMonthDiv = document.getElementById('insurance-per-month');
         
