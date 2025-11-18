@@ -262,14 +262,14 @@ const Dashboard = {
                     {
                         label: 'Income',
                         data: incomeData.map(d => d.income),
-                        backgroundColor: 'rgba(34, 197, 94, 0.6)',
+                        backgroundColor: 'rgba(34, 197, 94, 0.85)',
                         borderColor: 'rgba(34, 197, 94, 1)',
                         borderWidth: 2
                     },
                     {
                         label: 'Expenses',
                         data: expensesData.map(d => d.withoutLoans),
-                        backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.85)',
                         borderColor: 'rgba(239, 68, 68, 1)',
                         borderWidth: 2
                     }
@@ -344,7 +344,7 @@ const Dashboard = {
                 datasets: [{
                     label: 'Remaining Months',
                     data: data.map(d => d.remaining),
-                    backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.85)',
                     borderColor: 'rgba(59, 130, 246, 1)',
                     borderWidth: 2
                 }]
@@ -459,16 +459,16 @@ const Dashboard = {
         
         // Color palette for categories
         const colors = [
-            'rgba(147, 51, 234, 0.6)', // Purple
-            'rgba(239, 68, 68, 0.6)',  // Red
-            'rgba(34, 197, 94, 0.6)',  // Green
-            'rgba(59, 130, 246, 0.6)', // Blue
-            'rgba(251, 146, 60, 0.6)', // Orange
-            'rgba(236, 72, 153, 0.6)', // Pink
-            'rgba(14, 165, 233, 0.6)', // Cyan
-            'rgba(168, 85, 247, 0.6)', // Violet
-            'rgba(234, 179, 8, 0.6)',  // Yellow
-            'rgba(132, 204, 22, 0.6)'  // Lime
+            'rgba(147, 51, 234, 0.85)', // Purple
+            'rgba(239, 68, 68, 0.85)',  // Red
+            'rgba(34, 197, 94, 0.85)',  // Green
+            'rgba(59, 130, 246, 0.85)', // Blue
+            'rgba(251, 146, 60, 0.85)', // Orange
+            'rgba(236, 72, 153, 0.85)', // Pink
+            'rgba(14, 165, 233, 0.85)', // Cyan
+            'rgba(168, 85, 247, 0.85)', // Violet
+            'rgba(234, 179, 8, 0.85)',  // Yellow
+            'rgba(132, 204, 22, 0.85)'  // Lime
         ];
         
         this.categoryChartInstance = new Chart(ctx, {

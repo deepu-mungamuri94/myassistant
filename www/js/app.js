@@ -90,8 +90,8 @@ const App = {
             // App is unlocked, continue normal initialization
             console.log('✅ App unlocked - continuing initialization');
             
-            // Navigate to default view
-            window.Navigation.navigateTo('chat');
+            // Navigate to default view (Dashboard)
+            window.Navigation.navigateTo('dashboard');
             
             // Load chat history if exists
             if (window.Chat) {
