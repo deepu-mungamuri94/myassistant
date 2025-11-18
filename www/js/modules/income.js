@@ -403,7 +403,8 @@ const Income = {
                             <button onclick="Income.switchIncomeTab('tax')" 
                                     id="income-tab-tax"
                                     class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-                                💰 Income Tax
+                                <div>💰 Income Tax</div>
+                                <div class="text-xs font-normal mt-0.5">${taxInfo.taxPercent.toFixed(2)}% of CTC</div>
                             </button>
                         </div>
                     </div>
@@ -535,12 +536,56 @@ const Income = {
                                     </div>
                                 </div>
                                 ${monthlySlip.bonus > 0 ? `
-                                <div class="bg-yellow-100 p-3 rounded-lg">
-                                    <div class="flex justify-between items-center">
-                                        <span class="font-bold text-yellow-900 text-sm">🎁 Bonus</span>
-                                        <span class="text-base font-bold text-yellow-900">₹${Utils.formatIndianNumber(monthlySlip.bonus)}</span>
+                                <!-- Bonus with inline breakdown -->
+                                <details class="bg-yellow-100 rounded-lg">
+                                    <summary class="p-3 cursor-pointer hover:bg-yellow-200 transition-all" style="list-style: none;">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-bold text-yellow-900 text-sm">🎁 Bonus ${monthlySlip.month === 'September' ? '(Mid-Year - 25%)' : monthlySlip.month === 'April' ? '(Year-End - 75%)' : ''}</span>
+                                            <span class="text-base font-bold text-yellow-900">₹${Utils.formatIndianNumber(monthlySlip.bonus)}</span>
+                                        </div>
+                                    </summary>
+                                    <div class="px-3 pb-3 pt-1 space-y-1.5 text-xs border-t border-yellow-200 mt-2">
+                                        ${monthlySlip.month === 'September' ? `
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-700">Before Tax</span>
+                                                <span class="font-semibold">₹${Utils.formatIndianNumber(bonus.midYear.beforeTax)}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-700">After Tax</span>
+                                                <span class="font-semibold">₹${Utils.formatIndianNumber(bonus.midYear.afterTax)}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-700">ESPP Cut</span>
+                                                <span class="font-semibold text-red-600">-₹${Utils.formatIndianNumber(bonus.midYear.esppCut)}</span>
+                                            </div>
+                                            <div class="flex justify-between pt-1.5 border-t border-yellow-300 mt-1.5">
+                                                <span class="font-bold text-yellow-900">Net Bonus</span>
+                                                <span class="font-bold text-yellow-900">₹${Utils.formatIndianNumber(bonus.midYear.net)}</span>
+                                            </div>
+                                        ` : ''}
+                                        ${monthlySlip.month === 'April' ? `
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-700">Before Tax</span>
+                                                <span class="font-semibold">₹${Utils.formatIndianNumber(bonus.yearEnd.beforeTax)}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-700">After Tax</span>
+                                                <span class="font-semibold">₹${Utils.formatIndianNumber(bonus.yearEnd.afterTax)}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-700">ESPP Cut</span>
+                                                <span class="font-semibold text-red-600">-₹${Utils.formatIndianNumber(bonus.yearEnd.esppCut)}</span>
+                                            </div>
+                                            <div class="flex justify-between pt-1.5 border-t border-yellow-300 mt-1.5">
+                                                <span class="font-bold text-yellow-900">Net Bonus</span>
+                                                <span class="font-bold text-yellow-900">₹${Utils.formatIndianNumber(bonus.yearEnd.net)}</span>
+                                            </div>
+                                        ` : ''}
                                     </div>
-                                </div>
+                                </details>
+                                ` : ''}
+                                ${monthlySlip.bonus > 0 ? `
+                                <!-- Total Net Pay (after bonus) -->
                                 <div class="bg-green-100 p-3 rounded-lg">
                                     <div class="flex justify-between items-center">
                                         <span class="font-bold text-green-900 text-sm">Total Net Pay</span>
@@ -548,65 +593,6 @@ const Income = {
                                     </div>
                                 </div>
                                 ` : ''}
-                            </div>
-                            
-                            <!-- Bonus Details (Collapsible) - Only for April and September -->
-                            ${monthlySlip.bonus > 0 ? `
-                                <details class="border-2 border-purple-200 bg-purple-50 rounded-lg mt-3">
-                                    <summary class="p-2 cursor-pointer flex justify-between items-center hover:bg-purple-100 rounded-lg transition-all">
-                                        <span class="font-bold text-purple-800 text-sm">📋 Bonus Breakdown</span>
-                                        <span class="text-xs text-purple-600">View details</span>
-                                    </summary>
-                                    <div class="p-3 pt-0 space-y-2 text-xs">
-                                        ${monthlySlip.month === 'September' ? `
-                                        <div class="bg-cyan-50 p-2 rounded">
-                                            <p class="font-semibold text-cyan-800 mb-1.5 text-xs">Mid-Year Bonus - 25%</p>
-                                            <div class="space-y-1">
-                                                <div class="flex justify-between">
-                                                    <span class="text-gray-600">Before Tax</span>
-                                                    <span>₹${Utils.formatIndianNumber(bonus.midYear.beforeTax)}</span>
-                                                </div>
-                                                <div class="flex justify-between">
-                                                    <span class="text-gray-600">After Tax</span>
-                                                    <span>₹${Utils.formatIndianNumber(bonus.midYear.afterTax)}</span>
-                                                </div>
-                                                <div class="flex justify-between">
-                                                    <span class="text-gray-600">ESPP Cut</span>
-                                                    <span class="text-red-600">-₹${Utils.formatIndianNumber(bonus.midYear.esppCut)}</span>
-                                                </div>
-                                                <div class="flex justify-between pt-1 border-t border-cyan-200">
-                                                    <span class="font-bold text-cyan-800">Net Bonus</span>
-                                                    <span class="font-bold text-cyan-800">₹${Utils.formatIndianNumber(bonus.midYear.net)}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        ` : ''}
-                                        ${monthlySlip.month === 'April' ? `
-                                        <div class="bg-indigo-50 p-2 rounded">
-                                            <p class="font-semibold text-indigo-800 mb-1.5 text-xs">Year-End Bonus - 75%</p>
-                                            <div class="space-y-1">
-                                                <div class="flex justify-between">
-                                                    <span class="text-gray-600">Before Tax</span>
-                                                    <span>₹${Utils.formatIndianNumber(bonus.yearEnd.beforeTax)}</span>
-                                                </div>
-                                                <div class="flex justify-between">
-                                                    <span class="text-gray-600">After Tax</span>
-                                                    <span>₹${Utils.formatIndianNumber(bonus.yearEnd.afterTax)}</span>
-                                                </div>
-                                                <div class="flex justify-between">
-                                                    <span class="text-gray-600">ESPP Cut</span>
-                                                    <span class="text-red-600">-₹${Utils.formatIndianNumber(bonus.yearEnd.esppCut)}</span>
-                                                </div>
-                                                <div class="flex justify-between pt-1 border-t border-indigo-200">
-                                                    <span class="font-bold text-indigo-800">Net Bonus</span>
-                                                    <span class="font-bold text-indigo-800">₹${Utils.formatIndianNumber(bonus.yearEnd.net)}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        ` : ''}
-                                    </div>
-                                </details>
-                            ` : ''}
                         </div>
                     </details>
                 `).join('')}
@@ -619,14 +605,7 @@ const Income = {
      */
     renderIncomeTaxTab(taxInfo, data) {
         return `
-            <div class="space-y-3">
-                <!-- Income Tax Summary -->
-                <details class="bg-white rounded-xl border-2 border-orange-200">
-                    <summary class="p-4 cursor-pointer flex justify-between items-center hover:bg-orange-50 rounded-xl transition-all">
-                        <span class="font-bold text-orange-800">💰 Income Tax Summary</span>
-                        <span class="text-sm text-orange-600">${taxInfo.taxPercent.toFixed(2)}% of CTC</span>
-                    </summary>
-                    <div class="p-4 pt-0 space-y-3 text-sm">
+            <div class="space-y-3 text-sm">
                         <!-- Tax Slabs Breakdown -->
                         <div class="bg-orange-50 p-3 rounded-lg">
                             <div class="flex justify-between items-center mb-2">
@@ -713,12 +692,10 @@ const Income = {
                             <span class="font-semibold text-gray-700">Tax %</span>
                             <span class="font-semibold text-gray-900">${taxInfo.taxPercent.toFixed(2)}%</span>
                         </div>
-                        <div class="flex justify-between py-2">
-                            <span class="font-bold text-gray-700">Monthly Tax</span>
-                            <span class="font-bold">₹${Utils.formatIndianNumber(taxInfo.totalTax/12)}</span>
-                        </div>
-                    </div>
-                </details>
+                <div class="flex justify-between py-2">
+                    <span class="font-bold text-gray-700">Monthly Tax</span>
+                    <span class="font-bold">₹${Utils.formatIndianNumber(taxInfo.totalTax/12)}</span>
+                </div>
             </div>
         `;
     },

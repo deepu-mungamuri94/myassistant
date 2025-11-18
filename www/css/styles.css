@@ -205,13 +205,13 @@ summary::-webkit-details-marker {
     display: none;
 }
 
-/* Rotate arrow when details is open */
-details[open] > summary span:first-child {
+/* Rotate arrow when details is open - only for investment groups and other specific arrows */
+details[open] > summary .transform {
     transform: rotate(90deg);
     transition: transform 0.2s ease;
 }
 
-details > summary span:first-child {
+details > summary .transform {
     display: inline-block;
     transition: transform 0.2s ease;
 }

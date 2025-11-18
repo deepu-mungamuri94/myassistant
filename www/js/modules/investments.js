@@ -465,7 +465,7 @@ Return tickers for ALL stocks in a JSON array.`;
                                         title="Investments held for less than 3 years">
                                     <div class="flex items-center justify-center gap-1.5">
                                         <span>Short Term (${shortTerm.length})</span>
-                                        <span class="text-xs opacity-75">ℹ️</span>
+                                        <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-500 text-white text-[10px] font-bold">i</span>
                                     </div>
                                     <div class="text-xs font-bold mt-1">${Utils.formatCurrency(shortTermSum)}</div>
                                 </button>
@@ -477,7 +477,7 @@ Return tickers for ALL stocks in a JSON array.`;
                                         title="Investments held for more than 3 years">
                                     <div class="flex items-center justify-center gap-1.5">
                                         <span>Long Term (${longTerm.length})</span>
-                                        <span class="text-xs opacity-75">ℹ️</span>
+                                        <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-500 text-white text-[10px] font-bold">i</span>
                                     </div>
                                     <div class="text-xs font-bold mt-1">${Utils.formatCurrency(longTermSum)}</div>
                                 </button>
