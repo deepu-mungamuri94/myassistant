@@ -30,13 +30,13 @@ const Dashboard = {
             
             <!-- Category Expenses Chart -->
             <div class="mb-6">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-base font-semibold text-gray-700">Category-wise Expenses</h3>
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-sm font-semibold text-gray-700">Category-wise Expenses</h3>
                     <select id="category-month-selector" onchange="Dashboard.renderCategoryChart()" class="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                         ${this.getMonthOptions()}
                     </select>
                 </div>
-                <div style="height: 350px;">
+                <div style="height: 250px;">
                     <canvas id="category-chart"></canvas>
                 </div>
             </div>
