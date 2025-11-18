@@ -36,7 +36,7 @@ const Dashboard = {
                         ${this.getMonthOptions()}
                     </select>
                 </div>
-                <div style="height: 250px;">
+                <div style="height: 300px;">
                     <canvas id="category-chart"></canvas>
                 </div>
             </div>
@@ -478,15 +478,15 @@ const Dashboard = {
         ];
         
         this.categoryChartInstance = new Chart(ctx, {
-            type: 'bar',
+            type: 'doughnut',
             data: {
                 labels: data.map(d => d.category),
                 datasets: [{
                     label: 'Amount',
                     data: data.map(d => d.amount),
                     backgroundColor: data.map((_, i) => colors[i % colors.length]),
-                    borderColor: data.map((_, i) => colors[i % colors.length].replace('0.85', '1')),
-                    borderWidth: 2
+                    borderColor: '#ffffff',
+                    borderWidth: 3
                 }]
             },
             options: {
@@ -494,38 +494,38 @@ const Dashboard = {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: false
-                    },
-                    datalabels: {
-                        anchor: 'end',
-                        align: 'top',
-                        formatter: function(value) {
-                            return '₹' + (value >= 100000 ? (value/100000).toFixed(1) + 'L' : (value >= 1000 ? (value/1000).toFixed(1) + 'k' : value));
-                        },
-                        font: {
-                            size: 10,
-                            weight: 'bold'
-                        },
-                        color: '#374151'
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: {
-                            display: false
+                        display: true,
+                        position: 'right',
+                        labels: {
+                            boxWidth: 15,
+                            padding: 10,
+                            font: {
+                                size: 11
+                            }
                         }
                     },
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return '₹' + (value >= 100000 ? (value/100000).toFixed(1) + 'L' : (value >= 1000 ? (value/1000).toFixed(0) + 'k' : value));
-                            },
-                            stepSize: 25000
+                    datalabels: {
+                        formatter: function(value, context) {
+                            const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return percentage > 5 ? percentage + '%' : ''; // Only show if > 5%
                         },
-                        grid: {
-                            display: true,
-                            color: 'rgba(0, 0, 0, 0.1)'
+                        font: {
+                            size: 11,
+                            weight: 'bold'
+                        },
+                        color: '#ffffff'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed;
+                                const formatted = '₹' + (value >= 100000 ? (value/100000).toFixed(1) + 'L' : (value >= 1000 ? (value/1000).toFixed(1) + 'k' : value));
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return label + ': ' + formatted + ' (' + percentage + '%)';
+                            }
                         }
                     }
                 }
