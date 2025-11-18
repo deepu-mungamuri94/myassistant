@@ -139,7 +139,7 @@ const RecurringExpenses = {
     },
     
     /**
-     * Get completed recurring expenses (already added to expenses in current month)
+     * Get completed recurring expenses (due today or already passed in current month)
      */
     getCompleted() {
         const today = new Date();
@@ -159,12 +159,14 @@ const RecurringExpenses = {
                 return;
             }
             
-            // Check if date has passed AND was added to expenses
-            if (currentDay >= recurring.day && recurring.addedToExpenses && recurring.addedToExpenses.includes(currentMonthKey)) {
+            // Show if date has passed or is today (whether added or not)
+            if (currentDay >= recurring.day) {
                 const dueDate = new Date(currentYear, currentMonth - 1, recurring.day);
+                const wasAdded = recurring.addedToExpenses && recurring.addedToExpenses.includes(currentMonthKey);
                 completed.push({
                     ...recurring,
-                    dueDate: dueDate.toISOString().split('T')[0]
+                    dueDate: dueDate.toISOString().split('T')[0],
+                    wasAdded: wasAdded
                 });
             }
         });
@@ -449,6 +451,9 @@ const RecurringExpenses = {
     render() {
         const list = document.getElementById('recurring-expenses-list');
         if (!list) return;
+        
+        // Auto-add any due recurring expenses to the expenses list
+        this.autoAddToExpenses();
         
         const recurringExpenses = this.getAll();
         
