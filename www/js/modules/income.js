@@ -74,6 +74,12 @@ const Income = {
         if (window.DB.income.section80C === undefined) window.DB.income.section80C = 0;
         if (window.DB.income.section80D === undefined) window.DB.income.section80D = 0;
         if (window.DB.income.otherDeductions === undefined) window.DB.income.otherDeductions = 0;
+        // Ensure health insurance fields exist
+        if (window.DB.income.hasInsurance === undefined) window.DB.income.hasInsurance = false;
+        if (window.DB.income.insuranceTotal === undefined) window.DB.income.insuranceTotal = 0;
+        if (window.DB.income.insuranceMonths === undefined) window.DB.income.insuranceMonths = [];
+        // Ensure leave encashment field exists
+        if (window.DB.income.leaveDays === undefined) window.DB.income.leaveDays = 0;
         
         return window.DB.income;
     },
@@ -82,11 +88,17 @@ const Income = {
      * Save income data
      */
     save(data) {
+        const existingData = this.getData();
         window.DB.income = {
+            ...existingData,
             ctc: parseFloat(data.ctc) || 0,
             bonusPercent: parseFloat(data.bonusPercent) || 0,
             esppPercent: parseFloat(data.esppPercent) || 0,
-            pfPercent: parseFloat(data.pfPercent) || 12
+            pfPercent: parseFloat(data.pfPercent) || 12,
+            hasInsurance: data.hasInsurance || false,
+            insuranceTotal: parseFloat(data.insuranceTotal) || 0,
+            insuranceMonths: data.insuranceMonths || [],
+            leaveDays: parseFloat(data.leaveDays) || 0
         };
         window.Storage.save();
         this.render();
@@ -273,6 +285,31 @@ const Income = {
     },
     
     /**
+     * Calculate leave encashment amount
+     * Formula: Days × (Basic + HRA + Allowances) / 27
+     */
+    calculateLeaveEncashment(ctc, days) {
+        const basic = this.calculateBasic(ctc);
+        const hra = basic * 0.5; // 50% of basic
+        const allowances = (ctc / 12) - basic - hra; // Remaining amount
+        
+        const dailyRate = (basic + hra + allowances) / 27;
+        const leaveAmount = days * dailyRate;
+        
+        // This amount is taxable, so we need to apply tax and ESPP
+        const data = this.getData();
+        const esppPercent = data.esppPercent || 0;
+        const esppCut = (leaveAmount * esppPercent) / 100;
+        
+        // Tax calculation - use same tax rate as regular income
+        const taxInfo = this.calculateIncomeTax(ctc + leaveAmount);
+        const regularTaxInfo = this.calculateIncomeTax(ctc);
+        const additionalTax = (taxInfo.totalTax - regularTaxInfo.totalTax) / 12; // Monthly impact
+        
+        return Math.round(leaveAmount - esppCut - additionalTax);
+    },
+    
+    /**
      * Generate monthly payslips for financial year (April to March)
      */
     generateYearlyPayslips(ctc, bonusPercent, esppPercent, pfPercent) {
@@ -281,13 +318,26 @@ const Income = {
             'October', 'November', 'December', 'January', 'February', 'March'
         ];
         
+        const data = this.getData();
         const basePayslip = this.calculatePayslip(ctc, bonusPercent, esppPercent, pfPercent);
         const bonus = this.calculateBonus(ctc, bonusPercent, esppPercent, pfPercent);
         
+        // Calculate leave encashment for January
+        const leaveDays = data.leaveDays || 0;
+        const leaveEncashment = leaveDays > 0 ? this.calculateLeaveEncashment(ctc, leaveDays) : 0;
+        
+        // Calculate insurance premium per month
+        const insuranceTotal = data.insuranceTotal || 0;
+        const insuranceMonths = data.insuranceMonths || [];
+        const insurancePerMonth = insuranceMonths.length > 0 ? insuranceTotal / insuranceMonths.length : 0;
+        
         const payslips = months.map((month, index) => {
+            const monthNumber = index + 1; // 1 for April, 10 for January
             let payslip = { ...basePayslip };
             let bonusAmount = 0;
             let bonusEspp = 0;
+            let leaveAmount = 0;
+            let insuranceDeduction = 0;
             
             // Add bonus in September (mid-year)
             if (month === 'September') {
@@ -300,12 +350,24 @@ const Income = {
                 bonusEspp = bonus.yearEnd.esppCut;
             }
             
+            // Add leave encashment in January
+            if (month === 'January' && leaveEncashment > 0) {
+                leaveAmount = leaveEncashment;
+            }
+            
+            // Add insurance deduction in selected months
+            if (data.hasInsurance && insuranceMonths.includes(monthNumber)) {
+                insuranceDeduction = insurancePerMonth;
+            }
+            
             return {
                 month,
                 ...payslip,
                 espp: payslip.espp + bonusEspp,
                 bonus: bonusAmount,
-                totalNetPay: payslip.netPay + bonusAmount
+                leaveEncashment: leaveAmount,
+                insuranceDeduction: insuranceDeduction,
+                totalNetPay: payslip.netPay + bonusAmount + leaveAmount - insuranceDeduction
             };
         });
         
@@ -485,6 +547,11 @@ const Income = {
                                                 <span class="text-gray-600">Allowances</span>
                                                 <span class="font-semibold">₹${Utils.formatIndianNumber(monthlySlip.allowances)}</span>
                                             </div>
+                                            ${monthlySlip.leaveEncashment > 0 ? `
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-600">Leave Encashment</span>
+                                                <span class="font-semibold text-cyan-600">₹${Utils.formatIndianNumber(monthlySlip.leaveEncashment)}</span>
+                                            </div>` : ''}
                                             <div class="flex justify-between pt-2 border-t border-green-200">
                                                 <span class="font-bold text-green-800">Gross Earnings</span>
                                                 <span class="font-bold text-green-800">₹${Utils.formatIndianNumber(monthlySlip.grossEarnings)}</span>
@@ -520,9 +587,14 @@ const Income = {
                                                 <span class="text-gray-600">ESPP</span>
                                                 <span class="font-semibold">₹${Utils.formatIndianNumber(monthlySlip.espp)}</span>
                                             </div>
+                                            ${monthlySlip.insuranceDeduction > 0 ? `
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-600">Health Insurance</span>
+                                                <span class="font-semibold text-purple-600">₹${Utils.formatIndianNumber(monthlySlip.insuranceDeduction)}</span>
+                                            </div>` : ''}
                                             <div class="flex justify-between pt-2 border-t border-red-200">
                                                 <span class="font-bold text-red-800">Gross Deductions</span>
-                                                <span class="font-bold text-red-800">₹${Utils.formatIndianNumber(monthlySlip.grossDeductions)}</span>
+                                                <span class="font-bold text-red-800">₹${Utils.formatIndianNumber(monthlySlip.grossDeductions + (monthlySlip.insuranceDeduction || 0))}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -712,9 +784,26 @@ const Income = {
         document.getElementById('income-bonus-percent').value = data.bonusPercent || '';
         document.getElementById('income-espp-percent').value = data.esppPercent || '';
         document.getElementById('income-pf-percent').value = data.pfPercent || 12;
+        document.getElementById('income-has-insurance').checked = data.hasInsurance || false;
+        document.getElementById('income-insurance-total').value = data.insuranceTotal || '';
+        document.getElementById('income-insurance-months').value = data.insuranceMonths ? data.insuranceMonths.length : '';
+        document.getElementById('income-leave-days').value = data.leaveDays || '';
         
         // Auto-calculate basic
         this.updateBasicPreview();
+        
+        // Setup insurance fields
+        this.toggleInsuranceFields();
+        if (data.hasInsurance) {
+            this.updateInsuranceMonths();
+            // Pre-select saved months
+            if (data.insuranceMonths) {
+                data.insuranceMonths.forEach(month => {
+                    const checkbox = document.querySelector(`input[name="insurance-month"][value="${month}"]`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
+        }
         
         modal.classList.remove('hidden');
     },
@@ -749,11 +838,21 @@ const Income = {
             ctc: document.getElementById('income-ctc').value,
             bonusPercent: document.getElementById('income-bonus-percent').value,
             esppPercent: document.getElementById('income-espp-percent').value,
-            pfPercent: document.getElementById('income-pf-percent').value
+            pfPercent: document.getElementById('income-pf-percent').value,
+            hasInsurance: document.getElementById('income-has-insurance').checked,
+            insuranceTotal: parseFloat(document.getElementById('income-insurance-total').value) || 0,
+            insuranceMonths: this.getSelectedInsuranceMonths(),
+            leaveDays: parseFloat(document.getElementById('income-leave-days').value) || 0
         };
         
         if (!data.ctc || parseFloat(data.ctc) <= 0) {
             window.Toast.show('Please enter a valid CTC', 'error');
+            return;
+        }
+        
+        // Validate insurance if enabled
+        if (data.hasInsurance && (data.insuranceTotal <= 0 || data.insuranceMonths.length === 0)) {
+            window.Toast.show('Please enter insurance amount and select months', 'error');
             return;
         }
         
@@ -1202,6 +1301,60 @@ const Income = {
         this.renderSurchargeSlabsList();
         this.render();
         window.Toast.success('Surcharge slabs reset to default!');
+    },
+    
+    /**
+     * Toggle insurance fields visibility
+     */
+    toggleInsuranceFields() {
+        const checkbox = document.getElementById('income-has-insurance');
+        const fields = document.getElementById('insurance-fields');
+        if (checkbox && fields) {
+            if (checkbox.checked) {
+                fields.classList.remove('hidden');
+            } else {
+                fields.classList.add('hidden');
+            }
+        }
+    },
+    
+    /**
+     * Update insurance months checkboxes
+     */
+    updateInsuranceMonths() {
+        const numMonths = parseInt(document.getElementById('income-insurance-months').value) || 0;
+        const total = parseFloat(document.getElementById('income-insurance-total').value) || 0;
+        const container = document.getElementById('insurance-months-checkboxes');
+        const perMonthDiv = document.getElementById('insurance-per-month');
+        
+        if (!container) return;
+        
+        if (numMonths > 0 && numMonths <= 12) {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const perMonth = total / numMonths;
+            
+            container.innerHTML = months.map((month, index) => `
+                <label class="flex items-center gap-1 p-1 bg-purple-100 rounded cursor-pointer hover:bg-purple-200">
+                    <input type="checkbox" name="insurance-month" value="${index + 1}" class="w-3 h-3">
+                    <span class="text-xs">${month}</span>
+                </label>
+            `).join('');
+            
+            if (perMonthDiv && total > 0) {
+                perMonthDiv.textContent = `₹${Utils.formatIndianNumber(perMonth)} per month`;
+            }
+        } else {
+            container.innerHTML = '<p class="text-xs text-purple-600">Enter number of months first</p>';
+            if (perMonthDiv) perMonthDiv.textContent = '';
+        }
+    },
+    
+    /**
+     * Get selected insurance months
+     */
+    getSelectedInsuranceMonths() {
+        const checkboxes = document.querySelectorAll('input[name="insurance-month"]:checked');
+        return Array.from(checkboxes).map(cb => parseInt(cb.value));
     }
 };
 
