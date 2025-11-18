@@ -563,14 +563,18 @@ const Income = {
                     
                     return `
                     <details class="border-2 ${borderColor} ${bgColor} rounded-lg">
-                        <summary class="p-3 cursor-pointer flex justify-between items-center hover:bg-blue-100 rounded-lg transition-all">
-                            <div class="flex items-center gap-2">
+                        <summary class="p-3 cursor-pointer hover:bg-blue-100 rounded-lg transition-all">
+                            <div class="flex justify-between items-center mb-1">
                                 <span class="font-bold text-blue-900">${monthlySlip.month}</span>
+                                <span class="font-bold text-blue-900">₹${Utils.formatIndianNumber(monthlySlip.totalNetPay)}</span>
+                            </div>
+                            ${(monthlySlip.bonus > 0 || monthlySlip.leaveEncashment > 0 || monthlySlip.insuranceDeduction > 0) ? `
+                            <div class="flex items-center gap-1.5 flex-wrap">
                                 ${monthlySlip.bonus > 0 ? '<span class="text-xs bg-green-400 text-green-900 px-2 py-0.5 rounded-full font-semibold">🎁 Bonus</span>' : ''}
                                 ${monthlySlip.leaveEncashment > 0 ? '<span class="text-xs bg-green-400 text-green-900 px-2 py-0.5 rounded-full font-semibold">🏖️ Leave</span>' : ''}
                                 ${monthlySlip.insuranceDeduction > 0 ? '<span class="text-xs bg-red-300 text-red-900 px-2 py-0.5 rounded-full font-semibold">🏥 Insurance</span>' : ''}
                             </div>
-                            <span class="font-bold text-blue-900">₹${Utils.formatIndianNumber(monthlySlip.totalNetPay)}</span>
+                            ` : ''}
                         </summary>
                         <div class="p-3 pt-0 space-y-3">
                                     <!-- Earnings -->
