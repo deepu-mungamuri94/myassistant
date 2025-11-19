@@ -344,19 +344,32 @@ const Loans = {
         // Separate active and closed loans and calculate totals
         const activeLoans = [];
         const closedLoans = [];
-        let totalRemainingAmount = 0;
+        let totalRemainingAmount = 0; // Total future payment (EMI × pending count)
         let totalAmountTaken = 0;
+        let totalInterestPaidSoFar = 0;
         let latestClosureDate = null;
         
         loans.forEach(loan => {
             const remaining = this.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
+            const emi = this.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
             totalAmountTaken += parseFloat(loan.amount);
             
             if (remaining.emisRemaining === 0) {
                 closedLoans.push(loan);
+                // Calculate total interest paid for closed loans
+                const totalPaid = emi * loan.tenure;
+                const interestPaid = totalPaid - parseFloat(loan.amount);
+                totalInterestPaidSoFar += interestPaid;
             } else {
                 activeLoans.push(loan);
-                totalRemainingAmount += remaining.remainingBalance;
+                // Use total remaining payment (EMI × pending EMIs)
+                totalRemainingAmount += remaining.totalRemainingPayment;
+                
+                // Calculate interest paid so far for active loans
+                const principalPaid = parseFloat(loan.amount) - remaining.remainingBalance;
+                const totalPaidSoFar = emi * remaining.emisPaid;
+                const interestPaidSoFar = totalPaidSoFar - principalPaid;
+                totalInterestPaidSoFar += interestPaidSoFar;
                 
                 // Find the latest closure date among active loans
                 const closureDate = this.calculateClosureDate(loan.firstEmiDate, loan.tenure);
@@ -375,7 +388,7 @@ const Loans = {
         // Render summary
         html += `
             <div class="mb-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl p-4 shadow-lg">
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-4 mb-3">
                     <div>
                         <p class="text-xs opacity-90">Total Borrowed</p>
                         <p class="text-base font-bold">₹${Utils.formatIndianNumber(totalAmountTaken)}</p>
@@ -385,11 +398,18 @@ const Loans = {
                         <p class="text-base font-bold">₹${Utils.formatIndianNumber(totalRemainingAmount)}</p>
                     </div>
                 </div>
-                ${latestClosureDate ? `
-                    <div class="mt-3 pt-3 border-t border-white border-opacity-30">
-                        <p class="text-sm font-medium opacity-90">All loans will be cleared by <strong>${latestClosureDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}</strong></p>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs opacity-90">Interest Paid So Far</p>
+                        <p class="text-sm font-bold text-yellow-200">₹${Utils.formatIndianNumber(Math.round(totalInterestPaidSoFar))}</p>
                     </div>
-                ` : ''}
+                    ${latestClosureDate ? `
+                        <div>
+                            <p class="text-xs opacity-90">Last EMI Date</p>
+                            <p class="text-sm font-bold">${latestClosureDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                        </div>
+                    ` : '<div></div>'}
+                </div>
             </div>
         `;
         
@@ -481,7 +501,7 @@ const Loans = {
                             
                             <!-- Key Info in Collapsed View -->
                             <div class="flex justify-between items-center text-xs mb-2">
-                                <span class="text-gray-600">Balance: <strong class="${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</strong></span>
+                                <span class="text-gray-600">To Pay: <strong class="${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.totalRemainingPayment)}</strong></span>
                                 <span class="text-gray-600">EMI: <strong class="text-green-700">₹${Utils.formatIndianNumber(emi)}</strong></span>
                             </div>
                             
@@ -554,20 +574,24 @@ const Loans = {
                     <!-- Financial Summary -->
                     <div class="space-y-2 bg-white bg-opacity-70 p-3 rounded-lg">
                         <div class="flex justify-between text-sm">
-                            <span class="text-gray-700">Total Payable:</span>
+                            <span class="text-gray-700">Original Total:</span>
                             <span class="font-bold text-blue-900">₹${Utils.formatIndianNumber(totalAmount)}</span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-700">Total Interest:</span>
                             <span class="font-bold text-orange-700">₹${Utils.formatIndianNumber(totalInterest)}</span>
                         </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-700">Balance Remaining:</span>
-                            <span class="font-bold ${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</span>
+                        <div class="flex justify-between text-sm pt-2 border-t border-gray-200">
+                            <span class="text-gray-700">Remaining to Pay:</span>
+                            <span class="font-bold ${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.totalRemainingPayment)}</span>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span class="text-gray-600">Principal Balance:</span>
+                            <span class="font-semibold text-gray-800">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</span>
                         </div>
                         <div class="flex justify-between text-sm pt-2 border-t border-gray-200">
                             <span class="text-gray-700">Closure Date:</span>
-                            <span class="font-semibold text-blue-800">${closureDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}</span>
+                            <span class="font-semibold text-blue-800">${closureDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                         </div>
                     </div>
                 </div>
@@ -611,7 +635,7 @@ const Loans = {
                             
                             <!-- Key Info -->
                             <div class="flex justify-between items-center text-xs mb-2">
-                                <span class="text-gray-600">Balance: <strong class="${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</strong></span>
+                                <span class="text-gray-600">To Pay: <strong class="${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.totalRemainingPayment)}</strong></span>
                                 <span class="text-gray-600">EMI: <strong class="text-green-700">₹${Utils.formatIndianNumber(emi)}</strong></span>
                             </div>
                             
@@ -667,20 +691,24 @@ const Loans = {
                     <!-- Summary Section -->
                     <div class="bg-gradient-to-r from-blue-50 to-cyan-50 p-3 rounded-lg space-y-2">
                         <div class="flex justify-between text-sm">
-                            <span class="text-gray-700">Total Amount (Principal + Interest):</span>
+                            <span class="text-gray-700">Original Total:</span>
                             <span class="font-bold text-blue-900">₹${Utils.formatIndianNumber(totalAmount)}</span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-700">Total Interest:</span>
                             <span class="font-bold text-orange-700">₹${Utils.formatIndianNumber(totalInterest)}</span>
                         </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-700">Balance Remaining:</span>
-                            <span class="font-bold ${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</span>
+                        <div class="flex justify-between text-sm pt-2 border-t border-gray-200">
+                            <span class="text-gray-700">Remaining to Pay:</span>
+                            <span class="font-bold ${isCompleted ? 'text-green-700' : 'text-red-700'}">₹${Utils.formatIndianNumber(remaining.totalRemainingPayment)}</span>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span class="text-gray-600">Principal Balance:</span>
+                            <span class="font-semibold text-gray-800">₹${Utils.formatIndianNumber(remaining.remainingBalance)}</span>
                         </div>
                         <div class="flex justify-between text-sm pt-2 border-t border-gray-200">
                             <span class="text-gray-700">Closure Date:</span>
-                            <span class="font-semibold text-blue-800">${closureDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}</span>
+                            <span class="font-semibold text-blue-800">${closureDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                         </div>
                     </div>
                 </div>
