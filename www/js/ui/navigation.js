@@ -19,11 +19,79 @@ const Navigation = {
             viewElement.classList.remove('hidden');
             this.currentView = view;
             
+            // Update header title
+            this.updateHeaderTitle(view);
+            
             // Refresh view data
             this.refreshView(view);
         }
         
         this.closeMenu();
+    },
+
+    /**
+     * Update header title based on current view
+     */
+    updateHeaderTitle(view) {
+        const headerTitle = document.getElementById('header-page-title');
+        const header = document.querySelector('header');
+        if (!headerTitle || !header) return;
+
+        const pageConfig = {
+            dashboard: {
+                icon: '<svg class="w-6 h-6 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>',
+                title: 'Dashboard',
+                bgClass: 'bg-gradient-to-r from-blue-600 to-cyan-600'
+            },
+            chat: {
+                icon: '<svg class="w-6 h-6 text-white mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"/><path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z"/></svg>',
+                title: 'AI Advisor',
+                bgClass: 'bg-gradient-to-r from-purple-600 to-pink-600'
+            },
+            expenses: {
+                icon: '<span class="text-2xl font-bold text-white mr-2">₹</span>',
+                title: 'Income & Expenses',
+                bgClass: 'bg-gradient-to-r from-purple-600 to-pink-600'
+            },
+            recurring: {
+                icon: '<svg class="w-6 h-6 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>',
+                title: 'Recurring & Loans',
+                bgClass: 'bg-gradient-to-r from-orange-600 to-amber-600'
+            },
+            cards: {
+                icon: '<svg class="w-6 h-6 text-white mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/></svg>',
+                title: 'Cards Manager',
+                bgClass: 'bg-gradient-to-r from-slate-600 to-blue-600'
+            },
+            investments: {
+                icon: '<svg class="w-6 h-6 text-white mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/></svg>',
+                title: 'Investments',
+                bgClass: 'bg-gradient-to-r from-yellow-600 to-orange-600'
+            },
+            credentials: {
+                icon: '<svg class="w-6 h-6 text-white mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>',
+                title: 'Credentials',
+                bgClass: 'bg-gradient-to-r from-blue-600 to-cyan-600'
+            }
+        };
+
+        const config = pageConfig[view] || pageConfig.dashboard;
+        
+        // Update header background - remove all gradient classes first
+        header.classList.remove(
+            'bg-gradient-to-r',
+            'from-blue-600', 'to-cyan-600',
+            'from-purple-600', 'to-pink-600',
+            'from-orange-600', 'to-amber-600',
+            'from-slate-600', 'to-blue-600',
+            'from-yellow-600', 'to-orange-600'
+        );
+        
+        // Add new gradient classes
+        header.classList.add(...config.bgClass.split(' '));
+        
+        // Update title with white text
+        headerTitle.innerHTML = `${config.icon}<h1 class="text-lg font-bold text-white">${config.title}</h1>`;
     },
 
     /**
@@ -70,6 +138,46 @@ const Navigation = {
         const menu = document.getElementById('side-menu');
         if (menu) {
             menu.classList.add('hidden');
+        }
+    },
+
+    /**
+     * Toggle settings dropdown menu
+     */
+    toggleSettingsMenu(event) {
+        event.stopPropagation();
+        const dropdown = document.getElementById('settings-dropdown');
+        if (dropdown) {
+            dropdown.classList.toggle('hidden');
+        }
+        
+        // Close dropdown when clicking outside
+        if (!dropdown.classList.contains('hidden')) {
+            setTimeout(() => {
+                document.addEventListener('click', this.closeSettingsMenuListener, { once: true });
+            }, 0);
+        }
+    },
+
+    /**
+     * Close settings dropdown menu
+     */
+    closeSettingsMenu() {
+        const dropdown = document.getElementById('settings-dropdown');
+        if (dropdown) {
+            dropdown.classList.add('hidden');
+        }
+    },
+
+    /**
+     * Listener for closing settings menu on outside click
+     */
+    closeSettingsMenuListener(event) {
+        const dropdown = document.getElementById('settings-dropdown');
+        const button = document.getElementById('settings-menu-btn');
+        
+        if (dropdown && button && !dropdown.contains(event.target) && !button.contains(event.target)) {
+            Navigation.closeSettingsMenu();
         }
     },
 
