@@ -886,93 +886,106 @@ const Expenses = {
                         <!-- Month Expenses (Collapsible) -->
                         ${isExpanded ? `
                             <div class="p-3 space-y-2 bg-purple-50">
-                                ${group.expenses.map(expense => {
-                                    const isAutoRecurring = this.isAutoRecurringExpense(expense);
-                                    return `
-                                    <div class="p-3 bg-white rounded-lg border border-purple-200 hover:shadow-md transition-all">
-                                        <!-- Top Row: Title with Category + Actions -->
-                                        <div class="flex justify-between items-start mb-1">
-                                            <div class="flex-1 flex items-center gap-2">
-                                                <h4 class="font-semibold text-purple-800 text-xs">${Utils.escapeHtml(expense.title || expense.description)}</h4>
-                                                <span class="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded">${Utils.escapeHtml(this.formatCategoryDisplay(expense.category))}</span>
-                                            </div>
-                                            <div class="flex gap-1">
-                                                <button onclick="openExpenseModal(${expense.id})" class="text-green-600 hover:text-green-800 p-0.5" title="Edit">
-                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                                    </svg>
-                                                </button>
-                                                <button onclick="Expenses.deleteWithConfirm(${expense.id})" class="text-red-500 hover:text-red-700 p-0.5" title="Delete">
-                                                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Bottom Row: Description + Amount/Date -->
-                                        <div class="flex justify-between items-start">
-                                            <div class="flex-1">
-                                                ${expense.description ? `<p class="text-xs text-gray-600">${Utils.escapeHtml(expense.description)}</p>` : '<p class="text-xs text-gray-400 italic">No description</p>'}
-                                                ${this.getFullDetailsLink(expense)}
-                                            </div>
-                                            <div class="text-right ml-3">
-                                                <p class="text-sm font-semibold text-purple-700">₹${parseFloat(expense.amount).toLocaleString()}</p>
-                                                <p class="text-xs text-gray-500">${Utils.formatDate(expense.date)}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `}).join('')}
+                                ${this.renderGroupedByDate(group.expenses)}
                             </div>
                         ` : ''}
                     </div>
                 `;
             }).join('');
         } else {
-            // Render flat list for single month
-            list.innerHTML += paginatedExpenses.map(expense => {
-                const isAutoRecurring = this.isAutoRecurringExpense(expense);
-                return `
-                <div class="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200 hover:shadow-md transition-all">
-                    <!-- Top Row: Title with Category + Actions -->
-                    <div class="flex justify-between items-start mb-1">
-                        <div class="flex-1 flex items-center gap-2 flex-wrap">
-                            <h4 class="font-semibold text-purple-800 text-sm">${Utils.escapeHtml(expense.title || expense.description)}</h4>
-                            <span class="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded">${Utils.escapeHtml(this.formatCategoryDisplay(expense.category))}</span>
-                        </div>
-                        <div class="flex gap-1">
-                            <button onclick="openExpenseModal(${expense.id})" class="text-green-600 hover:text-green-800 p-0.5" title="Edit">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                </svg>
-                            </button>
-                            <button onclick="Expenses.deleteWithConfirm(${expense.id})" class="text-red-500 hover:text-red-700 p-0.5" title="Delete">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Bottom Row: Description + Amount/Date -->
-                    <div class="flex justify-between items-start">
-                        <div class="flex-1">
-                            ${expense.description ? `<p class="text-xs text-gray-600">${Utils.escapeHtml(expense.description)}</p>` : '<p class="text-xs text-gray-400 italic">No description</p>'}
-                            ${expense.suggestedCard ? `<p class="text-xs text-green-600 mt-1">💳 ${Utils.escapeHtml(expense.suggestedCard)}</p>` : ''}
-                            ${this.getFullDetailsLink(expense)}
-                        </div>
-                        <div class="text-right ml-4">
-                            <p class="text-base font-semibold text-purple-700">₹${parseFloat(expense.amount).toLocaleString()}</p>
-                            <p class="text-xs text-gray-500">${Utils.formatDate(expense.date)}</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            }).join('');
+            // Render grouped by date for single month
+            list.innerHTML += this.renderGroupedByDate(paginatedExpenses);
         }
         
         // Enable/disable filter and toggle buttons based on expenses existence
         this.updateControlsState();
+    },
+    
+    /**
+     * Render expenses grouped by date
+     */
+    renderGroupedByDate(expenses) {
+        // Group expenses by date
+        const groupedByDate = {};
+        expenses.forEach(expense => {
+            const date = expense.date;
+            if (!groupedByDate[date]) {
+                groupedByDate[date] = [];
+            }
+            groupedByDate[date].push(expense);
+        });
+        
+        // Sort dates in descending order (most recent first)
+        const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
+        
+        return sortedDates.map(date => {
+            const dayExpenses = groupedByDate[date];
+            const dayTotal = dayExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+            const dateObj = new Date(date);
+            const formattedDate = dateObj.toLocaleDateString('en-US', { 
+                weekday: 'short', 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+            
+            return `
+                <details class="mb-2" open>
+                    <summary class="cursor-pointer bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg p-2.5 hover:shadow-lg transition-all list-none">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 transition-transform details-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                                <span class="font-bold text-sm">${formattedDate}</span>
+                                <span class="text-xs opacity-90">(${dayExpenses.length} item${dayExpenses.length !== 1 ? 's' : ''})</span>
+                            </div>
+                            <span class="font-bold text-sm">₹${Utils.formatIndianNumber(dayTotal)}</span>
+                        </div>
+                    </summary>
+                    <div class="mt-2 space-y-2">
+                        ${dayExpenses.map(expense => {
+                            const isAutoRecurring = this.isAutoRecurringExpense(expense);
+                            return `
+                            <div class="p-3 bg-white rounded-lg border border-purple-200 hover:shadow-md transition-all">
+                                <!-- Top Row: Title with Category + Actions -->
+                                <div class="flex justify-between items-start mb-1">
+                                    <div class="flex-1 flex items-center gap-2 flex-wrap">
+                                        <h4 class="font-semibold text-purple-800 text-sm">${Utils.escapeHtml(expense.title || expense.description)}</h4>
+                                        <span class="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded">${Utils.escapeHtml(this.formatCategoryDisplay(expense.category))}</span>
+                                    </div>
+                                    <div class="flex gap-1">
+                                        <button onclick="openExpenseModal(${expense.id})" class="text-green-600 hover:text-green-800 p-0.5" title="Edit">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                            </svg>
+                                        </button>
+                                        <button onclick="Expenses.deleteWithConfirm(${expense.id})" class="text-red-500 hover:text-red-700 p-0.5" title="Delete">
+                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Bottom Row: Description + Amount -->
+                                <div class="flex justify-between items-start">
+                                    <div class="flex-1">
+                                        ${expense.description ? `<p class="text-xs text-gray-600">${Utils.escapeHtml(expense.description)}</p>` : '<p class="text-xs text-gray-400 italic">No description</p>'}
+                                        ${expense.suggestedCard ? `<p class="text-xs text-green-600 mt-1">💳 ${Utils.escapeHtml(expense.suggestedCard)}</p>` : ''}
+                                        ${this.getFullDetailsLink(expense)}
+                                    </div>
+                                    <div class="text-right ml-4">
+                                        <p class="text-base font-semibold text-purple-700">₹${parseFloat(expense.amount).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        }).join('')}
+                    </div>
+                </details>
+            `;
+        }).join('');
     },
     
     /**
