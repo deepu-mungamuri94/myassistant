@@ -918,7 +918,20 @@ const Expenses = {
         // Sort dates in descending order (most recent first)
         const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
         
-        return sortedDates.map((date, index) => {
+        let html = '';
+        
+        // Add expand/collapse all button
+        if (sortedDates.length > 0) {
+            html += `
+                <div class="flex justify-end mb-3">
+                    <button id="toggle-date-groups-btn" onclick="Expenses.toggleAllDateGroups()" class="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all duration-200 text-xs font-semibold">
+                        📂 Expand All
+                    </button>
+                </div>
+            `;
+        }
+        
+        html += sortedDates.map((date, index) => {
             const dayExpenses = groupedByDate[date];
             const dayTotal = dayExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
             const dateObj = new Date(date);
@@ -987,6 +1000,8 @@ const Expenses = {
                 </details>
             `;
         }).join('');
+        
+        return html;
     },
     
     /**

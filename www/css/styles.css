@@ -236,3 +236,12 @@ details > summary .details-arrow {
     margin-bottom: 0;
 }
 
+/* Recurring day groups - add spacing between groups but keep items flush */
+.recurring-day-group {
+    margin-bottom: 0.75rem;
+}
+
+.recurring-day-group:last-child {
+    margin-bottom: 0;
+}
+

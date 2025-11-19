@@ -514,6 +514,15 @@ const RecurringExpenses = {
         
         // Render active expenses grouped by day
         if (activeExpenses.length > 0) {
+            // Add expand/collapse all button
+            html += `
+                <div class="flex justify-end mb-3">
+                    <button id="toggle-recurring-groups-btn" onclick="RecurringExpenses.toggleAllDayGroups()" class="px-3 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-lg transition-all duration-200 text-xs font-semibold">
+                        📂 Expand All
+                    </button>
+                </div>
+            `;
+            
             const sortedDays = Object.keys(groupedByDay).sort((a, b) => parseInt(a) - parseInt(b));
             
             sortedDays.forEach(day => {
@@ -521,23 +530,24 @@ const RecurringExpenses = {
                 const groupTotal = groupExpenses.reduce((sum, r) => sum + parseFloat(r.amount), 0);
                 
                 html += `
-                    <details class="mb-3" open>
-                        <summary class="cursor-pointer bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg p-3 hover:shadow-lg transition-all list-none">
+                    <details class="recurring-day-group mb-0">
+                        <summary class="cursor-pointer bg-orange-50 hover:bg-orange-100 border border-orange-200 p-3 transition-all list-none">
                             <div class="flex justify-between items-center">
                                 <div class="flex items-center gap-2">
-                                    <svg class="w-4 h-4 transition-transform details-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 transition-transform details-arrow text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                     </svg>
-                                    <span class="font-bold text-sm">${day}${this.getOrdinalSuffix(day)} of Month</span>
-                                    <span class="text-xs opacity-90">(${groupExpenses.length} item${groupExpenses.length !== 1 ? 's' : ''})</span>
+                                    <span class="font-bold text-sm text-orange-900">${day}${this.getOrdinalSuffix(day)} of Month</span>
+                                    <span class="text-xs text-orange-600">(${groupExpenses.length})</span>
                                 </div>
-                                <span class="font-bold text-sm">₹${Utils.formatIndianNumber(groupTotal)}</span>
+                                <span class="font-bold text-sm text-orange-900">₹${Utils.formatIndianNumber(groupTotal)}</span>
                             </div>
                         </summary>
-                        <div class="mt-2 space-y-2">
+                        <div class="border-l border-r border-b border-orange-200">
                 `;
                 
-                html += groupExpenses.map(recurring => {
+                html += groupExpenses.map((recurring, index) => {
+                    const isLast = index === groupExpenses.length - 1;
                 // Format frequency display
                 let frequencyText = '';
                 if (recurring.frequency === 'monthly') {
@@ -560,7 +570,7 @@ const RecurringExpenses = {
                 }
                 
                 return `
-                    <div class="p-3 bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 rounded-xl border-2 border-orange-300 hover:shadow-lg transition-all">
+                    <div class="p-3 bg-white hover:bg-orange-50 transition-all ${!isLast ? 'border-b border-orange-100' : ''}">
                         <div class="flex justify-between items-start mb-2">
                             <!-- Left Side: Name and Amount -->
                             <div class="flex-1">
@@ -673,6 +683,28 @@ const RecurringExpenses = {
         }
     },
 
+    /**
+     * Toggle expand/collapse all day groups
+     */
+    toggleAllDayGroups() {
+        const groups = document.querySelectorAll('.recurring-day-group');
+        const allExpanded = Array.from(groups).every(group => group.hasAttribute('open'));
+        
+        groups.forEach(group => {
+            if (allExpanded) {
+                group.removeAttribute('open');
+            } else {
+                group.setAttribute('open', '');
+            }
+        });
+        
+        // Update button text
+        const button = document.getElementById('toggle-recurring-groups-btn');
+        if (button) {
+            button.textContent = allExpanded ? '📂 Expand All' : '📁 Collapse All';
+        }
+    },
+    
     /**
      * Get ordinal suffix for day
      */
