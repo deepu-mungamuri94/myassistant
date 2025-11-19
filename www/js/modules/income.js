@@ -632,8 +632,11 @@ const Income = {
                     
                     return `
                     <details class="border-2 ${borderColor} ${bgColor} rounded-lg">
-                        <summary class="p-3 cursor-pointer flex justify-between items-center hover:bg-blue-100 rounded-lg transition-all">
+                        <summary class="p-3 cursor-pointer flex justify-between items-center hover:bg-blue-100 rounded-lg transition-all list-none">
                             <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 transition-transform details-arrow text-blue-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
                                 <span class="font-bold text-blue-900">${monthlySlip.month}</span>
                                 ${(monthlySlip.bonus > 0 || monthlySlip.leaveEncashment > 0 || monthlySlip.insuranceDeduction > 0) ? `
                                 <div class="flex flex-col gap-0.5">
