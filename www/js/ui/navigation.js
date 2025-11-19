@@ -435,18 +435,65 @@ const Navigation = {
     },
     
     /**
-     * Reset app (export data first, then clear everything)
+     * Reset app (must export data first, then clear everything)
      */
     async resetApp() {
         try {
             this.closeResetModal();
             
+            // Show export confirmation
+            const userWantsExport = confirm(
+                '📤 MANDATORY BACKUP\n\n' +
+                'You MUST export your data as backup before reset.\n\n' +
+                'Click OK to export now, or Cancel to abort reset.'
+            );
+            
+            if (!userWantsExport) {
+                if (window.Toast) {
+                    window.Toast.show('❌ Reset cancelled', 'info');
+                }
+                return;
+            }
+            
             if (window.Loading) {
                 window.Loading.show('Exporting backup...');
             }
             
-            // First, export current data as backup
-            await window.Storage.exportData();
+            // Export data - this will fail if master password not set
+            const exportSuccess = await window.Storage.exportData();
+            
+            if (!exportSuccess) {
+                if (window.Loading) {
+                    window.Loading.hide();
+                }
+                if (window.Toast) {
+                    window.Toast.show(
+                        '❌ Export failed!\n\n' +
+                        'Cannot reset without backup.\n' +
+                        'Please set master password in Settings first.',
+                        'error',
+                        5000
+                    );
+                }
+                return;
+            }
+            
+            // Confirm user has saved the export file
+            const userHasSaved = confirm(
+                '✅ Export completed!\n\n' +
+                'Have you saved the backup file?\n\n' +
+                'Click OK to proceed with reset, or Cancel to abort.'
+            );
+            
+            if (!userHasSaved) {
+                if (window.Loading) {
+                    window.Loading.hide();
+                }
+                if (window.Toast) {
+                    window.Toast.show('❌ Reset cancelled - backup not confirmed', 'info');
+                }
+                return;
+            }
             
             if (window.Loading) {
                 window.Loading.show('Resetting app data...');
@@ -455,36 +502,42 @@ const Navigation = {
             // Wait a moment for export to complete
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            // Clear all data
-            window.DB.credentials = [];
-            window.DB.cards = [];
-            window.DB.expenses = [];
-            window.DB.investments = [];
-            window.DB.chatHistory = [];
-            window.DB.exchangeRate = {
-                rate: 83,
-                lastUpdated: null
-            };
-            window.DB.settings = {
-                aiProvider: 'gemini',
-                geminiApiKey: '',
+            // COMPLETELY FLUSH THE ENTIRE DB
+            // Reset to initial empty state with all fields
+            window.DB = {
+                credentials: [],
+                cards: [],
+                expenses: [],
+                investments: [],
+                recurringExpenses: [],
+                loans: [],
+                income: null,
+                dismissedRecurringExpenses: [],
+                chatHistory: [],
+                exchangeRate: {
+                    rate: 83,
+                    lastUpdated: null
+                },
+                settings: {
+                    aiProvider: 'gemini',
+                    geminiApiKey: '',
+                    groqApiKey: '',
+                    chatGptApiKey: '',
+                    perplexityApiKey: '',
+                    priorityOrder: ['groq', 'gemini', 'chatgpt', 'perplexity']
+                },
                 groqApiKey: '',
-                chatGptApiKey: '',
-                perplexityApiKey: '',
-                priorityOrder: ['groq', 'gemini', 'chatgpt', 'perplexity']
+                security: {
+                    pinHash: null,
+                    biometricEnabled: false,
+                    isSetup: false,
+                    masterPassword: ''
+                }
             };
-            window.DB.groqApiKey = '';
             
-            // Reset security (clear PIN and master password)
-            window.DB.security = {
-                pinHash: null,
-                biometricEnabled: false,
-                isSetup: false,
-                masterPassword: ''
-            };
             window.Security.isUnlocked = false;
             
-            // Save empty state
+            // Save completely empty state
             window.Storage.save();
             
             if (window.Loading) {

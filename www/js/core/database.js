@@ -10,6 +10,7 @@ const DB = {
     investments: [],
     recurringExpenses: [], // Custom recurring expenses (LIC, insurance, etc.)
     loans: [], // Loan tracking
+    income: null, // Income and payslip data
     dismissedRecurringExpenses: [], // Track dismissed auto-recurring expenses
     chatHistory: [],
     exchangeRate: {
