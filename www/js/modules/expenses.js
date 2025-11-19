@@ -767,7 +767,7 @@ const Expenses = {
         // Render recurring expenses section (if any)
         if (totalRecurring > 0) {
             list.innerHTML += `
-                <details class="mb-3 bg-white rounded-xl border-2 border-orange-300 overflow-hidden">
+                <details class="mb-3 bg-white rounded-xl border border-orange-300 overflow-hidden">
                     <summary class="cursor-pointer px-4 py-3 hover:bg-orange-50 transition-colors flex justify-between items-center">
                         <div class="flex items-center gap-2">
                             <span class="text-orange-600">🔁</span>
@@ -862,7 +862,7 @@ const Expenses = {
             list.innerHTML += monthGroups.map(group => {
                 const isExpanded = this.expandedMonths.has(group.key);
                 return `
-                    <div class="mb-4 bg-white rounded-xl border-2 border-purple-300 overflow-hidden">
+                    <div class="mb-4 bg-white rounded-xl border border-purple-300 overflow-hidden">
                         <!-- Month Header -->
                         <div class="p-4 bg-gradient-to-r from-purple-200 to-pink-200 cursor-pointer hover:from-purple-300 hover:to-pink-300 transition-all"
                              onclick="Expenses.toggleMonth('${group.key}')">

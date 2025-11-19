@@ -424,7 +424,7 @@ Return tickers for ALL stocks in a JSON array.`;
         const longTermHTML = this.renderGroupedInvestments(longTerm);
         
         list.innerHTML = `
-            <div class="bg-gradient-to-r from-yellow-100 via-orange-50 to-yellow-100 rounded-xl border-2 border-yellow-400 mb-4 overflow-hidden">
+            <div class="bg-gradient-to-r from-yellow-100 via-orange-50 to-yellow-100 rounded-xl border border-yellow-400 mb-4 overflow-hidden">
                 <div class="p-5">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="font-bold text-yellow-900 text-base">💰 Portfolio Total</h3>
@@ -454,7 +454,7 @@ Return tickers for ALL stocks in a JSON array.`;
             
             <!-- Tabs for Short Term / Long Term -->
             ${(shortTerm.length > 0 || longTerm.length > 0) ? `
-                <div class="bg-white rounded-xl border-2 border-blue-200 overflow-hidden">
+                <div class="bg-white rounded-xl border border-blue-200 overflow-hidden">
                     <!-- Tabs -->
                     <div class="border-b border-blue-200">
                         <div class="flex justify-evenly">
@@ -606,7 +606,7 @@ Return tickers for ALL stocks in a JSON array.`;
             const total = items.reduce((sum, inv) => sum + this.calculateValue(inv), 0);
             
             return `
-                <details class="investment-type-group mb-3 border-2 ${config.borderColor} rounded-lg overflow-hidden">
+                <details class="investment-type-group mb-3 border ${config.borderColor} rounded-lg overflow-hidden">
                     <summary class="bg-gradient-to-r ${config.bgGradient} px-3 py-3 cursor-pointer ${config.hoverGradient} transition-all list-none">
                         <div class="flex justify-between items-center">
                             <div class="flex items-center gap-2">

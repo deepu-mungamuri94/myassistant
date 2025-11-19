@@ -547,7 +547,7 @@ const Income = {
                 </div>
                 
                 <!-- Tabs for Pay Slips and Income Tax -->
-                <div class="bg-white rounded-xl border-2 border-blue-200 overflow-hidden">
+                <div class="bg-white rounded-xl border border-blue-200 overflow-hidden">
                     <!-- Tabs -->
                     <div class="border-b border-blue-200">
                         <div class="flex justify-evenly">
@@ -631,7 +631,7 @@ const Income = {
                     }
                     
                     return `
-                    <details class="border-2 ${borderColor} ${bgColor} rounded-lg">
+                    <details class="border ${borderColor} ${bgColor} rounded-lg">
                         <summary class="p-3 cursor-pointer flex justify-between items-center hover:bg-blue-100 rounded-lg transition-all list-none">
                             <div class="flex items-center gap-2">
                                 <svg class="w-4 h-4 transition-transform details-arrow text-blue-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
