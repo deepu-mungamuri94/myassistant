@@ -20,7 +20,31 @@ const Dashboard = {
         const income = this.getIncomeData();
         const loans = this.getLoansData();
         
+        // Get percentage cards data
+        const minNetPay = this.getMinimumNetPay();
+        const recurringExpenses = this.getTotalRecurringExpenses();
+        const totalEmis = this.getTotalEmis();
+        
+        const recurringPercent = minNetPay > 0 ? ((recurringExpenses / minNetPay) * 100).toFixed(1) : 0;
+        const emisPercent = minNetPay > 0 ? ((totalEmis / minNetPay) * 100).toFixed(1) : 0;
+        
         container.innerHTML = `
+            <!-- Percentage Cards -->
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-4 text-white shadow-lg">
+                    <div class="text-xs opacity-90 mb-1">Recurring Expenses</div>
+                    <div class="text-3xl font-bold mb-1">${recurringPercent}%</div>
+                    <div class="text-xs opacity-80">of min. net pay</div>
+                    <div class="text-xs mt-2 opacity-90">₹${this.formatAmount(recurringExpenses)} / ₹${this.formatAmount(minNetPay)}</div>
+                </div>
+                <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-4 text-white shadow-lg">
+                    <div class="text-xs opacity-90 mb-1">Total EMIs</div>
+                    <div class="text-3xl font-bold mb-1">${emisPercent}%</div>
+                    <div class="text-xs opacity-80">of min. net pay</div>
+                    <div class="text-xs mt-2 opacity-90">₹${this.formatAmount(totalEmis)} / ₹${this.formatAmount(minNetPay)}</div>
+                </div>
+            </div>
+            
             <!-- Income vs Expense Chart -->
             <div class="mb-6">
                 <div style="height: 400px;">
@@ -540,6 +564,79 @@ const Dashboard = {
                 }
             }
         });
+    },
+    
+    /**
+     * Get minimum net pay across all 12 months of payslips
+     */
+    getMinimumNetPay() {
+        const income = window.DB.income;
+        if (!income || !income.ctc) return 0;
+        
+        const { ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent } = income;
+        const yearlyPayslips = window.Income.generateYearlyPayslips(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent);
+        
+        if (yearlyPayslips.length === 0) return 0;
+        
+        // Find minimum net pay
+        const minNetPay = Math.min(...yearlyPayslips.map(p => p.totalNetPay));
+        return minNetPay;
+    },
+    
+    /**
+     * Get total recurring expenses per month
+     */
+    getTotalRecurringExpenses() {
+        const recurringExpenses = window.DB.recurringExpenses || [];
+        const total = recurringExpenses.reduce((sum, rec) => sum + rec.amount, 0);
+        return total;
+    },
+    
+    /**
+     * Get total EMIs (loans + credit cards) per month
+     */
+    getTotalEmis() {
+        const loans = window.DB.loans || [];
+        const cards = window.DB.cards || [];
+        let total = 0;
+        
+        // Add loan EMIs
+        loans.forEach(loan => {
+            if (loan.status === 'active') {
+                const remaining = loan.tenure - (loan.paidEmis || 0);
+                if (remaining > 0) {
+                    total += loan.emi;
+                }
+            }
+        });
+        
+        // Add card EMIs
+        cards.forEach(card => {
+            if (card.emis && card.emis.length > 0) {
+                card.emis.forEach(emi => {
+                    if (emi.status === 'active') {
+                        const remaining = emi.totalEmis - emi.paidEmis;
+                        if (remaining > 0) {
+                            total += emi.emiAmount;
+                        }
+                    }
+                });
+            }
+        });
+        
+        return total;
+    },
+    
+    /**
+     * Format amount for display
+     */
+    formatAmount(amount) {
+        if (amount >= 100000) {
+            return (amount / 100000).toFixed(1) + 'L';
+        } else if (amount >= 1000) {
+            return (amount / 1000).toFixed(1) + 'k';
+        }
+        return amount.toFixed(0);
     }
 };
 
