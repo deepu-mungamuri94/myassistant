@@ -582,16 +582,14 @@ const Dashboard = {
     },
     
     /**
-     * Get total recurring expenses per month (excluding loans and credit card EMIs)
+     * Get total recurring expenses per month (excluding Loan EMI and Credit Card EMI categories)
      */
     getTotalRecurringExpenses() {
         const recurringExpenses = window.DB.recurringExpenses || [];
-        // Filter out loan EMIs and credit card EMIs from recurring expenses
+        // Filter out items with category "Loan EMI" or "Credit Card EMI"
         const filtered = recurringExpenses.filter(rec => {
-            const category = (rec.category || '').toLowerCase();
-            return !category.includes('loan') && 
-                   !category.includes('emi') && 
-                   !category.includes('credit card');
+            const category = rec.category || '';
+            return category !== 'Loan EMI' && category !== 'Credit Card EMI';
         });
         const total = filtered.reduce((sum, rec) => sum + rec.amount, 0);
         return total;
