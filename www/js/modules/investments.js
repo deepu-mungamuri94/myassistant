@@ -461,11 +461,9 @@ Return tickers for ALL stocks in a JSON array.`;
                             ${shortTerm.length > 0 ? `
                                 <button onclick="Investments.switchInvestmentTab('short')" 
                                         id="investments-tab-short"
-                                        class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600"
-                                        title="Investments held for less than 3 years">
-                                    <div class="flex items-center justify-center gap-1.5">
+                                        class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600">
+                                    <div class="flex items-center justify-center">
                                         <span>Short Term (${shortTerm.length})</span>
-                                        <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-500 text-white text-[10px] font-bold">i</span>
                                     </div>
                                     <div class="text-xs font-bold mt-1">${Utils.formatCurrency(shortTermSum)}</div>
                                 </button>
@@ -473,11 +471,9 @@ Return tickers for ALL stocks in a JSON array.`;
                             ${longTerm.length > 0 ? `
                                 <button onclick="Investments.switchInvestmentTab('long')" 
                                         id="investments-tab-long"
-                                        class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700"
-                                        title="Investments held for more than 3 years">
-                                    <div class="flex items-center justify-center gap-1.5">
+                                        class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                                    <div class="flex items-center justify-center">
                                         <span>Long Term (${longTerm.length})</span>
-                                        <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-500 text-white text-[10px] font-bold">i</span>
                                     </div>
                                     <div class="text-xs font-bold mt-1">${Utils.formatCurrency(longTermSum)}</div>
                                 </button>
