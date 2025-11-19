@@ -303,10 +303,27 @@ const Loans = {
             remainingBalance = principal * (factor1 - factor2) / (factor1 - 1);
         }
         
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📊 LOAN BALANCE CALCULATION');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📅 First EMI Date:', firstEmiDate);
+        console.log('💰 Principal:', principal);
+        console.log('📈 Annual Rate:', annualRate + '%');
+        console.log('📆 Tenure:', tenure, 'months');
+        console.log('───────────────────────────────────');
+        console.log('📅 Today:', today.toDateString());
+        console.log('✅ EMIs Paid:', monthsElapsed);
+        console.log('⏳ EMIs Remaining:', remainingTenure);
+        console.log('💵 Monthly EMI: ₹', emi.toFixed(2));
+        console.log('💰 Principal Balance Remaining: ₹', remainingBalance.toFixed(2));
+        console.log('💸 Total Amount to Pay (remaining): ₹', (emi * remainingTenure).toFixed(2));
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
         return {
             emisPaid: monthsElapsed,
             emisRemaining: remainingTenure,
-            remainingBalance: Math.round(remainingBalance * 100) / 100
+            remainingBalance: Math.round(remainingBalance * 100) / 100,
+            totalRemainingPayment: Math.round(emi * remainingTenure * 100) / 100
         };
     },
     
