@@ -367,6 +367,16 @@ const Loans = {
         activeLoans.sort((a, b) => new Date(a.firstEmiDate) - new Date(b.firstEmiDate));
         closedLoans.sort((a, b) => new Date(a.firstEmiDate) - new Date(b.firstEmiDate));
         
+        // Group active loans by EMI day of month
+        const groupedByEmiDay = {};
+        activeLoans.forEach(loan => {
+            const emiDay = new Date(loan.firstEmiDate).getDate();
+            if (!groupedByEmiDay[emiDay]) {
+                groupedByEmiDay[emiDay] = [];
+            }
+            groupedByEmiDay[emiDay].push(loan);
+        });
+        
         let html = '';
         
         // Render summary
@@ -430,7 +440,7 @@ const Loans = {
                     <!-- Tab Content: Active Loans -->
                     ${activeLoans.length > 0 ? `
                         <div id="loans-content-active" class="p-3 space-y-3">
-                            ${activeLoans.map(loan => this.renderLoanCard(loan, false)).join('')}
+                            ${this.renderGroupedLoans(groupedByEmiDay)}
                         </div>
                     ` : ''}
                     
@@ -445,6 +455,41 @@ const Loans = {
         }
         
         list.innerHTML = html;
+    },
+    
+    /**
+     * Render grouped loans by EMI day
+     */
+    renderGroupedLoans(groupedByEmiDay) {
+        const sortedDays = Object.keys(groupedByEmiDay).sort((a, b) => parseInt(a) - parseInt(b));
+        
+        return sortedDays.map(day => {
+            const groupLoans = groupedByEmiDay[day];
+            const groupTotal = groupLoans.reduce((sum, loan) => {
+                const remaining = this.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
+                return sum + remaining.totalRemainingPayment;
+            }, 0);
+            
+            return `
+                <details class="mb-3" open>
+                    <summary class="cursor-pointer bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg p-3 hover:shadow-lg transition-all list-none">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 transition-transform details-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                                <span class="font-bold text-sm">EMI on ${day}${this.getOrdinalSuffix(day)}</span>
+                                <span class="text-xs opacity-90">(${groupLoans.length} loan${groupLoans.length !== 1 ? 's' : ''})</span>
+                            </div>
+                            <span class="font-bold text-sm">₹${Utils.formatIndianNumber(groupTotal)}</span>
+                        </div>
+                    </summary>
+                    <div class="mt-2 space-y-2">
+                        ${groupLoans.map(loan => this.renderLoanCard(loan, false)).join('')}
+                    </div>
+                </details>
+            `;
+        }).join('');
     },
     
     /**

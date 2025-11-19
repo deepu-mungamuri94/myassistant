@@ -502,9 +502,42 @@ const RecurringExpenses = {
             </div>
         `;
         
-        // Render active expenses
+        // Group active expenses by day of month
+        const groupedByDay = {};
+        activeExpenses.forEach(recurring => {
+            const day = recurring.day;
+            if (!groupedByDay[day]) {
+                groupedByDay[day] = [];
+            }
+            groupedByDay[day].push(recurring);
+        });
+        
+        // Render active expenses grouped by day
         if (activeExpenses.length > 0) {
-            html += activeExpenses.map(recurring => {
+            const sortedDays = Object.keys(groupedByDay).sort((a, b) => parseInt(a) - parseInt(b));
+            
+            sortedDays.forEach(day => {
+                const groupExpenses = groupedByDay[day];
+                const groupTotal = groupExpenses.reduce((sum, r) => sum + parseFloat(r.amount), 0);
+                
+                html += `
+                    <details class="mb-3" open>
+                        <summary class="cursor-pointer bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg p-3 hover:shadow-lg transition-all list-none">
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-4 h-4 transition-transform details-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                    <span class="font-bold text-sm">${day}${this.getOrdinalSuffix(day)} of Month</span>
+                                    <span class="text-xs opacity-90">(${groupExpenses.length} item${groupExpenses.length !== 1 ? 's' : ''})</span>
+                                </div>
+                                <span class="font-bold text-sm">₹${Utils.formatIndianNumber(groupTotal)}</span>
+                            </div>
+                        </summary>
+                        <div class="mt-2 space-y-2">
+                `;
+                
+                html += groupExpenses.map(recurring => {
                 // Format frequency display
                 let frequencyText = '';
                 if (recurring.frequency === 'monthly') {
@@ -560,7 +593,13 @@ const RecurringExpenses = {
                         </div>
                     </div>
                 `;
-            }).join('');
+                }).join('');
+                
+                html += `
+                        </div>
+                    </details>
+                `;
+            });
         }
         
         // Render inactive expenses (collapsed)

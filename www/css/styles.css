@@ -216,3 +216,14 @@ details > summary .transform {
     transition: transform 0.2s ease;
 }
 
+/* Rotate details-arrow for grouped recurring expenses and loans */
+details[open] > summary .details-arrow {
+    transform: rotate(180deg);
+    transition: transform 0.2s ease;
+}
+
+details > summary .details-arrow {
+    display: inline-block;
+    transition: transform 0.2s ease;
+}
+
