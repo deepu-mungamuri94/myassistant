@@ -573,6 +573,9 @@
                 <!-- Search and Filter -->
                 <div class="mb-3 flex gap-2">
                     <input type="text" id="expenses-search" placeholder="🔍 Search expenses..." class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" oninput="if(window.Expenses) searchExpenses()">
+                    <button id="toggle-date-groups-btn" onclick="if(window.Expenses) Expenses.toggleAllDateGroups()" class="px-3 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all duration-200 text-xs font-semibold whitespace-nowrap" title="Expand/Collapse all date groups">
+                        📂 Expand All
+                    </button>
                     <button id="expense-filter-btn" onclick="if(window.Expenses) openDateFilterModal()" class="px-4 py-3 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all duration-200" title="Filter by date">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>

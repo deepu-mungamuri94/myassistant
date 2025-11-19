@@ -918,7 +918,7 @@ const Expenses = {
         // Sort dates in descending order (most recent first)
         const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
         
-        return sortedDates.map(date => {
+        return sortedDates.map((date, index) => {
             const dayExpenses = groupedByDate[date];
             const dayTotal = dayExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
             const dateObj = new Date(date);
@@ -930,24 +930,25 @@ const Expenses = {
             });
             
             return `
-                <details class="mb-2" open>
-                    <summary class="cursor-pointer bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg p-2.5 hover:shadow-lg transition-all list-none">
+                <details class="expense-date-group mb-0">
+                    <summary class="cursor-pointer bg-purple-50 hover:bg-purple-100 border border-purple-200 p-3 transition-all list-none">
                         <div class="flex justify-between items-center">
                             <div class="flex items-center gap-2">
-                                <svg class="w-4 h-4 transition-transform details-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 transition-transform details-arrow text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                 </svg>
-                                <span class="font-bold text-sm">${formattedDate}</span>
-                                <span class="text-xs opacity-90">(${dayExpenses.length} item${dayExpenses.length !== 1 ? 's' : ''})</span>
+                                <span class="font-bold text-sm text-purple-900">${formattedDate}</span>
+                                <span class="text-xs text-purple-600">(${dayExpenses.length})</span>
                             </div>
-                            <span class="font-bold text-sm">₹${Utils.formatIndianNumber(dayTotal)}</span>
+                            <span class="font-bold text-sm text-purple-900">₹${Utils.formatIndianNumber(dayTotal)}</span>
                         </div>
                     </summary>
-                    <div class="mt-2 space-y-2">
-                        ${dayExpenses.map(expense => {
+                    <div class="border-l border-r border-b border-purple-200">
+                        ${dayExpenses.map((expense, expIndex) => {
                             const isAutoRecurring = this.isAutoRecurringExpense(expense);
+                            const isLast = expIndex === dayExpenses.length - 1;
                             return `
-                            <div class="p-3 bg-white rounded-lg border border-purple-200 hover:shadow-md transition-all">
+                            <div class="p-3 bg-white hover:bg-purple-50 transition-all ${!isLast ? 'border-b border-purple-100' : ''}">
                                 <!-- Top Row: Title with Category + Actions -->
                                 <div class="flex justify-between items-start mb-1">
                                     <div class="flex-1 flex items-center gap-2 flex-wrap">
@@ -986,6 +987,28 @@ const Expenses = {
                 </details>
             `;
         }).join('');
+    },
+    
+    /**
+     * Toggle expand/collapse all date groups
+     */
+    toggleAllDateGroups() {
+        const groups = document.querySelectorAll('.expense-date-group');
+        const allExpanded = Array.from(groups).every(group => group.hasAttribute('open'));
+        
+        groups.forEach(group => {
+            if (allExpanded) {
+                group.removeAttribute('open');
+            } else {
+                group.setAttribute('open', '');
+            }
+        });
+        
+        // Update button text
+        const button = document.getElementById('toggle-date-groups-btn');
+        if (button) {
+            button.textContent = allExpanded ? '📂 Expand All' : '📁 Collapse All';
+        }
     },
     
     /**

@@ -227,3 +227,12 @@ details > summary .details-arrow {
     transition: transform 0.2s ease;
 }
 
+/* Expense date groups - add spacing between groups but keep items flush */
+.expense-date-group {
+    margin-bottom: 0.75rem;
+}
+
+.expense-date-group:last-child {
+    margin-bottom: 0;
+}
+
