@@ -306,6 +306,17 @@ const Dashboard = {
                     },
                     datalabels: {
                         display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                const value = context.parsed.y;
+                                // Use Indian number format
+                                const formatted = value.toLocaleString('en-IN');
+                                return label + ': ₹' + formatted;
+                            }
+                        }
                     }
                 },
                 scales: {
@@ -384,6 +395,14 @@ const Dashboard = {
                     },
                     datalabels: {
                         display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const months = context.parsed.x;
+                                return 'Remaining: ' + months + ' month' + (months !== 1 ? 's' : '');
+                            }
+                        }
                     }
                 },
                 scales: {
@@ -541,10 +560,11 @@ const Dashboard = {
                             label: function(context) {
                                 const label = context.label || '';
                                 const value = context.parsed;
-                                const formatted = '₹' + (value >= 100000 ? (value/100000).toFixed(1) + 'L' : (value >= 1000 ? (value/1000).toFixed(1) + 'k' : value));
+                                // Use Indian number format
+                                const formatted = value.toLocaleString('en-IN');
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = ((value / total) * 100).toFixed(1);
-                                return label + ': ' + formatted + ' (' + percentage + '%)';
+                                return label + ': ₹' + formatted + ' (' + percentage + '%)';
                             }
                         }
                     }
