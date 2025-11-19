@@ -610,11 +610,13 @@ Return tickers for ALL stocks in a JSON array.`;
             const total = items.reduce((sum, inv) => sum + this.calculateValue(inv), 0);
             
             return `
-                <details class="mb-3 border-2 ${config.borderColor} rounded-lg overflow-hidden">
-                    <summary class="bg-gradient-to-r ${config.bgGradient} px-3 py-3 cursor-pointer ${config.hoverGradient} transition-all" style="list-style: none;">
+                <details class="investment-type-group mb-3 border-2 ${config.borderColor} rounded-lg overflow-hidden">
+                    <summary class="bg-gradient-to-r ${config.bgGradient} px-3 py-3 cursor-pointer ${config.hoverGradient} transition-all list-none">
                         <div class="flex justify-between items-center">
                             <div class="flex items-center gap-2">
-                                <span class="${config.textColor} transform transition-transform" style="display: inline-block;">▶</span>
+                                <svg class="w-4 h-4 transition-transform details-arrow ${config.textColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
                                 <span class="font-semibold ${config.textColor} text-sm">${config.name}</span>
                                 <span class="text-xs ${config.textColor} opacity-60">(${items.length})</span>
                             </div>

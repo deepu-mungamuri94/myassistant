@@ -205,18 +205,7 @@ summary::-webkit-details-marker {
     display: none;
 }
 
-/* Rotate arrow when details is open - only for investment groups and other specific arrows */
-details[open] > summary .transform {
-    transform: rotate(90deg);
-    transition: transform 0.2s ease;
-}
-
-details > summary .transform {
-    display: inline-block;
-    transition: transform 0.2s ease;
-}
-
-/* Rotate details-arrow for grouped recurring expenses and loans */
+/* Rotate details-arrow for all collapsible groups (investments, recurring expenses, expenses) */
 details[open] > summary .details-arrow {
     transform: rotate(180deg);
     transition: transform 0.2s ease;
@@ -225,6 +214,15 @@ details[open] > summary .details-arrow {
 details > summary .details-arrow {
     display: inline-block;
     transition: transform 0.2s ease;
+}
+
+/* Investment type groups - add spacing between groups */
+.investment-type-group {
+    margin-bottom: 0.75rem;
+}
+
+.investment-type-group:last-child {
+    margin-bottom: 0;
 }
 
 /* Expense date groups - add spacing between groups but keep items flush */

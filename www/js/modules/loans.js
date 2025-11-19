@@ -508,7 +508,7 @@ const Loans = {
                         
                         <!-- Expand/Collapse Icon -->
                         <div class="ml-3">
-                            <svg class="w-6 h-6 text-blue-600 transition-transform ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-4 h-4 text-blue-600 transition-transform details-arrow ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                             </svg>
                         </div>
