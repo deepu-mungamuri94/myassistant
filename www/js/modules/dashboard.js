@@ -38,7 +38,7 @@ const Dashboard = {
                     <div class="text-xs mt-2 opacity-90">₹${this.formatAmount(recurringExpenses)} / ₹${this.formatAmount(minNetPay)}</div>
                 </div>
                 <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-4 text-white shadow-lg">
-                    <div class="text-xs opacity-90 mb-1">Total EMIs</div>
+                    <div class="text-xs opacity-90 mb-1">EMIs</div>
                     <div class="text-3xl font-bold mb-1">${emisPercent}%</div>
                     <div class="text-xs opacity-80">of min. net pay</div>
                     <div class="text-xs mt-2 opacity-90">₹${this.formatAmount(totalEmis)} / ₹${this.formatAmount(minNetPay)}</div>
