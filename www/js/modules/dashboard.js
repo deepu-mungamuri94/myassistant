@@ -665,14 +665,18 @@ const Dashboard = {
     
     /**
      * Get total EMIs for current month (loans + credit cards)
+     * Shows all EMIs scheduled for this month, regardless of the day
      */
     getTotalEmis() {
         const loans = window.DB.loans || [];
         const cards = window.DB.cards || [];
         const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth(); // 0-11
         let total = 0;
         
         console.log('=== EMIs DEBUG ===');
+        console.log(`Current Month: ${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`);
         console.log('Total loans:', loans.length);
         console.log('Total cards:', cards.length);
         
@@ -680,9 +684,12 @@ const Dashboard = {
         loans.forEach((loan, i) => {
             console.log(`Loan ${i+1}: ${loan.bankName || 'Unknown'} - ${loan.reason || loan.loanType || 'Loan'}`);
             
-            // Check if loan has started
+            // Check if loan has started before or during this month
             const firstDate = new Date(loan.firstEmiDate);
-            if (firstDate > today) {
+            const firstEmiMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+            const currentMonthStart = new Date(currentYear, currentMonth, 1);
+            
+            if (firstEmiMonth > currentMonthStart) {
                 console.log(`  ✗ Not started yet (starts: ${loan.firstEmiDate})`);
                 return;
             }
@@ -695,7 +702,7 @@ const Dashboard = {
                 
                 if (remaining.emisRemaining > 0 && loan.emi) {
                     total += parseFloat(loan.emi);
-                    console.log(`  ✓ Added ₹${loan.emi} to total`);
+                    console.log(`  ✓ Added ₹${loan.emi} to total (EMI is due this month)`);
                 } else {
                     console.log(`  ✗ Loan completed or no EMI amount`);
                 }
@@ -717,11 +724,14 @@ const Dashboard = {
                 card.emis.forEach((emi, j) => {
                     console.log(`    EMI ${j+1}: ${emi.reason}`);
                     
-                    // Check if EMI has started
+                    // Check if EMI has started before or during this month
                     if (emi.firstEmiDate) {
                         const emiFirstDate = new Date(emi.firstEmiDate);
-                        if (emiFirstDate > today) {
-                            console.log(`      ✗ Not started yet`);
+                        const emiFirstMonth = new Date(emiFirstDate.getFullYear(), emiFirstDate.getMonth(), 1);
+                        const currentMonthStart = new Date(currentYear, currentMonth, 1);
+                        
+                        if (emiFirstMonth > currentMonthStart) {
+                            console.log(`      ✗ Not started yet (starts: ${emi.firstEmiDate})`);
                             return;
                         }
                     }
@@ -737,7 +747,7 @@ const Dashboard = {
                     
                     if (!emi.completed && remaining > 0 && emi.emiAmount) {
                         total += parseFloat(emi.emiAmount);
-                        console.log(`      ✓ Added ₹${emi.emiAmount} to total`);
+                        console.log(`      ✓ Added ₹${emi.emiAmount} to total (EMI is due this month)`);
                     } else {
                         console.log(`      ✗ Skipped (completed: ${emi.completed}, remaining: ${remaining})`);
                     }
