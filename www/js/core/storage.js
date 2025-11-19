@@ -151,21 +151,18 @@ const Storage = {
                     
                     console.log('✅ Share completed:', shareResult);
                     
-                    // Don't show toast immediately - let user choose first
-                    // Toast will be shown after they select an app
+                    // Check if user cancelled the share
+                    if (shareResult.activityType === null || shareResult.activityType === undefined) {
+                        console.log('ℹ️ User cancelled the share dialog');
+                        return 'cancelled';
+                    }
                     
                     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    console.log('✅ ENCRYPTED BACKUP READY TO SHARE');
+                    console.log('✅ ENCRYPTED BACKUP SHARED');
                     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                     console.log('📄 File:', fileName);
                     console.log('📂 URI:', result.uri);
                     console.log('🔐 Encryption: AES-256-GCM');
-                    console.log('💡 User can save to:');
-                    console.log('   • Google Drive');
-                    console.log('   • Email');
-                    console.log('   • WhatsApp');
-                    console.log('   • Files app');
-                    console.log('   • Any other app');
                     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                     
                     return true;

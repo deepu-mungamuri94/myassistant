@@ -435,16 +435,40 @@ const Navigation = {
     },
     
     /**
-     * Show error modal
+     * Show error modal (or info modal with different styling)
      */
-    showErrorModal(title, message) {
+    showErrorModal(title, message, type = 'error') {
         const modal = document.getElementById('error-modal');
         const titleEl = document.getElementById('error-modal-title');
         const messageEl = document.getElementById('error-modal-message');
+        const iconContainer = modal?.querySelector('.bg-red-100');
+        const button = modal?.querySelector('button');
         
         if (modal && titleEl && messageEl) {
             titleEl.textContent = title;
             messageEl.textContent = message;
+            
+            // Change styling based on type
+            if (type === 'info') {
+                // Change to blue/info styling
+                titleEl.className = 'text-2xl font-bold text-center mb-3 text-blue-600';
+                if (iconContainer) {
+                    iconContainer.className = 'flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mx-auto mb-4';
+                }
+                if (button) {
+                    button.className = 'w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-semibold';
+                }
+            } else {
+                // Use red/error styling
+                titleEl.className = 'text-2xl font-bold text-center mb-3 text-red-600';
+                if (iconContainer) {
+                    iconContainer.className = 'flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mx-auto mb-4';
+                }
+                if (button) {
+                    button.className = 'w-full px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 font-semibold';
+                }
+            }
+            
             modal.classList.remove('hidden');
         }
     },
@@ -492,13 +516,27 @@ const Navigation = {
             }
             
             // Export data - this will fail if master password not set
-            const exportSuccess = await window.Storage.exportData();
+            const exportResult = await window.Storage.exportData();
             
             if (window.Loading) {
                 window.Loading.hide();
             }
             
-            if (!exportSuccess) {
+            // Handle user cancellation
+            if (exportResult === 'cancelled') {
+                console.log('ℹ️ User cancelled backup export - reset cancelled');
+                this.showErrorModal(
+                    'ℹ️ Backup Cancelled',
+                    'You cancelled the backup export.\n\n' +
+                    'Reset has been cancelled.\n\n' +
+                    'Backup is mandatory before reset.',
+                    'info'
+                );
+                return;
+            }
+            
+            // Handle export failure
+            if (!exportResult) {
                 this.showErrorModal(
                     '❌ Export Failed!',
                     'Cannot reset without backup.\n\n' +
