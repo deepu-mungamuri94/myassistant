@@ -615,15 +615,15 @@ const Dashboard = {
             return 0;
         }
         
-        // Use the same logic as Recurring page - get monthly total for current month
+        // Get all recurring expenses due this month using the same logic as Recurring page
         const allRecurring = window.RecurringExpenses.getAll();
         console.log('Total recurring items:', allRecurring.length);
         
         let total = 0;
+        let excludedTotal = 0;
         
         allRecurring.forEach((recurring, i) => {
-            console.log(`${i+1}. ${recurring.name} - Frequency: ${recurring.frequency} - Day: ${recurring.day} - Amount: ₹${recurring.amount}`);
-            console.log(`   Active: ${recurring.isActive !== false}, EndDate: ${recurring.endDate || 'none'}`);
+            console.log(`${i+1}. ${recurring.name} - Category: "${recurring.category || 'none'}" - Amount: ₹${recurring.amount}`);
             
             // Skip inactive
             if (recurring.isActive === false) {
@@ -641,23 +641,25 @@ const Dashboard = {
                 }
             }
             
-            // Check if due in this month
+            // Check if due in this month (reusing RecurringExpenses.isDueInMonth)
             const isDue = window.RecurringExpenses.isDueInMonth(recurring, currentYear, currentMonth);
-            console.log(`   Due in current month: ${isDue}`);
             
             if (isDue) {
-                // Exclude Loan EMI and Credit Card EMI categories
                 const category = recurring.category || '';
                 if (category === 'Loan EMI' || category === 'Credit Card EMI') {
-                    console.log(`   ✗ Excluded (category: "${category}")`);
+                    excludedTotal += recurring.amount;
+                    console.log(`   ✗ Excluded ₹${recurring.amount} (EMI category: "${category}")`);
                 } else {
                     total += recurring.amount;
-                    console.log(`   ✓ Added ₹${recurring.amount} (category: "${category}")`);
+                    console.log(`   ✓ Added ₹${recurring.amount}`);
                 }
+            } else {
+                console.log(`   ✗ Not due in current month`);
             }
         });
         
-        console.log('Total Recurring Expenses for current month:', total);
+        console.log(`Total Recurring Expenses (excluding EMIs): ₹${total}`);
+        console.log(`Excluded EMIs: ₹${excludedTotal}`);
         return total;
     },
     
