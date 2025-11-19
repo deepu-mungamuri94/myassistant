@@ -8,9 +8,11 @@ const Storage = {
 
     /**
      * Save database to local storage
+     * Future-proof: Saves ALL DB fields automatically
      */
     save() {
         try {
+            // JSON.stringify serializes ENTIRE DB object with all current and future fields
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(window.DB));
             return true;
         } catch (e) {
@@ -24,12 +26,14 @@ const Storage = {
 
     /**
      * Load database from local storage
+     * Future-proof: Loads ALL DB fields automatically
      */
     load() {
         try {
             const stored = localStorage.getItem(this.STORAGE_KEY);
             if (stored) {
                 const loaded = JSON.parse(stored);
+                // Object.assign merges ALL properties, including future fields
                 Object.assign(window.DB, loaded);
                 return true;
             }
@@ -66,16 +70,22 @@ const Storage = {
                 return false;
             }
             
-            // Create a copy of DB without sensitive security data
+            // COMPLETE DB DUMP: Export ALL fields (future-proof)
+            // Spread operator (...) copies ALL properties from window.DB automatically
+            // This ensures any new fields added in the future are exported
             const exportData = {
-                ...window.DB,
+                ...window.DB, // ← This copies EVERYTHING (current + future fields)
                 security: {
-                    pinHash: null, // Don't export PIN
-                    biometricEnabled: false, // Don't export biometric setting
-                    isSetup: false, // Don't export setup status
-                    masterPassword: '' // Don't export master password
+                    // Only override security for privacy (device-specific)
+                    pinHash: null, // Don't export PIN (device-specific)
+                    biometricEnabled: false, // Don't export biometric setting (device-specific)
+                    isSetup: false, // Don't export setup status (device-specific)
+                    masterPassword: '' // Don't export master password (will use decrypt password on import)
                 }
             };
+            
+            console.log('📦 Exporting complete DB dump with fields:', Object.keys(exportData));
+            console.log('✅ All current and future DB fields will be exported automatically');
             
             const dataStr = JSON.stringify(exportData, null, 2);
             
@@ -280,10 +290,15 @@ const Storage = {
             console.log('🔒 Preserving local PIN (device-specific)');
             console.log('🔐 Updating master password to the one used for decryption');
             
-            // Merge imported data with current DB
-            Object.assign(window.DB, imported);
+            // COMPLETE DB RESTORE: Import ALL fields (future-proof)
+            // Object.assign merges ALL properties from imported data automatically
+            // This ensures any new fields added in the future are imported
+            console.log('📦 Importing complete DB dump with fields:', Object.keys(imported));
+            console.log('✅ All current and future DB fields will be imported automatically');
             
-            // Restore local PIN but update master password
+            Object.assign(window.DB, imported); // ← This merges EVERYTHING (current + future fields)
+            
+            // Restore device-specific security settings
             window.DB.security.pinHash = localPinHash;
             window.DB.security.biometricEnabled = localBiometric;
             window.DB.security.isSetup = localIsSetup;
