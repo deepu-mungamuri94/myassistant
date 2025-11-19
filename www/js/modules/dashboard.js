@@ -569,15 +569,32 @@ const Dashboard = {
      */
     getMinimumNetPay() {
         const income = window.DB.income;
-        if (!income || !income.ctc) return 0;
+        console.log('=== MINIMUM NET PAY DEBUG ===');
+        console.log('Income data:', income);
+        
+        if (!income || !income.ctc) {
+            console.log('No income or CTC found, returning 0');
+            return 0;
+        }
         
         const { ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent } = income;
-        const yearlyPayslips = window.Income.generateYearlyPayslips(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent);
+        console.log('CTC:', ctc, 'Bonus:', bonusPercent, 'ESPP1:', esppPercentCycle1, 'ESPP2:', esppPercentCycle2, 'PF:', pfPercent);
         
-        if (yearlyPayslips.length === 0) return 0;
+        const yearlyPayslips = window.Income.generateYearlyPayslips(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent);
+        console.log('Generated payslips:', yearlyPayslips.length);
+        
+        if (yearlyPayslips.length === 0) {
+            console.log('No payslips generated, returning 0');
+            return 0;
+        }
         
         // Find minimum net pay
+        yearlyPayslips.forEach((p, i) => {
+            console.log(`  ${p.month}: ₹${p.totalNetPay}`);
+        });
+        
         const minNetPay = Math.min(...yearlyPayslips.map(p => p.totalNetPay));
+        console.log('Minimum Net Pay:', minNetPay);
         return minNetPay;
     },
     
@@ -586,12 +603,27 @@ const Dashboard = {
      */
     getTotalRecurringExpenses() {
         const recurringExpenses = window.DB.recurringExpenses || [];
+        console.log('=== RECURRING EXPENSES DEBUG ===');
+        console.log('Total recurring items:', recurringExpenses.length);
+        recurringExpenses.forEach((rec, i) => {
+            console.log(`${i+1}. ${rec.name} - Category: "${rec.category}" - Amount: ${rec.amount}`);
+        });
+        
         // Filter out items with category "Loan EMI" or "Credit Card EMI"
         const filtered = recurringExpenses.filter(rec => {
             const category = rec.category || '';
-            return category !== 'Loan EMI' && category !== 'Credit Card EMI';
+            const isExcluded = category === 'Loan EMI' || category === 'Credit Card EMI';
+            console.log(`  "${rec.name}" - Category: "${category}" - Excluded: ${isExcluded}`);
+            return !isExcluded;
         });
+        
+        console.log('Filtered items (included):', filtered.length);
+        filtered.forEach((rec, i) => {
+            console.log(`  ${i+1}. ${rec.name} - ₹${rec.amount}`);
+        });
+        
         const total = filtered.reduce((sum, rec) => sum + rec.amount, 0);
+        console.log('Total Recurring Expenses:', total);
         return total;
     },
     
@@ -603,30 +635,49 @@ const Dashboard = {
         const cards = window.DB.cards || [];
         let total = 0;
         
+        console.log('=== EMIs DEBUG ===');
+        console.log('Total loans:', loans.length);
+        console.log('Total cards:', cards.length);
+        
         // Add loan EMIs
-        loans.forEach(loan => {
+        loans.forEach((loan, i) => {
+            console.log(`Loan ${i+1}: ${loan.reason || loan.type} - Status: ${loan.status}`);
             if (loan.status === 'active') {
                 const remaining = loan.tenure - (loan.paidEmis || 0);
+                console.log(`  Tenure: ${loan.tenure}, Paid: ${loan.paidEmis || 0}, Remaining: ${remaining}`);
+                console.log(`  EMI: ₹${loan.emi}`);
                 if (remaining > 0) {
                     total += loan.emi;
+                    console.log(`  ✓ Added to total`);
+                } else {
+                    console.log(`  ✗ Not added (no remaining EMIs)`);
                 }
             }
         });
         
         // Add card EMIs
-        cards.forEach(card => {
+        cards.forEach((card, i) => {
+            console.log(`Card ${i+1}: ${card.name || card.nickname}`);
             if (card.emis && card.emis.length > 0) {
-                card.emis.forEach(emi => {
+                console.log(`  Total EMIs on card: ${card.emis.length}`);
+                card.emis.forEach((emi, j) => {
+                    console.log(`    EMI ${j+1}: ${emi.reason} - Status: ${emi.status}`);
                     if (emi.status === 'active') {
                         const remaining = emi.totalEmis - emi.paidEmis;
+                        console.log(`      Total: ${emi.totalEmis}, Paid: ${emi.paidEmis}, Remaining: ${remaining}`);
+                        console.log(`      EMI Amount: ₹${emi.emiAmount}`);
                         if (remaining > 0) {
                             total += emi.emiAmount;
+                            console.log(`      ✓ Added to total`);
+                        } else {
+                            console.log(`      ✗ Not added (no remaining EMIs)`);
                         }
                     }
                 });
             }
         });
         
+        console.log('Total EMIs:', total);
         return total;
     },
     
