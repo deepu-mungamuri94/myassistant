@@ -599,31 +599,65 @@ const Dashboard = {
     },
     
     /**
-     * Get total recurring expenses per month (excluding Loan EMI and Credit Card EMI categories)
+     * Get total recurring expenses for current month (excluding Loan EMI and Credit Card EMI)
      */
     getTotalRecurringExpenses() {
-        const recurringExpenses = window.DB.recurringExpenses || [];
         console.log('=== RECURRING EXPENSES DEBUG ===');
-        console.log('Total recurring items:', recurringExpenses.length);
-        recurringExpenses.forEach((rec, i) => {
-            console.log(`${i+1}. ${rec.name} - Category: "${rec.category}" - Amount: ${rec.amount}`);
+        
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth() + 1; // 1-12
+        
+        console.log(`Calculating for: ${currentYear}-${String(currentMonth).padStart(2, '0')}`);
+        
+        if (!window.RecurringExpenses) {
+            console.log('RecurringExpenses module not available');
+            return 0;
+        }
+        
+        // Use the same logic as Recurring page - get monthly total for current month
+        const allRecurring = window.RecurringExpenses.getAll();
+        console.log('Total recurring items:', allRecurring.length);
+        
+        let total = 0;
+        
+        allRecurring.forEach((recurring, i) => {
+            console.log(`${i+1}. ${recurring.name} - Frequency: ${recurring.frequency} - Day: ${recurring.day} - Amount: ₹${recurring.amount}`);
+            console.log(`   Active: ${recurring.isActive !== false}, EndDate: ${recurring.endDate || 'none'}`);
+            
+            // Skip inactive
+            if (recurring.isActive === false) {
+                console.log(`   ✗ Skipped (inactive)`);
+                return;
+            }
+            
+            // Skip if end date is before this month
+            if (recurring.endDate) {
+                const endDate = new Date(recurring.endDate);
+                const checkDate = new Date(currentYear, currentMonth - 1, 1);
+                if (checkDate > endDate) {
+                    console.log(`   ✗ Skipped (ended before this month)`);
+                    return;
+                }
+            }
+            
+            // Check if due in this month
+            const isDue = window.RecurringExpenses.isDueInMonth(recurring, currentYear, currentMonth);
+            console.log(`   Due in current month: ${isDue}`);
+            
+            if (isDue) {
+                // Exclude Loan EMI and Credit Card EMI categories
+                const category = recurring.category || '';
+                if (category === 'Loan EMI' || category === 'Credit Card EMI') {
+                    console.log(`   ✗ Excluded (category: "${category}")`);
+                } else {
+                    total += recurring.amount;
+                    console.log(`   ✓ Added ₹${recurring.amount} (category: "${category}")`);
+                }
+            }
         });
         
-        // Filter out items with category "Loan EMI" or "Credit Card EMI"
-        const filtered = recurringExpenses.filter(rec => {
-            const category = rec.category || '';
-            const isExcluded = category === 'Loan EMI' || category === 'Credit Card EMI';
-            console.log(`  "${rec.name}" - Category: "${category}" - Excluded: ${isExcluded}`);
-            return !isExcluded;
-        });
-        
-        console.log('Filtered items (included):', filtered.length);
-        filtered.forEach((rec, i) => {
-            console.log(`  ${i+1}. ${rec.name} - ₹${rec.amount}`);
-        });
-        
-        const total = filtered.reduce((sum, rec) => sum + rec.amount, 0);
-        console.log('Total Recurring Expenses:', total);
+        console.log('Total Recurring Expenses for current month:', total);
         return total;
     },
     
