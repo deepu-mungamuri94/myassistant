@@ -47,9 +47,7 @@ const Dashboard = {
             <div class="mb-6">
                 <div class="flex justify-between items-center mb-2">
                     <h3 class="text-sm font-semibold text-gray-700">Expenses by Category</h3>
-                    <select id="category-month-selector" onchange="Dashboard.renderCategoryChart()" class="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                        ${this.getMonthOptions()}
-                    </select>
+                    <input type="month" id="category-month-selector" value="${this.getCurrentMonthValue()}" onchange="Dashboard.renderCategoryChart()" class="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
                 </div>
                 <div class="flex justify-center" style="height: 210px;">
                     <div style="width: 70%; max-width: 500px;">
@@ -402,20 +400,11 @@ const Dashboard = {
     },
     
     /**
-     * Get month options for selector (last 12 months)
+     * Get current month value for calendar picker (YYYY-MM format)
      */
-    getMonthOptions() {
+    getCurrentMonthValue() {
         const now = new Date();
-        const options = [];
-        
-        for (let i = 0; i < 12; i++) {
-            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const monthName = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-            const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            options.push(`<option value="${value}" ${i === 0 ? 'selected' : ''}>${monthName}</option>`);
-        }
-        
-        return options.join('');
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     },
     
     /**
