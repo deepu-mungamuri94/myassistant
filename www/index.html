@@ -543,30 +543,7 @@
         
         <!-- EXPENSES VIEW -->
         <div id="expenses-view" class="hidden">
-            <div class="bg-white/90 backdrop-blur-md shadow-2xl p-5">
-                <!-- Title and Add Button -->
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent flex items-center">
-                        <span class="text-2xl mr-2 text-purple-600">₹</span>
-                        Income & Expenses
-                    </h2>
-                    <button id="expenses-add-btn" onclick="openExpenseModal()" class="px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
-                        </svg>
-                    </button>
-                </div>
-                
-                <!-- Tabs -->
-                <div class="flex gap-2 mb-4">
-                    <button id="expenses-tab" onclick="switchIncomeExpenseTab('expenses')" class="flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md">
-                        💰 Expenses
-                    </button>
-                    <button id="income-tab" onclick="switchIncomeExpenseTab('income')" class="flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300">
-                        💵 Income
-                    </button>
-                </div>
-                
+            <div class="bg-white/90 backdrop-blur-md shadow-2xl p-5 pb-24">
                 <!-- Expenses Tab Content -->
                 <div id="expenses-tab-content">
                 
@@ -620,35 +597,28 @@
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- RECURRING / LOANS VIEW -->
-        <div id="recurring-view" class="hidden">
-            <div class="bg-white/90 backdrop-blur-md shadow-2xl p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent flex items-center">
-                        <svg class="w-6 h-6 mr-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                        </svg>
-                        Recurring / Loans
-                    </h2>
-                    <button id="recurring-add-btn" onclick="openRecurringExpenseModal()" class="px-3 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            
+            <!-- Fixed Bottom Bar -->
+            <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg p-3" style="z-index: 9999; position: fixed;">
+                <div class="flex gap-2 items-center" style="max-width: 100%; overflow: hidden;">
+                    <button id="expenses-tab" onclick="switchIncomeExpenseTab('expenses')" class="flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md" style="flex-shrink: 0;">
+                        💰 Expenses
+                    </button>
+                    <button id="income-tab" onclick="switchIncomeExpenseTab('income')" class="flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gray-200 text-gray-700 hover:bg-gray-300" style="flex-shrink: 0;">
+                        💵 Income
+                    </button>
+                    <button id="expenses-add-btn" onclick="openExpenseModal()" class="py-2 px-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all font-medium text-sm flex items-center" style="flex-shrink: 0;">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                         </svg>
                     </button>
                 </div>
-                
-                <!-- Tabs -->
-                <div class="flex gap-2 mb-4">
-                    <button id="recurring-tab" onclick="switchRecurringTab('recurring')" class="flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md">
-                        🔁 Recurring
-                    </button>
-                    <button id="loans-tab" onclick="switchRecurringTab('loans')" class="flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300">
-                        💰 Loans
-                    </button>
-                </div>
-                
+            </div>
+        </div>
+        
+        <!-- RECURRING / LOANS VIEW -->
+        <div id="recurring-view" class="hidden">
+            <div class="bg-white/90 backdrop-blur-md shadow-2xl p-5 pb-24">
                 <!-- Recurring Tab Content -->
                 <div id="recurring-tab-content">
                     <p class="text-sm text-gray-600 mb-4 bg-orange-50 p-3 rounded-lg border border-orange-200">
@@ -673,36 +643,28 @@
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- CARDS VIEW -->
-        <div id="cards-view" class="hidden">
-            <div class="bg-white/90 backdrop-blur-md shadow-2xl p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-bold bg-gradient-to-r from-green-700 to-green-500 bg-clip-text text-transparent flex items-center">
-                        <svg class="w-6 h-6 mr-2 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
-                            <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/>
-                        </svg>
-                        Cards Manager
-                    </h2>
-                    <button onclick="openCardModal()" class="px-3 py-2 bg-gradient-to-r from-green-700 to-green-500 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            
+            <!-- Fixed Bottom Bar -->
+            <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg p-3" style="z-index: 9999;">
+                <div class="flex gap-2 items-center" style="max-width: 100%; overflow: hidden;">
+                    <button id="recurring-tab" onclick="switchRecurringTab('recurring')" class="flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md" style="flex-shrink: 0;">
+                        🔁 Recurring
+                    </button>
+                    <button id="loans-tab" onclick="switchRecurringTab('loans')" class="flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gray-200 text-gray-700 hover:bg-gray-300" style="flex-shrink: 0;">
+                        💰 Loans
+                    </button>
+                    <button id="recurring-add-btn" onclick="openRecurringExpenseModal()" class="py-2 px-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:shadow-lg transition-all font-medium text-sm flex items-center" style="flex-shrink: 0;">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                         </svg>
                     </button>
                 </div>
-                
-                <!-- Card Type Tabs -->
-                <div class="flex gap-2 mb-4">
-                    <button id="credit-tab" onclick="Cards.switchTab('credit')" class="flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-green-700 to-green-500 text-white shadow-md">
-                        💳 Credit Cards
-                    </button>
-                    <button id="debit-tab" onclick="Cards.switchTab('debit')" class="flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300">
-                        💸 Debit Cards
-                    </button>
-                </div>
-                
+            </div>
+        </div>
+        
+        <!-- CARDS VIEW -->
+        <div id="cards-view" class="hidden">
+            <div class="bg-white/90 backdrop-blur-md shadow-2xl p-5 pb-24">
                 <!-- Search Box -->
                 <div class="mb-4">
                     <input type="text" id="cards-search" placeholder="🔍 Search cards..." class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" oninput="searchCards()">
@@ -713,39 +675,31 @@
                     <!-- Cards will be listed here -->
                 </div>
             </div>
-        </div>
-        
-        <!-- INVESTMENTS VIEW -->
-        <div id="investments-view" class="hidden">
-            <div class="bg-white/90 backdrop-blur-md shadow-2xl p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent flex items-center">
-                        <svg class="w-6 h-6 mr-2 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/>
-                        </svg>
-                        Investments Portfolio
-                    </h2>
-                    <button onclick="openInvestmentModal()" class="px-3 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            
+            <!-- Fixed Bottom Bar -->
+            <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg p-3" style="z-index: 9999;">
+                <div class="flex gap-2 items-center" style="max-width: 100%; overflow: hidden;">
+                    <button id="credit-tab" onclick="Cards.switchTab('credit')" class="flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gradient-to-r from-slate-600 to-blue-600 text-white shadow-md" style="flex-shrink: 0;">
+                        💳 Credit
+                    </button>
+                    <button id="debit-tab" onclick="Cards.switchTab('debit')" class="flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gray-200 text-gray-700 hover:bg-gray-300" style="flex-shrink: 0;">
+                        💸 Debit
+                    </button>
+                    <button onclick="openCardModal()" class="py-2 px-3 bg-gradient-to-r from-slate-600 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all font-medium text-sm flex items-center" style="flex-shrink: 0;">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                         </svg>
                     </button>
                 </div>
-                
-                <!-- Filter and Search -->
-                <div class="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <select id="investments-filter" class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" onchange="filterInvestments()">
-                        <option value="all">All Types</option>
-                        <option value="stock">Stocks Only</option>
-                        <option value="mutual_fund">Mutual Funds</option>
-                        <option value="fd">Fixed Deposits</option>
-                        <option value="epf">EPF (Provident Fund)</option>
-                        <option value="gold">Gold</option>
-                        <option value="real_estate">Real Estate</option>
-                        <option value="crypto">Cryptocurrency</option>
-                        <option value="general">General</option>
-                    </select>
-                    <input type="text" id="investments-search" placeholder="🔍 Search investments..." class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" oninput="searchInvestments()">
+            </div>
+        </div>
+        
+        <!-- INVESTMENTS VIEW -->
+        <div id="investments-view" class="hidden">
+            <div class="bg-white/90 backdrop-blur-md shadow-2xl p-5 pb-24">
+                <!-- Search Box -->
+                <div class="mb-4">
+                    <input type="text" id="investments-search" placeholder="🔍 Search investments..." class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" oninput="searchInvestments()">
                 </div>
                 
                 <!-- Investments List -->
@@ -753,34 +707,51 @@
                     <!-- Investments will be listed here -->
                 </div>
             </div>
-        </div>
-        
-        <!-- CREDENTIALS VIEW -->
-        <div id="credentials-view" class="hidden">
-            <div class="bg-white/90 backdrop-blur-md shadow-2xl p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent flex items-center">
-                        <svg class="w-6 h-6 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
-                        </svg>
-                        Secure Credentials
-                    </h2>
-                    <button onclick="openCredentialModal()" class="px-3 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            
+            <!-- Fixed Bottom Bar -->
+            <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg p-3" style="z-index: 9999;">
+                <div class="flex gap-2 items-center" style="max-width: 100%; overflow: hidden;">
+                    <select id="investments-filter" class="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm font-medium" onchange="filterInvestments()" style="flex-shrink: 0;">
+                        <option value="all">📊 All Types</option>
+                        <option value="stock">📈 Stocks</option>
+                        <option value="mutual_fund">💼 Mutual Funds</option>
+                        <option value="fd">🏦 Fixed Deposits</option>
+                        <option value="epf">💰 EPF</option>
+                        <option value="gold">🪙 Gold</option>
+                        <option value="real_estate">🏠 Real Estate</option>
+                        <option value="crypto">₿ Crypto</option>
+                        <option value="general">📁 General</option>
+                    </select>
+                    <button onclick="openInvestmentModal()" class="py-2 px-3 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all font-medium text-sm flex items-center" style="flex-shrink: 0;">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                         </svg>
                     </button>
                 </div>
-                
-                <!-- Search Box -->
-                <div class="mb-4">
-                    <input type="text" id="credentials-search" placeholder="🔍 Search credentials..." class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="searchCredentials()">
-                    <p id="credentials-count" class="text-xs text-gray-500 mt-2">0 credentials</p>
-                </div>
+            </div>
+        </div>
+        
+        <!-- CREDENTIALS VIEW -->
+        <div id="credentials-view" class="hidden">
+            <div class="bg-white/90 backdrop-blur-md shadow-2xl p-5 pb-24">
+                <!-- Credentials Count -->
+                <p id="credentials-count" class="text-xs text-gray-500 mb-4">0 credentials</p>
                 
                 <!-- Credentials List -->
                 <div id="credentials-list" class="space-y-3">
                     <!-- Credentials will be listed here -->
+                </div>
+            </div>
+            
+            <!-- Fixed Bottom Bar -->
+            <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg p-3" style="z-index: 9999;">
+                <div class="flex gap-2 items-center" style="max-width: 100%; overflow: hidden;">
+                    <input type="text" id="credentials-search" placeholder="🔍 Search credentials..." class="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" oninput="searchCredentials()" style="flex-shrink: 0;">
+                    <button onclick="openCredentialModal()" class="py-2 px-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:shadow-lg transition-all font-medium text-sm flex items-center" style="flex-shrink: 0;">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
         </div>
@@ -2687,15 +2658,18 @@
             
             if (tab === 'expenses') {
                 // Show expenses tab
-                expensesTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md';
-                incomeTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300';
+                expensesTab.className = 'flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md';
+                expensesTab.style.cssText = 'flex-shrink: 0;';
+                incomeTab.className = 'flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gray-200 text-gray-700 hover:bg-gray-300';
+                incomeTab.style.cssText = 'flex-shrink: 0;';
                 expensesContent.classList.remove('hidden');
                 incomeContent.classList.add('hidden');
                 
                 // Always show + button for expenses
                 addButton.onclick = openExpenseModal;
-                addButton.className = 'px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center';
-                addButton.innerHTML = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>';
+                addButton.className = 'py-2 px-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all font-medium text-sm flex items-center';
+                addButton.style.cssText = 'flex-shrink: 0;';
+                addButton.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>';
                 addButton.classList.remove('hidden');
                 
                 // Render expenses if not already rendered
@@ -2704,8 +2678,10 @@
                 }
             } else if (tab === 'income') {
                 // Show income tab
-                expensesTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300';
-                incomeTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md';
+                expensesTab.className = 'flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gray-200 text-gray-700 hover:bg-gray-300';
+                expensesTab.style.cssText = 'flex-shrink: 0;';
+                incomeTab.className = 'flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md';
+                incomeTab.style.cssText = 'flex-shrink: 0;';
                 expensesContent.classList.add('hidden');
                 incomeContent.classList.remove('hidden');
                 
@@ -2714,14 +2690,19 @@
                 const hasIncome = incomeData.ctc && incomeData.ctc > 0;
                 
                 if (hasIncome) {
-                    // Income exists - hide + button completely
-                    addButton.classList.add('hidden');
+                    // Income exists - disable + button but keep it visible for layout
+                    addButton.disabled = true;
+                    addButton.onclick = null;
+                    addButton.className = 'py-2 px-3 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed font-medium text-sm flex items-center';
+                    addButton.style.cssText = 'flex-shrink: 0; opacity: 0.5;';
+                    addButton.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>';
                 } else {
-                    // No income - show + button
+                    // No income - enable + button
+                    addButton.disabled = false;
                     addButton.onclick = function() { Income.openForm(); };
-                    addButton.className = 'px-3 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold flex items-center';
-                    addButton.innerHTML = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>';
-                    addButton.classList.remove('hidden');
+                    addButton.className = 'py-2 px-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all font-medium text-sm flex items-center';
+                    addButton.style.cssText = 'flex-shrink: 0;';
+                    addButton.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>';
                 }
                 
                 // Render income if not already rendered
@@ -3148,14 +3129,18 @@
             const addBtn = document.getElementById('recurring-add-btn');
             
             if (tab === 'recurring') {
-                recurringTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md';
-                loansTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300';
+                recurringTab.className = 'flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md';
+                recurringTab.style.cssText = 'flex-shrink: 0;';
+                loansTab.className = 'flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gray-200 text-gray-700 hover:bg-gray-300';
+                loansTab.style.cssText = 'flex-shrink: 0;';
                 recurringContent.classList.remove('hidden');
                 loansContent.classList.add('hidden');
                 addBtn.onclick = () => openRecurringExpenseModal();
             } else {
-                recurringTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300';
-                loansTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md';
+                recurringTab.className = 'flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gray-200 text-gray-700 hover:bg-gray-300';
+                recurringTab.style.cssText = 'flex-shrink: 0;';
+                loansTab.className = 'flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md';
+                loansTab.style.cssText = 'flex-shrink: 0;';
                 recurringContent.classList.add('hidden');
                 loansContent.classList.remove('hidden');
                 addBtn.onclick = () => openLoanModal();

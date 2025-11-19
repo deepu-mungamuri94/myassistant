@@ -529,11 +529,15 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         const debitTab = document.getElementById('debit-tab');
         
         if (tab === 'credit') {
-            creditTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-green-700 to-green-500 text-white shadow-md';
-            debitTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300';
+            creditTab.className = 'flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gradient-to-r from-slate-600 to-blue-600 text-white shadow-md';
+            creditTab.style.cssText = 'flex-shrink: 0;';
+            debitTab.className = 'flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gray-200 text-gray-700 hover:bg-gray-300';
+            debitTab.style.cssText = 'flex-shrink: 0;';
         } else {
-            creditTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300';
-            debitTab.className = 'flex-1 py-2 px-4 rounded-lg transition-all font-semibold bg-gradient-to-r from-green-700 to-green-500 text-white shadow-md';
+            creditTab.className = 'flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gray-200 text-gray-700 hover:bg-gray-300';
+            creditTab.style.cssText = 'flex-shrink: 0;';
+            debitTab.className = 'flex-1 py-2 px-3 rounded-lg transition-all font-medium text-sm bg-gradient-to-r from-slate-600 to-blue-600 text-white shadow-md';
+            debitTab.style.cssText = 'flex-shrink: 0;';
         }
         
         this.render();
