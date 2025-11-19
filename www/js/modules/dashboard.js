@@ -664,56 +664,88 @@ const Dashboard = {
     },
     
     /**
-     * Get total EMIs (loans + credit cards) per month
+     * Get total EMIs for current month (loans + credit cards)
      */
     getTotalEmis() {
         const loans = window.DB.loans || [];
         const cards = window.DB.cards || [];
+        const today = new Date();
         let total = 0;
         
         console.log('=== EMIs DEBUG ===');
         console.log('Total loans:', loans.length);
         console.log('Total cards:', cards.length);
         
-        // Add loan EMIs
+        // Add active loan EMIs
         loans.forEach((loan, i) => {
-            console.log(`Loan ${i+1}: ${loan.reason || loan.type} - Status: ${loan.status}`);
-            if (loan.status === 'active') {
-                const remaining = loan.tenure - (loan.paidEmis || 0);
-                console.log(`  Tenure: ${loan.tenure}, Paid: ${loan.paidEmis || 0}, Remaining: ${remaining}`);
-                console.log(`  EMI: ₹${loan.emi}`);
-                if (remaining > 0) {
-                    total += loan.emi;
-                    console.log(`  ✓ Added to total`);
+            console.log(`Loan ${i+1}: ${loan.bankName || 'Unknown'} - ${loan.reason || loan.loanType || 'Loan'}`);
+            
+            // Check if loan has started
+            const firstDate = new Date(loan.firstEmiDate);
+            if (firstDate > today) {
+                console.log(`  ✗ Not started yet (starts: ${loan.firstEmiDate})`);
+                return;
+            }
+            
+            // Calculate remaining EMIs using the proper method
+            if (window.Loans) {
+                const remaining = window.Loans.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
+                console.log(`  EMIs Remaining: ${remaining.emisRemaining} / ${loan.tenure}`);
+                console.log(`  Monthly EMI: ₹${loan.emi || 'N/A'}`);
+                
+                if (remaining.emisRemaining > 0 && loan.emi) {
+                    total += parseFloat(loan.emi);
+                    console.log(`  ✓ Added ₹${loan.emi} to total`);
                 } else {
-                    console.log(`  ✗ Not added (no remaining EMIs)`);
+                    console.log(`  ✗ Loan completed or no EMI amount`);
                 }
+            } else {
+                console.log(`  ✗ Loans module not available`);
             }
         });
         
-        // Add card EMIs
+        // Add active credit card EMIs
         cards.forEach((card, i) => {
-            console.log(`Card ${i+1}: ${card.name || card.nickname}`);
+            // Skip debit cards
+            if (card.cardType === 'debit') {
+                return;
+            }
+            
+            console.log(`Card ${i+1}: ${card.nickname || card.name}`);
             if (card.emis && card.emis.length > 0) {
-                console.log(`  Total EMIs on card: ${card.emis.length}`);
+                console.log(`  Total EMI entries: ${card.emis.length}`);
                 card.emis.forEach((emi, j) => {
-                    console.log(`    EMI ${j+1}: ${emi.reason} - Status: ${emi.status}`);
-                    if (emi.status === 'active') {
-                        const remaining = emi.totalEmis - emi.paidEmis;
-                        console.log(`      Total: ${emi.totalEmis}, Paid: ${emi.paidEmis}, Remaining: ${remaining}`);
-                        console.log(`      EMI Amount: ₹${emi.emiAmount}`);
-                        if (remaining > 0) {
-                            total += emi.emiAmount;
-                            console.log(`      ✓ Added to total`);
-                        } else {
-                            console.log(`      ✗ Not added (no remaining EMIs)`);
+                    console.log(`    EMI ${j+1}: ${emi.reason}`);
+                    
+                    // Check if EMI has started
+                    if (emi.firstEmiDate) {
+                        const emiFirstDate = new Date(emi.firstEmiDate);
+                        if (emiFirstDate > today) {
+                            console.log(`      ✗ Not started yet`);
+                            return;
                         }
+                    }
+                    
+                    // Check if completed (using correct field names)
+                    const paidCount = emi.paidCount || 0;
+                    const totalCount = emi.totalCount || emi.totalEmis || 0;
+                    const remaining = totalCount - paidCount;
+                    
+                    console.log(`      Paid: ${paidCount} / Total: ${totalCount}, Remaining: ${remaining}`);
+                    console.log(`      EMI Amount: ₹${emi.emiAmount || 'N/A'}`);
+                    console.log(`      Status: ${emi.status || 'active'}, Completed: ${emi.completed}`);
+                    
+                    if (!emi.completed && remaining > 0 && emi.emiAmount) {
+                        total += parseFloat(emi.emiAmount);
+                        console.log(`      ✓ Added ₹${emi.emiAmount} to total`);
+                    } else {
+                        console.log(`      ✗ Skipped (completed: ${emi.completed}, remaining: ${remaining})`);
                     }
                 });
             }
         });
         
-        console.log('Total EMIs:', total);
+        console.log('Total EMIs for current month: ₹', total);
         return total;
     },
     
