@@ -435,25 +435,57 @@ const Navigation = {
     },
     
     /**
-     * Reset app (must export data first, then clear everything)
+     * Show error modal
      */
-    async resetApp() {
+    showErrorModal(title, message) {
+        const modal = document.getElementById('error-modal');
+        const titleEl = document.getElementById('error-modal-title');
+        const messageEl = document.getElementById('error-modal-message');
+        
+        if (modal && titleEl && messageEl) {
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            modal.classList.remove('hidden');
+        }
+    },
+    
+    /**
+     * Close error modal
+     */
+    closeErrorModal() {
+        const modal = document.getElementById('error-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    },
+    
+    /**
+     * Show backup confirmation modal (step 1)
+     */
+    showBackupConfirm() {
+        const modal = document.getElementById('backup-confirm-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    },
+    
+    /**
+     * Cancel backup confirmation
+     */
+    cancelBackupConfirm() {
+        const modal = document.getElementById('backup-confirm-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    },
+    
+    /**
+     * Proceed with export (step 1 confirmed)
+     */
+    async proceedWithExport() {
         try {
-            this.closeResetModal();
-            
-            // Show export confirmation
-            const userWantsExport = confirm(
-                '📤 MANDATORY BACKUP\n\n' +
-                'You MUST export your data as backup before reset.\n\n' +
-                'Click OK to export now, or Cancel to abort reset.'
-            );
-            
-            if (!userWantsExport) {
-                if (window.Toast) {
-                    window.Toast.show('❌ Reset cancelled', 'info');
-                }
-                return;
-            }
+            // Close backup confirm modal
+            this.cancelBackupConfirm();
             
             if (window.Loading) {
                 window.Loading.show('Exporting backup...');
@@ -462,38 +494,55 @@ const Navigation = {
             // Export data - this will fail if master password not set
             const exportSuccess = await window.Storage.exportData();
             
+            if (window.Loading) {
+                window.Loading.hide();
+            }
+            
             if (!exportSuccess) {
-                if (window.Loading) {
-                    window.Loading.hide();
-                }
-                if (window.Toast) {
-                    window.Toast.show(
-                        '❌ Export failed!\n\n' +
-                        'Cannot reset without backup.\n' +
-                        'Please set master password in Settings first.',
-                        'error',
-                        5000
-                    );
-                }
+                this.showErrorModal(
+                    '❌ Export Failed!',
+                    'Cannot reset without backup.\n\n' +
+                    'Please set master password in Settings first.\n\n' +
+                    'Go to Settings → Master Password'
+                );
                 return;
             }
             
-            // Confirm user has saved the export file
-            const userHasSaved = confirm(
-                '✅ Export completed!\n\n' +
-                'Have you saved the backup file?\n\n' +
-                'Click OK to proceed with reset, or Cancel to abort.'
+            // Show export success confirmation modal (step 2)
+            const successModal = document.getElementById('export-success-modal');
+            if (successModal) {
+                successModal.classList.remove('hidden');
+            }
+            
+        } catch (error) {
+            console.error('Export error:', error);
+            if (window.Loading) {
+                window.Loading.hide();
+            }
+            this.showErrorModal(
+                '❌ Export Failed!',
+                `Error: ${error.message}\n\nPlease try again.`
             );
-            
-            if (!userHasSaved) {
-                if (window.Loading) {
-                    window.Loading.hide();
-                }
-                if (window.Toast) {
-                    window.Toast.show('❌ Reset cancelled - backup not confirmed', 'info');
-                }
-                return;
-            }
+        }
+    },
+    
+    /**
+     * Cancel export success confirmation
+     */
+    cancelExportSuccess() {
+        const modal = document.getElementById('export-success-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    },
+    
+    /**
+     * Confirm backup saved (step 2 confirmed)
+     */
+    async confirmBackupSaved() {
+        try {
+            // Close export success modal
+            this.cancelExportSuccess();
             
             if (window.Loading) {
                 window.Loading.show('Resetting app data...');
@@ -573,10 +622,22 @@ const Navigation = {
             if (window.Loading) {
                 window.Loading.hide();
             }
-            if (window.Toast) {
-                window.Toast.show('Reset failed: ' + error.message, 'error');
-            }
+            this.showErrorModal(
+                '❌ Reset Failed!',
+                `Error: ${error.message}\n\nPlease try again or contact support.`
+            );
         }
+    },
+    
+    /**
+     * Reset app (initiates the mandatory backup flow)
+     */
+    async resetApp() {
+        // Close the reset warning modal
+        this.closeResetModal();
+        
+        // Show mandatory backup confirmation modal (step 1)
+        this.showBackupConfirm();
     }
 };
 
