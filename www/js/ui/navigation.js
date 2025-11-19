@@ -503,8 +503,20 @@ const Navigation = {
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             // COMPLETELY FLUSH THE ENTIRE DB
-            // Reset to initial empty state with all fields
-            window.DB = {
+            // Clear localStorage completely first
+            localStorage.removeItem(window.Storage.STORAGE_KEY);
+            
+            // Get all keys from current DB to ensure complete cleanup
+            const allKeys = Object.keys(window.DB);
+            
+            // Delete all properties from window.DB
+            allKeys.forEach(key => {
+                delete window.DB[key];
+            });
+            
+            // Re-initialize DB to initial empty state
+            // This ensures ANY new fields added in the future will be reset
+            Object.assign(window.DB, {
                 credentials: [],
                 cards: [],
                 expenses: [],
@@ -533,12 +545,14 @@ const Navigation = {
                     isSetup: false,
                     masterPassword: ''
                 }
-            };
+            });
             
             window.Security.isUnlocked = false;
             
             // Save completely empty state
             window.Storage.save();
+            
+            console.log('✅ Complete DB flush - all fields reset to initial state');
             
             if (window.Loading) {
                 window.Loading.hide();
