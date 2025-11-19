@@ -34,21 +34,12 @@ const Dashboard = {
                 <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-4 text-white shadow-lg">
                     <div class="text-xs opacity-90 mb-1">Recurring Expenses</div>
                     <div class="text-3xl font-bold mb-1">${recurringPercent}%</div>
-                    <div class="text-xs opacity-80">of min. net pay</div>
                     <div class="text-xs mt-2 opacity-90">₹${this.formatAmount(recurringExpenses)} / ₹${this.formatAmount(minNetPay)}</div>
                 </div>
                 <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-4 text-white shadow-lg">
                     <div class="text-xs opacity-90 mb-1">EMIs</div>
                     <div class="text-3xl font-bold mb-1">${emisPercent}%</div>
-                    <div class="text-xs opacity-80">of min. net pay</div>
                     <div class="text-xs mt-2 opacity-90">₹${this.formatAmount(totalEmis)} / ₹${this.formatAmount(minNetPay)}</div>
-                </div>
-            </div>
-            
-            <!-- Income vs Expense Chart -->
-            <div class="mb-6">
-                <div style="height: 400px;">
-                    <canvas id="income-expense-chart"></canvas>
                 </div>
             </div>
             
@@ -64,6 +55,13 @@ const Dashboard = {
                     <div style="width: 70%; max-width: 500px;">
                         <canvas id="category-chart"></canvas>
                     </div>
+                </div>
+            </div>
+            
+            <!-- Income vs Expense Chart -->
+            <div class="mb-6">
+                <div style="height: 400px;">
+                    <canvas id="income-expense-chart"></canvas>
                 </div>
             </div>
             
@@ -584,11 +582,18 @@ const Dashboard = {
     },
     
     /**
-     * Get total recurring expenses per month
+     * Get total recurring expenses per month (excluding loans and credit card EMIs)
      */
     getTotalRecurringExpenses() {
         const recurringExpenses = window.DB.recurringExpenses || [];
-        const total = recurringExpenses.reduce((sum, rec) => sum + rec.amount, 0);
+        // Filter out loan EMIs and credit card EMIs from recurring expenses
+        const filtered = recurringExpenses.filter(rec => {
+            const category = (rec.category || '').toLowerCase();
+            return !category.includes('loan') && 
+                   !category.includes('emi') && 
+                   !category.includes('credit card');
+        });
+        const total = filtered.reduce((sum, rec) => sum + rec.amount, 0);
         return total;
     },
     
