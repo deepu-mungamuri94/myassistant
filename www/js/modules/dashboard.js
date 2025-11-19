@@ -694,17 +694,27 @@ const Dashboard = {
                 return;
             }
             
-            // Calculate remaining EMIs using the proper method
+            // Calculate remaining EMIs and EMI amount
             if (window.Loans) {
                 const remaining = window.Loans.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
                 console.log(`  EMIs Remaining: ${remaining.emisRemaining} / ${loan.tenure}`);
-                console.log(`  Monthly EMI: ₹${loan.emi || 'N/A'}`);
                 
-                if (remaining.emisRemaining > 0 && loan.emi) {
-                    total += parseFloat(loan.emi);
-                    console.log(`  ✓ Added ₹${loan.emi} to total (EMI is due this month)`);
+                // Calculate EMI amount if not stored
+                let emiAmount = loan.emi;
+                if (!emiAmount && loan.amount && loan.interestRate && loan.tenure) {
+                    emiAmount = window.Loans.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
+                    console.log(`  Monthly EMI (calculated): ₹${emiAmount}`);
                 } else {
-                    console.log(`  ✗ Loan completed or no EMI amount`);
+                    console.log(`  Monthly EMI (stored): ₹${emiAmount || 'N/A'}`);
+                }
+                
+                if (remaining.emisRemaining > 0 && emiAmount) {
+                    total += parseFloat(emiAmount);
+                    console.log(`  ✓ Added ₹${emiAmount} to total (EMI is due this month)`);
+                } else if (remaining.emisRemaining > 0) {
+                    console.log(`  ✗ EMI amount not available (need amount, rate, tenure)`);
+                } else {
+                    console.log(`  ✗ Loan completed`);
                 }
             } else {
                 console.log(`  ✗ Loans module not available`);
