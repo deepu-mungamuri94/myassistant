@@ -669,23 +669,14 @@ Return tickers for ALL stocks in a JSON array.`;
         };
         
         const renderMonthlyInv = (inv) => `
-            <div class="bg-white p-3 border-b border-gray-200 hover:bg-gray-50 transition-all">
-                <div class="flex justify-between items-start mb-2">
-                    <div class="flex-1">
+            <div class="bg-white p-3 border-b border-orange-100 hover:bg-orange-50 transition-all">
+                <!-- Top line: Name with Type badge and Edit/Delete buttons -->
+                <div class="flex justify-between items-center mb-2">
+                    <div class="flex items-center gap-2">
                         <h4 class="font-semibold text-gray-800 text-sm">${inv.name}</h4>
-                        <div class="flex gap-2 mt-1">
-                            <span class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">${typeLabels[inv.type] || 'Other'}</span>
-                            <span class="text-xs px-2 py-0.5 rounded ${inv.term === 'long' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">${inv.term === 'long' ? 'Long' : 'Short'}</span>
-                        </div>
+                        <span class="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700">${typeLabels[inv.type] || 'Other'}</span>
                     </div>
-                    <div class="text-right">
-                        <p class="text-base font-bold text-gray-900">${Utils.formatCurrency(inv.amount)}</p>
-                        ${inv.quantity ? `<p class="text-xs text-gray-600">Qty: ${inv.quantity}</p>` : ''}
-                    </div>
-                </div>
-                <div class="flex justify-between items-center text-xs text-gray-500">
-                    <span>📅 ${new Date(inv.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                    <div class="flex gap-2">
+                    <div class="flex gap-1">
                         <button onclick='Investments.editMonthlyInvestment("${inv.id}")' class="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-xs font-medium transition-all" title="Edit">
                             <svg class="w-3 h-3 inline" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.38-2.828-2.829z"/>
@@ -698,7 +689,21 @@ Return tickers for ALL stocks in a JSON array.`;
                         </button>
                     </div>
                 </div>
-                ${inv.notes ? `<p class="text-xs text-gray-600 mt-2">${inv.notes}</p>` : ''}
+                
+                <!-- Middle line: Quantity/Price on left, Amount on right -->
+                <div class="flex justify-between items-center mb-2">
+                    <div class="text-xs text-gray-600">
+                        ${inv.quantity ? `Qty: ${inv.quantity}` : ''}
+                        ${inv.quantity && inv.inputStockPrice ? ` | Price: ${inv.inputCurrency === 'USD' ? '$' : '₹'}${inv.inputStockPrice}` : ''}
+                    </div>
+                    <p class="text-base font-bold text-gray-900">${Utils.formatCurrency(inv.amount)}</p>
+                </div>
+                
+                <!-- Bottom line: Description on left, Date on right -->
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-gray-600">${inv.notes || ''}</span>
+                    <span class="text-gray-500">📅 ${new Date(inv.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                </div>
             </div>
         `;
         
@@ -715,25 +720,25 @@ Return tickers for ALL stocks in a JSON array.`;
             
             return `
                 <details class="investment-month-group mb-3" style="margin-bottom: 0.75rem;" ${isCurrentMonthFilter ? 'open' : ''}>
-                    <summary class="cursor-pointer p-4 bg-gray-400 border border-black hover:bg-gray-500 transition-all flex items-center justify-between">
+                    <summary class="cursor-pointer p-4 bg-gradient-to-r from-orange-100 to-yellow-100 border border-orange-300 hover:from-orange-200 hover:to-yellow-200 transition-all flex items-center justify-between">
                         <div class="flex items-center">
-                            <svg class="w-4 h-4 details-arrow text-gray-900 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <svg class="w-4 h-4 details-arrow text-orange-800 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
                             </svg>
-                            <span class="font-semibold text-gray-900">${monthData.displayName}</span>
+                            <span class="font-semibold text-orange-900">${monthData.displayName}</span>
                         </div>
-                        <span class="text-base font-bold text-gray-900">${Utils.formatCurrency(monthData.total)}</span>
+                        <span class="text-base font-bold text-orange-900">${Utils.formatCurrency(monthData.total)}</span>
                     </summary>
                     
-                    <div class="bg-white border-x border-b border-black overflow-hidden">
+                    <div class="bg-white border-x border-b border-orange-300 overflow-hidden">
                         ${(hasShortTerm || hasLongTerm) ? `
                             <!-- Tabs -->
-                            <div class="border-b border-gray-300 bg-gray-50">
+                            <div class="border-b border-orange-200 bg-orange-50">
                                 <div class="flex justify-evenly">
                                     ${hasShortTerm ? `
                                         <button onclick="Investments.switchMonthlyTab('short-${monthKey}')" 
                                                 id="monthly-tab-short-${monthKey}"
-                                                class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-gray-700 text-gray-800">
+                                                class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-orange-500 text-orange-800">
                                             <div class="flex items-center justify-center">
                                                 <span>Short Term (${monthData.shortTerm.length})</span>
                                             </div>
@@ -743,7 +748,7 @@ Return tickers for ALL stocks in a JSON array.`;
                                     ${hasLongTerm ? `
                                         <button onclick="Investments.switchMonthlyTab('long-${monthKey}')" 
                                                 id="monthly-tab-long-${monthKey}"
-                                                class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-600 hover:text-gray-800">
+                                                class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-orange-600 hover:text-orange-800">
                                             <div class="flex items-center justify-center">
                                                 <span>Long Term (${monthData.longTerm.length})</span>
                                             </div>
@@ -791,19 +796,19 @@ Return tickers for ALL stocks in a JSON array.`;
         
         if (tabType === 'short') {
             if (shortBtn) {
-                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-gray-700 text-gray-800';
+                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-orange-500 text-orange-800';
             }
             if (longBtn) {
-                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-600 hover:text-gray-800';
+                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-orange-600 hover:text-orange-800';
             }
             if (shortContent) shortContent.classList.remove('hidden');
             if (longContent) longContent.classList.add('hidden');
         } else {
             if (shortBtn) {
-                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-600 hover:text-gray-800';
+                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-orange-600 hover:text-orange-800';
             }
             if (longBtn) {
-                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-gray-700 text-gray-800';
+                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-orange-500 text-orange-800';
             }
             if (shortContent) shortContent.classList.add('hidden');
             if (longContent) longContent.classList.remove('hidden');
