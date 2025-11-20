@@ -3810,21 +3810,15 @@
                     actualExisting.amount += amount;
                 }
             } else if (type === 'stock' && quantity) {
-                // Add shares
+                // Add shares and amounts
                 console.log('➕ Adding shares:', quantity, 'to existing:', actualExisting.quantity);
                 console.log('💵 Adding amount:', amount, 'to existing:', actualExisting.amount);
                 
                 actualExisting.quantity = (actualExisting.quantity || 0) + quantity;
-                // Add amounts together (don't recalculate with new price)
                 actualExisting.amount += amount;
                 
-                // Calculate weighted average price for display
-                if (actualExisting.quantity > 0) {
-                    actualExisting.inputStockPrice = actualExisting.amount / actualExisting.quantity;
-                    console.log('📊 New average price:', actualExisting.inputStockPrice);
-                }
-                
                 console.log('✅ After adding - Quantity:', actualExisting.quantity, ', Amount:', actualExisting.amount);
+                console.log('ℹ️ Use "Refresh Stocks" to update prices');
             } else {
                 // Add amount
                 actualExisting.amount += amount;
