@@ -3725,22 +3725,10 @@
             existingInfo += `<p class="text-gray-700 font-medium">What would you like to do?</p>`;
             message.innerHTML = existingInfo;
             
-            // Setup button handlers
-            const addBtn = document.getElementById('add-to-existing-btn');
-            const overrideBtn = document.getElementById('override-existing-btn');
-            const cancelBtn = document.getElementById('add-override-cancel-btn');
-            
-            // Remove old listeners
-            const newAddBtn = addBtn.cloneNode(true);
-            const newOverrideBtn = overrideBtn.cloneNode(true);
-            const newCancelBtn = cancelBtn.cloneNode(true);
-            addBtn.parentNode.replaceChild(newAddBtn, addBtn);
-            overrideBtn.parentNode.replaceChild(newOverrideBtn, overrideBtn);
-            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-            
-            newAddBtn.addEventListener('click', handleAddToExisting);
-            newOverrideBtn.addEventListener('click', handleOverrideExisting);
-            newCancelBtn.addEventListener('click', closeAddOverrideChoiceModal);
+            // Setup button handlers using onclick for reliability
+            document.getElementById('add-to-existing-btn').onclick = handleAddToExisting;
+            document.getElementById('override-existing-btn').onclick = handleOverrideExisting;
+            document.getElementById('add-override-cancel-btn').onclick = closeAddOverrideChoiceModal;
             
             modal.classList.remove('hidden');
         }
@@ -3829,29 +3817,12 @@
             
             message.innerHTML = confirmMsg;
             
+            // Setup button handlers using onclick
+            document.getElementById('override-proceed-btn').onclick = processOverride;
+            document.getElementById('override-cancel-btn').onclick = closeOverrideConfirmModal;
+            
             closeAddOverrideChoiceModal();
             modal.classList.remove('hidden');
-            
-            // Setup button handlers after modal is visible
-            setTimeout(() => {
-                const proceedBtn = document.getElementById('override-proceed-btn');
-                const cancelBtn = document.getElementById('override-cancel-btn');
-                
-                if (!proceedBtn || !cancelBtn) {
-                    console.error('Override buttons not found');
-                    return;
-                }
-                
-                // Remove old listeners by cloning
-                const newProceedBtn = proceedBtn.cloneNode(true);
-                const newCancelBtn = cancelBtn.cloneNode(true);
-                proceedBtn.parentNode.replaceChild(newProceedBtn, proceedBtn);
-                cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-                
-                // Add new listeners
-                newProceedBtn.addEventListener('click', processOverride);
-                newCancelBtn.addEventListener('click', closeOverrideConfirmModal);
-            }, 50);
         }
         
         function closeOverrideConfirmModal() {
