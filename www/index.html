@@ -3802,13 +3802,19 @@
         
         function handleOverrideExisting() {
             console.log('🔵 handleOverrideExisting called');
+            console.log('🔍 pendingInvestmentData status:', pendingInvestmentData);
             
             if (!pendingInvestmentData) {
-                console.error('❌ No pending investment data');
+                console.error('❌ No pending investment data in handleOverrideExisting');
                 return;
             }
             
-            console.log('📦 Pending data:', pendingInvestmentData);
+            console.log('📦 Pending data:', JSON.stringify(pendingInvestmentData));
+            
+            // Store data on modal element to preserve it
+            const modal = document.getElementById('override-confirm-modal');
+            modal.dataset.pendingData = JSON.stringify(pendingInvestmentData);
+            console.log('💾 Stored data on modal element');
             
             const { existing, name, amount, term, type, quantity, notes, stockPrice, currency, usdToInrRate } = pendingInvestmentData;
             
@@ -3886,31 +3892,55 @@
         
         function processOverride() {
             console.log('🟢 processOverride called!');
+            console.log('🔍 pendingInvestmentData (global):', pendingInvestmentData);
             
-            if (!pendingInvestmentData) {
-                console.error('❌ No pending investment data in processOverride');
+            // Try to get data from modal element first
+            const modal = document.getElementById('override-confirm-modal');
+            let data = null;
+            
+            if (modal && modal.dataset.pendingData) {
+                console.log('📦 Found data on modal element');
+                data = JSON.parse(modal.dataset.pendingData);
+            } else if (pendingInvestmentData) {
+                console.log('📦 Using global pendingInvestmentData');
+                data = pendingInvestmentData;
+            } else {
+                console.error('❌ No pending investment data in processOverride - neither on modal nor global');
+                Toast.error('Error: No investment data found');
                 return;
             }
             
-            console.log('📦 Processing override with data:', pendingInvestmentData);
+            console.log('📦 Processing override with data:', data);
             
-            const { existing, name, amount, term, type, quantity, notes, stockPrice, currency, usdToInrRate } = pendingInvestmentData;
+            const { existing, name, amount, term, type, quantity, notes, stockPrice, currency, usdToInrRate } = data;
             
-            console.log('🔄 Existing investment before override:', JSON.parse(JSON.stringify(existing)));
+            // Find the actual investment in DB (in case existing object was serialized/deserialized)
+            let actualExisting = existing;
+            if (existing.id) {
+                const foundInDB = window.DB.investments.find(inv => inv.id === existing.id);
+                if (foundInDB) {
+                    console.log('✅ Found investment in DB by ID');
+                    actualExisting = foundInDB;
+                } else {
+                    console.warn('⚠️ Could not find investment by ID, using parsed object');
+                }
+            }
+            
+            console.log('🔄 Investment before override:', JSON.parse(JSON.stringify(actualExisting)));
             
             // Override existing values
-            existing.name = name;
-            existing.amount = amount;
-            existing.term = term;
-            existing.type = type;
-            existing.quantity = quantity;
-            existing.notes = notes;
-            existing.inputStockPrice = stockPrice;
-            existing.inputCurrency = currency;
-            existing.usdToInrRate = usdToInrRate;
-            existing.lastUpdated = Utils.getCurrentTimestamp();
+            actualExisting.name = name;
+            actualExisting.amount = amount;
+            actualExisting.term = term;
+            actualExisting.type = type;
+            actualExisting.quantity = quantity;
+            actualExisting.notes = notes;
+            actualExisting.inputStockPrice = stockPrice;
+            actualExisting.inputCurrency = currency;
+            actualExisting.usdToInrRate = usdToInrRate;
+            actualExisting.lastUpdated = Utils.getCurrentTimestamp();
             
-            console.log('🔄 Existing investment after override:', JSON.parse(JSON.stringify(existing)));
+            console.log('🔄 Investment after override:', JSON.parse(JSON.stringify(actualExisting)));
             
             console.log('💾 Saving to storage...');
             window.Storage.save();
@@ -3926,7 +3956,12 @@
             console.log('✅ Showing success toast');
             Toast.success('Investment overridden successfully!');
             
+            // Clean up
+            if (modal) {
+                delete modal.dataset.pendingData;
+            }
             pendingInvestmentData = null;
+            console.log('🧹 Cleaned up pending data');
             console.log('🏁 processOverride completed');
         }
         
