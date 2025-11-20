@@ -249,3 +249,33 @@ details > summary .details-arrow {
     margin-bottom: 0;
 }
 
+/* ========================================
+   PORTFOLIO AND MONTHLY INVESTMENT DETAILS
+   ======================================== */
+
+/* Portfolio details - rounded corners handling */
+.portfolio-details:not([open]) > .portfolio-summary {
+    border-radius: 0.5rem;
+}
+
+.portfolio-details[open] > .portfolio-summary {
+    border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.portfolio-details[open] > #investments-list > div {
+    border-radius: 0 0 0.5rem 0.5rem;
+}
+
+/* Monthly investment details - rounded corners handling */
+.investment-month-group:not([open]) > summary {
+    border-radius: 0.5rem;
+}
+
+.investment-month-group[open] > summary {
+    border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.investment-month-group[open] > div {
+    border-radius: 0 0 0.5rem 0.5rem;
+}
+

@@ -669,7 +669,7 @@ Return tickers for ALL stocks in a JSON array.`;
         };
         
         const renderMonthlyInv = (inv) => `
-            <div class="bg-white p-3 border-b border-green-100 hover:bg-green-50 transition-all">
+            <div class="bg-white p-3 border-b border-gray-200 hover:bg-gray-50 transition-all">
                 <div class="flex justify-between items-start mb-2">
                     <div class="flex-1">
                         <h4 class="font-semibold text-gray-800 text-sm">${inv.name}</h4>
@@ -715,25 +715,25 @@ Return tickers for ALL stocks in a JSON array.`;
             
             return `
                 <details class="investment-month-group mb-3" style="margin-bottom: 0.75rem;" ${isCurrentMonthFilter ? 'open' : ''}>
-                    <summary class="cursor-pointer p-4 bg-gradient-to-r from-green-600 to-emerald-600 rounded-t-lg border border-green-700 hover:from-green-700 hover:to-emerald-700 transition-all flex items-center justify-between">
+                    <summary class="cursor-pointer p-4 bg-gray-400 border border-black hover:bg-gray-500 transition-all flex items-center justify-between">
                         <div class="flex items-center">
-                            <svg class="w-4 h-4 details-arrow text-white mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <svg class="w-4 h-4 details-arrow text-gray-900 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
                             </svg>
-                            <span class="font-semibold text-white">${monthData.displayName}</span>
+                            <span class="font-semibold text-gray-900">${monthData.displayName}</span>
                         </div>
-                        <span class="text-base font-bold text-white">${Utils.formatCurrency(monthData.total)}</span>
+                        <span class="text-base font-bold text-gray-900">${Utils.formatCurrency(monthData.total)}</span>
                     </summary>
                     
-                    <div class="bg-white border-x border-b border-green-700 rounded-b-lg overflow-hidden">
+                    <div class="bg-white border-x border-b border-black overflow-hidden">
                         ${(hasShortTerm || hasLongTerm) ? `
                             <!-- Tabs -->
-                            <div class="border-b border-green-200">
+                            <div class="border-b border-gray-300 bg-gray-50">
                                 <div class="flex justify-evenly">
                                     ${hasShortTerm ? `
                                         <button onclick="Investments.switchMonthlyTab('short-${monthKey}')" 
                                                 id="monthly-tab-short-${monthKey}"
-                                                class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600">
+                                                class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-gray-700 text-gray-800">
                                             <div class="flex items-center justify-center">
                                                 <span>Short Term (${monthData.shortTerm.length})</span>
                                             </div>
@@ -743,7 +743,7 @@ Return tickers for ALL stocks in a JSON array.`;
                                     ${hasLongTerm ? `
                                         <button onclick="Investments.switchMonthlyTab('long-${monthKey}')" 
                                                 id="monthly-tab-long-${monthKey}"
-                                                class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                                                class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-600 hover:text-gray-800">
                                             <div class="flex items-center justify-center">
                                                 <span>Long Term (${monthData.longTerm.length})</span>
                                             </div>
@@ -791,19 +791,19 @@ Return tickers for ALL stocks in a JSON array.`;
         
         if (tabType === 'short') {
             if (shortBtn) {
-                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600';
+                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-gray-700 text-gray-800';
             }
             if (longBtn) {
-                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-600 hover:text-gray-800';
             }
             if (shortContent) shortContent.classList.remove('hidden');
             if (longContent) longContent.classList.add('hidden');
         } else {
             if (shortBtn) {
-                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-600 hover:text-gray-800';
             }
             if (longBtn) {
-                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600';
+                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-gray-700 text-gray-800';
             }
             if (shortContent) shortContent.classList.add('hidden');
             if (longContent) longContent.classList.remove('hidden');
@@ -901,14 +901,14 @@ Return tickers for ALL stocks in a JSON array.`;
         list.innerHTML = `
             <!-- Tabs for Short Term / Long Term -->
             ${(shortTerm.length > 0 || longTerm.length > 0) ? `
-                <div class="bg-white border-x border-b border-yellow-700 rounded-b-lg overflow-hidden">
+                <div class="bg-white border-x border-b border-black overflow-hidden">
                     <!-- Tabs -->
-                    <div class="border-b border-yellow-200 bg-yellow-50">
+                    <div class="border-b border-gray-300 bg-gray-50">
                         <div class="flex justify-evenly">
                             ${shortTerm.length > 0 ? `
                                 <button onclick="Investments.switchInvestmentTab('short')" 
                                         id="investments-tab-short"
-                                        class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-yellow-500 text-yellow-700">
+                                        class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-gray-700 text-gray-800">
                                     <div class="flex items-center justify-center">
                                         <span>Short Term (${shortTerm.length})</span>
                                     </div>
@@ -961,7 +961,7 @@ Return tickers for ALL stocks in a JSON array.`;
         
         if (tab === 'short') {
             if (shortBtn) {
-                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-yellow-500 text-yellow-700';
+                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-gray-700 text-gray-800';
             }
             if (longBtn) {
                 longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-600 hover:text-gray-800';
@@ -973,7 +973,7 @@ Return tickers for ALL stocks in a JSON array.`;
                 shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-600 hover:text-gray-800';
             }
             if (longBtn) {
-                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-yellow-500 text-yellow-700';
+                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-gray-700 text-gray-800';
             }
             if (shortContent) shortContent.classList.add('hidden');
             if (longContent) longContent.classList.remove('hidden');
