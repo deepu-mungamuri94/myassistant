@@ -703,6 +703,9 @@ Return tickers for ALL stocks in a JSON array.`;
         `;
         
         // Render grouped by month/year (like payslips)
+        // For current month filter, expand by default; otherwise collapse
+        const isCurrentMonthFilter = filter.type === 'current';
+        
         container.innerHTML = sortedMonths.map(monthKey => {
             const monthData = grouped[monthKey];
             const shortTermSum = monthData.shortTerm.reduce((sum, inv) => sum + inv.amount, 0);
@@ -711,7 +714,7 @@ Return tickers for ALL stocks in a JSON array.`;
             const hasLongTerm = monthData.longTerm.length > 0;
             
             return `
-                <details class="investment-month-group mb-3" style="margin-bottom: 0.75rem;">
+                <details class="investment-month-group mb-3" style="margin-bottom: 0.75rem;" ${isCurrentMonthFilter ? 'open' : ''}>
                     <summary class="cursor-pointer p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-300 hover:bg-green-100 transition-all flex items-center justify-between">
                         <div class="flex items-center">
                             <svg class="w-4 h-4 details-arrow text-green-700 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -870,37 +873,16 @@ Return tickers for ALL stocks in a JSON array.`;
         }
         
         list.innerHTML = `
-            <!-- Tabs directly under Portfolio header -->
-            ${hasStocks ? `
-                <div class="flex justify-center gap-3 p-3 border-b border-yellow-200 bg-yellow-50">
-                    <button onclick="Investments.refreshAllStockPrices()" 
-                            class="flex-1 px-3 py-2 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
-                            title="Refresh all stock prices">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                        </svg>
-                        <span>Refresh Stocks</span>
-                    </button>
-                    <button onclick="openExchangeRateModal()" 
-                            id="update-rate-btn"
-                            class="flex-1 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
-                            title="Update USD to INR exchange rate">
-                        <span>💱</span>
-                        <span>₹${(window.DB.exchangeRate && window.DB.exchangeRate.rate) ? window.DB.exchangeRate.rate.toFixed(2) : '83'}/USD</span>
-                    </button>
-                </div>
-            ` : ''}
-            
             <!-- Tabs for Short Term / Long Term -->
             ${(shortTerm.length > 0 || longTerm.length > 0) ? `
-                <div class="bg-white rounded-xl border border-blue-200 overflow-hidden">
+                <div class="bg-white border border-yellow-200 overflow-hidden">
                     <!-- Tabs -->
-                    <div class="border-b border-blue-200">
+                    <div class="border-b border-yellow-200 bg-yellow-50">
                         <div class="flex justify-evenly">
                             ${shortTerm.length > 0 ? `
                                 <button onclick="Investments.switchInvestmentTab('short')" 
                                         id="investments-tab-short"
-                                        class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600">
+                                        class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-yellow-500 text-yellow-700">
                                     <div class="flex items-center justify-center">
                                         <span>Short Term (${shortTerm.length})</span>
                                     </div>
@@ -910,7 +892,7 @@ Return tickers for ALL stocks in a JSON array.`;
                             ${longTerm.length > 0 ? `
                                 <button onclick="Investments.switchInvestmentTab('long')" 
                                         id="investments-tab-long"
-                                        class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                                        class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-600 hover:text-gray-800">
                                     <div class="flex items-center justify-center">
                                         <span>Long Term (${longTerm.length})</span>
                                     </div>
@@ -933,6 +915,27 @@ Return tickers for ALL stocks in a JSON array.`;
                             ${longTermHTML}
                         </div>
                     ` : ''}
+                    
+                    <!-- Stock Management Buttons -->
+                    ${hasStocks ? `
+                        <div class="flex justify-center gap-3 p-3 border-t border-yellow-200 bg-yellow-50">
+                            <button onclick="Investments.refreshAllStockPrices()" 
+                                    class="flex-1 px-3 py-2 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
+                                    title="Refresh all stock prices">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                </svg>
+                                <span>Refresh Stocks</span>
+                            </button>
+                            <button onclick="openExchangeRateModal()" 
+                                    id="update-rate-btn"
+                                    class="flex-1 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
+                                    title="Update USD to INR exchange rate">
+                                <span>💱</span>
+                                <span>₹${(window.DB.exchangeRate && window.DB.exchangeRate.rate) ? window.DB.exchangeRate.rate.toFixed(2) : '83'}/USD</span>
+                            </button>
+                        </div>
+                    ` : ''}
                 </div>
             ` : ''}
         `;
@@ -953,19 +956,19 @@ Return tickers for ALL stocks in a JSON array.`;
         
         if (tab === 'short') {
             if (shortBtn) {
-                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600';
+                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-yellow-500 text-yellow-700';
             }
             if (longBtn) {
-                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-600 hover:text-gray-800';
             }
             if (shortContent) shortContent.classList.remove('hidden');
             if (longContent) longContent.classList.add('hidden');
         } else if (tab === 'long') {
             if (shortBtn) {
-                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-600 hover:text-gray-800';
             }
             if (longBtn) {
-                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600';
+                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-yellow-500 text-yellow-700';
             }
             if (shortContent) shortContent.classList.add('hidden');
             if (longContent) longContent.classList.remove('hidden');
