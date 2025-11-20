@@ -757,8 +757,8 @@ Return tickers for ALL stocks in a JSON array.`;
                 <!-- Middle line: Quantity/Price on left, Amount on right -->
                 <div class="flex justify-between items-center mb-2">
                     <div class="text-xs text-gray-600">
-                        ${inv.quantity ? `Qty: ${inv.quantity}` : ''}
-                        ${inv.quantity && inv.inputStockPrice ? ` | Price: ${inv.inputCurrency === 'USD' ? '$' : '₹'}${inv.inputStockPrice}` : ''}
+                        ${inv.quantity ? `Qty: ${inv.quantity}${inv.type === 'gold' ? ' grams' : ''}` : ''}
+                        ${inv.quantity && inv.inputStockPrice ? ` | Price: ${inv.inputCurrency === 'USD' ? '$' : '₹'}${inv.inputStockPrice}${inv.type === 'gold' ? '/gm' : ''}` : ''}
                     </div>
                     <p class="text-base font-bold text-gray-900">${Utils.formatCurrency(inv.amount)}</p>
                 </div>
@@ -1189,6 +1189,7 @@ Return tickers for ALL stocks in a JSON array.`;
         return investments.map(inv => {
             const value = this.calculateValue(inv);
             const isStock = inv.type === 'stock';
+            const isGold = inv.type === 'gold';
             const displayCurrency = inv.inputCurrency || 'INR';
             const currencySymbol = displayCurrency === 'USD' ? '$' : '₹';
             
@@ -1218,6 +1219,14 @@ Return tickers for ALL stocks in a JSON array.`;
                                         </button>
                                     </div>
                                     ${inv.quantity ? `<p class="text-xs text-gray-600">Quantity: ${inv.quantity}</p>` : ''}
+                                </div>
+                            ` : ''}
+                            
+                            ${isGold ? `
+                                <!-- Gold details -->
+                                <div class="mt-2 space-y-1">
+                                    ${inv.quantity ? `<p class="text-xs text-gray-600">Qty: ${inv.quantity} grams</p>` : ''}
+                                    ${window.DB.goldRatePerGram ? `<p class="text-xs text-gray-600">Rate: ₹${window.DB.goldRatePerGram.toFixed(2)}/gm</p>` : ''}
                                 </div>
                             ` : ''}
                             
