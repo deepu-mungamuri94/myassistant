@@ -608,9 +608,33 @@ Return tickers for ALL stocks in a JSON array.`;
             }
         });
         
-        // Step 3: For each aggregated monthly data, merge with base or create new
-        const finalInvestments = [...baseInvestments];
+        // Step 3: Restore all base entries to their original state first
+        const finalInvestments = baseInvestments.map(inv => {
+            // If entry has baseQuantity/baseAmount, restore them
+            if (inv.baseQuantity !== undefined || inv.baseAmount !== undefined) {
+                const restored = { ...inv };
+                if (inv.baseQuantity !== undefined) {
+                    restored.quantity = inv.baseQuantity;
+                }
+                if (inv.baseAmount !== undefined) {
+                    restored.amount = inv.baseAmount;
+                }
+                // Recalculate amount for stocks/gold based on restored quantity
+                if (inv.type === 'stock' && restored.quantity) {
+                    if (restored.currentPrice) {
+                        restored.amount = restored.currentPrice * restored.quantity;
+                    } else if (restored.inputStockPrice) {
+                        restored.amount = restored.inputStockPrice * restored.quantity;
+                    }
+                } else if (inv.type === 'gold' && restored.quantity && window.DB.goldRatePerGram) {
+                    restored.amount = window.DB.goldRatePerGram * restored.quantity;
+                }
+                return restored;
+            }
+            return { ...inv };
+        });
         
+        // Step 4: For each aggregated monthly data, merge with base or create new
         monthlyAggregated.forEach((monthlyAgg, key) => {
             // Find matching base portfolio entry (manual entry)
             const baseEntry = baseInvestments.find(inv => 
@@ -691,7 +715,7 @@ Return tickers for ALL stocks in a JSON array.`;
             }
         });
         
-        // Step 4: Replace portfolio with final merged list
+        // Step 5: Replace portfolio with final merged list
         window.DB.investments = finalInvestments;
         window.Storage.save();
     },
