@@ -583,10 +583,13 @@ Return tickers for ALL stocks in a JSON array.`;
                 const agg = monthlyAggregated.get(key);
                 
                 if (monthlyInv.type === 'gold' && monthlyInv.quantity) {
+                    // For gold: Add quantity only, amount will be recalculated from quantity
                     agg.quantity += monthlyInv.quantity;
                 } else if (monthlyInv.type === 'stock' && monthlyInv.quantity) {
+                    // For stocks: Add quantity only, amount will be recalculated from quantity
                     agg.quantity += monthlyInv.quantity;
                 } else {
+                    // For other assets: Add amount
                     agg.amount += monthlyInv.amount;
                 }
             } else {
@@ -621,9 +624,11 @@ Return tickers for ALL stocks in a JSON array.`;
                 // Store original base quantities to preserve them
                 const entry = finalInvestments.find(inv => inv.id === baseEntry.id);
                 
-                // Store base quantities if not already stored
-                if (!entry.baseQuantity && !entry.baseAmount) {
+                // Store base quantities if not already stored (check for undefined/null, not falsy)
+                if (entry.baseQuantity === undefined || entry.baseQuantity === null) {
                     entry.baseQuantity = entry.quantity || 0;
+                }
+                if (entry.baseAmount === undefined || entry.baseAmount === null) {
                     entry.baseAmount = entry.amount || 0;
                 }
                 
@@ -637,8 +642,12 @@ Return tickers for ALL stocks in a JSON array.`;
                 } else if (monthlyAgg.type === 'stock' && monthlyAgg.quantity) {
                     // For stocks: Base shares + monthly shares
                     entry.quantity = entry.baseQuantity + monthlyAgg.quantity;
-                    // Recalculate amount based on stock price
-                    if (entry.inputStockPrice) {
+                    // Recalculate amount based on stock price (using latest price from portfolio)
+                    if (entry.currentPrice) {
+                        // Use the current/refreshed stock price if available
+                        entry.amount = entry.currentPrice * entry.quantity;
+                    } else if (entry.inputStockPrice) {
+                        // Fallback to input price
                         entry.amount = entry.inputStockPrice * entry.quantity;
                     }
                 } else {
