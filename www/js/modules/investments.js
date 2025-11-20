@@ -581,7 +581,7 @@ Return tickers for ALL stocks in a JSON array.`;
     },
 
     /**
-     * Render monthly investments list
+     * Render monthly investments list grouped by month/year
      */
     renderMonthlyInvestments() {
         const container = document.getElementById('monthly-investments-list');
@@ -599,7 +599,6 @@ Return tickers for ALL stocks in a JSON array.`;
         
         // Apply date filter
         let filtered = monthlyInvs;
-        let filterLabel = 'This Month';
         
         if (filter.type !== 'all') {
             filtered = monthlyInvs.filter(inv => {
@@ -610,21 +609,10 @@ Return tickers for ALL stocks in a JSON array.`;
                 
                 return true;
             });
-            
-            // Update filter label
-            switch(filter.type) {
-                case 'current': filterLabel = 'This Month'; break;
-                case '6months': filterLabel = 'Last 6 Months'; break;
-                case 'year': filterLabel = 'This Year'; break;
-                case 'custom': filterLabel = 'Custom Range'; break;
-                default: filterLabel = 'This Month';
-            }
-        } else {
-            filterLabel = 'All Time';
         }
         
         if (filtered.length === 0) {
-            container.innerHTML = `<p class="text-gray-500 text-center text-sm py-4">No investments found for ${filterLabel.toLowerCase()}.</p>`;
+            container.innerHTML = `<p class="text-gray-500 text-center text-sm py-4">No investments found for the selected period.</p>`;
             return;
         }
         
@@ -646,14 +634,34 @@ Return tickers for ALL stocks in a JSON array.`;
         // Sort by date (newest first)
         filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
         
-        // Calculate total for filtered period
-        const total = filtered.reduce((sum, inv) => sum + inv.amount, 0);
+        // Group investments by month/year
+        const grouped = {};
+        filtered.forEach(inv => {
+            const date = new Date(inv.date);
+            const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            
+            if (!grouped[monthYear]) {
+                grouped[monthYear] = {
+                    displayName: date.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }),
+                    investments: [],
+                    total: 0,
+                    shortTerm: [],
+                    longTerm: []
+                };
+            }
+            
+            grouped[monthYear].investments.push(inv);
+            grouped[monthYear].total += inv.amount;
+            
+            if (inv.term === 'short') {
+                grouped[monthYear].shortTerm.push(inv);
+            } else {
+                grouped[monthYear].longTerm.push(inv);
+            }
+        });
         
-        // Split by term
-        const longTerm = filtered.filter(i => i.term === 'long');
-        const shortTerm = filtered.filter(i => i.term === 'short');
-        const longTermSum = longTerm.reduce((sum, inv) => sum + inv.amount, 0);
-        const shortTermSum = shortTerm.reduce((sum, inv) => sum + inv.amount, 0);
+        // Sort months (newest first)
+        const sortedMonths = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
         
         const typeLabels = {
             'stock': 'Stock', 'mutual_fund': 'Mutual Fund', 'fd': 'FD',
@@ -661,12 +669,13 @@ Return tickers for ALL stocks in a JSON array.`;
         };
         
         const renderMonthlyInv = (inv) => `
-            <div class="bg-white rounded-lg p-3 border border-gray-200 hover:shadow-md transition-all mb-0">
+            <div class="bg-white p-3 border-b border-green-100 hover:bg-green-50 transition-all">
                 <div class="flex justify-between items-start mb-2">
                     <div class="flex-1">
                         <h4 class="font-semibold text-gray-800 text-sm">${inv.name}</h4>
                         <div class="flex gap-2 mt-1">
                             <span class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">${typeLabels[inv.type] || 'Other'}</span>
+                            <span class="text-xs px-2 py-0.5 rounded ${inv.term === 'long' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">${inv.term === 'long' ? 'Long' : 'Short'}</span>
                         </div>
                     </div>
                     <div class="text-right">
@@ -674,7 +683,7 @@ Return tickers for ALL stocks in a JSON array.`;
                         ${inv.quantity ? `<p class="text-xs text-gray-600">Qty: ${inv.quantity}</p>` : ''}
                     </div>
                 </div>
-                <div class="flex justify-between items-center text-xs text-gray-500 mt-2">
+                <div class="flex justify-between items-center text-xs text-gray-500">
                     <span>📅 ${new Date(inv.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                     <div class="flex gap-2">
                         <button onclick="Investments.editMonthlyInvestment('${inv.id}')" class="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-xs font-medium transition-all" title="Edit">
@@ -693,74 +702,91 @@ Return tickers for ALL stocks in a JSON array.`;
             </div>
         `;
         
-        container.innerHTML = `
-            <div class="bg-white rounded-xl border border-green-200 overflow-hidden">
-                <!-- Header (attached to tabs) -->
-                <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-3 border-b border-green-200">
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm font-semibold text-green-800">${filterLabel} Total</span>
-                        <span class="text-base font-bold text-green-900">${Utils.formatCurrency(total)}</span>
-                    </div>
-                </div>
-                
-                <!-- Tabs -->
-                ${(shortTerm.length > 0 || longTerm.length > 0) ? `
-                    <div class="border-b border-green-200">
-                        <div class="flex justify-evenly">
-                            ${shortTerm.length > 0 ? `
-                                <button onclick="Investments.switchMonthlyTab('short')" 
-                                        id="monthly-tab-short"
-                                        class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600">
-                                    <div class="flex items-center justify-center">
-                                        <span>Short Term (${shortTerm.length})</span>
-                                    </div>
-                                    <div class="text-xs font-bold mt-1">${Utils.formatCurrency(shortTermSum)}</div>
-                                </button>
-                            ` : ''}
-                            ${longTerm.length > 0 ? `
-                                <button onclick="Investments.switchMonthlyTab('long')" 
-                                        id="monthly-tab-long"
-                                        class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-                                    <div class="flex items-center justify-center">
-                                        <span>Long Term (${longTerm.length})</span>
-                                    </div>
-                                    <div class="text-xs font-bold mt-1">${Utils.formatCurrency(longTermSum)}</div>
-                                </button>
-                            ` : ''}
+        // Render grouped by month/year (like payslips)
+        container.innerHTML = sortedMonths.map(monthKey => {
+            const monthData = grouped[monthKey];
+            const shortTermSum = monthData.shortTerm.reduce((sum, inv) => sum + inv.amount, 0);
+            const longTermSum = monthData.longTerm.reduce((sum, inv) => sum + inv.amount, 0);
+            const hasShortTerm = monthData.shortTerm.length > 0;
+            const hasLongTerm = monthData.longTerm.length > 0;
+            
+            return `
+                <details class="investment-month-group mb-3" style="margin-bottom: 0.75rem;">
+                    <summary class="cursor-pointer p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-300 hover:bg-green-100 transition-all flex items-center justify-between">
+                        <div class="flex items-center">
+                            <svg class="w-4 h-4 details-arrow text-green-700 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                            <span class="font-semibold text-green-900">${monthData.displayName}</span>
                         </div>
-                    </div>
+                        <span class="text-base font-bold text-green-800">${Utils.formatCurrency(monthData.total)}</span>
+                    </summary>
                     
-                    <!-- Tab Content -->
-                    ${shortTerm.length > 0 ? `
-                        <div id="monthly-content-short" class="p-3 space-y-2">
-                            ${shortTerm.map(renderMonthlyInv).join('')}
-                        </div>
-                    ` : ''}
-                    ${longTerm.length > 0 ? `
-                        <div id="monthly-content-long" class="p-3 space-y-2 hidden">
-                            ${longTerm.map(renderMonthlyInv).join('')}
-                        </div>
-                    ` : ''}
-                ` : `
-                    <div class="p-3 space-y-2">
-                        ${filtered.map(renderMonthlyInv).join('')}
+                    <div class="bg-white border border-green-200 border-t-0 rounded-b-lg overflow-hidden">
+                        ${(hasShortTerm || hasLongTerm) ? `
+                            <!-- Tabs -->
+                            <div class="border-b border-green-200">
+                                <div class="flex justify-evenly">
+                                    ${hasShortTerm ? `
+                                        <button onclick="Investments.switchMonthlyTab('short-${monthKey}')" 
+                                                id="monthly-tab-short-${monthKey}"
+                                                class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600">
+                                            <div class="flex items-center justify-center">
+                                                <span>Short Term (${monthData.shortTerm.length})</span>
+                                            </div>
+                                            <div class="text-xs font-bold mt-1">${Utils.formatCurrency(shortTermSum)}</div>
+                                        </button>
+                                    ` : ''}
+                                    ${hasLongTerm ? `
+                                        <button onclick="Investments.switchMonthlyTab('long-${monthKey}')" 
+                                                id="monthly-tab-long-${monthKey}"
+                                                class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                                            <div class="flex items-center justify-center">
+                                                <span>Long Term (${monthData.longTerm.length})</span>
+                                            </div>
+                                            <div class="text-xs font-bold mt-1">${Utils.formatCurrency(longTermSum)}</div>
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            
+                            <!-- Tab Content -->
+                            ${hasShortTerm ? `
+                                <div id="monthly-content-short-${monthKey}">
+                                    ${monthData.shortTerm.map(renderMonthlyInv).join('')}
+                                </div>
+                            ` : ''}
+                            ${hasLongTerm ? `
+                                <div id="monthly-content-long-${monthKey}" class="hidden">
+                                    ${monthData.longTerm.map(renderMonthlyInv).join('')}
+                                </div>
+                            ` : ''}
+                        ` : `
+                            <div>
+                                ${monthData.investments.map(renderMonthlyInv).join('')}
+                            </div>
+                        `}
                     </div>
-                `}
-            </div>
-        `;
+                </details>
+            `;
+        }).join('');
     },
 
     /**
      * Switch between Short/Long term tabs for monthly investments
      */
     switchMonthlyTab(tab) {
-        // Update buttons
-        const shortBtn = document.getElementById('monthly-tab-short');
-        const longBtn = document.getElementById('monthly-tab-long');
-        const shortContent = document.getElementById('monthly-content-short');
-        const longContent = document.getElementById('monthly-content-long');
+        // Extract tab type and month key
+        const [tabType, ...monthParts] = tab.split('-');
+        const monthKey = monthParts.join('-');
         
-        if (tab === 'short') {
+        // Update buttons and content for specific month
+        const shortBtn = document.getElementById(`monthly-tab-short-${monthKey}`);
+        const longBtn = document.getElementById(`monthly-tab-long-${monthKey}`);
+        const shortContent = document.getElementById(`monthly-content-short-${monthKey}`);
+        const longContent = document.getElementById(`monthly-content-long-${monthKey}`);
+        
+        if (tabType === 'short') {
             if (shortBtn) {
                 shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600';
             }
@@ -844,33 +870,26 @@ Return tickers for ALL stocks in a JSON array.`;
         }
         
         list.innerHTML = `
-            <div class="bg-gradient-to-r from-yellow-100 via-orange-50 to-yellow-100 rounded-xl border border-yellow-400 mb-4 overflow-hidden">
-                <div class="p-5">
-                    <div class="flex justify-between items-center mb-3">
-                        <h3 class="font-bold text-yellow-900 text-base">Summary</h3>
-                        <p class="text-base font-bold text-yellow-800">${Utils.formatCurrency(total)}</p>
-                    </div>
-                    ${hasStocks ? `
-                        <div class="flex justify-center gap-3 pt-3 border-t border-yellow-300">
-                            <button onclick="Investments.refreshAllStockPrices()" 
-                                    class="flex-1 px-3 py-2 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
-                                    title="Refresh all stock prices">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                                </svg>
-                                <span>Refresh Stocks</span>
-                            </button>
-                            <button onclick="openExchangeRateModal()" 
-                                    id="update-rate-btn"
-                                    class="flex-1 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
-                                    title="Update USD to INR exchange rate">
-                                <span>💱</span>
-                                <span>₹${(window.DB.exchangeRate && window.DB.exchangeRate.rate) ? window.DB.exchangeRate.rate.toFixed(2) : '83'}/USD</span>
-                            </button>
-                        </div>
-                    ` : ''}
+            <!-- Tabs directly under Portfolio header -->
+            ${hasStocks ? `
+                <div class="flex justify-center gap-3 p-3 border-b border-yellow-200 bg-yellow-50">
+                    <button onclick="Investments.refreshAllStockPrices()" 
+                            class="flex-1 px-3 py-2 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
+                            title="Refresh all stock prices">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <span>Refresh Stocks</span>
+                    </button>
+                    <button onclick="openExchangeRateModal()" 
+                            id="update-rate-btn"
+                            class="flex-1 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
+                            title="Update USD to INR exchange rate">
+                        <span>💱</span>
+                        <span>₹${(window.DB.exchangeRate && window.DB.exchangeRate.rate) ? window.DB.exchangeRate.rate.toFixed(2) : '83'}/USD</span>
+                    </button>
                 </div>
-            </div>
+            ` : ''}
             
             <!-- Tabs for Short Term / Long Term -->
             ${(shortTerm.length > 0 || longTerm.length > 0) ? `
