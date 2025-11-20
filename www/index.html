@@ -4432,12 +4432,17 @@
         
         // Investment Edit Modal
         function openInvestmentEditModal(id) {
+            console.log('📝 Opening edit modal for ID:', id);
+            
             // Handle both string and number IDs
             const inv = window.DB.investments.find(i => i.id == id || String(i.id) === String(id));
             if (!inv) {
+                console.error('❌ Investment not found');
                 Toast.error('Investment not found');
                 return;
             }
+            
+            console.log('📦 Editing investment:', inv);
             
             document.getElementById('investment-modal').classList.remove('hidden');
             document.getElementById('investment-modal-title').textContent = 'Edit Investment';
@@ -4447,18 +4452,42 @@
             document.getElementById('investment-modal-term').value = inv.term;
             document.getElementById('investment-modal-notes').value = inv.notes || '';
             
-            if (inv.type === 'stock') {
+            // Set mode to Portfolio (existing) and lock it
+            document.getElementById('investment-mode-existing').checked = true;
+            document.getElementById('investment-mode-current').disabled = true;
+            document.getElementById('investment-mode-existing').disabled = true;
+            toggleInvestmentMode();
+            
+            // Clear all fields first
+            document.getElementById('investment-modal-stock-price').value = '';
+            document.getElementById('investment-modal-currency').value = 'INR';
+            document.getElementById('investment-modal-quantity').value = '';
+            document.getElementById('investment-modal-gold-price').value = '';
+            document.getElementById('investment-modal-gold-grams').value = '';
+            document.getElementById('investment-modal-amount').value = '';
+            
+            // Fill fields based on type
+            if (inv.type === 'stock' || inv.type === 'mutual_fund') {
                 document.getElementById('investment-modal-stock-price').value = inv.inputStockPrice || '';
                 document.getElementById('investment-modal-currency').value = inv.inputCurrency || 'INR';
                 document.getElementById('investment-modal-quantity').value = inv.quantity || '';
+            } else if (inv.type === 'gold') {
+                document.getElementById('investment-modal-gold-price').value = inv.inputStockPrice || '';
+                document.getElementById('investment-modal-gold-grams').value = inv.quantity || '';
             } else {
                 document.getElementById('investment-modal-amount').value = inv.amount || '';
             }
             
+            console.log('🔄 Toggling fields for type:', inv.type);
             toggleInvestmentFields();
-            if (inv.type === 'stock') {
+            
+            if (inv.type === 'stock' || inv.type === 'mutual_fund') {
                 calculateStockAmount();
+            } else if (inv.type === 'gold') {
+                calculateGoldAmount();
             }
+            
+            console.log('✅ Edit modal opened successfully');
         }
         
         // Exchange Rate Modal Functions
