@@ -907,11 +907,6 @@ Return tickers for ALL stocks in a JSON array.`;
         
         if (!list) return;
         
-        if (window.DB.investments.length === 0) {
-            list.innerHTML = '<p class="text-gray-500 text-center py-8">No investments yet. Add your first one above!</p>';
-            return;
-        }
-        
         // Get filter and search values
         const filterEl = document.getElementById('investments-filter');
         const searchEl = document.getElementById('investments-search');
