@@ -3706,21 +3706,24 @@
             const modal = document.getElementById('add-override-choice-modal');
             const message = document.getElementById('add-override-message');
             
-            // Build existing value message
-            let existingInfo = `"${existing.name}" (${term === 'long' ? 'Long Term' : 'Short Term'}) already exists with:\n`;
+            // Build existing value message with proper HTML formatting
+            let existingInfo = `<p class="text-gray-800 mb-3"><strong>"${existing.name}"</strong> <span class="text-sm text-gray-600">(${term === 'long' ? 'Long Term' : 'Short Term'})</span> already exists with:</p>`;
+            
+            existingInfo += `<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">`;
             
             if (type === 'gold' && existing.quantity) {
-                existingInfo += `\n• ${existing.quantity} grams`;
-                existingInfo += `\n• Value: ${Utils.formatCurrency(existing.amount)}`;
+                existingInfo += `<p class="text-sm text-gray-700 mb-1">• <strong>${existing.quantity} grams</strong></p>`;
+                existingInfo += `<p class="text-sm text-gray-700">• Value: <strong>${Utils.formatCurrency(existing.amount)}</strong></p>`;
             } else if (type === 'stock' && existing.quantity) {
-                existingInfo += `\n• ${existing.quantity} shares`;
-                existingInfo += `\n• Value: ${Utils.formatCurrency(existing.amount)}`;
+                existingInfo += `<p class="text-sm text-gray-700 mb-1">• <strong>${existing.quantity} shares</strong></p>`;
+                existingInfo += `<p class="text-sm text-gray-700">• Value: <strong>${Utils.formatCurrency(existing.amount)}</strong></p>`;
             } else {
-                existingInfo += `\n• Amount: ${Utils.formatCurrency(existing.amount)}`;
+                existingInfo += `<p class="text-sm text-gray-700">• Amount: <strong>${Utils.formatCurrency(existing.amount)}</strong></p>`;
             }
             
-            existingInfo += `\n\nWhat would you like to do?`;
-            message.textContent = existingInfo;
+            existingInfo += `</div>`;
+            existingInfo += `<p class="text-gray-700 font-medium">What would you like to do?</p>`;
+            message.innerHTML = existingInfo;
             
             // Setup button handlers
             const addBtn = document.getElementById('add-to-existing-btn');
@@ -3795,27 +3798,36 @@
             const modal = document.getElementById('override-confirm-modal');
             const message = document.getElementById('override-confirm-message');
             
-            let confirmMsg = `This will REPLACE the existing investment:\n\n`;
-            confirmMsg += `Current Value:\n`;
+            let confirmMsg = `<p class="text-gray-700 mb-4">This will <strong class="text-red-600">REPLACE</strong> the existing investment:</p>`;
+            
+            confirmMsg += `<div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">`;
+            confirmMsg += `<p class="text-sm font-semibold text-red-900 mb-2">Current Value:</p>`;
             
             if (type === 'gold' && existing.quantity) {
-                confirmMsg += `• ${existing.quantity} grams = ${Utils.formatCurrency(existing.amount)}\n\n`;
+                confirmMsg += `<p class="text-sm text-gray-700">• ${existing.quantity} grams</p>`;
+                confirmMsg += `<p class="text-sm text-gray-700">• ${Utils.formatCurrency(existing.amount)}</p>`;
             } else if (type === 'stock' && existing.quantity) {
-                confirmMsg += `• ${existing.quantity} shares = ${Utils.formatCurrency(existing.amount)}\n\n`;
+                confirmMsg += `<p class="text-sm text-gray-700">• ${existing.quantity} shares</p>`;
+                confirmMsg += `<p class="text-sm text-gray-700">• ${Utils.formatCurrency(existing.amount)}</p>`;
             } else {
-                confirmMsg += `• ${Utils.formatCurrency(existing.amount)}\n\n`;
+                confirmMsg += `<p class="text-sm text-gray-700">• ${Utils.formatCurrency(existing.amount)}</p>`;
             }
+            confirmMsg += `</div>`;
             
-            confirmMsg += `New Value:\n`;
+            confirmMsg += `<div class="bg-green-50 border border-green-200 rounded-lg p-3">`;
+            confirmMsg += `<p class="text-sm font-semibold text-green-900 mb-2">New Value:</p>`;
             if (type === 'gold' && quantity) {
-                confirmMsg += `• ${quantity} grams = ${Utils.formatCurrency(amount)}`;
+                confirmMsg += `<p class="text-sm text-gray-700">• ${quantity} grams</p>`;
+                confirmMsg += `<p class="text-sm text-gray-700">• ${Utils.formatCurrency(amount)}</p>`;
             } else if (type === 'stock' && quantity) {
-                confirmMsg += `• ${quantity} shares = ${Utils.formatCurrency(amount)}`;
+                confirmMsg += `<p class="text-sm text-gray-700">• ${quantity} shares</p>`;
+                confirmMsg += `<p class="text-sm text-gray-700">• ${Utils.formatCurrency(amount)}</p>`;
             } else {
-                confirmMsg += `• ${Utils.formatCurrency(amount)}`;
+                confirmMsg += `<p class="text-sm text-gray-700">• ${Utils.formatCurrency(amount)}</p>`;
             }
+            confirmMsg += `</div>`;
             
-            message.textContent = confirmMsg;
+            message.innerHTML = confirmMsg;
             
             // Setup button handlers
             const proceedBtn = document.getElementById('override-proceed-btn');
