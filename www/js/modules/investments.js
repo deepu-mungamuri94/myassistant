@@ -903,8 +903,9 @@ Return tickers for ALL stocks in a JSON array.`;
         const longTerm = filtered.filter(i => i.term === 'long');
         const shortTerm = filtered.filter(i => i.term === 'short');
         
-        // Check if there are any stocks
+        // Check if there are any stocks or gold
         const hasStocks = filtered.some(inv => inv.type === 'stock');
+        const hasGold = filtered.some(inv => inv.type === 'gold');
         
         // Calculate sums for each term
         const longTermSum = longTerm.reduce((sum, inv) => sum + this.calculateValue(inv), 0);
@@ -923,24 +924,42 @@ Return tickers for ALL stocks in a JSON array.`;
         // Update stock buttons in header (visible even when collapsed)
         const stockButtonsSection = document.getElementById('stock-buttons-section');
         if (stockButtonsSection) {
-            if (hasStocks) {
-                stockButtonsSection.innerHTML = `
-                    <button onclick="Investments.refreshAllStockPrices()" 
-                            class="flex-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
-                            title="Refresh all stock prices">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                        </svg>
-                        <span>Refresh Stocks</span>
-                    </button>
-                    <button onclick="openExchangeRateModal()" 
-                            id="update-rate-btn"
-                            class="flex-1 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
-                            title="Update USD to INR exchange rate">
-                        <span>💱</span>
-                        <span>₹${(window.DB.exchangeRate && window.DB.exchangeRate.rate) ? window.DB.exchangeRate.rate.toFixed(2) : '83'}/USD</span>
-                    </button>
-                `;
+            if (hasStocks || hasGold) {
+                let buttonsHTML = '';
+                
+                if (hasStocks) {
+                    buttonsHTML += `
+                        <button onclick="Investments.refreshAllStockPrices()" 
+                                class="flex-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
+                                title="Refresh all stock prices">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            <span>Refresh Stocks</span>
+                        </button>
+                        <button onclick="openExchangeRateModal()" 
+                                id="update-rate-btn"
+                                class="flex-1 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
+                                title="Update USD to INR exchange rate">
+                            <span>💱</span>
+                            <span>₹${(window.DB.exchangeRate && window.DB.exchangeRate.rate) ? window.DB.exchangeRate.rate.toFixed(2) : '83'}/USD</span>
+                        </button>
+                    `;
+                }
+                
+                if (hasGold) {
+                    buttonsHTML += `
+                        <button onclick="Investments.openGoldRateModal()" 
+                                id="gold-rate-btn"
+                                class="flex-1 px-3 py-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
+                                title="Set gold rate per gram">
+                            <span>🪙</span>
+                            <span>₹${window.DB.goldRatePerGram || '---'}/gram</span>
+                        </button>
+                    `;
+                }
+                
+                stockButtonsSection.innerHTML = buttonsHTML;
             } else {
                 stockButtonsSection.innerHTML = '';
             }
@@ -1356,6 +1375,51 @@ Return tickers for ALL stocks in a JSON array.`;
         this.render();
         if (window.Toast) {
             window.Toast.success('Investment deleted');
+        }
+    },
+    
+    /**
+     * Open gold rate modal
+     */
+    openGoldRateModal() {
+        const currentRate = window.DB.goldRatePerGram || '';
+        const modal = document.getElementById('gold-rate-modal');
+        if (modal) {
+            document.getElementById('gold-rate-input').value = currentRate;
+            modal.classList.remove('hidden');
+        }
+    },
+    
+    /**
+     * Set gold rate per gram
+     */
+    setGoldRate() {
+        const rate = parseFloat(document.getElementById('gold-rate-input').value);
+        if (isNaN(rate) || rate <= 0) {
+            window.Toast.error('Please enter a valid gold rate');
+            return;
+        }
+        
+        window.DB.goldRatePerGram = rate;
+        window.Storage.save();
+        
+        // Recalculate all gold investments
+        const goldInvestments = window.DB.investments.filter(inv => inv.type === 'gold');
+        goldInvestments.forEach(inv => {
+            if (inv.quantity) {
+                inv.inputStockPrice = rate;
+                inv.amount = rate * inv.quantity;
+            }
+        });
+        
+        window.Storage.save();
+        
+        // Close modal and refresh
+        document.getElementById('gold-rate-modal').classList.add('hidden');
+        this.render();
+        
+        if (window.Toast) {
+            window.Toast.success(`Gold rate set to ₹${rate}/gram`);
         }
     }
 };
