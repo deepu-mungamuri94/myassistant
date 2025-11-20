@@ -86,11 +86,21 @@ const Investments = {
      * Edit a monthly investment
      */
     editMonthlyInvestment(id) {
-        const monthlyInv = window.DB.monthlyInvestments.find(inv => inv.id === id);
+        console.log('editMonthlyInvestment called with id:', id);
+        console.log('Monthly investments in DB:', window.DB.monthlyInvestments);
+        
+        const monthlyInv = window.DB.monthlyInvestments.find(inv => {
+            console.log('Comparing:', inv.id, 'with', id, 'Match:', inv.id === id);
+            return inv.id === id;
+        });
+        
         if (!monthlyInv) {
+            console.error('Monthly investment not found for id:', id);
             window.Toast.error('Monthly investment not found');
             return;
         }
+        
+        console.log('Found monthly investment:', monthlyInv);
         
         // Populate the form with existing data
         document.getElementById('investment-modal-title').textContent = 'Edit Monthly Investment';
@@ -176,8 +186,16 @@ const Investments = {
      * Confirm delete monthly investment
      */
     confirmDeleteMonthlyInvestment(id) {
+        console.log('confirmDeleteMonthlyInvestment called with id:', id);
+        console.log('Monthly investments in DB:', window.DB.monthlyInvestments);
+        
         const monthlyInv = window.DB.monthlyInvestments.find(inv => inv.id === id);
-        if (!monthlyInv) return;
+        if (!monthlyInv) {
+            console.error('Monthly investment not found for deletion, id:', id);
+            return;
+        }
+        
+        console.log('Found monthly investment for deletion:', monthlyInv);
         
         if (window.confirm(`Delete "${monthlyInv.name}" from monthly investments?\n\nNote: This will not remove it from your portfolio.`)) {
             this.deleteMonthlyInvestment(id);
@@ -677,12 +695,12 @@ Return tickers for ALL stocks in a JSON array.`;
                         <span class="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700">${typeLabels[inv.type] || 'Other'}</span>
                     </div>
                     <div class="flex gap-1">
-                        <button onclick='Investments.editMonthlyInvestment("${inv.id}")' class="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-xs font-medium transition-all" title="Edit">
+                        <button data-monthly-id="${inv.id}" data-action="edit" class="monthly-inv-btn px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-xs font-medium transition-all" title="Edit">
                             <svg class="w-3 h-3 inline" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.38-2.828-2.829z"/>
                             </svg>
                         </button>
-                        <button onclick='Investments.confirmDeleteMonthlyInvestment("${inv.id}")' class="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded text-xs font-medium transition-all" title="Delete">
+                        <button data-monthly-id="${inv.id}" data-action="delete" class="monthly-inv-btn px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded text-xs font-medium transition-all" title="Delete">
                             <svg class="w-3 h-3 inline" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
                             </svg>
@@ -778,6 +796,26 @@ Return tickers for ALL stocks in a JSON array.`;
                 </details>
             `;
         }).join('');
+        
+        // Add event listeners to monthly investment buttons
+        setTimeout(() => {
+            document.querySelectorAll('.monthly-inv-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const id = btn.getAttribute('data-monthly-id');
+                    const action = btn.getAttribute('data-action');
+                    
+                    console.log('Monthly button clicked:', action, 'for id:', id);
+                    
+                    if (action === 'edit') {
+                        Investments.editMonthlyInvestment(id);
+                    } else if (action === 'delete') {
+                        Investments.confirmDeleteMonthlyInvestment(id);
+                    }
+                });
+            });
+        }, 100);
     },
 
     /**
