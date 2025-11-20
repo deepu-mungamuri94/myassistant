@@ -583,11 +583,13 @@ Return tickers for ALL stocks in a JSON array.`;
                 const agg = monthlyAggregated.get(key);
                 
                 if (monthlyInv.type === 'gold' && monthlyInv.quantity) {
-                    // For gold: Add quantity only, amount will be recalculated from quantity
+                    // For gold: Add quantity and amount
                     agg.quantity += monthlyInv.quantity;
+                    agg.amount += monthlyInv.amount;
                 } else if (monthlyInv.type === 'stock' && monthlyInv.quantity) {
-                    // For stocks: Add quantity only, amount will be recalculated from quantity
+                    // For stocks: Add quantity and amount
                     agg.quantity += monthlyInv.quantity;
+                    agg.amount += monthlyInv.amount;
                 } else {
                     // For other assets: Add amount
                     agg.amount += monthlyInv.amount;
