@@ -7,7 +7,8 @@ const DB = {
     credentials: [],
     cards: [],
     expenses: [],
-    investments: [],
+    investments: [], // Existing investments (cumulative portfolio)
+    monthlyInvestments: [], // Monthly investment tracking
     recurringExpenses: [], // Custom recurring expenses (LIC, insurance, etc.)
     loans: [], // Loan tracking
     income: null, // Income and payslip data

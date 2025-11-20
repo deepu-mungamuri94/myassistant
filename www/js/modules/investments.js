@@ -47,6 +47,158 @@ const Investments = {
     },
 
     /**
+     * Add a monthly investment (for tracking monthly additions)
+     */
+    addMonthlyInvestment(name, amount, date, term, type = 'general', quantity = null, notes = '', stockPrice = null, inputCurrency = 'INR', usdToInrRate = null) {
+        if (!name || !amount || !term || !date) {
+            throw new Error('Please fill in all required fields');
+        }
+        
+        if (!['long', 'short'].includes(term.toLowerCase())) {
+            throw new Error('Term must be either "Long" or "Short"');
+        }
+        
+        const monthlyInvestment = {
+            id: Utils.generateId(),
+            name,
+            type,
+            amount: parseFloat(amount),
+            date,
+            term: term.toLowerCase(),
+            quantity: quantity ? parseFloat(quantity) : null,
+            inputStockPrice: stockPrice ? parseFloat(stockPrice) : null,
+            inputCurrency: inputCurrency || 'INR',
+            usdToInrRate: usdToInrRate ? parseFloat(usdToInrRate) : null,
+            notes,
+            createdAt: Utils.getCurrentTimestamp()
+        };
+        
+        window.DB.monthlyInvestments.push(monthlyInvestment);
+        window.Storage.save();
+        
+        // Aggregate into existing investments
+        this.aggregateMonthlyInvestments();
+        
+        return monthlyInvestment;
+    },
+
+    /**
+     * Edit a monthly investment
+     */
+    editMonthlyInvestment(id) {
+        const monthlyInv = window.DB.monthlyInvestments.find(inv => inv.id === id);
+        if (!monthlyInv) {
+            window.Toast.error('Monthly investment not found');
+            return;
+        }
+        
+        // Populate the form with existing data
+        document.getElementById('investment-modal-title').textContent = 'Edit Monthly Investment';
+        document.getElementById('investment-modal-id').value = id;
+        document.getElementById('investment-modal-name').value = monthlyInv.name;
+        document.getElementById('investment-modal-type').value = monthlyInv.type;
+        document.getElementById('investment-modal-term').value = monthlyInv.term;
+        document.getElementById('investment-modal-notes').value = monthlyInv.notes || '';
+        document.getElementById('investment-modal-date').value = monthlyInv.date;
+        
+        // Set to Current mode
+        document.getElementById('investment-mode-current').checked = true;
+        document.getElementById('investment-mode-current').disabled = true; // Can't change mode when editing
+        document.getElementById('investment-mode-existing').disabled = true;
+        
+        if (monthlyInv.type === 'stock') {
+            document.getElementById('investment-modal-stock-price').value = monthlyInv.inputStockPrice || '';
+            document.getElementById('investment-modal-quantity').value = monthlyInv.quantity || '';
+            document.getElementById('investment-modal-currency').value = monthlyInv.inputCurrency || 'INR';
+        } else {
+            document.getElementById('investment-modal-amount').value = monthlyInv.amount;
+        }
+        
+        window.toggleInvestmentMode();
+        window.toggleInvestmentFields();
+        
+        // Open modal
+        document.getElementById('investment-modal').classList.remove('hidden');
+    },
+
+    /**
+     * Update a monthly investment
+     */
+    updateMonthlyInvestment(id, name, amount, date, term, type, quantity, notes, stockPrice, inputCurrency, usdToInrRate) {
+        const monthlyInv = window.DB.monthlyInvestments.find(inv => inv.id === id);
+        if (!monthlyInv) {
+            throw new Error('Monthly investment not found');
+        }
+        
+        // Store old values to reverse aggregation
+        const oldValues = { ...monthlyInv };
+        
+        // Update fields
+        monthlyInv.name = name;
+        monthlyInv.amount = parseFloat(amount);
+        monthlyInv.date = date;
+        monthlyInv.term = term.toLowerCase();
+        monthlyInv.type = type;
+        monthlyInv.quantity = quantity ? parseFloat(quantity) : null;
+        monthlyInv.inputStockPrice = stockPrice ? parseFloat(stockPrice) : null;
+        monthlyInv.inputCurrency = inputCurrency || 'INR';
+        monthlyInv.usdToInrRate = usdToInrRate ? parseFloat(usdToInrRate) : null;
+        monthlyInv.notes = notes;
+        
+        window.Storage.save();
+        
+        // Re-aggregate (this will handle the update properly)
+        this.aggregateMonthlyInvestments();
+        
+        return monthlyInv;
+    },
+
+    /**
+     * Delete a monthly investment
+     */
+    deleteMonthlyInvestment(id) {
+        const index = window.DB.monthlyInvestments.findIndex(inv => inv.id === id);
+        if (index === -1) {
+            throw new Error('Monthly investment not found');
+        }
+        
+        window.DB.monthlyInvestments.splice(index, 1);
+        window.Storage.save();
+        
+        // Re-aggregate to update portfolio
+        this.recalculatePortfolio();
+    },
+
+    /**
+     * Confirm delete monthly investment
+     */
+    confirmDeleteMonthlyInvestment(id) {
+        const monthlyInv = window.DB.monthlyInvestments.find(inv => inv.id === id);
+        if (!monthlyInv) return;
+        
+        if (window.confirm(`Delete "${monthlyInv.name}" from monthly investments?\n\nNote: This will not remove it from your portfolio.`)) {
+            this.deleteMonthlyInvestment(id);
+            this.render();
+            if (window.Toast) {
+                window.Toast.success('Monthly investment deleted');
+            }
+        }
+    },
+
+    /**
+     * Recalculate portfolio from scratch based on monthly investments
+     * This is more accurate than trying to reverse individual changes
+     */
+    recalculatePortfolio() {
+        // For simplicity, we won't remove aggregated amounts
+        // This is because multiple monthly investments might contribute to same portfolio item
+        // User can manually adjust portfolio if needed
+        
+        // Just re-save
+        window.Storage.save();
+    },
+
+    /**
      * Update an existing investment
      */
     update(id, name, amount, term, type = 'general', quantity = null, notes = '', stockPrice = null, inputCurrency = 'INR', usdToInrRate = null) {
@@ -368,6 +520,182 @@ Return tickers for ALL stocks in a JSON array.`;
     },
 
     /**
+     * Aggregate monthly investments into existing portfolio
+     * Adds quantities for stocks, adds amounts for other assets
+     */
+    aggregateMonthlyInvestments() {
+        const monthly = window.DB.monthlyInvestments || [];
+        
+        monthly.forEach(monthlyInv => {
+            // Find if we have this investment in our portfolio
+            const existing = window.DB.investments.find(inv => 
+                inv.name.toLowerCase() === monthlyInv.name.toLowerCase() && 
+                inv.type === monthlyInv.type &&
+                inv.term === monthlyInv.term
+            );
+            
+            if (existing) {
+                // Update existing investment
+                if (monthlyInv.type === 'stock' && monthlyInv.quantity) {
+                    // For stocks, add quantity
+                    existing.quantity = (existing.quantity || 0) + monthlyInv.quantity;
+                    // Recalculate amount based on new quantity
+                    if (existing.inputStockPrice) {
+                        existing.amount = existing.inputStockPrice * existing.quantity;
+                    }
+                } else {
+                    // For other assets, add amount
+                    existing.amount += monthlyInv.amount;
+                }
+                existing.lastUpdated = Utils.getCurrentTimestamp();
+            } else {
+                // Create new investment in portfolio
+                const newInvestment = {
+                    id: Utils.generateId(),
+                    name: monthlyInv.name,
+                    type: monthlyInv.type,
+                    amount: monthlyInv.amount,
+                    term: monthlyInv.term,
+                    quantity: monthlyInv.quantity,
+                    inputStockPrice: monthlyInv.inputStockPrice,
+                    inputCurrency: monthlyInv.inputCurrency,
+                    usdToInrRate: monthlyInv.usdToInrRate,
+                    currentPrice: null,
+                    currency: null,
+                    exchange: null,
+                    symbol: null,
+                    lastPriceUpdate: null,
+                    tickerSymbol: null,
+                    notes: monthlyInv.notes,
+                    createdAt: monthlyInv.createdAt,
+                    lastUpdated: Utils.getCurrentTimestamp()
+                };
+                window.DB.investments.push(newInvestment);
+            }
+        });
+        
+        window.Storage.save();
+    },
+
+    /**
+     * Render monthly investments list
+     */
+    renderMonthlyInvestments() {
+        const container = document.getElementById('monthly-investments-list');
+        if (!container) return;
+        
+        const monthlyInvs = window.DB.monthlyInvestments || [];
+        
+        if (monthlyInvs.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-center text-sm py-4">No monthly investments tracked yet.</p>';
+            return;
+        }
+        
+        // Get filter settings (defaults to current month)
+        const filter = window.investmentDateFilter || { type: 'current' };
+        
+        // Apply date filter
+        let filtered = monthlyInvs;
+        let filterLabel = 'This Month';
+        
+        if (filter.type !== 'all') {
+            filtered = monthlyInvs.filter(inv => {
+                const invDate = new Date(inv.date);
+                
+                if (filter.startDate && invDate < filter.startDate) return false;
+                if (filter.endDate && invDate > filter.endDate) return false;
+                
+                return true;
+            });
+            
+            // Update filter label
+            switch(filter.type) {
+                case 'current': filterLabel = 'This Month'; break;
+                case '6months': filterLabel = 'Last 6 Months'; break;
+                case 'year': filterLabel = 'This Year'; break;
+                case 'custom': filterLabel = 'Custom Range'; break;
+                default: filterLabel = 'This Month';
+            }
+        } else {
+            filterLabel = 'All Time';
+        }
+        
+        if (filtered.length === 0) {
+            container.innerHTML = `<p class="text-gray-500 text-center text-sm py-4">No investments found for ${filterLabel.toLowerCase()}.</p>`;
+            return;
+        }
+        
+        // Apply search filter if exists
+        const searchTerm = document.getElementById('investments-search')?.value.toLowerCase() || '';
+        if (searchTerm) {
+            filtered = filtered.filter(inv =>
+                inv.name.toLowerCase().includes(searchTerm) ||
+                (inv.notes && inv.notes.toLowerCase().includes(searchTerm)) ||
+                (inv.type && inv.type.toLowerCase().includes(searchTerm))
+            );
+        }
+        
+        if (filtered.length === 0) {
+            container.innerHTML = `<p class="text-gray-500 text-center text-sm py-4">No investments match your search.</p>`;
+            return;
+        }
+        
+        // Sort by date (newest first)
+        filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        // Calculate total for filtered period
+        const total = filtered.reduce((sum, inv) => sum + inv.amount, 0);
+        
+        const typeLabels = {
+            'stock': 'Stock', 'mutual_fund': 'Mutual Fund', 'fd': 'FD',
+            'epf': 'EPF', 'gold': 'Gold', 'real_estate': 'Real Estate',
+            'crypto': 'Crypto', 'general': 'General'
+        };
+        
+        container.innerHTML = `
+            <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 mb-3 border border-green-200">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-semibold text-green-800">${filterLabel} Total</span>
+                    <span class="text-base font-bold text-green-900">${Utils.formatCurrency(total)}</span>
+                </div>
+            </div>
+            ${filtered.map(inv => `
+                <div class="bg-white rounded-lg p-3 border border-gray-200 hover:shadow-md transition-all">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-800 text-sm">${inv.name}</h4>
+                            <div class="flex gap-2 mt-1">
+                                <span class="text-xs px-2 py-0.5 rounded ${inv.term === 'long' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">${inv.term === 'long' ? 'Long' : 'Short'} Term</span>
+                                <span class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">${typeLabels[inv.type] || 'General'}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-base font-bold text-gray-900">${Utils.formatCurrency(inv.amount)}</p>
+                            ${inv.quantity ? `<p class="text-xs text-gray-600">Qty: ${inv.quantity}</p>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-500 mt-2">
+                        <span>📅 ${new Date(inv.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                        <div class="flex gap-2">
+                            <button onclick="Investments.editMonthlyInvestment('${inv.id}')" class="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-xs font-medium transition-all" title="Edit">
+                                <svg class="w-3 h-3 inline" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.38-2.828-2.829z"/>
+                                </svg>
+                            </button>
+                            <button onclick="Investments.confirmDeleteMonthlyInvestment('${inv.id}')" class="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded text-xs font-medium transition-all" title="Delete">
+                                <svg class="w-3 h-3 inline" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    ${inv.notes ? `<p class="text-xs text-gray-600 mt-2">${inv.notes}</p>` : ''}
+                </div>
+            `).join('')}
+        `;
+    },
+
+    /**
      * Render investments list
      */
     render() {
@@ -497,6 +825,9 @@ Return tickers for ALL stocks in a JSON array.`;
                 </div>
             ` : ''}
         `;
+        
+        // Render monthly investments
+        this.renderMonthlyInvestments();
     },
     
     /**

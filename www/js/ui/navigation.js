@@ -732,6 +732,7 @@ const Navigation = {
                 cards: [],
                 expenses: [],
                 investments: [],
+                monthlyInvestments: [],
                 recurringExpenses: [],
                 loans: [],
                 income: null,
