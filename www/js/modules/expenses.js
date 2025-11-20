@@ -943,7 +943,7 @@ const Expenses = {
             });
             
             return `
-                <details class="expense-date-group mb-0">
+                <details class="expense-date-group mb-0" open>
                     <summary class="cursor-pointer bg-purple-50 hover:bg-purple-100 border border-purple-200 p-3 transition-all list-none">
                         <div class="flex justify-between items-center">
                             <div class="flex items-center gap-2">

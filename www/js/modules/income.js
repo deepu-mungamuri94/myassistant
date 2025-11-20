@@ -517,14 +517,9 @@ const Income = {
             <div class="space-y-4">
                 <!-- Summary Card -->
                 <div class="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl p-5 shadow-lg">
-                    <div class="flex justify-between items-start mb-3">
-                        <div>
-                            <p class="text-xs opacity-90">Annual CTC</p>
-                            <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(ctc)}</p>
-                        </div>
-                        <button onclick="Income.openForm()" class="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm transition-all">
-                            Edit
-                        </button>
+                    <div class="mb-3">
+                        <p class="text-xs opacity-90">Annual CTC</p>
+                        <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(ctc)}</p>
                     </div>
                     <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                         <div>

@@ -48,15 +48,25 @@ const Navigation = {
                 title: 'AI Advisor',
                 bgClass: 'bg-gradient-to-r from-purple-600 to-pink-600'
             },
-            expenses: {
+            income: {
                 icon: '<span class="text-2xl font-bold text-white mr-2">₹</span>',
-                title: 'Income & Expenses',
+                title: 'Income',
+                bgClass: 'bg-gradient-to-r from-green-600 to-emerald-600'
+            },
+            expenses: {
+                icon: '<svg class="w-6 h-6 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>',
+                title: 'Expenses',
                 bgClass: 'bg-gradient-to-r from-purple-600 to-pink-600'
             },
             recurring: {
                 icon: '<svg class="w-6 h-6 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>',
-                title: 'Recurring & Loans',
+                title: 'Recurring Payments',
                 bgClass: 'bg-gradient-to-r from-orange-600 to-amber-600'
+            },
+            loans: {
+                icon: '<svg class="w-6 h-6 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>',
+                title: 'Loans',
+                bgClass: 'bg-gradient-to-r from-blue-600 to-indigo-600'
             },
             cards: {
                 icon: '<svg class="w-6 h-6 text-white mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/></svg>',
@@ -77,14 +87,15 @@ const Navigation = {
 
         const config = pageConfig[view] || pageConfig.dashboard;
         
-        // Update header background - remove all gradient classes first
+        // Update header background - remove ALL possible gradient classes first
         header.classList.remove(
             'bg-gradient-to-r',
-            'from-blue-600', 'to-cyan-600',
-            'from-purple-600', 'to-pink-600',
-            'from-orange-600', 'to-amber-600',
-            'from-slate-600', 'to-blue-600',
-            'from-yellow-600', 'to-orange-600'
+            // All "from-" colors
+            'from-blue-600', 'from-purple-600', 'from-green-600', 'from-orange-600',
+            'from-slate-600', 'from-yellow-600',
+            // All "to-" colors
+            'to-cyan-600', 'to-pink-600', 'to-emerald-600', 'to-amber-600',
+            'to-blue-600', 'to-indigo-600', 'to-orange-600'
         );
         
         // Add new gradient classes
@@ -108,11 +119,16 @@ const Navigation = {
             case 'cards':
                 if (window.Cards) window.Cards.render();
                 break;
+            case 'income':
+                if (window.Income) window.Income.render();
+                break;
             case 'expenses':
                 if (window.Expenses) window.Expenses.render();
                 break;
             case 'recurring':
                 if (window.RecurringExpenses) window.RecurringExpenses.render();
+                break;
+            case 'loans':
                 if (window.Loans) window.Loans.render();
                 break;
             case 'investments':

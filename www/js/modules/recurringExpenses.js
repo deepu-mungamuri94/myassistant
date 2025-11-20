@@ -530,7 +530,7 @@ const RecurringExpenses = {
                 const groupTotal = groupExpenses.reduce((sum, r) => sum + parseFloat(r.amount), 0);
                 
                 html += `
-                    <details class="recurring-day-group mb-0">
+                    <details class="recurring-day-group mb-0" open>
                         <summary class="cursor-pointer bg-orange-50 hover:bg-orange-100 border border-orange-200 p-3 transition-all list-none">
                             <div class="flex justify-between items-center">
                                 <div class="flex items-center gap-2">

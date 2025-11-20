@@ -13,6 +13,11 @@
     box-sizing: border-box;
 }
 
+html {
+    overflow-x: hidden;
+    max-width: 100vw;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     background: linear-gradient(135deg, 
@@ -25,6 +30,7 @@ body {
     animation: gradientShift 15s ease infinite;
     min-height: 100vh;
     overflow-x: hidden;
+    max-width: 100vw;
     /* Safe area for status bar and notches */
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);

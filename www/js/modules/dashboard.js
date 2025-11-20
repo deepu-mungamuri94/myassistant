@@ -4,6 +4,8 @@
  */
 
 const Dashboard = {
+    // Store selected month range
+    selectedMonthRange: null,
     
     /**
      * Render dashboard
@@ -15,59 +17,95 @@ const Dashboard = {
         // Destroy all existing chart instances first
         this.destroyAllCharts();
         
-        // Get data for last 6 months
-        const expenses = this.getExpensesData();
-        const income = this.getIncomeData();
+        // Get number of months from selected range
+        const monthsCount = this.getMonthsCount();
+        
+        // Get data for specified months
+        const expenses = this.getExpensesData(monthsCount);
+        const income = this.getIncomeData(monthsCount);
         const loans = this.getLoansData();
         
         // Get percentage cards data
         const minNetPay = this.getMinimumNetPay();
         const recurringExpenses = this.getTotalRecurringExpenses();
         const totalEmis = this.getTotalEmis();
+        const regularExpenses = this.getRegularExpenses(); // Only non-recurring expenses
         
         const recurringPercent = minNetPay > 0 ? ((recurringExpenses / minNetPay) * 100).toFixed(1) : 0;
         const emisPercent = minNetPay > 0 ? ((totalEmis / minNetPay) * 100).toFixed(1) : 0;
+        const regularPercent = minNetPay > 0 ? ((regularExpenses / minNetPay) * 100).toFixed(1) : 0;
         
         container.innerHTML = `
             <!-- Percentage Cards -->
-            <div class="grid grid-cols-2 gap-3 mb-6">
-                <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-4 text-white shadow-lg">
-                    <div class="text-xs opacity-90 mb-1">Recurring Expenses</div>
-                    <div class="text-3xl font-bold mb-1">${recurringPercent}%</div>
-                    <div class="text-xs mt-2 opacity-90">₹${this.formatAmount(recurringExpenses)} / ₹${this.formatAmount(minNetPay)}</div>
+            <div class="grid grid-cols-3 gap-3 mb-4 max-w-full">
+                <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                    <div class="text-xs opacity-90 leading-tight">Rec.Payments</div>
+                    <div class="flex-1 flex items-center justify-center">
+                        <div class="text-3xl font-bold">${recurringPercent}<span class="text-lg opacity-80">%</span></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(recurringExpenses)}</div>
+                        <button onclick="Dashboard.showTooltip(event, 'Recurring payments: Scheduled payments excluding monthly Loans/EMIs')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                    </div>
                 </div>
-                <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-4 text-white shadow-lg">
-                    <div class="text-xs opacity-90 mb-1">EMIs</div>
-                    <div class="text-3xl font-bold mb-1">${emisPercent}%</div>
-                    <div class="text-xs mt-2 opacity-90">₹${this.formatAmount(totalEmis)} / ₹${this.formatAmount(minNetPay)}</div>
+                <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                    <div class="text-xs opacity-90 leading-tight">Loans / EMIs</div>
+                    <div class="flex-1 flex items-center justify-center">
+                        <div class="text-3xl font-bold">${emisPercent}<span class="text-lg opacity-80">%</span></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(totalEmis)}</div>
+                        <button onclick="Dashboard.showTooltip(event, 'Loans / EMIs: Total monthly EMIs from active loans and credit cards')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                    <div class="text-xs opacity-90 leading-tight">Reg.Expenses</div>
+                    <div class="flex-1 flex items-center justify-center">
+                        <div class="text-3xl font-bold">${regularPercent}<span class="text-lg opacity-80">%</span></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(regularExpenses)}</div>
+                        <button onclick="Dashboard.showTooltip(event, 'Regular Expenses: All monthly expenses without Recurring payments and Monthly EMIs')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                    </div>
                 </div>
             </div>
             
             <!-- Category Expenses Chart -->
-            <div class="mb-6">
-                <div class="flex justify-between items-center mb-2">
+            <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+                <div class="flex justify-between items-center mb-3 max-w-full">
                     <h3 class="text-sm font-semibold text-gray-700">Expenses by Category</h3>
-                    <input type="month" id="category-month-selector" value="${this.getCurrentMonthValue()}" onchange="Dashboard.renderCategoryChart()" class="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                    <div class="relative">
+                        <input type="month" id="category-month-selector" value="${this.getCurrentMonthValue()}" onchange="Dashboard.updateCategoryButton(); Dashboard.renderCategoryChart()" class="absolute opacity-0 pointer-events-none" />
+                        <button id="category-month-button" onclick="document.getElementById('category-month-selector').showPicker()" class="px-3 py-1.5 border border-purple-300 rounded-lg text-xs font-medium text-purple-700 hover:bg-purple-50 transition-all whitespace-nowrap">
+                            ${this.getFormattedMonth(this.getCurrentMonthValue())} ▼
+                        </button>
+                    </div>
                 </div>
-                <div class="flex justify-center" style="height: 210px;">
+                <div class="flex justify-center max-w-full" style="height: 210px;">
                     <div style="width: 70%; max-width: 500px;">
                         <canvas id="category-chart"></canvas>
                     </div>
                 </div>
             </div>
             
-            <!-- Income vs Expense Chart -->
-            <div class="mb-6">
-                <div style="height: 400px;">
+            <!-- Income vs Expenses Chart -->
+            <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+                <div class="flex justify-between items-center mb-3 max-w-full">
+                    <h3 class="text-sm font-semibold text-gray-700">Income vs Expenses</h3>
+                    <button onclick="Dashboard.openMonthRangeModal()" class="px-3 py-1.5 border border-blue-300 rounded-lg text-xs font-medium text-blue-700 hover:bg-blue-50 transition-all whitespace-nowrap">
+                        <span id="month-range-label">${this.getMonthRangeLabel()}</span> ▼
+                    </button>
+                </div>
+                <div style="height: 400px; max-width: 100%;">
                     <canvas id="income-expense-chart"></canvas>
                 </div>
             </div>
             
             <!-- EMI/Loan Progress -->
             ${loans.length > 0 ? `
-            <div>
+            <div class="max-w-full overflow-hidden">
                 <h3 class="text-base font-semibold text-gray-700 mb-3">EMI/Loan Progress</h3>
-                <div style="height: ${Math.max(200, Math.min(400, loans.length * 60))}px;">
+                <div style="height: ${Math.max(200, Math.min(400, loans.length * 60))}px; max-width: 100%;">
                     <canvas id="loans-chart"></canvas>
                 </div>
             </div>
@@ -111,13 +149,66 @@ const Dashboard = {
     },
     
     /**
-     * Get expenses data for last 6 months
+     * Get expenses data for last N months or custom range
      */
-    getExpensesData() {
-        const now = new Date();
+    getExpensesData(monthsCount = 6) {
         const monthsData = [];
         
-        for (let i = 5; i >= 0; i--) {
+        // Use custom range if selected
+        if (this.selectedMonthRange) {
+            const [startYear, startMonth] = this.selectedMonthRange.start.split('-').map(Number);
+            const [endYear, endMonth] = this.selectedMonthRange.end.split('-').map(Number);
+            
+            let currentYear = startYear;
+            let currentMonth = startMonth;
+            
+            while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) {
+                const date = new Date(currentYear, currentMonth - 1, 1);
+                const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+                
+                // Get expenses for this month
+                const expenses = window.DB.expenses || [];
+                const monthExpenses = expenses.filter(exp => {
+                    const expDate = new Date(exp.date);
+                    return expDate.getFullYear() === currentYear && expDate.getMonth() + 1 === currentMonth;
+                });
+                
+                const total = monthExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+                
+                // Get loans EMI for this month
+                const loans = window.DB.loans || [];
+                const monthLoans = loans.filter(loan => {
+                    if (loan.status !== 'active') return false;
+                    const firstEmiDate = new Date(loan.firstEmiDate);
+                    const loanMonth = new Date(currentYear, currentMonth - 1, 1);
+                    return firstEmiDate <= loanMonth;
+                });
+                
+                const totalLoansEmi = monthLoans.reduce((sum, loan) => {
+                    const emi = parseFloat(loan.emi) || 0;
+                    return sum + emi;
+                }, 0);
+                
+                monthsData.push({
+                    label: monthName,
+                    expenses: total,
+                    withLoans: total + totalLoansEmi
+                });
+                
+                // Move to next month
+                currentMonth++;
+                if (currentMonth > 12) {
+                    currentMonth = 1;
+                    currentYear++;
+                }
+            }
+            
+            return monthsData;
+        }
+        
+        // Default: last N months
+        const now = new Date();
+        for (let i = monthsCount - 1; i >= 0; i--) {
             const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const monthName = date.toLocaleDateString('en-US', { month: 'short' });
             const year = date.getFullYear();
@@ -148,10 +239,9 @@ const Dashboard = {
     },
     
     /**
-     * Get income data for last 6 months
+     * Get income data for last N months or custom range
      */
-    getIncomeData() {
-        const now = new Date();
+    getIncomeData(monthsCount = 6) {
         const monthsData = [];
         
         const income = window.DB.income;
@@ -163,11 +253,42 @@ const Dashboard = {
         const { ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent } = income;
         const yearlyPayslips = window.Income.generateYearlyPayslips(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent);
         
-        // Get financial year months
-        const financialMonths = ['April', 'May', 'June', 'July', 'August', 'September', 
-                                'October', 'November', 'December', 'January', 'February', 'March'];
+        // Use custom range if selected
+        if (this.selectedMonthRange) {
+            const [startYear, startMonth] = this.selectedMonthRange.start.split('-').map(Number);
+            const [endYear, endMonth] = this.selectedMonthRange.end.split('-').map(Number);
+            
+            let currentYear = startYear;
+            let currentMonth = startMonth;
+            
+            while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) {
+                const date = new Date(currentYear, currentMonth - 1, 1);
+                const monthName = date.toLocaleDateString('en-US', { month: 'long' });
+                const shortMonth = date.toLocaleDateString('en-US', { month: 'short' });
+                
+                // Find payslip for this month
+                const payslip = yearlyPayslips.find(p => p.month === monthName);
+                const netPay = payslip ? payslip.totalNetPay : 0;
+                
+                monthsData.push({
+                    label: shortMonth,
+                    income: netPay
+                });
+                
+                // Move to next month
+                currentMonth++;
+                if (currentMonth > 12) {
+                    currentMonth = 1;
+                    currentYear++;
+                }
+            }
+            
+            return monthsData;
+        }
         
-        for (let i = 5; i >= 0; i--) {
+        // Default: last N months
+        const now = new Date();
+        for (let i = monthsCount - 1; i >= 0; i--) {
             const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const monthName = date.toLocaleDateString('en-US', { month: 'long' });
             const shortMonth = date.toLocaleDateString('en-US', { month: 'short' });
@@ -263,8 +384,12 @@ const Dashboard = {
             return;
         }
         
-        const expensesData = this.getExpensesData();
-        const incomeData = this.getIncomeData();
+        // Get number of months
+        const monthsInput = document.getElementById('months-selector');
+        const monthsCount = monthsInput ? parseInt(monthsInput.value) || 6 : 6;
+        
+        const expensesData = this.getExpensesData(monthsCount);
+        const incomeData = this.getIncomeData(monthsCount);
         
         // Destroy existing chart
         if (this.incomeExpenseChartInstance) {
@@ -779,15 +904,220 @@ const Dashboard = {
     },
     
     /**
-     * Format amount for display
+     * Get regular expenses for current month (excluding expenses with 'emi' or 'recurring' categories)
+     */
+    getRegularExpenses() {
+        const expenses = window.DB.expenses || [];
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth() + 1; // 1-12
+        
+        // Get only regular expenses (non-recurring, non-EMI) for current month
+        let regularTotal = 0;
+        expenses.forEach(expense => {
+            const expenseDate = new Date(expense.date);
+            const expenseYear = expenseDate.getFullYear();
+            const expenseMonth = expenseDate.getMonth() + 1;
+            
+            // Only count expenses in current month that are NOT 'emi' or 'recurring'
+            if (expenseYear === currentYear && expenseMonth === currentMonth) {
+                const category = (expense.category || '').toLowerCase();
+                // Exclude expenses with category 'emi' or 'recurring'
+                if (category !== 'emi' && category !== 'recurring') {
+                    regularTotal += parseFloat(expense.amount) || 0;
+                }
+            }
+        });
+        
+        return regularTotal;
+    },
+    
+    /**
+     * Format amount for display (no longer needed, using Utils.formatIndianNumber)
      */
     formatAmount(amount) {
-        if (amount >= 100000) {
-            return (amount / 100000).toFixed(1) + 'L';
-        } else if (amount >= 1000) {
-            return (amount / 1000).toFixed(1) + 'k';
+        return Utils.formatIndianNumber(amount);
+    },
+    
+    /**
+     * Show tooltip on info button
+     */
+    showTooltip(event, text) {
+        event.stopPropagation();
+        
+        // Remove any existing tooltips
+        const existing = document.getElementById('dashboard-tooltip');
+        if (existing) existing.remove();
+        
+        // Create tooltip
+        const tooltip = document.createElement('div');
+        tooltip.id = 'dashboard-tooltip';
+        tooltip.className = 'fixed bg-gray-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg z-[10001] max-w-[200px]';
+        tooltip.textContent = text;
+        
+        // Position tooltip to the left of the button to avoid overflow
+        const buttonRect = event.target.getBoundingClientRect();
+        tooltip.style.top = buttonRect.top + 'px';
+        tooltip.style.right = (window.innerWidth - buttonRect.left + 5) + 'px';
+        
+        document.body.appendChild(tooltip);
+        
+        // Remove on click anywhere
+        setTimeout(() => {
+            document.addEventListener('click', () => {
+                const tt = document.getElementById('dashboard-tooltip');
+                if (tt) tt.remove();
+            }, { once: true });
+        }, 100);
+    },
+    
+    /**
+     * Get formatted month string
+     */
+    getFormattedMonth(monthValue) {
+        const [year, month] = monthValue.split('-');
+        const date = new Date(year, month - 1);
+        return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    },
+    
+    /**
+     * Open month picker (not implemented - using browser's month input)
+     */
+    openMonthPicker(type) {
+        // For now, just focus on the hidden month input
+        const input = document.getElementById('category-month-selector');
+        if (input && input.showPicker) {
+            input.showPicker();
         }
-        return amount.toFixed(0);
+    },
+    
+    /**
+     * Update category month button text
+     */
+    updateCategoryButton() {
+        const selector = document.getElementById('category-month-selector');
+        const button = document.getElementById('category-month-button');
+        if (selector && button) {
+            button.innerHTML = this.getFormattedMonth(selector.value) + ' ▼';
+        }
+    },
+    
+    /**
+     * Get months count based on selected range
+     */
+    getMonthsCount() {
+        if (!this.selectedMonthRange) {
+            return 6; // Default to last 6 months
+        }
+        
+        const [startYear, startMonth] = this.selectedMonthRange.start.split('-').map(Number);
+        const [endYear, endMonth] = this.selectedMonthRange.end.split('-').map(Number);
+        
+        const months = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+        return Math.max(1, Math.min(12, months));
+    },
+    
+    /**
+     * Get month range label
+     */
+    getMonthRangeLabel() {
+        if (!this.selectedMonthRange) {
+            return 'Last 6 months';
+        }
+        
+        const start = this.getFormattedMonth(this.selectedMonthRange.start);
+        const end = this.getFormattedMonth(this.selectedMonthRange.end);
+        return `${start} - ${end}`;
+    },
+    
+    /**
+     * Open month range modal
+     */
+    openMonthRangeModal() {
+        const modal = document.getElementById('month-range-modal');
+        if (modal) {
+            // Set default values
+            const now = new Date();
+            const endMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+            const startMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+            
+            if (this.selectedMonthRange) {
+                document.getElementById('month-range-start').value = this.selectedMonthRange.start;
+                document.getElementById('month-range-end').value = this.selectedMonthRange.end;
+            } else {
+                document.getElementById('month-range-start').value = startMonth;
+                document.getElementById('month-range-end').value = endMonth;
+            }
+            
+            modal.classList.remove('hidden');
+        }
+    },
+    
+    /**
+     * Close month range modal
+     */
+    closeMonthRangeModal() {
+        const modal = document.getElementById('month-range-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    },
+    
+    /**
+     * Apply month range selection
+     */
+    applyMonthRange() {
+        const start = document.getElementById('month-range-start').value;
+        const end = document.getElementById('month-range-end').value;
+        
+        if (!start || !end) {
+            alert('Please select both start and end months');
+            return;
+        }
+        
+        const [startYear, startMonth] = start.split('-').map(Number);
+        const [endYear, endMonth] = end.split('-').map(Number);
+        
+        if (startYear > endYear || (startYear === endYear && startMonth > endMonth)) {
+            alert('Start month must be before or equal to end month');
+            return;
+        }
+        
+        const months = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+        if (months > 12) {
+            alert('Maximum range is 12 months');
+            return;
+        }
+        
+        this.selectedMonthRange = { start, end };
+        this.closeMonthRangeModal();
+        
+        // Update label
+        const label = document.getElementById('month-range-label');
+        if (label) {
+            label.textContent = this.getMonthRangeLabel();
+        }
+        
+        // Re-render charts
+        this.renderIncomeExpenseChart();
+    },
+    
+    /**
+     * Reset to default month range
+     */
+    resetMonthRange() {
+        this.selectedMonthRange = null;
+        this.closeMonthRangeModal();
+        
+        // Update label
+        const label = document.getElementById('month-range-label');
+        if (label) {
+            label.textContent = 'Last 6 months';
+        }
+        
+        // Re-render charts
+        this.renderIncomeExpenseChart();
     }
 };
 
