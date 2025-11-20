@@ -101,15 +101,18 @@ const Investments = {
         document.getElementById('investment-modal-notes').value = monthlyInv.notes || '';
         document.getElementById('investment-modal-date').value = monthlyInv.date;
         
-        // Set to Current mode
+        // Set to Month mode
         document.getElementById('investment-mode-current').checked = true;
         document.getElementById('investment-mode-current').disabled = true; // Can't change mode when editing
         document.getElementById('investment-mode-existing').disabled = true;
         
-        if (monthlyInv.type === 'stock') {
+        if (monthlyInv.type === 'stock' || monthlyInv.type === 'mutual_fund') {
             document.getElementById('investment-modal-stock-price').value = monthlyInv.inputStockPrice || '';
             document.getElementById('investment-modal-quantity').value = monthlyInv.quantity || '';
             document.getElementById('investment-modal-currency').value = monthlyInv.inputCurrency || 'INR';
+        } else if (monthlyInv.type === 'gold') {
+            document.getElementById('investment-modal-gold-price').value = monthlyInv.inputStockPrice || '';
+            document.getElementById('investment-modal-gold-grams').value = monthlyInv.quantity || '';
         } else {
             document.getElementById('investment-modal-amount').value = monthlyInv.amount;
         }
@@ -646,53 +649,136 @@ Return tickers for ALL stocks in a JSON array.`;
         // Calculate total for filtered period
         const total = filtered.reduce((sum, inv) => sum + inv.amount, 0);
         
+        // Split by term
+        const longTerm = filtered.filter(i => i.term === 'long');
+        const shortTerm = filtered.filter(i => i.term === 'short');
+        const longTermSum = longTerm.reduce((sum, inv) => sum + inv.amount, 0);
+        const shortTermSum = shortTerm.reduce((sum, inv) => sum + inv.amount, 0);
+        
         const typeLabels = {
             'stock': 'Stock', 'mutual_fund': 'Mutual Fund', 'fd': 'FD',
-            'epf': 'EPF', 'gold': 'Gold', 'real_estate': 'Real Estate',
-            'crypto': 'Crypto', 'general': 'General'
+            'epf': 'EPF', 'gold': 'Gold', 'other': 'Other'
         };
         
-        container.innerHTML = `
-            <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 mb-3 border border-green-200">
-                <div class="flex justify-between items-center">
-                    <span class="text-sm font-semibold text-green-800">${filterLabel} Total</span>
-                    <span class="text-base font-bold text-green-900">${Utils.formatCurrency(total)}</span>
+        const renderMonthlyInv = (inv) => `
+            <div class="bg-white rounded-lg p-3 border border-gray-200 hover:shadow-md transition-all mb-0">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-gray-800 text-sm">${inv.name}</h4>
+                        <div class="flex gap-2 mt-1">
+                            <span class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">${typeLabels[inv.type] || 'Other'}</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-base font-bold text-gray-900">${Utils.formatCurrency(inv.amount)}</p>
+                        ${inv.quantity ? `<p class="text-xs text-gray-600">Qty: ${inv.quantity}</p>` : ''}
+                    </div>
                 </div>
+                <div class="flex justify-between items-center text-xs text-gray-500 mt-2">
+                    <span>📅 ${new Date(inv.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    <div class="flex gap-2">
+                        <button onclick="Investments.editMonthlyInvestment('${inv.id}')" class="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-xs font-medium transition-all" title="Edit">
+                            <svg class="w-3 h-3 inline" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.38-2.828-2.829z"/>
+                            </svg>
+                        </button>
+                        <button onclick="Investments.confirmDeleteMonthlyInvestment('${inv.id}')" class="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded text-xs font-medium transition-all" title="Delete">
+                            <svg class="w-3 h-3 inline" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                ${inv.notes ? `<p class="text-xs text-gray-600 mt-2">${inv.notes}</p>` : ''}
             </div>
-            ${filtered.map(inv => `
-                <div class="bg-white rounded-lg p-3 border border-gray-200 hover:shadow-md transition-all">
-                    <div class="flex justify-between items-start mb-2">
-                        <div class="flex-1">
-                            <h4 class="font-semibold text-gray-800 text-sm">${inv.name}</h4>
-                            <div class="flex gap-2 mt-1">
-                                <span class="text-xs px-2 py-0.5 rounded ${inv.term === 'long' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">${inv.term === 'long' ? 'Long' : 'Short'} Term</span>
-                                <span class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">${typeLabels[inv.type] || 'General'}</span>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-base font-bold text-gray-900">${Utils.formatCurrency(inv.amount)}</p>
-                            ${inv.quantity ? `<p class="text-xs text-gray-600">Qty: ${inv.quantity}</p>` : ''}
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-center text-xs text-gray-500 mt-2">
-                        <span>📅 ${new Date(inv.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                        <div class="flex gap-2">
-                            <button onclick="Investments.editMonthlyInvestment('${inv.id}')" class="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-xs font-medium transition-all" title="Edit">
-                                <svg class="w-3 h-3 inline" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.38-2.828-2.829z"/>
-                                </svg>
-                            </button>
-                            <button onclick="Investments.confirmDeleteMonthlyInvestment('${inv.id}')" class="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded text-xs font-medium transition-all" title="Delete">
-                                <svg class="w-3 h-3 inline" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    ${inv.notes ? `<p class="text-xs text-gray-600 mt-2">${inv.notes}</p>` : ''}
-                </div>
-            `).join('')}
         `;
+        
+        container.innerHTML = `
+            <div class="bg-white rounded-xl border border-green-200 overflow-hidden">
+                <!-- Header (attached to tabs) -->
+                <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-3 border-b border-green-200">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-semibold text-green-800">${filterLabel} Total</span>
+                        <span class="text-base font-bold text-green-900">${Utils.formatCurrency(total)}</span>
+                    </div>
+                </div>
+                
+                <!-- Tabs -->
+                ${(shortTerm.length > 0 || longTerm.length > 0) ? `
+                    <div class="border-b border-green-200">
+                        <div class="flex justify-evenly">
+                            ${shortTerm.length > 0 ? `
+                                <button onclick="Investments.switchMonthlyTab('short')" 
+                                        id="monthly-tab-short"
+                                        class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600">
+                                    <div class="flex items-center justify-center">
+                                        <span>Short Term (${shortTerm.length})</span>
+                                    </div>
+                                    <div class="text-xs font-bold mt-1">${Utils.formatCurrency(shortTermSum)}</div>
+                                </button>
+                            ` : ''}
+                            ${longTerm.length > 0 ? `
+                                <button onclick="Investments.switchMonthlyTab('long')" 
+                                        id="monthly-tab-long"
+                                        class="flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                                    <div class="flex items-center justify-center">
+                                        <span>Long Term (${longTerm.length})</span>
+                                    </div>
+                                    <div class="text-xs font-bold mt-1">${Utils.formatCurrency(longTermSum)}</div>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Content -->
+                    ${shortTerm.length > 0 ? `
+                        <div id="monthly-content-short" class="p-3 space-y-2">
+                            ${shortTerm.map(renderMonthlyInv).join('')}
+                        </div>
+                    ` : ''}
+                    ${longTerm.length > 0 ? `
+                        <div id="monthly-content-long" class="p-3 space-y-2 hidden">
+                            ${longTerm.map(renderMonthlyInv).join('')}
+                        </div>
+                    ` : ''}
+                ` : `
+                    <div class="p-3 space-y-2">
+                        ${filtered.map(renderMonthlyInv).join('')}
+                    </div>
+                `}
+            </div>
+        `;
+    },
+
+    /**
+     * Switch between Short/Long term tabs for monthly investments
+     */
+    switchMonthlyTab(tab) {
+        // Update buttons
+        const shortBtn = document.getElementById('monthly-tab-short');
+        const longBtn = document.getElementById('monthly-tab-long');
+        const shortContent = document.getElementById('monthly-content-short');
+        const longContent = document.getElementById('monthly-content-long');
+        
+        if (tab === 'short') {
+            if (shortBtn) {
+                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600';
+            }
+            if (longBtn) {
+                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+            }
+            if (shortContent) shortContent.classList.remove('hidden');
+            if (longContent) longContent.classList.add('hidden');
+        } else {
+            if (shortBtn) {
+                shortBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+            }
+            if (longBtn) {
+                longBtn.className = 'flex-1 px-3 py-2.5 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600';
+            }
+            if (shortContent) shortContent.classList.add('hidden');
+            if (longContent) longContent.classList.remove('hidden');
+        }
     },
 
     /**
@@ -751,11 +837,17 @@ Return tickers for ALL stocks in a JSON array.`;
         const shortTermHTML = this.renderGroupedInvestments(shortTerm);
         const longTermHTML = this.renderGroupedInvestments(longTerm);
         
+        // Update portfolio total in header
+        const portfolioTotalEl = document.getElementById('portfolio-total-amount');
+        if (portfolioTotalEl) {
+            portfolioTotalEl.textContent = Utils.formatCurrency(total);
+        }
+        
         list.innerHTML = `
             <div class="bg-gradient-to-r from-yellow-100 via-orange-50 to-yellow-100 rounded-xl border border-yellow-400 mb-4 overflow-hidden">
                 <div class="p-5">
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="font-bold text-yellow-900 text-base">💰 Portfolio Total</h3>
+                        <h3 class="font-bold text-yellow-900 text-base">Summary</h3>
                         <p class="text-base font-bold text-yellow-800">${Utils.formatCurrency(total)}</p>
                     </div>
                     ${hasStocks ? `
