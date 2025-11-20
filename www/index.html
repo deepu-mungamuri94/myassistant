@@ -872,10 +872,12 @@
                 <input type="date" id="investment-modal-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
             </div>
             
-            <input type="text" id="investment-modal-name" list="investment-names-list" placeholder="Name (e.g., HDFC Bank, Apple Inc)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
-            <datalist id="investment-names-list">
-                <!-- Will be populated dynamically -->
-            </datalist>
+            <div class="mb-3 relative">
+                <input type="text" id="investment-modal-name" list="investment-names-list" placeholder="Name (e.g., HDFC Bank, Apple Inc)" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" autocomplete="off">
+                <datalist id="investment-names-list">
+                    <!-- Will be populated dynamically -->
+                </datalist>
+            </div>
             
             <select id="investment-modal-type" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" onchange="toggleInvestmentFields()">
                 <option value="stock">Stocks / Shares</option>
