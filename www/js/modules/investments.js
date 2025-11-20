@@ -76,9 +76,6 @@ const Investments = {
         window.DB.monthlyInvestments.push(monthlyInvestment);
         window.Storage.save();
         
-        // Aggregate into existing investments
-        this.aggregateMonthlyInvestments();
-        
         return monthlyInvestment;
     },
 
@@ -161,9 +158,6 @@ const Investments = {
         
         window.Storage.save();
         
-        // Re-aggregate (this will handle the update properly)
-        this.aggregateMonthlyInvestments();
-        
         return monthlyInv;
     },
 
@@ -178,9 +172,6 @@ const Investments = {
         
         window.DB.monthlyInvestments.splice(index, 1);
         window.Storage.save();
-        
-        // Re-aggregate to update portfolio
-        this.recalculatePortfolio();
     },
 
     /**
@@ -227,17 +218,6 @@ const Investments = {
         });
         
         modal.classList.remove('hidden');
-    },
-
-    /**
-     * Recalculate portfolio from scratch based on monthly investments
-     * This is more accurate than trying to reverse individual changes
-     */
-    recalculatePortfolio() {
-        // Re-aggregate monthly investments into portfolio
-        // This will rebuild portfolio correctly from base + monthly
-        this.aggregateMonthlyInvestments();
-        this.render();
     },
 
     /**
@@ -559,165 +539,6 @@ Return tickers for ALL stocks in a JSON array.`;
             { value: 'crypto', label: 'Cryptocurrency' },
             { value: 'general', label: 'General' }
         ];
-    },
-
-    /**
-     * Aggregate monthly investments into existing portfolio
-     * Rebuilds portfolio from monthly investments to avoid duplication
-     */
-    aggregateMonthlyInvestments() {
-        const monthly = window.DB.monthlyInvestments || [];
-        
-        // Step 1: Remove all auto-aggregated entries (keep only manual base entries)
-        // Auto-aggregated entries have the flag: fromMonthly: true
-        const baseInvestments = window.DB.investments.filter(inv => !inv.fromMonthly);
-        
-        // Step 2: Build aggregated sums from ALL monthly investments
-        const monthlyAggregated = new Map(); // key: "name|type|term", value: aggregated monthly data
-        
-        monthly.forEach(monthlyInv => {
-            const key = `${monthlyInv.name.toLowerCase()}|${monthlyInv.type}|${monthlyInv.term}`;
-            
-            if (monthlyAggregated.has(key)) {
-                // Add to existing aggregated monthly entry
-                const agg = monthlyAggregated.get(key);
-                
-                if (monthlyInv.type === 'gold' && monthlyInv.quantity) {
-                    // For gold: Add quantity only (amount will be recalculated)
-                    agg.quantity += monthlyInv.quantity;
-                } else if (monthlyInv.type === 'stock' && monthlyInv.quantity) {
-                    // For stocks: Add quantity only (amount will be recalculated)
-                    agg.quantity += monthlyInv.quantity;
-                } else {
-                    // For other assets: Add amount
-                    agg.amount += monthlyInv.amount;
-                }
-            } else {
-                // Create new aggregated monthly entry
-                monthlyAggregated.set(key, {
-                    name: monthlyInv.name,
-                    type: monthlyInv.type,
-                    amount: monthlyInv.amount, // Initial amount (will be recalculated)
-                    term: monthlyInv.term,
-                    quantity: monthlyInv.quantity || 0,
-                    inputStockPrice: monthlyInv.inputStockPrice,
-                    inputCurrency: monthlyInv.inputCurrency,
-                    usdToInrRate: monthlyInv.usdToInrRate,
-                    notes: monthlyInv.notes,
-                });
-            }
-        });
-        
-        // Step 3: Restore all base entries to their original state first
-        const finalInvestments = baseInvestments.map(inv => {
-            // If entry has baseQuantity/baseAmount, restore them
-            if (inv.baseQuantity !== undefined || inv.baseAmount !== undefined) {
-                const restored = { ...inv };
-                if (inv.baseQuantity !== undefined) {
-                    restored.quantity = inv.baseQuantity;
-                }
-                if (inv.baseAmount !== undefined) {
-                    restored.amount = inv.baseAmount;
-                }
-                // Recalculate amount for stocks/gold based on restored quantity
-                if (inv.type === 'stock' && restored.quantity) {
-                    if (restored.currentPrice) {
-                        restored.amount = restored.currentPrice * restored.quantity;
-                    } else if (restored.inputStockPrice) {
-                        restored.amount = restored.inputStockPrice * restored.quantity;
-                    }
-                } else if (inv.type === 'gold' && restored.quantity && window.DB.goldRatePerGram) {
-                    restored.amount = window.DB.goldRatePerGram * restored.quantity;
-                }
-                return restored;
-            }
-            return { ...inv };
-        });
-        
-        // Step 4: For each aggregated monthly data, merge with base or create new
-        monthlyAggregated.forEach((monthlyAgg, key) => {
-            // Find matching base portfolio entry (manual entry)
-            const baseEntry = baseInvestments.find(inv => 
-                inv.name.toLowerCase() === monthlyAgg.name.toLowerCase() &&
-                inv.type === monthlyAgg.type &&
-                inv.term === monthlyAgg.term
-            );
-            
-            if (baseEntry) {
-                // Found a base entry: UPDATE it in place (don't replace)
-                // Store original base quantities to preserve them
-                const entry = finalInvestments.find(inv => inv.id === baseEntry.id);
-                
-                // Store base quantities if not already stored (check for undefined/null, not falsy)
-                if (entry.baseQuantity === undefined || entry.baseQuantity === null) {
-                    entry.baseQuantity = entry.quantity || 0;
-                }
-                if (entry.baseAmount === undefined || entry.baseAmount === null) {
-                    entry.baseAmount = entry.amount || 0;
-                }
-                
-                if (monthlyAgg.type === 'gold' && monthlyAgg.quantity) {
-                    // For gold: Base grams + monthly grams
-                    entry.quantity = entry.baseQuantity + monthlyAgg.quantity;
-                    // Recalculate amount using global gold rate
-                    if (window.DB.goldRatePerGram) {
-                        entry.amount = window.DB.goldRatePerGram * entry.quantity;
-                    }
-                } else if (monthlyAgg.type === 'stock' && monthlyAgg.quantity) {
-                    // For stocks: Base shares + monthly shares
-                    entry.quantity = entry.baseQuantity + monthlyAgg.quantity;
-                    // Recalculate amount based on stock price (using latest price from portfolio)
-                    if (entry.currentPrice) {
-                        // Use the current/refreshed stock price if available
-                        entry.amount = entry.currentPrice * entry.quantity;
-                    } else if (entry.inputStockPrice) {
-                        // Fallback to input price
-                        entry.amount = entry.inputStockPrice * entry.quantity;
-                    }
-                } else {
-                    // For other assets: Base amount + monthly amount
-                    entry.amount = entry.baseAmount + monthlyAgg.amount;
-                }
-                entry.lastUpdated = Utils.getCurrentTimestamp();
-                // DO NOT set fromMonthly flag - this keeps the base entry intact
-            } else {
-                // No base entry: create new entry from monthly aggregation only
-                let calculatedAmount = monthlyAgg.amount;
-                
-                // For stocks and gold, recalculate amount from quantity × price
-                if (monthlyAgg.type === 'stock' && monthlyAgg.quantity && monthlyAgg.inputStockPrice) {
-                    calculatedAmount = monthlyAgg.inputStockPrice * monthlyAgg.quantity;
-                } else if (monthlyAgg.type === 'gold' && monthlyAgg.quantity && window.DB.goldRatePerGram) {
-                    calculatedAmount = window.DB.goldRatePerGram * monthlyAgg.quantity;
-                }
-                
-                finalInvestments.push({
-                    id: Utils.generateId(),
-                    name: monthlyAgg.name,
-                    type: monthlyAgg.type,
-                    amount: calculatedAmount, // Use calculated amount
-                    term: monthlyAgg.term,
-                    quantity: monthlyAgg.quantity || null,
-                    inputStockPrice: monthlyAgg.inputStockPrice,
-                    inputCurrency: monthlyAgg.inputCurrency,
-                    usdToInrRate: monthlyAgg.usdToInrRate,
-                    currentPrice: null,
-                    currency: null,
-                    exchange: null,
-                    symbol: null,
-                    lastPriceUpdate: null,
-                    tickerSymbol: null,
-                    notes: monthlyAgg.notes,
-                    createdAt: Utils.getCurrentTimestamp(),
-                    lastUpdated: Utils.getCurrentTimestamp(),
-                    fromMonthly: true // Mark as aggregated
-                });
-            }
-        });
-        
-        // Step 5: Replace portfolio with final merged list
-        window.DB.investments = finalInvestments;
-        window.Storage.save();
     },
 
     /**
