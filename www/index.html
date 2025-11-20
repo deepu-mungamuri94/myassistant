@@ -3811,16 +3811,14 @@
             
             console.log('📦 Pending data:', JSON.stringify(pendingInvestmentData));
             
-            // Store data on modal element to preserve it
-            const modal = document.getElementById('override-confirm-modal');
-            modal.dataset.pendingData = JSON.stringify(pendingInvestmentData);
-            console.log('💾 Stored data on modal element');
+            const { existing, name, amount, term, type, quantity, notes, stockPrice, currency, usdToInrRate} = pendingInvestmentData;
             
-            const { existing, name, amount, term, type, quantity, notes, stockPrice, currency, usdToInrRate } = pendingInvestmentData;
-            
-            // Show confirmation with existing value
+            // Store data on modal element to preserve it and show confirmation
             const modal = document.getElementById('override-confirm-modal');
             const message = document.getElementById('override-confirm-message');
+            
+            modal.dataset.pendingData = JSON.stringify(pendingInvestmentData);
+            console.log('💾 Stored data on modal element');
             
             console.log('🎯 Modal found:', modal ? 'Yes' : 'No');
             console.log('💬 Message element found:', message ? 'Yes' : 'No');
