@@ -571,24 +571,37 @@ Return tickers for ALL stocks in a JSON array.`;
         const monthly = window.DB.monthlyInvestments || [];
         
         monthly.forEach(monthlyInv => {
-            // Find if we have this investment in our portfolio
-            const existing = window.DB.investments.find(inv => 
-                inv.name.toLowerCase() === monthlyInv.name.toLowerCase() && 
-                inv.type === monthlyInv.type &&
-                inv.term === monthlyInv.term
-            );
+            let existing;
+            
+            // For gold, match by name only (ignore term)
+            if (monthlyInv.type === 'gold') {
+                existing = window.DB.investments.find(inv => 
+                    inv.name.toLowerCase() === monthlyInv.name.toLowerCase() && 
+                    inv.type === 'gold'
+                );
+            } else {
+                // For other types, match by name, type, and term
+                existing = window.DB.investments.find(inv => 
+                    inv.name.toLowerCase() === monthlyInv.name.toLowerCase() && 
+                    inv.type === monthlyInv.type &&
+                    inv.term === monthlyInv.term
+                );
+            }
             
             if (existing) {
                 // Update existing investment
-                if ((monthlyInv.type === 'stock' || monthlyInv.type === 'gold') && monthlyInv.quantity) {
-                    // For stocks and gold, add quantity (shares/grams)
+                if (monthlyInv.type === 'gold' && monthlyInv.quantity) {
+                    // For gold: Add grams to existing grams
                     existing.quantity = (existing.quantity || 0) + monthlyInv.quantity;
-                    // Recalculate amount based on new quantity
-                    if (monthlyInv.type === 'gold' && window.DB.goldRatePerGram) {
-                        // Use global gold rate for portfolio calculation
+                    // Recalculate amount using global gold rate (don't change inputStockPrice)
+                    if (window.DB.goldRatePerGram) {
                         existing.amount = window.DB.goldRatePerGram * existing.quantity;
-                        existing.inputStockPrice = window.DB.goldRatePerGram;
-                    } else if (existing.inputStockPrice) {
+                    }
+                } else if (monthlyInv.type === 'stock' && monthlyInv.quantity) {
+                    // For stocks: Add shares
+                    existing.quantity = (existing.quantity || 0) + monthlyInv.quantity;
+                    // Recalculate amount based on current stock price if available
+                    if (existing.inputStockPrice) {
                         existing.amount = existing.inputStockPrice * existing.quantity;
                     }
                 } else {
