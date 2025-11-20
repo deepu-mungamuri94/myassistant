@@ -583,13 +583,11 @@ Return tickers for ALL stocks in a JSON array.`;
                 const agg = monthlyAggregated.get(key);
                 
                 if (monthlyInv.type === 'gold' && monthlyInv.quantity) {
-                    // For gold: Add quantity and amount
+                    // For gold: Add quantity only (amount will be recalculated)
                     agg.quantity += monthlyInv.quantity;
-                    agg.amount += monthlyInv.amount;
                 } else if (monthlyInv.type === 'stock' && monthlyInv.quantity) {
-                    // For stocks: Add quantity and amount
+                    // For stocks: Add quantity only (amount will be recalculated)
                     agg.quantity += monthlyInv.quantity;
-                    agg.amount += monthlyInv.amount;
                 } else {
                     // For other assets: Add amount
                     agg.amount += monthlyInv.amount;
@@ -599,7 +597,7 @@ Return tickers for ALL stocks in a JSON array.`;
                 monthlyAggregated.set(key, {
                     name: monthlyInv.name,
                     type: monthlyInv.type,
-                    amount: monthlyInv.amount,
+                    amount: monthlyInv.amount, // Initial amount (will be recalculated)
                     term: monthlyInv.term,
                     quantity: monthlyInv.quantity || 0,
                     inputStockPrice: monthlyInv.inputStockPrice,
@@ -660,11 +658,20 @@ Return tickers for ALL stocks in a JSON array.`;
                 // DO NOT set fromMonthly flag - this keeps the base entry intact
             } else {
                 // No base entry: create new entry from monthly aggregation only
+                let calculatedAmount = monthlyAgg.amount;
+                
+                // For stocks and gold, recalculate amount from quantity × price
+                if (monthlyAgg.type === 'stock' && monthlyAgg.quantity && monthlyAgg.inputStockPrice) {
+                    calculatedAmount = monthlyAgg.inputStockPrice * monthlyAgg.quantity;
+                } else if (monthlyAgg.type === 'gold' && monthlyAgg.quantity && window.DB.goldRatePerGram) {
+                    calculatedAmount = window.DB.goldRatePerGram * monthlyAgg.quantity;
+                }
+                
                 finalInvestments.push({
                     id: Utils.generateId(),
                     name: monthlyAgg.name,
                     type: monthlyAgg.type,
-                    amount: monthlyAgg.amount,
+                    amount: calculatedAmount, // Use calculated amount
                     term: monthlyAgg.term,
                     quantity: monthlyAgg.quantity || null,
                     inputStockPrice: monthlyAgg.inputStockPrice,
