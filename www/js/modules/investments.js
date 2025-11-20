@@ -90,8 +90,9 @@ const Investments = {
         console.log('Monthly investments in DB:', window.DB.monthlyInvestments);
         
         const monthlyInv = window.DB.monthlyInvestments.find(inv => {
-            console.log('Comparing:', inv.id, 'with', id, 'Match:', inv.id === id);
-            return inv.id === id;
+            console.log('Comparing:', inv.id, '(type:', typeof inv.id, ') with', id, '(type:', typeof id, ')');
+            // Convert both to strings for comparison to handle type mismatch
+            return String(inv.id) === String(id);
         });
         
         if (!monthlyInv) {
@@ -138,7 +139,7 @@ const Investments = {
      * Update a monthly investment
      */
     updateMonthlyInvestment(id, name, amount, date, term, type, quantity, notes, stockPrice, inputCurrency, usdToInrRate) {
-        const monthlyInv = window.DB.monthlyInvestments.find(inv => inv.id === id);
+        const monthlyInv = window.DB.monthlyInvestments.find(inv => String(inv.id) === String(id));
         if (!monthlyInv) {
             throw new Error('Monthly investment not found');
         }
@@ -170,7 +171,7 @@ const Investments = {
      * Delete a monthly investment
      */
     deleteMonthlyInvestment(id) {
-        const index = window.DB.monthlyInvestments.findIndex(inv => inv.id === id);
+        const index = window.DB.monthlyInvestments.findIndex(inv => String(inv.id) === String(id));
         if (index === -1) {
             throw new Error('Monthly investment not found');
         }
@@ -189,7 +190,7 @@ const Investments = {
         console.log('confirmDeleteMonthlyInvestment called with id:', id);
         console.log('Monthly investments in DB:', window.DB.monthlyInvestments);
         
-        const monthlyInv = window.DB.monthlyInvestments.find(inv => inv.id === id);
+        const monthlyInv = window.DB.monthlyInvestments.find(inv => String(inv.id) === String(id));
         if (!monthlyInv) {
             console.error('Monthly investment not found for deletion, id:', id);
             return;
