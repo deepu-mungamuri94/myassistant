@@ -565,49 +565,63 @@ Return tickers for ALL stocks in a JSON array.`;
 
     /**
      * Aggregate monthly investments into existing portfolio
-     * Adds quantities for stocks/gold, adds amounts for other assets
+     * Rebuilds portfolio from monthly investments to avoid duplication
      */
     aggregateMonthlyInvestments() {
         const monthly = window.DB.monthlyInvestments || [];
         
-        monthly.forEach(monthlyInv => {
-            // Match by name, type, AND term (respects short/long for all types including gold)
-            const existing = window.DB.investments.find(inv => 
-                inv.name.toLowerCase() === monthlyInv.name.toLowerCase() && 
-                inv.type === monthlyInv.type &&
-                inv.term === monthlyInv.term
+        // Clear existing portfolio that came from monthly aggregation
+        // Keep only manually added portfolio items (those not in monthly)
+        const manualInvestments = window.DB.investments.filter(inv => {
+            // An investment is "manual" if no monthly investment matches it
+            return !monthly.some(m => 
+                m.name.toLowerCase() === inv.name.toLowerCase() && 
+                m.type === inv.type &&
+                m.term === inv.term
             );
+        });
+        
+        // Start with manual investments
+        window.DB.investments = [...manualInvestments];
+        
+        // Build aggregated portfolio from monthly investments
+        const aggregated = new Map(); // key: "name|type|term", value: aggregated investment
+        
+        monthly.forEach(monthlyInv => {
+            const key = `${monthlyInv.name.toLowerCase()}|${monthlyInv.type}|${monthlyInv.term}`;
             
-            if (existing) {
-                // Update existing investment
+            if (aggregated.has(key)) {
+                // Add to existing aggregated entry
+                const agg = aggregated.get(key);
+                
                 if (monthlyInv.type === 'gold' && monthlyInv.quantity) {
-                    // For gold: Add grams to existing grams
-                    existing.quantity = (existing.quantity || 0) + monthlyInv.quantity;
-                    // Recalculate amount using global gold rate (don't change inputStockPrice)
+                    // For gold: Add grams
+                    agg.quantity += monthlyInv.quantity;
+                    // Recalculate amount using global gold rate
                     if (window.DB.goldRatePerGram) {
-                        existing.amount = window.DB.goldRatePerGram * existing.quantity;
+                        agg.amount = window.DB.goldRatePerGram * agg.quantity;
                     }
                 } else if (monthlyInv.type === 'stock' && monthlyInv.quantity) {
                     // For stocks: Add shares
-                    existing.quantity = (existing.quantity || 0) + monthlyInv.quantity;
-                    // Recalculate amount based on current stock price if available
-                    if (existing.inputStockPrice) {
-                        existing.amount = existing.inputStockPrice * existing.quantity;
+                    agg.quantity += monthlyInv.quantity;
+                    // Recalculate amount based on stock price
+                    if (agg.inputStockPrice) {
+                        agg.amount = agg.inputStockPrice * agg.quantity;
                     }
                 } else {
-                    // For other assets, add amount
-                    existing.amount += monthlyInv.amount;
+                    // For other assets: Add amount
+                    agg.amount += monthlyInv.amount;
                 }
-                existing.lastUpdated = Utils.getCurrentTimestamp();
+                agg.lastUpdated = Utils.getCurrentTimestamp();
             } else {
-                // Create new investment in portfolio
-                const newInvestment = {
+                // Create new aggregated entry
+                aggregated.set(key, {
                     id: Utils.generateId(),
                     name: monthlyInv.name,
                     type: monthlyInv.type,
                     amount: monthlyInv.amount,
                     term: monthlyInv.term,
-                    quantity: monthlyInv.quantity,
+                    quantity: monthlyInv.quantity || null,
                     inputStockPrice: monthlyInv.inputStockPrice,
                     inputCurrency: monthlyInv.inputCurrency,
                     usdToInrRate: monthlyInv.usdToInrRate,
@@ -620,10 +634,12 @@ Return tickers for ALL stocks in a JSON array.`;
                     notes: monthlyInv.notes,
                     createdAt: monthlyInv.createdAt,
                     lastUpdated: Utils.getCurrentTimestamp()
-                };
-                window.DB.investments.push(newInvestment);
+                });
             }
         });
+        
+        // Add all aggregated investments to portfolio
+        aggregated.forEach(inv => window.DB.investments.push(inv));
         
         window.Storage.save();
     },
