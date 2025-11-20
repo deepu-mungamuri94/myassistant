@@ -3762,42 +3762,99 @@
         }
         
         function handleAddToExisting() {
-            if (!pendingInvestmentData) return;
+            console.log('➕ handleAddToExisting called');
+            
+            if (!pendingInvestmentData) {
+                console.error('❌ No pending data');
+                return;
+            }
             
             const { existing, name, amount, term, type, quantity, notes, stockPrice, currency, usdToInrRate } = pendingInvestmentData;
+            
+            // Find the actual investment in DB (in case existing object was serialized/deserialized)
+            let actualExisting = existing;
+            if (existing.id) {
+                const foundInDB = window.DB.investments.find(inv => inv.id === existing.id);
+                if (foundInDB) {
+                    console.log('✅ Found investment in DB by ID');
+                    actualExisting = foundInDB;
+                } else {
+                    console.warn('⚠️ Could not find investment by ID, trying by name+type+term');
+                    const foundByMatch = window.DB.investments.find(inv => 
+                        inv.name.toLowerCase() === existing.name.toLowerCase() && 
+                        inv.type === existing.type &&
+                        inv.term === existing.term
+                    );
+                    if (foundByMatch) {
+                        console.log('✅ Found investment by name+type+term match');
+                        actualExisting = foundByMatch;
+                    }
+                }
+            }
+            
+            console.log('📦 Before adding:', { 
+                name: actualExisting.name, 
+                type: actualExisting.type, 
+                quantity: actualExisting.quantity,
+                amount: actualExisting.amount 
+            });
             
             // Add to existing
             if (type === 'gold' && quantity) {
                 // Add grams
-                existing.quantity = (existing.quantity || 0) + quantity;
+                actualExisting.quantity = (actualExisting.quantity || 0) + quantity;
                 // Recalculate amount
                 if (window.DB.goldRatePerGram) {
-                    existing.amount = window.DB.goldRatePerGram * existing.quantity;
+                    actualExisting.amount = window.DB.goldRatePerGram * actualExisting.quantity;
                 } else {
-                    existing.amount += amount;
+                    actualExisting.amount += amount;
                 }
             } else if (type === 'stock' && quantity) {
                 // Add shares
-                existing.quantity = (existing.quantity || 0) + quantity;
-                // Recalculate amount
-                if (stockPrice) {
-                    existing.amount = stockPrice * existing.quantity;
-                } else {
-                    existing.amount += amount;
+                console.log('➕ Adding shares:', quantity, 'to existing:', actualExisting.quantity);
+                console.log('💵 Adding amount:', amount, 'to existing:', actualExisting.amount);
+                
+                actualExisting.quantity = (actualExisting.quantity || 0) + quantity;
+                // Add amounts together (don't recalculate with new price)
+                actualExisting.amount += amount;
+                
+                // Calculate weighted average price for display
+                if (actualExisting.quantity > 0) {
+                    actualExisting.inputStockPrice = actualExisting.amount / actualExisting.quantity;
+                    console.log('📊 New average price:', actualExisting.inputStockPrice);
                 }
+                
+                console.log('✅ After adding - Quantity:', actualExisting.quantity, ', Amount:', actualExisting.amount);
             } else {
                 // Add amount
-                existing.amount += amount;
+                actualExisting.amount += amount;
             }
             
-            existing.lastUpdated = Utils.getCurrentTimestamp();
+            console.log('📦 After adding:', { 
+                name: actualExisting.name, 
+                type: actualExisting.type, 
+                quantity: actualExisting.quantity,
+                amount: actualExisting.amount 
+            });
+            
+            actualExisting.lastUpdated = Utils.getCurrentTimestamp();
+            
+            console.log('💾 Saving to storage...');
             window.Storage.save();
+            console.log('✅ Saved successfully');
+            
+            console.log('📊 Portfolio count:', window.DB.investments.length);
+            console.log('📊 Updated investment in DB:', window.DB.investments.find(i => i.id === actualExisting.id));
             
             closeAddOverrideChoiceModal();
             closeInvestmentModal();
+            
+            console.log('🎨 Re-rendering investments...');
             Investments.render();
+            
             Toast.success('Added to existing investment successfully!');
             pendingInvestmentData = null;
+            console.log('🏁 handleAddToExisting completed');
         }
         
         function handleOverrideExisting() {
@@ -3944,12 +4001,30 @@
             window.Storage.save();
             console.log('✅ Saved to storage');
             
+            console.log('📊 Portfolio after override, before render:');
+            console.log('  Total investments:', window.DB.investments.length);
+            console.log('  Investments:', window.DB.investments.map(inv => ({ 
+                id: inv.id, 
+                name: inv.name, 
+                type: inv.type, 
+                quantity: inv.quantity 
+            })));
+            
             console.log('🚪 Closing modals...');
             closeOverrideConfirmModal();
             closeInvestmentModal();
             
             console.log('🎨 Re-rendering investments...');
             Investments.render();
+            
+            console.log('📊 Portfolio after render:');
+            console.log('  Total investments:', window.DB.investments.length);
+            console.log('  Investments:', window.DB.investments.map(inv => ({ 
+                id: inv.id, 
+                name: inv.name, 
+                type: inv.type, 
+                quantity: inv.quantity 
+            })));
             
             console.log('✅ Showing success toast');
             Toast.success('Investment overridden successfully!');
