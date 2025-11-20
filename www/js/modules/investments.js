@@ -565,28 +565,18 @@ Return tickers for ALL stocks in a JSON array.`;
 
     /**
      * Aggregate monthly investments into existing portfolio
-     * Adds quantities for stocks, adds amounts for other assets
+     * Adds quantities for stocks/gold, adds amounts for other assets
      */
     aggregateMonthlyInvestments() {
         const monthly = window.DB.monthlyInvestments || [];
         
         monthly.forEach(monthlyInv => {
-            let existing;
-            
-            // For gold, match by name only (ignore term)
-            if (monthlyInv.type === 'gold') {
-                existing = window.DB.investments.find(inv => 
-                    inv.name.toLowerCase() === monthlyInv.name.toLowerCase() && 
-                    inv.type === 'gold'
-                );
-            } else {
-                // For other types, match by name, type, and term
-                existing = window.DB.investments.find(inv => 
-                    inv.name.toLowerCase() === monthlyInv.name.toLowerCase() && 
-                    inv.type === monthlyInv.type &&
-                    inv.term === monthlyInv.term
-                );
-            }
+            // Match by name, type, AND term (respects short/long for all types including gold)
+            const existing = window.DB.investments.find(inv => 
+                inv.name.toLowerCase() === monthlyInv.name.toLowerCase() && 
+                inv.type === monthlyInv.type &&
+                inv.term === monthlyInv.term
+            );
             
             if (existing) {
                 // Update existing investment
