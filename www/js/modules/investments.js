@@ -715,17 +715,17 @@ Return tickers for ALL stocks in a JSON array.`;
             
             return `
                 <details class="investment-month-group mb-3" style="margin-bottom: 0.75rem;" ${isCurrentMonthFilter ? 'open' : ''}>
-                    <summary class="cursor-pointer p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-300 hover:bg-green-100 transition-all flex items-center justify-between">
+                    <summary class="cursor-pointer p-4 bg-gradient-to-r from-green-600 to-emerald-600 rounded-t-lg border border-green-700 hover:from-green-700 hover:to-emerald-700 transition-all flex items-center justify-between">
                         <div class="flex items-center">
-                            <svg class="w-4 h-4 details-arrow text-green-700 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <svg class="w-4 h-4 details-arrow text-white mr-2" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
                             </svg>
-                            <span class="font-semibold text-green-900">${monthData.displayName}</span>
+                            <span class="font-semibold text-white">${monthData.displayName}</span>
                         </div>
-                        <span class="text-base font-bold text-green-800">${Utils.formatCurrency(monthData.total)}</span>
+                        <span class="text-base font-bold text-white">${Utils.formatCurrency(monthData.total)}</span>
                     </summary>
                     
-                    <div class="bg-white border border-green-200 border-t-0 rounded-b-lg overflow-hidden">
+                    <div class="bg-white border-x border-b border-green-700 rounded-b-lg overflow-hidden">
                         ${(hasShortTerm || hasLongTerm) ? `
                             <!-- Tabs -->
                             <div class="border-b border-green-200">
@@ -872,10 +872,36 @@ Return tickers for ALL stocks in a JSON array.`;
             portfolioTotalEl.textContent = Utils.formatCurrency(total);
         }
         
+        // Update stock buttons in header (visible even when collapsed)
+        const stockButtonsSection = document.getElementById('stock-buttons-section');
+        if (stockButtonsSection) {
+            if (hasStocks) {
+                stockButtonsSection.innerHTML = `
+                    <button onclick="Investments.refreshAllStockPrices()" 
+                            class="flex-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
+                            title="Refresh all stock prices">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <span>Refresh Stocks</span>
+                    </button>
+                    <button onclick="openExchangeRateModal()" 
+                            id="update-rate-btn"
+                            class="flex-1 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
+                            title="Update USD to INR exchange rate">
+                        <span>💱</span>
+                        <span>₹${(window.DB.exchangeRate && window.DB.exchangeRate.rate) ? window.DB.exchangeRate.rate.toFixed(2) : '83'}/USD</span>
+                    </button>
+                `;
+            } else {
+                stockButtonsSection.innerHTML = '';
+            }
+        }
+        
         list.innerHTML = `
             <!-- Tabs for Short Term / Long Term -->
             ${(shortTerm.length > 0 || longTerm.length > 0) ? `
-                <div class="bg-white border border-yellow-200 overflow-hidden">
+                <div class="bg-white border-x border-b border-yellow-700 rounded-b-lg overflow-hidden">
                     <!-- Tabs -->
                     <div class="border-b border-yellow-200 bg-yellow-50">
                         <div class="flex justify-evenly">
@@ -913,27 +939,6 @@ Return tickers for ALL stocks in a JSON array.`;
                     ${longTerm.length > 0 ? `
                         <div id="investments-content-long" class="p-3 hidden">
                             ${longTermHTML}
-                        </div>
-                    ` : ''}
-                    
-                    <!-- Stock Management Buttons -->
-                    ${hasStocks ? `
-                        <div class="flex justify-center gap-3 p-3 border-t border-yellow-200 bg-yellow-50">
-                            <button onclick="Investments.refreshAllStockPrices()" 
-                                    class="flex-1 px-3 py-2 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
-                                    title="Refresh all stock prices">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                                </svg>
-                                <span>Refresh Stocks</span>
-                            </button>
-                            <button onclick="openExchangeRateModal()" 
-                                    id="update-rate-btn"
-                                    class="flex-1 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
-                                    title="Update USD to INR exchange rate">
-                                <span>💱</span>
-                                <span>₹${(window.DB.exchangeRate && window.DB.exchangeRate.rate) ? window.DB.exchangeRate.rate.toFixed(2) : '83'}/USD</span>
-                            </button>
                         </div>
                     ` : ''}
                 </div>
