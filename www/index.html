@@ -4172,16 +4172,28 @@
                         Toast.success('Investment updated successfully!');
                     } else {
                         // Check if an entry with same name+type+term exists
+                        console.log('🔍 Checking for existing investment:');
+                        console.log('  Looking for:', { name: name.toLowerCase(), type, term });
+                        console.log('  In portfolio:', window.DB.investments.map(inv => ({ 
+                            name: inv.name.toLowerCase(), 
+                            type: inv.type, 
+                            term: inv.term 
+                        })));
+                        
                         const existing = window.DB.investments.find(inv => 
                             inv.name.toLowerCase() === name.toLowerCase() && 
                             inv.type === type &&
                             inv.term === term
                         );
                         
+                        console.log('  Found existing:', existing ? 'Yes' : 'No');
+                        
                         if (existing) {
+                            console.log('  Showing Add/Override modal');
                             // Show Add/Override choice modal
                             showAddOrOverrideChoice(existing, name, amount, term, type, quantity, notes, stockPrice, currency, usdToInrRate);
                         } else {
+                            console.log('  Adding as new investment');
                             // Add new investment
                             Investments.add(name, amount, term, type, quantity, notes, stockPrice, currency, usdToInrRate);
                             Toast.success('Investment added successfully!');
