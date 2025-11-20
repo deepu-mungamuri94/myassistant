@@ -962,33 +962,40 @@ Return tickers for ALL stocks in a JSON array.`;
             portfolioTotalEl.textContent = Utils.formatCurrency(total);
         }
         
-        // Update rate buttons in header (visible even when collapsed)
+        // Update rate buttons in header (always visible)
         const stockButtonsSection = document.getElementById('stock-buttons-section');
         if (stockButtonsSection) {
             let buttonsHTML = '';
             
-            // Stock refresh and exchange rate buttons (only if stocks exist)
-            if (hasStocks) {
-                buttonsHTML += `
-                    <button onclick="Investments.refreshAllStockPrices()" 
-                            class="w-1/3 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
-                            title="Refresh all stock prices">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                        </svg>
-                        <span>Stocks</span>
-                    </button>
-                    <button onclick="openExchangeRateModal()" 
-                            id="update-rate-btn"
-                            class="w-1/3 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
-                            title="Update USD to INR exchange rate">
-                        <span>💱</span>
-                        <span>₹${(window.DB.exchangeRate && window.DB.exchangeRate.rate) ? window.DB.exchangeRate.rate.toFixed(2) : '83'}/USD</span>
-                    </button>
-                `;
-            }
+            // Stock refresh button - always shown, disabled if no stocks
+            const stocksDisabled = !hasStocks;
+            const stockButtonClass = stocksDisabled 
+                ? 'w-1/3 px-3 py-1.5 bg-gray-200 text-gray-500 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2 cursor-not-allowed opacity-60'
+                : 'w-1/3 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2';
             
-            // Gold rate button (always visible, like exchange rate)
+            buttonsHTML += `
+                <button ${stocksDisabled ? 'disabled' : `onclick="Investments.refreshAllStockPrices()"`} 
+                        class="${stockButtonClass}"
+                        title="${stocksDisabled ? 'Add stocks to enable' : 'Refresh all stock prices'}">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    <span>Stocks</span>
+                </button>
+            `;
+            
+            // Exchange rate button - always visible
+            buttonsHTML += `
+                <button onclick="openExchangeRateModal()" 
+                        id="update-rate-btn"
+                        class="w-1/3 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
+                        title="Update USD to INR exchange rate">
+                    <span>💱</span>
+                    <span>₹${(window.DB.exchangeRate && window.DB.exchangeRate.rate) ? window.DB.exchangeRate.rate.toFixed(2) : '83'}/USD</span>
+                </button>
+            `;
+            
+            // Gold rate button - always visible
             const goldRate = window.DB.goldRatePerGram ? window.DB.goldRatePerGram.toFixed(2) : '---';
             buttonsHTML += `
                 <button onclick="Investments.openGoldRateModal()" 
