@@ -970,13 +970,14 @@ Return tickers for ALL stocks in a JSON array.`;
                 }
                 
                 if (hasGold) {
+                    const goldRate = window.DB.goldRatePerGram ? window.DB.goldRatePerGram.toFixed(2) : '---';
                     buttonsHTML += `
                         <button onclick="Investments.openGoldRateModal()" 
                                 id="gold-rate-btn"
                                 class="flex-1 px-3 py-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded-lg transition-all duration-200 text-xs font-semibold flex items-center justify-center gap-2"
                                 title="Set gold rate per gram">
                             <span>🪙</span>
-                            <span>₹${window.DB.goldRatePerGram || '---'}/gram</span>
+                            <span>₹${goldRate}/gram</span>
                         </button>
                     `;
                 }
@@ -1407,6 +1408,13 @@ Return tickers for ALL stocks in a JSON array.`;
         const currentRate = window.DB.goldRatePerGram || '';
         const modal = document.getElementById('gold-rate-modal');
         if (modal) {
+            // Update current rate display
+            const displayRate = document.getElementById('current-gold-rate-display');
+            if (displayRate) {
+                displayRate.textContent = currentRate ? currentRate.toFixed(2) : '---';
+            }
+            
+            // Set input value
             document.getElementById('gold-rate-input').value = currentRate;
             modal.classList.remove('hidden');
         }
