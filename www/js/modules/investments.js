@@ -934,12 +934,7 @@ Return tickers for ALL stocks in a JSON array.`;
             );
         }
         
-        if (filtered.length === 0) {
-            list.innerHTML = '<p class="text-gray-500 text-center py-8">No investments found matching your criteria.</p>';
-            return;
-        }
-        
-        // Calculate totals for filtered list
+        // Calculate totals for filtered list (even if empty)
         const total = filtered.reduce((sum, inv) => sum + this.calculateValue(inv), 0);
         const longTerm = filtered.filter(i => i.term === 'long');
         const shortTerm = filtered.filter(i => i.term === 'short');
@@ -952,17 +947,13 @@ Return tickers for ALL stocks in a JSON array.`;
         const longTermSum = longTerm.reduce((sum, inv) => sum + this.calculateValue(inv), 0);
         const shortTermSum = shortTerm.reduce((sum, inv) => sum + this.calculateValue(inv), 0);
         
-        // Build grouped investments HTML
-        const shortTermHTML = this.renderGroupedInvestments(shortTerm);
-        const longTermHTML = this.renderGroupedInvestments(longTerm);
-        
         // Update portfolio total in header
         const portfolioTotalEl = document.getElementById('portfolio-total-amount');
         if (portfolioTotalEl) {
             portfolioTotalEl.textContent = Utils.formatCurrency(total);
         }
         
-        // Update rate buttons in header (always visible)
+        // Update rate buttons in header (always visible, even when no investments)
         const stockButtonsSection = document.getElementById('stock-buttons-section');
         if (stockButtonsSection) {
             let buttonsHTML = '';
@@ -1009,6 +1000,16 @@ Return tickers for ALL stocks in a JSON array.`;
             
             stockButtonsSection.innerHTML = buttonsHTML;
         }
+        
+        // Handle empty state AFTER button update
+        if (filtered.length === 0) {
+            list.innerHTML = '<p class="text-gray-500 text-center py-8">No investments found matching your criteria.</p>';
+            return;
+        }
+        
+        // Build grouped investments HTML
+        const shortTermHTML = this.renderGroupedInvestments(shortTerm);
+        const longTermHTML = this.renderGroupedInvestments(longTerm);
         
         list.innerHTML = `
             <!-- Tabs for Short Term / Long Term -->
