@@ -198,13 +198,35 @@ const Investments = {
         
         console.log('Found monthly investment for deletion:', monthlyInv);
         
-        if (window.confirm(`Delete "${monthlyInv.name}" from monthly investments?\n\nNote: This will not remove it from your portfolio.`)) {
+        // Use custom delete modal
+        const modal = document.getElementById('delete-confirm-modal');
+        const message = document.getElementById('delete-confirm-message');
+        const confirmBtn = document.getElementById('delete-confirm-btn');
+        const cancelBtn = document.getElementById('delete-cancel-btn');
+        
+        message.textContent = `Delete "${monthlyInv.name}" from monthly investments? This will not remove it from your portfolio.`;
+        
+        // Remove old listeners
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+        
+        // Add new listeners
+        newConfirmBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
             this.deleteMonthlyInvestment(id);
             this.render();
             if (window.Toast) {
                 window.Toast.success('Monthly investment deleted');
             }
-        }
+        });
+        
+        newCancelBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+        
+        modal.classList.remove('hidden');
     },
 
     /**

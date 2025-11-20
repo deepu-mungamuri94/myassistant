@@ -872,7 +872,10 @@
                 <input type="date" id="investment-modal-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
             </div>
             
-            <input type="text" id="investment-modal-name" placeholder="Name (e.g., HDFC Bank, Apple Inc)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+            <input type="text" id="investment-modal-name" list="investment-names-list" placeholder="Name (e.g., HDFC Bank, Apple Inc)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+            <datalist id="investment-names-list">
+                <!-- Will be populated dynamically -->
+            </datalist>
             
             <select id="investment-modal-type" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" onchange="toggleInvestmentFields()">
                 <option value="stock">Stocks / Shares</option>
@@ -1625,6 +1628,60 @@
                     Update
                 </button>
                 <button onclick="closeExchangeRateModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- GOLD RATE MODAL -->
+    <div id="gold-rate-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) document.getElementById('gold-rate-modal').classList.add('hidden')">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">Gold Rate per Gram</h2>
+            
+            <div class="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <p class="text-sm text-yellow-800 mb-1">Current Rate</p>
+                <p class="text-2xl font-bold text-yellow-900">₹<span id="current-gold-rate-display">{window.DB.goldRatePerGram || '---'}</span></p>
+            </div>
+            
+            <label class="block text-sm font-semibold text-gray-700 mb-2">New Gold Rate (₹ per gram)</label>
+            <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
+                <input type="number" id="gold-rate-input" placeholder="Enter rate per gram" step="0.01" class="w-full p-3 pl-8 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+            </div>
+            
+            <p class="text-xs text-gray-600 mb-4">🪙 This rate will be used to calculate all gold investment values</p>
+            
+            <div class="flex space-x-3">
+                <button onclick="Investments.setGoldRate()" class="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                    Update
+                </button>
+                <button onclick="document.getElementById('gold-rate-modal').classList.add('hidden')" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- CUSTOM DELETE CONFIRMATION MODAL -->
+    <div id="delete-confirm-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <div class="flex items-center mb-4">
+                <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mr-4">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <h2 class="text-xl font-bold text-gray-900">Confirm Deletion</h2>
+            </div>
+            
+            <p id="delete-confirm-message" class="text-gray-700 mb-6"></p>
+            
+            <div class="flex space-x-3">
+                <button id="delete-confirm-btn" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 font-semibold">
+                    Delete
+                </button>
+                <button id="delete-cancel-btn" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
                     Cancel
                 </button>
             </div>
@@ -3546,6 +3603,26 @@
             document.getElementById('calculated-amount').textContent = '';
             document.getElementById('calculated-gold-amount').textContent = '';
             
+            // Populate name autocomplete from existing investments
+            const datalist = document.getElementById('investment-names-list');
+            const existingNames = new Set();
+            
+            // Get names from portfolio
+            if (window.DB.investments) {
+                window.DB.investments.forEach(inv => existingNames.add(inv.name));
+            }
+            
+            // Get names from monthly investments
+            if (window.DB.monthlyInvestments) {
+                window.DB.monthlyInvestments.forEach(inv => existingNames.add(inv.name));
+            }
+            
+            // Populate datalist
+            datalist.innerHTML = Array.from(existingNames)
+                .sort()
+                .map(name => `<option value="${name}">`)
+                .join('');
+            
             // Set default mode to Month and date to today
             document.getElementById('investment-mode-current').checked = true;
             document.getElementById('investment-mode-current').disabled = false;
@@ -3592,6 +3669,12 @@
                 stockFields.classList.remove('hidden');
             } else if (type === 'gold') {
                 goldFields.classList.remove('hidden');
+                // Pre-populate gold rate if available
+                const goldPriceInput = document.getElementById('investment-modal-gold-price');
+                if (window.DB.goldRatePerGram && !goldPriceInput.value) {
+                    goldPriceInput.value = window.DB.goldRatePerGram;
+                    calculateGoldAmount(); // Trigger calculation if grams already entered
+                }
             } else if (type === 'other') {
                 otherTypeField.classList.remove('hidden');
                 amountField.classList.remove('hidden');
