@@ -558,11 +558,15 @@ Return tickers for ALL stocks in a JSON array.`;
             
             if (existing) {
                 // Update existing investment
-                if (monthlyInv.type === 'stock' && monthlyInv.quantity) {
-                    // For stocks, add quantity
+                if ((monthlyInv.type === 'stock' || monthlyInv.type === 'gold') && monthlyInv.quantity) {
+                    // For stocks and gold, add quantity (shares/grams)
                     existing.quantity = (existing.quantity || 0) + monthlyInv.quantity;
                     // Recalculate amount based on new quantity
-                    if (existing.inputStockPrice) {
+                    if (monthlyInv.type === 'gold' && window.DB.goldRatePerGram) {
+                        // Use global gold rate for portfolio calculation
+                        existing.amount = window.DB.goldRatePerGram * existing.quantity;
+                        existing.inputStockPrice = window.DB.goldRatePerGram;
+                    } else if (existing.inputStockPrice) {
                         existing.amount = existing.inputStockPrice * existing.quantity;
                     }
                 } else {

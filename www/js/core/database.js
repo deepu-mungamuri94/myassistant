@@ -18,6 +18,8 @@ const DB = {
         rate: 83, // Default USD to INR rate
         lastUpdated: null
     },
+    goldRatePerGram: null, // Gold rate in INR per gram
+
     settings: {
         aiProvider: 'gemini',
         geminiApiKey: '',
