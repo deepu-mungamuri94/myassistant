@@ -1733,7 +1733,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                     </svg>
                 </div>
-                <h2 class="text-xl font-bold text-gray-900">⚠️ Override Warning</h2>
+                <h2 class="text-xl font-bold text-gray-900">Override Warning</h2>
             </div>
             
             <p id="override-confirm-message" class="text-gray-700 mb-6"></p>
@@ -3701,10 +3701,15 @@
         let pendingInvestmentData = null;
         
         function showAddOrOverrideChoice(existing, name, amount, term, type, quantity, notes, stockPrice, currency, usdToInrRate) {
+            console.log('🟡 showAddOrOverrideChoice called');
+            console.log('📦 Storing pending data:', { existing, name, amount, term, type, quantity, notes, stockPrice, currency, usdToInrRate });
+            
             pendingInvestmentData = { existing, name, amount, term, type, quantity, notes, stockPrice, currency, usdToInrRate };
             
             const modal = document.getElementById('add-override-choice-modal');
             const message = document.getElementById('add-override-message');
+            
+            console.log('🎯 Choice modal found:', modal ? 'Yes' : 'No');
             
             // Build existing value message with proper HTML formatting
             let existingInfo = `<p class="text-gray-800 mb-3"><strong>"${existing.name}"</strong> <span class="text-sm text-gray-600">(${term === 'long' ? 'Long Term' : 'Short Term'})</span> already exists with:</p>`;
@@ -3726,11 +3731,29 @@
             message.innerHTML = existingInfo;
             
             // Setup button handlers using onclick for reliability
-            document.getElementById('add-to-existing-btn').onclick = handleAddToExisting;
-            document.getElementById('override-existing-btn').onclick = handleOverrideExisting;
-            document.getElementById('add-override-cancel-btn').onclick = closeAddOverrideChoiceModal;
+            const addBtn = document.getElementById('add-to-existing-btn');
+            const overrideBtn = document.getElementById('override-existing-btn');
+            const cancelBtn = document.getElementById('add-override-cancel-btn');
+            
+            console.log('🔘 Choice buttons found - Add:', addBtn ? 'Yes' : 'No', ', Override:', overrideBtn ? 'Yes' : 'No', ', Cancel:', cancelBtn ? 'Yes' : 'No');
+            
+            if (addBtn) addBtn.onclick = function() {
+                console.log('➕ Add to Existing clicked');
+                handleAddToExisting();
+            };
+            
+            if (overrideBtn) overrideBtn.onclick = function() {
+                console.log('🔄 Override Existing clicked');
+                handleOverrideExisting();
+            };
+            
+            if (cancelBtn) cancelBtn.onclick = function() {
+                console.log('🚫 Choice cancelled');
+                closeAddOverrideChoiceModal();
+            };
             
             modal.classList.remove('hidden');
+            console.log('🎭 Choice modal should now be visible');
         }
         
         function closeAddOverrideChoiceModal() {
@@ -3778,13 +3801,23 @@
         }
         
         function handleOverrideExisting() {
-            if (!pendingInvestmentData) return;
+            console.log('🔵 handleOverrideExisting called');
+            
+            if (!pendingInvestmentData) {
+                console.error('❌ No pending investment data');
+                return;
+            }
+            
+            console.log('📦 Pending data:', pendingInvestmentData);
             
             const { existing, name, amount, term, type, quantity, notes, stockPrice, currency, usdToInrRate } = pendingInvestmentData;
             
             // Show confirmation with existing value
             const modal = document.getElementById('override-confirm-modal');
             const message = document.getElementById('override-confirm-message');
+            
+            console.log('🎯 Modal found:', modal ? 'Yes' : 'No');
+            console.log('💬 Message element found:', message ? 'Yes' : 'No');
             
             let confirmMsg = `<p class="text-gray-700 mb-4">This will <strong class="text-red-600">REPLACE</strong> the existing investment:</p>`;
             
@@ -3818,11 +3851,33 @@
             message.innerHTML = confirmMsg;
             
             // Setup button handlers using onclick
-            document.getElementById('override-proceed-btn').onclick = processOverride;
-            document.getElementById('override-cancel-btn').onclick = closeOverrideConfirmModal;
+            const proceedBtn = document.getElementById('override-proceed-btn');
+            const cancelBtn = document.getElementById('override-cancel-btn');
+            
+            console.log('🔘 Proceed button found:', proceedBtn ? 'Yes' : 'No');
+            console.log('🔘 Cancel button found:', cancelBtn ? 'Yes' : 'No');
+            
+            if (proceedBtn) {
+                proceedBtn.onclick = function() {
+                    console.log('✅ Override proceed button CLICKED!');
+                    processOverride();
+                };
+                console.log('✅ onclick assigned to proceed button');
+            } else {
+                console.error('❌ Could not find override-proceed-btn');
+            }
+            
+            if (cancelBtn) {
+                cancelBtn.onclick = function() {
+                    console.log('🚫 Override cancelled');
+                    closeOverrideConfirmModal();
+                };
+                console.log('✅ onclick assigned to cancel button');
+            }
             
             closeAddOverrideChoiceModal();
             modal.classList.remove('hidden');
+            console.log('🎭 Override modal should now be visible');
         }
         
         function closeOverrideConfirmModal() {
@@ -3830,9 +3885,18 @@
         }
         
         function processOverride() {
-            if (!pendingInvestmentData) return;
+            console.log('🟢 processOverride called!');
+            
+            if (!pendingInvestmentData) {
+                console.error('❌ No pending investment data in processOverride');
+                return;
+            }
+            
+            console.log('📦 Processing override with data:', pendingInvestmentData);
             
             const { existing, name, amount, term, type, quantity, notes, stockPrice, currency, usdToInrRate } = pendingInvestmentData;
+            
+            console.log('🔄 Existing investment before override:', JSON.parse(JSON.stringify(existing)));
             
             // Override existing values
             existing.name = name;
@@ -3846,13 +3910,24 @@
             existing.usdToInrRate = usdToInrRate;
             existing.lastUpdated = Utils.getCurrentTimestamp();
             
-            window.Storage.save();
+            console.log('🔄 Existing investment after override:', JSON.parse(JSON.stringify(existing)));
             
+            console.log('💾 Saving to storage...');
+            window.Storage.save();
+            console.log('✅ Saved to storage');
+            
+            console.log('🚪 Closing modals...');
             closeOverrideConfirmModal();
             closeInvestmentModal();
+            
+            console.log('🎨 Re-rendering investments...');
             Investments.render();
+            
+            console.log('✅ Showing success toast');
             Toast.success('Investment overridden successfully!');
+            
             pendingInvestmentData = null;
+            console.log('🏁 processOverride completed');
         }
         
         function toggleInvestmentMode() {
