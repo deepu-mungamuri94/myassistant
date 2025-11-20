@@ -686,12 +686,12 @@ Return tickers for ALL stocks in a JSON array.`;
                 <div class="flex justify-between items-center text-xs text-gray-500">
                     <span>📅 ${new Date(inv.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                     <div class="flex gap-2">
-                        <button onclick="Investments.editMonthlyInvestment('${inv.id}')" class="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-xs font-medium transition-all" title="Edit">
+                        <button onclick='Investments.editMonthlyInvestment("${inv.id}")' class="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-xs font-medium transition-all" title="Edit">
                             <svg class="w-3 h-3 inline" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.38-2.828-2.829z"/>
                             </svg>
                         </button>
-                        <button onclick="Investments.confirmDeleteMonthlyInvestment('${inv.id}')" class="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded text-xs font-medium transition-all" title="Delete">
+                        <button onclick='Investments.confirmDeleteMonthlyInvestment("${inv.id}")' class="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded text-xs font-medium transition-all" title="Delete">
                             <svg class="w-3 h-3 inline" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
                             </svg>
