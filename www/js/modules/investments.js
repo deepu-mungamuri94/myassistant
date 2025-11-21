@@ -476,14 +476,8 @@ const Investments = {
 
         const line4 = (inv.type === 'EPF' ? '' : (inv.description ? `<p class="text-gray-600 text-xs mt-1">${inv.description}</p>` : ''));
 
-        // Edit button HTML - hide for FD, show for others
-        const editButton = inv.type === 'FD' ? '' : `
-            <button onclick="Investments.editInvestment(${inv.id}, true)" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                </svg>
-            </button>
-        `;
+        // No edit button for monthly investments (they're independent from portfolio)
+        const editButton = '';
 
         return `
             <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
@@ -1458,7 +1452,7 @@ const Investments = {
         const isMonthly = this.editingInvestment.isMonthly;
         
         if (isMonthly) {
-            // Update monthly investment
+            // Update monthly investment (no portfolio sync - they're independent)
             const index = window.DB.monthlyInvestments.findIndex(inv => parseInt(inv.id) === id);
             if (index !== -1) {
                 window.DB.monthlyInvestments[index] = {
@@ -1467,11 +1461,6 @@ const Investments = {
                     date: date || window.DB.monthlyInvestments[index].date
                 };
                 window.Storage.save();
-                
-                // Sync to portfolio
-                const userDataKey = `${data.name}_${data.type}_${data.goal}`;
-                this.syncToPortfolio(data, userDataKey);
-                
                 this.showSuccess();
             }
         } else {
@@ -1932,16 +1921,34 @@ const Investments = {
             detailsHTML = detailsHTML.replace('</div>', `<div class="text-sm pt-2 border-t border-gray-200"><span class="font-semibold text-gray-700">Date:</span> <span class="text-gray-600">${Utils.formatLocalDate(new Date(investment.date))}</span></div></div>`);
         }
         
-        message.innerHTML = `
-            <div class="mb-4">
-                <p class="text-center text-gray-700 font-semibold mb-4">Are you sure you want to delete this investment?</p>
-                ${detailsHTML}
-                <div class="mt-4 flex items-center justify-center gap-2 text-red-600 font-semibold">
+        // Warning message based on investment type
+        const warningMessage = isMonthly ? `
+            <div class="mt-4 space-y-2">
+                <div class="flex items-center justify-center gap-2 text-red-600 font-semibold">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                     </svg>
                     <span>This action cannot be recovered!</span>
                 </div>
+                <div class="bg-yellow-50 border border-yellow-300 rounded-lg p-3 text-sm text-yellow-800">
+                    <p class="font-semibold mb-1">⚠️ Portfolio Update Required</p>
+                    <p>This monthly investment was added to your Portfolio. After deletion, you must manually update your Portfolio for <strong>${investment.name} [${investment.type}]</strong> to keep your current holdings accurate.</p>
+                </div>
+            </div>
+        ` : `
+            <div class="mt-4 flex items-center justify-center gap-2 text-red-600 font-semibold">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+                <span>This action cannot be recovered!</span>
+            </div>
+        `;
+        
+        message.innerHTML = `
+            <div class="mb-4">
+                <p class="text-center text-gray-700 font-semibold mb-4">Are you sure you want to delete this investment?</p>
+                ${detailsHTML}
+                ${warningMessage}
             </div>
         `;
         
