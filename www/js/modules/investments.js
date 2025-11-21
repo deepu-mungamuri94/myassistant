@@ -7,6 +7,7 @@ const Investments = {
     expandedTypes: new Set(), // Track expanded type groups in portfolio
     expandedMonths: new Set(), // Track expanded months in monthly investments
     expandedYears: new Set(), // Track expanded years in monthly investments
+    expandedMonthlyTypes: new Set(), // Track expanded type groups within monthly investments
     currentPortfolioTab: 'short', // 'short' or 'long'
     currentMonthlyTab: 'short', // 'short' or 'long' for monthly investments
     portfolioBodyVisible: false, // Track portfolio section visibility (default collapsed)
@@ -45,6 +46,12 @@ const Investments = {
         const now = new Date();
         const currentMonthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
         this.expandedMonths.add(currentMonthKey);
+        
+        // Also expand all type groups within current month by default
+        ['EPF', 'FD', 'GOLD', 'SHARES'].forEach(type => {
+            this.expandedMonthlyTypes.add(`${currentMonthKey}-${type}`);
+        });
+        
         window.Storage.save();
 
         // Setup click listener to hide name suggestions when clicking outside
@@ -418,6 +425,46 @@ const Investments = {
         const isExpanded = this.expandedMonths.has(monthKey);
         const monthTotal = investments.reduce((sum, inv) => sum + this.calculateMonthlyAmount(inv, goldRate), 0);
 
+        // Group by type
+        const grouped = this.groupByType(investments);
+        let typeGroupsHtml = '';
+        
+        if (isExpanded) {
+            ['EPF', 'FD', 'GOLD', 'SHARES'].forEach(type => {
+                if (grouped[type] && grouped[type].length > 0) {
+                    const typeTotal = grouped[type].reduce((sum, inv) => 
+                        sum + this.calculateMonthlyAmount(inv, goldRate), 0);
+                    
+                    const typeKey = `${monthKey}-${type}`;
+                    const isTypeExpanded = this.expandedMonthlyTypes.has(typeKey);
+                    const typeLabel = type === 'FD' ? 'Fixed Deposit' : type === 'EPF' ? 'EPF' : type === 'GOLD' ? 'Gold' : 'Shares';
+                    const typeIcon = type === 'SHARES' ? '📈' : type === 'GOLD' ? '🪙' : type === 'EPF' ? '💼' : '🏦';
+
+                    typeGroupsHtml += `
+                        <div class="mb-2 border border-gray-200 rounded-lg overflow-hidden">
+                            <div class="bg-gray-50 p-2.5 flex justify-between items-center cursor-pointer hover:bg-gray-100" 
+                                 onclick="Investments.toggleMonthlyTypeGroup('${typeKey}')">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-3.5 h-3.5 transition-transform duration-200 text-gray-600 ${isTypeExpanded ? '' : '-rotate-90'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                    <span class="text-base">${typeIcon}</span>
+                                    <span class="font-medium text-gray-800 text-sm">${typeLabel}</span>
+                                    <span class="text-xs text-gray-600">(${grouped[type].length})</span>
+                                </div>
+                                <span class="font-bold text-yellow-700 text-sm">₹${Utils.formatIndianNumber(Math.round(typeTotal))}</span>
+                            </div>
+                            ${isTypeExpanded ? `
+                                <div class="p-2.5 space-y-2.5 bg-white">
+                                    ${grouped[type].map(inv => this.renderMonthlyItem(inv, goldRate)).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+            });
+        }
+
         return `
             <div class="border border-gray-200 rounded-lg overflow-hidden">
                 <div class="bg-gray-100 p-3 flex justify-between items-center cursor-pointer hover:bg-gray-150"
@@ -433,7 +480,7 @@ const Investments = {
                 </div>
                 ${isExpanded ? `
                     <div class="p-3 space-y-3 bg-white">
-                        ${investments.map(inv => this.renderMonthlyItem(inv, goldRate)).join('')}
+                        ${typeGroupsHtml}
                     </div>
                 ` : ''}
             </div>
@@ -678,6 +725,18 @@ const Investments = {
             this.expandedTypes.add(key);
         }
         this.render();
+    },
+
+    /**
+     * Toggle monthly type group expansion
+     */
+    toggleMonthlyTypeGroup(typeKey) {
+        if (this.expandedMonthlyTypes.has(typeKey)) {
+            this.expandedMonthlyTypes.delete(typeKey);
+        } else {
+            this.expandedMonthlyTypes.add(typeKey);
+        }
+        this.renderMonthlySection();
     },
 
     /**
@@ -2217,10 +2276,17 @@ const Investments = {
             const currentMonthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
             this.expandedMonths.clear();
             this.expandedMonths.add(currentMonthKey);
+            
+            // Also expand all type groups within current month
+            this.expandedMonthlyTypes.clear();
+            ['EPF', 'FD', 'GOLD', 'SHARES'].forEach(type => {
+                this.expandedMonthlyTypes.add(`${currentMonthKey}-${type}`);
+            });
         } else {
             // Collapse all for other filters
             this.expandedMonths.clear();
             this.expandedYears.clear();
+            this.expandedMonthlyTypes.clear();
         }
         
         this.closeDateFilterModal();
