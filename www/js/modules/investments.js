@@ -153,11 +153,11 @@ const Investments = {
                     <!-- Tabs -->
                     <div class="flex border-b border-gray-200 bg-gray-50">
                         <button onclick="Investments.switchPortfolioTab('short')" 
-                                class="flex-1 py-3 px-4 text-center font-semibold transition-all ${this.currentPortfolioTab === 'short' ? 'text-yellow-700 border-b-2 border-yellow-600 bg-white' : 'text-gray-600 hover:text-gray-800'}">
+                                class="flex-1 py-2 px-3 text-center text-sm font-medium transition-all ${this.currentPortfolioTab === 'short' ? 'text-yellow-700 border-b-2 border-yellow-600 bg-white' : 'text-gray-600 hover:text-gray-800'}">
                             Short Term<br><span class="text-xs">(₹${Utils.formatIndianNumber(Math.round(shortTermTotal))})</span>
                         </button>
                         <button onclick="Investments.switchPortfolioTab('long')" 
-                                class="flex-1 py-3 px-4 text-center font-semibold transition-all ${this.currentPortfolioTab === 'long' ? 'text-yellow-700 border-b-2 border-yellow-600 bg-white' : 'text-gray-600 hover:text-gray-800'}">
+                                class="flex-1 py-2 px-3 text-center text-sm font-medium transition-all ${this.currentPortfolioTab === 'long' ? 'text-yellow-700 border-b-2 border-yellow-600 bg-white' : 'text-gray-600 hover:text-gray-800'}">
                             Long Term<br><span class="text-xs">(₹${Utils.formatIndianNumber(Math.round(longTermTotal))})</span>
                         </button>
                     </div>
@@ -340,11 +340,11 @@ const Investments = {
                 <!-- Tabs -->
                 <div class="flex border-b border-gray-200 bg-gray-50">
                     <button onclick="Investments.switchMonthlyTab('short')" 
-                            class="flex-1 py-3 px-4 text-center font-semibold transition-all ${this.currentMonthlyTab === 'short' ? 'text-yellow-700 border-b-2 border-yellow-600 bg-white' : 'text-gray-600 hover:text-gray-800'}">
+                            class="flex-1 py-2 px-3 text-center text-sm font-medium transition-all ${this.currentMonthlyTab === 'short' ? 'text-yellow-700 border-b-2 border-yellow-600 bg-white' : 'text-gray-600 hover:text-gray-800'}">
                         Short Term<br><span class="text-xs">(₹${Utils.formatIndianNumber(Math.round(shortTermTotal))})</span>
                     </button>
                     <button onclick="Investments.switchMonthlyTab('long')" 
-                            class="flex-1 py-3 px-4 text-center font-semibold transition-all ${this.currentMonthlyTab === 'long' ? 'text-yellow-700 border-b-2 border-yellow-600 bg-white' : 'text-gray-600 hover:text-gray-800'}">
+                            class="flex-1 py-2 px-3 text-center text-sm font-medium transition-all ${this.currentMonthlyTab === 'long' ? 'text-yellow-700 border-b-2 border-yellow-600 bg-white' : 'text-gray-600 hover:text-gray-800'}">
                         Long Term<br><span class="text-xs">(₹${Utils.formatIndianNumber(Math.round(longTermTotal))})</span>
                     </button>
                 </div>
