@@ -18,10 +18,14 @@ const Investments = {
      * Initialize the module
      */
     init() {
-        // Initialize default rates if not set
+        // Initialize default rates if not set, handle old object format
         if (!window.DB.exchangeRate) {
             window.DB.exchangeRate = 83;
+        } else if (typeof window.DB.exchangeRate === 'object' && window.DB.exchangeRate !== null) {
+            // Convert old object format to number
+            window.DB.exchangeRate = window.DB.exchangeRate.rate || 83;
         }
+        
         if (!window.DB.goldRatePerGram) {
             window.DB.goldRatePerGram = 7000;
         }
@@ -35,6 +39,17 @@ const Investments = {
             window.DB.sharePrices = [];
         }
         window.Storage.save();
+    },
+
+    /**
+     * Get exchange rate as a number (handles old object format)
+     */
+    getExchangeRate() {
+        let rate = window.DB.exchangeRate;
+        if (typeof rate === 'object' && rate !== null) {
+            return rate.rate || 83;
+        }
+        return typeof rate === 'number' ? rate : 83;
     },
 
     /**
@@ -53,7 +68,7 @@ const Investments = {
         if (!container) return;
 
         const portfolioData = window.DB.portfolioInvestments || [];
-        const exchangeRate = window.DB.exchangeRate || 83;
+        const exchangeRate = this.getExchangeRate();
         const goldRate = window.DB.goldRatePerGram || 7000;
         const sharePrices = window.DB.sharePrices || [];
 
@@ -242,7 +257,7 @@ const Investments = {
         if (!container) return;
 
         const monthlyData = window.DB.monthlyInvestments || [];
-        const exchangeRate = window.DB.exchangeRate || 83;
+        const exchangeRate = this.getExchangeRate();
         const goldRate = window.DB.goldRatePerGram || 7000;
 
         // Apply search filter
@@ -450,7 +465,7 @@ const Investments = {
      */
     calculateMonthlyAmount(inv, goldRate) {
         if (inv.type === 'SHARES') {
-            return inv.price * inv.quantity * (inv.currency === 'USD' ? window.DB.exchangeRate : 1);
+            return inv.price * inv.quantity * (inv.currency === 'USD' ? this.getExchangeRate() : 1);
         } else if (inv.type === 'GOLD') {
             return inv.price * inv.quantity;
         } else if (inv.type === 'EPF' || inv.type === 'FD') {
@@ -807,7 +822,7 @@ const Investments = {
             const quantity = parseFloat(document.getElementById('investment-quantity').value) || 0;
             const price = parseFloat(document.getElementById('investment-price').value) || 0;
             const currency = document.getElementById('investment-currency').value;
-            const exchangeRate = window.DB.exchangeRate || 83;
+            const exchangeRate = this.getExchangeRate();
             
             const amount = price * quantity;
             const inrAmount = currency === 'USD' ? amount * exchangeRate : amount;
@@ -1448,7 +1463,7 @@ const Investments = {
      * Open exchange rate modal
      */
     openExchangeRateModal() {
-        const currentRate = window.DB.exchangeRate || 83;
+        const currentRate = this.getExchangeRate();
         document.getElementById('current-rate-display').textContent = `₹${currentRate.toFixed(2)}`;
         document.getElementById('exchange-rate-input').value = '';
         document.getElementById('exchange-rate-modal').classList.remove('hidden');
