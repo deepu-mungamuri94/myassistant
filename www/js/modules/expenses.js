@@ -10,6 +10,7 @@ const Expenses = {
     searchTerm: '',
     expandedMonths: new Set(), // Track which months are expanded
     includeLoansInTotal: false, // Toggle for including loans in total
+    currentRecurringTab: 'upcoming', // Track current recurring expenses tab
     
     /**
      * Initialize with current month dates
@@ -897,6 +898,13 @@ const Expenses = {
             list.innerHTML += this.renderGroupedByDate(paginatedExpenses);
         }
         
+        // Restore recurring tab state after re-rendering (if there are recurring expenses)
+        if (totalRecurring > 0 && this.currentRecurringTab === 'completed') {
+            setTimeout(() => {
+                this.switchRecurringTab('completed');
+            }, 0);
+        }
+        
         // Enable/disable filter and toggle buttons based on expenses existence
         this.updateControlsState();
     },
@@ -1074,6 +1082,9 @@ const Expenses = {
      * Switch between Upcoming and Completed tabs in recurring expenses
      */
     switchRecurringTab(tab) {
+        // Store current tab
+        this.currentRecurringTab = tab;
+        
         // Tab buttons
         const upcomingTab = document.getElementById('recurring-tab-upcoming');
         const completedTab = document.getElementById('recurring-tab-completed');

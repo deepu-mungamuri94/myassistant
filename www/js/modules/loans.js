@@ -6,6 +6,7 @@
 const Loans = {
     expandedLoans: new Set(), // Track which loans are expanded
     viewModalExpanded: false, // Track expansion in view modal
+    currentTab: 'active', // Track current active tab (active/closed)
     
     /**
      * Show loan details in a view-only modal
@@ -95,6 +96,9 @@ const Loans = {
      * Switch between Active and Closed tabs in loans page
      */
     switchLoansTab(tab) {
+        // Store current tab
+        this.currentTab = tab;
+        
         // Tab buttons
         const activeTab = document.getElementById('loans-tab-active');
         const closedTab = document.getElementById('loans-tab-closed');
@@ -445,6 +449,14 @@ const Loans = {
         }
         
         list.innerHTML = html;
+        
+        // Restore the current tab state after re-rendering
+        if (this.currentTab === 'closed') {
+            // Use setTimeout to ensure DOM is ready
+            setTimeout(() => {
+                this.switchLoansTab('closed');
+            }, 0);
+        }
     },
     
     /**

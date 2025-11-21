@@ -5,6 +5,7 @@
 
 const Cards = {
     currentTab: 'credit', // Track current tab: 'credit' or 'debit'
+    currentEMITabs: {}, // Track current tab for each card's EMI modal: {cardId: 'active' or 'completed'}
     
     /**
      * Add a new card (fetches benefits automatically for credit cards)
@@ -1307,12 +1308,24 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         `;
         
         list.innerHTML = html;
+        
+        // Restore the current tab state for this card after re-rendering
+        const currentTab = this.currentEMITabs[cardId] || 'active';
+        if (currentTab === 'completed') {
+            // Use setTimeout to ensure DOM is ready
+            setTimeout(() => {
+                this.switchEMITab(cardId, 'completed');
+            }, 0);
+        }
     },
 
     /**
      * Switch between Active and Completed tabs in EMIs
      */
     switchEMITab(cardId, tab) {
+        // Store current tab for this card
+        this.currentEMITabs[cardId] = tab;
+        
         // Tab buttons
         const activeTab = document.getElementById(`emi-tab-${cardId}-active`);
         const completedTab = document.getElementById(`emi-tab-${cardId}-completed`);
