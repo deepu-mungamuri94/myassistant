@@ -517,25 +517,29 @@ const Income = {
             <div class="space-y-4">
                 <!-- Summary Card -->
                 <div class="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl p-5 shadow-lg">
-                    <div class="mb-3">
-                        <p class="text-xs opacity-90">Annual CTC</p>
-                        <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(ctc)}</p>
+                    <!-- First Line: CTC and Income Credit -->
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <p class="text-xs opacity-90">Annual CTC</p>
+                            <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(ctc)}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs opacity-90">Income Credit</p>
+                            <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(aggregated.totalNetPay)}</p>
+                        </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                    <!-- Second Line: Tax, ESPP, EPF -->
+                    <div class="grid grid-cols-3 gap-3 text-xs">
                         <div>
                             <p class="opacity-75">Total Tax</p>
                             <p class="font-semibold">₹${Utils.formatIndianNumber(aggregated.totalTax)}</p>
                         </div>
                         <div>
-                            <p class="opacity-75">Income Credit</p>
-                            <p class="font-semibold">₹${Utils.formatIndianNumber(aggregated.totalNetPay)}</p>
-                        </div>
-                        <div>
-                            <p class="opacity-75">ESPP (Annual)</p>
+                            <p class="opacity-75">ESPP</p>
                             <p class="font-semibold">₹${Utils.formatIndianNumber(aggregated.totalESPP)}</p>
                         </div>
                         <div>
-                            <p class="opacity-75">EPF (Annual)</p>
+                            <p class="opacity-75">EPF</p>
                             <p class="font-semibold">₹${Utils.formatIndianNumber(totalEPF)}</p>
                         </div>
                     </div>
