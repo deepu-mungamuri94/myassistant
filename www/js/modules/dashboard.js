@@ -39,7 +39,7 @@ const Dashboard = {
         
         container.innerHTML = `
             <!-- Current Month Cards Box -->
-            <div class="bg-gradient-to-br from-white to-gray-50 rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+            <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
                 <h3 class="text-sm font-semibold text-gray-700 mb-3">Current Month</h3>
                 <div class="grid grid-cols-3 gap-3 max-w-full">
                     <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
@@ -78,7 +78,7 @@ const Dashboard = {
             ${this.renderMonthlyBreakdown()}
             
             <!-- Category Expenses Chart -->
-            <div class="bg-gradient-to-br from-white to-gray-50 rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+            <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
                 <div class="flex justify-between items-center mb-3 max-w-full">
                     <h3 class="text-sm font-semibold text-gray-700">Expenses by Category</h3>
                     <div class="relative">
@@ -96,7 +96,7 @@ const Dashboard = {
             </div>
             
             <!-- Income vs Expenses Chart -->
-            <div class="bg-gradient-to-br from-white to-gray-50 rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+            <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
                 <div class="flex justify-between items-center mb-3 max-w-full">
                     <h3 class="text-sm font-semibold text-gray-700">Income vs Expenses</h3>
                     <button onclick="Dashboard.openMonthRangeModal()" class="px-3 py-1.5 border border-blue-300 rounded-lg text-xs font-medium text-blue-700 hover:bg-blue-50 transition-all whitespace-nowrap">
@@ -110,7 +110,7 @@ const Dashboard = {
             
             <!-- EMI/Loan Progress -->
             ${loans.length > 0 ? `
-            <div class="bg-gradient-to-br from-white to-gray-50 rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+            <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
                 <h3 class="text-sm font-semibold text-gray-700 mb-3">EMI/Loan Progress</h3>
                 <div style="height: ${Math.max(200, Math.min(400, loans.length * 60))}px; max-width: 100%;">
                     <canvas id="loans-chart"></canvas>
@@ -1256,7 +1256,7 @@ const Dashboard = {
         
         return `
             <!-- Monthly Breakdown Cards Box -->
-            <div class="bg-gradient-to-br from-white to-gray-50 rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+            <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
                 <!-- Header with Month Label and Selector -->
                 <div class="flex justify-between items-center mb-3 max-w-full">
                     <h3 class="text-sm font-semibold text-gray-700">${this.getFormattedFilterMonth(filterMonth)}</h3>
