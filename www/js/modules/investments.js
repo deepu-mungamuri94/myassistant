@@ -728,6 +728,25 @@ const Investments = {
             return;
         }
         
+        // EPF should only be Long Term - auto-select and disable Short Term
+        if (type === 'EPF') {
+            const longTermRadio = document.querySelector('input[name="investment-goal"][value="LONG_TERM"]');
+            const shortTermRadio = document.querySelector('input[name="investment-goal"][value="SHORT_TERM"]');
+            if (longTermRadio && shortTermRadio) {
+                longTermRadio.checked = true;
+                shortTermRadio.disabled = true;
+                longTermRadio.disabled = false;
+            }
+        } else {
+            // Enable both options for other types
+            const isEditing = document.getElementById('investment-editing')?.value === 'true';
+            if (!isEditing) {
+                document.querySelectorAll('input[name="investment-goal"]').forEach(radio => {
+                    radio.disabled = false;
+                });
+            }
+        }
+        
         // Enable save button
         saveBtn.disabled = false;
         saveBtn.classList.remove('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
@@ -1251,7 +1270,13 @@ const Investments = {
             return;
         }
 
-        const goal = document.querySelector('input[name="investment-goal"]:checked').value;
+        let goal = document.querySelector('input[name="investment-goal"]:checked').value;
+        
+        // EPF should always be LONG_TERM
+        if (type === 'EPF') {
+            goal = 'LONG_TERM';
+        }
+        
         const description = document.getElementById('investment-description')?.value.trim() || '';
         const trackMonthly = document.getElementById('investment-track-monthly').checked;
         const date = trackMonthly ? document.getElementById('investment-date').value : null;
@@ -1668,8 +1693,9 @@ const Investments = {
         document.getElementById('investment-is-monthly').value = isMonthly ? 'true' : 'false';
         document.getElementById('investment-editing').value = 'true';
         
-        // Set goal
-        document.querySelector(`input[name="investment-goal"][value="${investment.goal}"]`).checked = true;
+        // Set goal - EPF should always be LONG_TERM
+        const goalToSet = investment.type === 'EPF' ? 'LONG_TERM' : investment.goal;
+        document.querySelector(`input[name="investment-goal"][value="${goalToSet}"]`).checked = true;
         
         // Disable goal radio buttons for all investments (cannot move between short/long term)
         document.querySelectorAll('input[name="investment-goal"]').forEach(radio => {
@@ -1718,6 +1744,7 @@ const Investments = {
             document.getElementById('investment-date').value = investment.date;
         } else {
             document.getElementById('investment-track-monthly').checked = false;
+            document.getElementById('investment-track-monthly').disabled = true;
             document.getElementById('investment-date-container').classList.add('hidden');
         }
     },
