@@ -38,36 +38,39 @@ const Dashboard = {
         const regularPercent = minNetPay > 0 ? ((regularExpenses / minNetPay) * 100).toFixed(1) : 0;
         
         container.innerHTML = `
-            <!-- Percentage Cards -->
-            <div class="grid grid-cols-3 gap-3 mb-4 max-w-full">
-                <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
-                    <div class="text-xs opacity-90 leading-tight">Rec.Payments</div>
-                    <div class="flex-1 flex items-center justify-center">
-                        <div class="text-3xl font-bold">${recurringPercent}<span class="text-lg opacity-80">%</span></div>
+            <!-- Current Month Cards Box -->
+            <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">Current Month</h3>
+                <div class="grid grid-cols-3 gap-3 max-w-full">
+                    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                        <div class="text-xs opacity-90 leading-tight">Rec.Payments</div>
+                        <div class="flex-1 flex items-center justify-center">
+                            <div class="text-3xl font-bold">${recurringPercent}<span class="text-lg opacity-80">%</span></div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(recurringExpenses)}</div>
+                            <button onclick="Dashboard.showTooltip(event, 'Recurring payments (Current Month): Scheduled payments excluding monthly Loans/EMIs')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                        </div>
                     </div>
-                    <div class="flex items-center justify-between">
-                        <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(recurringExpenses)}</div>
-                        <button onclick="Dashboard.showTooltip(event, 'Recurring payments (Current Month): Scheduled payments excluding monthly Loans/EMIs')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                        <div class="text-xs opacity-90 leading-tight">Loans / EMIs</div>
+                        <div class="flex-1 flex items-center justify-center">
+                            <div class="text-3xl font-bold">${emisPercent}<span class="text-lg opacity-80">%</span></div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(totalEmis)}</div>
+                            <button onclick="Dashboard.showTooltip(event, 'Loans / EMIs (Current Month): Total monthly EMIs from active loans and credit cards')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                        </div>
                     </div>
-                </div>
-                <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
-                    <div class="text-xs opacity-90 leading-tight">Loans / EMIs</div>
-                    <div class="flex-1 flex items-center justify-center">
-                        <div class="text-3xl font-bold">${emisPercent}<span class="text-lg opacity-80">%</span></div>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(totalEmis)}</div>
-                        <button onclick="Dashboard.showTooltip(event, 'Loans / EMIs (Current Month): Total monthly EMIs from active loans and credit cards')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
-                    </div>
-                </div>
-                <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
-                    <div class="text-xs opacity-90 leading-tight">Reg.Expenses</div>
-                    <div class="flex-1 flex items-center justify-center">
-                        <div class="text-3xl font-bold">${regularPercent}<span class="text-lg opacity-80">%</span></div>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(regularExpenses)}</div>
-                        <button onclick="Dashboard.showTooltip(event, 'Regular Expenses (Current Month): All monthly expenses without Recurring payments and Monthly EMIs')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                    <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                        <div class="text-xs opacity-90 leading-tight">Reg.Expenses</div>
+                        <div class="flex-1 flex items-center justify-center">
+                            <div class="text-3xl font-bold">${regularPercent}<span class="text-lg opacity-80">%</span></div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(regularExpenses)}</div>
+                            <button onclick="Dashboard.showTooltip(event, 'Regular Expenses (Current Month): All monthly expenses without Recurring payments and Monthly EMIs')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1146,14 +1149,12 @@ const Dashboard = {
     },
     
     /**
-     * Update filter month button text
+     * Update filter month and re-render
      */
     updateFilterMonthButton() {
         const input = document.getElementById('filter-month-selector');
-        const button = document.getElementById('filter-month-button');
-        if (input && button) {
+        if (input) {
             this.selectedFilterMonth = input.value;
-            button.textContent = this.getFormattedFilterMonth(input.value) + ' ▼';
             this.render();
         }
     },
@@ -1229,14 +1230,15 @@ const Dashboard = {
         const balancePercent = netPay > 0 ? ((balance / netPay) * 100).toFixed(1) : 0;
         
         return `
-            <!-- Month Filter and Breakdown Cards -->
-            <div class="mb-4">
-                <!-- Month Selector -->
-                <div class="flex justify-center mb-3">
+            <!-- Monthly Breakdown Cards Box -->
+            <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+                <!-- Header with Month Label and Selector -->
+                <div class="flex justify-between items-center mb-3 max-w-full">
+                    <h3 class="text-sm font-semibold text-gray-700">${this.getFormattedFilterMonth(filterMonth)}</h3>
                     <div class="relative">
                         <input type="month" id="filter-month-selector" value="${filterMonth}" onchange="Dashboard.updateFilterMonthButton()" class="absolute opacity-0 pointer-events-none" />
-                        <button id="filter-month-button" onclick="document.getElementById('filter-month-selector').showPicker()" class="px-4 py-2 border-2 border-yellow-300 rounded-lg text-sm font-semibold text-yellow-700 hover:bg-yellow-50 transition-all whitespace-nowrap bg-white shadow-sm">
-                            ${this.getFormattedFilterMonth(filterMonth)} ▼
+                        <button id="filter-month-button" onclick="document.getElementById('filter-month-selector').showPicker()" class="px-2 py-1 border border-gray-300 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50 transition-all whitespace-nowrap">
+                            ▼
                         </button>
                     </div>
                 </div>
