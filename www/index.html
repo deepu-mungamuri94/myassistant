@@ -892,27 +892,27 @@
             <!-- Filter Options -->
             <div class="space-y-3 mb-4">
                 <label class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
-                    <input type="radio" name="investment-date-filter" value="thisMonth" checked class="w-4 h-4 text-yellow-600" onchange="Investments.toggleCustomDateFields()">
+                    <input type="radio" name="investment-date-filter" value="thisMonth" checked class="w-4 h-4 text-yellow-600" onchange="Investments.handleDateFilterChange()">
                     <span class="ml-3 text-sm font-medium text-gray-700">This Month</span>
                 </label>
                 
                 <label class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
-                    <input type="radio" name="investment-date-filter" value="last6Months" class="w-4 h-4 text-yellow-600" onchange="Investments.toggleCustomDateFields()">
+                    <input type="radio" name="investment-date-filter" value="last6Months" class="w-4 h-4 text-yellow-600" onchange="Investments.handleDateFilterChange()">
                     <span class="ml-3 text-sm font-medium text-gray-700">Last 6 Months</span>
                 </label>
                 
                 <label class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
-                    <input type="radio" name="investment-date-filter" value="thisYear" class="w-4 h-4 text-yellow-600" onchange="Investments.toggleCustomDateFields()">
+                    <input type="radio" name="investment-date-filter" value="thisYear" class="w-4 h-4 text-yellow-600" onchange="Investments.handleDateFilterChange()">
                     <span class="ml-3 text-sm font-medium text-gray-700">This Year</span>
                 </label>
                 
                 <label class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
-                    <input type="radio" name="investment-date-filter" value="custom" class="w-4 h-4 text-yellow-600" onchange="Investments.toggleCustomDateFields()">
+                    <input type="radio" name="investment-date-filter" value="custom" class="w-4 h-4 text-yellow-600" onchange="Investments.handleDateFilterChange()">
                     <span class="ml-3 text-sm font-medium text-gray-700">Custom Range</span>
                 </label>
                 
                 <label class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
-                    <input type="radio" name="investment-date-filter" value="allTime" class="w-4 h-4 text-yellow-600" onchange="Investments.toggleCustomDateFields()">
+                    <input type="radio" name="investment-date-filter" value="allTime" class="w-4 h-4 text-yellow-600" onchange="Investments.handleDateFilterChange()">
                     <span class="ml-3 text-sm font-medium text-gray-700">All Time</span>
                 </label>
             </div>
@@ -929,7 +929,7 @@
                 </div>
             </div>
             
-            <div class="flex space-x-3">
+            <div id="investment-filter-buttons" class="hidden flex space-x-3">
                 <button onclick="Investments.applyDateFilter()" class="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
                     Apply Filter
                 </button>

@@ -2229,6 +2229,26 @@ const Investments = {
     },
 
     /**
+     * Open date filter modal
+     */
+    openDateFilterModal() {
+        // Ensure buttons are hidden if non-custom filter is selected
+        const selected = document.querySelector('input[name="investment-date-filter"]:checked').value;
+        const buttons = document.getElementById('investment-filter-buttons');
+        const customFields = document.getElementById('investment-custom-date-fields');
+        
+        if (selected === 'custom') {
+            buttons.classList.remove('hidden');
+            customFields.classList.remove('hidden');
+        } else {
+            buttons.classList.add('hidden');
+            customFields.classList.add('hidden');
+        }
+        
+        document.getElementById('investment-date-filter-modal').classList.remove('hidden');
+    },
+
+    /**
      * Close date filter modal
      */
     closeDateFilterModal() {
@@ -2236,17 +2256,54 @@ const Investments = {
     },
 
     /**
-     * Toggle custom date fields
+     * Handle date filter change
      */
-    toggleCustomDateFields() {
+    handleDateFilterChange() {
         const selected = document.querySelector('input[name="investment-date-filter"]:checked').value;
         const customFields = document.getElementById('investment-custom-date-fields');
+        const buttons = document.getElementById('investment-filter-buttons');
         
         if (selected === 'custom') {
+            // Show custom date fields and buttons
             customFields.classList.remove('hidden');
+            buttons.classList.remove('hidden');
         } else {
+            // Hide custom fields and buttons
             customFields.classList.add('hidden');
+            buttons.classList.add('hidden');
+            
+            // Apply filter immediately and close modal
+            this.dateFilter = selected;
+            
+            // Manage expanded state based on filter
+            if (selected === 'thisMonth') {
+                const now = new Date();
+                const currentMonthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
+                this.expandedMonths.clear();
+                this.expandedMonths.add(currentMonthKey);
+                
+                // Also expand all type groups within current month
+                this.expandedMonthlyTypes.clear();
+                ['EPF', 'FD', 'GOLD', 'SHARES'].forEach(type => {
+                    this.expandedMonthlyTypes.add(`${currentMonthKey}-${type}`);
+                });
+            } else {
+                // Collapse all for other filters
+                this.expandedMonths.clear();
+                this.expandedYears.clear();
+                this.expandedMonthlyTypes.clear();
+            }
+            
+            this.closeDateFilterModal();
+            this.renderMonthlySection();
         }
+    },
+
+    /**
+     * Toggle custom date fields (legacy support)
+     */
+    toggleCustomDateFields() {
+        this.handleDateFilterChange();
     },
 
     /**
