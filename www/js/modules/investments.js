@@ -202,39 +202,55 @@ const Investments = {
         const price = this.getDisplayPrice(inv, goldRate, sharePrices);
         let line2 = '', line3 = '', line4 = '';
 
+        // Type badge colors
+        const typeColors = {
+            'SHARES': 'bg-blue-100 text-blue-800',
+            'GOLD': 'bg-yellow-100 text-yellow-800',
+            'EPF': 'bg-green-100 text-green-800',
+            'FD': 'bg-orange-100 text-orange-800'
+        };
+        const typeBadge = `<span class="px-2 py-0.5 ${typeColors[inv.type] || 'bg-gray-100 text-gray-800'} rounded text-xs font-medium ml-2">${inv.type}</span>`;
+
         if (inv.type === 'SHARES') {
             const sharePrice = sharePrices.find(sp => sp.name === inv.name && sp.active);
             const currentPrice = sharePrice ? sharePrice.price : inv.price;
             const currencySymbol = (sharePrice?.currency || inv.currency) === 'USD' ? '$' : '₹';
-            line2 = `<span class="text-gray-700">Price: ${currencySymbol}${Utils.formatIndianNumber(currentPrice)}</span>`;
-            line3 = `<span class="text-gray-600 text-sm">Qty: ${inv.quantity}</span>`;
+            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Price:</span> ${currencySymbol}${Utils.formatIndianNumber(currentPrice)}</span>`;
+            line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Qty:</span> ${inv.quantity}</span>`;
             if ((sharePrice?.currency || inv.currency) === 'USD') {
                 const usdAmount = currentPrice * inv.quantity;
-                line3 += `<span class="text-gray-600 text-sm">$${Utils.formatIndianNumber(usdAmount.toFixed(2))}</span>`;
+                line3 += `<span class="text-gray-600 text-xs">$${Utils.formatIndianNumber(usdAmount.toFixed(2))}</span>`;
             }
         } else if (inv.type === 'GOLD') {
-            line2 = `<span class="text-gray-700">Price: ₹${Utils.formatIndianNumber(goldRate)}/gm</span>`;
-            line3 = `<span class="text-gray-600 text-sm">Qty: ${inv.quantity}gm</span>`;
+            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Price:</span> ₹${Utils.formatIndianNumber(goldRate)}/gm</span>`;
+            line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Qty:</span> ${inv.quantity}gm</span>`;
         } else if (inv.type === 'FD') {
-            line2 = `<span class="text-gray-700">Amount: ₹${Utils.formatIndianNumber(inv.amount)}</span>`;
-            line3 = `<span class="text-gray-600 text-sm">Tenure: ${inv.tenure} months | Interest: ${inv.interestRate}%</span>`;
-            line3 += `<span class="text-gray-600 text-sm">End: ${Utils.formatLocalDate(new Date(inv.endDate))}</span>`;
+            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Amount:</span> ₹${Utils.formatIndianNumber(inv.amount)}</span>`;
+            line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Tenure:</span> ${inv.tenure} months | <span class="font-bold">Interest:</span> ${inv.interestRate}%</span>`;
+            line3 += `<span class="text-gray-600 text-xs"><span class="font-bold">End:</span> ${Utils.formatLocalDate(new Date(inv.endDate))}</span>`;
         } else if (inv.type === 'EPF') {
-            line2 = `<span class="text-gray-700">Amount: ₹${Utils.formatIndianNumber(inv.amount)}</span>`;
+            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Amount:</span> ₹${Utils.formatIndianNumber(inv.amount)}</span>`;
         }
 
-        line4 = inv.description ? `<p class="text-gray-600 text-xs">${inv.description}</p>` : '';
+        line4 = inv.description ? `<p class="text-gray-600 text-xs mt-1">${inv.description}</p>` : '';
 
         return `
             <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
                 <div class="flex justify-between items-start mb-2">
-                    <span class="font-semibold text-gray-800">${inv.name}<span class="text-xs text-gray-500 ml-1">[${inv.type}]</span></span>
-                    <div class="flex gap-2">
-                        <button onclick="Investments.editInvestment(${inv.id}, false)" class="text-blue-600 hover:text-blue-800" title="Edit">
-                            🖊️
+                    <div class="flex items-center">
+                        <span class="font-semibold text-gray-800">${inv.name}</span>
+                        ${typeBadge}
+                    </div>
+                    <div class="flex gap-1.5">
+                        <button onclick="Investments.editInvestment(${inv.id}, false)" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
                         </button>
-                        <button onclick="Investments.confirmDelete(${inv.id}, false)" class="text-red-600 hover:text-red-800" title="Delete">
-                            🗑️
+                        <button onclick="Investments.confirmDelete(${inv.id}, false)" class="text-red-500 hover:text-red-700 p-0.5" title="Delete">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
                         </button>
                     </div>
                 </div>
@@ -242,7 +258,7 @@ const Investments = {
                     ${line2}
                     <span class="font-bold text-yellow-700">₹${Utils.formatIndianNumber(Math.round(amount))}</span>
                 </div>
-                <div class="flex justify-between items-center text-sm">
+                <div class="flex justify-between items-center">
                     ${line3}
                 </div>
                 ${line4}
@@ -364,33 +380,49 @@ const Investments = {
         const amount = this.calculateMonthlyAmount(inv, goldRate);
         let line2 = '', line3 = '';
 
+        // Type badge colors
+        const typeColors = {
+            'SHARES': 'bg-blue-100 text-blue-800',
+            'GOLD': 'bg-yellow-100 text-yellow-800',
+            'EPF': 'bg-green-100 text-green-800',
+            'FD': 'bg-orange-100 text-orange-800'
+        };
+        const typeBadge = `<span class="px-2 py-0.5 ${typeColors[inv.type] || 'bg-gray-100 text-gray-800'} rounded text-xs font-medium ml-2">${inv.type}</span>`;
+
         if (inv.type === 'SHARES') {
             const currencySymbol = inv.currency === 'USD' ? '$' : '₹';
-            line2 = `<span class="text-gray-700">Price: ${currencySymbol}${Utils.formatIndianNumber(inv.price)}</span>`;
-            line3 = `<span class="text-gray-600 text-sm">Qty: ${inv.quantity}</span>`;
-            line3 += `<span class="text-gray-600 text-sm">${Utils.formatLocalDate(new Date(inv.date))}</span>`;
+            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Price:</span> ${currencySymbol}${Utils.formatIndianNumber(inv.price)}</span>`;
+            line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Qty:</span> ${inv.quantity}</span>`;
+            line3 += `<span class="text-gray-600 text-xs">${Utils.formatLocalDate(new Date(inv.date))}</span>`;
         } else if (inv.type === 'GOLD') {
-            line2 = `<span class="text-gray-700">Price: ₹${Utils.formatIndianNumber(inv.price)}/gm</span>`;
-            line3 = `<span class="text-gray-600 text-sm">Qty: ${inv.quantity}gm</span>`;
-            line3 += `<span class="text-gray-600 text-sm">${Utils.formatLocalDate(new Date(inv.date))}</span>`;
+            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Price:</span> ₹${Utils.formatIndianNumber(inv.price)}/gm</span>`;
+            line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Qty:</span> ${inv.quantity}gm</span>`;
+            line3 += `<span class="text-gray-600 text-xs">${Utils.formatLocalDate(new Date(inv.date))}</span>`;
         } else if (inv.type === 'FD' || inv.type === 'EPF') {
-            line2 = `<span class="text-gray-700">Amount: ₹${Utils.formatIndianNumber(inv.amount)}</span>`;
-            line3 = `<span class="text-gray-600 text-sm"></span>`;
-            line3 += `<span class="text-gray-600 text-sm">${Utils.formatLocalDate(new Date(inv.date))}</span>`;
+            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Amount:</span> ₹${Utils.formatIndianNumber(inv.amount)}</span>`;
+            line3 = `<span class="text-gray-600 text-xs"></span>`;
+            line3 += `<span class="text-gray-600 text-xs">${Utils.formatLocalDate(new Date(inv.date))}</span>`;
         }
 
-        const line4 = inv.description ? `<p class="text-gray-600 text-xs">${inv.description}</p>` : '';
+        const line4 = inv.description ? `<p class="text-gray-600 text-xs mt-1">${inv.description}</p>` : '';
 
         return `
             <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
                 <div class="flex justify-between items-start mb-2">
-                    <span class="font-semibold text-gray-800">${inv.name}<span class="text-xs text-gray-500 ml-1">[${inv.type}]</span></span>
-                    <div class="flex gap-2">
-                        <button onclick="Investments.editInvestment(${inv.id}, true)" class="text-blue-600 hover:text-blue-800" title="Edit">
-                            🖊️
+                    <div class="flex items-center">
+                        <span class="font-semibold text-gray-800">${inv.name}</span>
+                        ${typeBadge}
+                    </div>
+                    <div class="flex gap-1.5">
+                        <button onclick="Investments.editInvestment(${inv.id}, true)" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
                         </button>
-                        <button onclick="Investments.confirmDelete(${inv.id}, true)" class="text-red-600 hover:text-red-800" title="Delete">
-                            🗑️
+                        <button onclick="Investments.confirmDelete(${inv.id}, true)" class="text-red-500 hover:text-red-700 p-0.5" title="Delete">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
                         </button>
                     </div>
                 </div>
@@ -398,7 +430,7 @@ const Investments = {
                     ${line2}
                     <span class="font-bold text-yellow-700">₹${Utils.formatIndianNumber(Math.round(amount))}</span>
                 </div>
-                <div class="flex justify-between items-center text-sm">
+                <div class="flex justify-between items-center">
                     ${line3}
                 </div>
                 ${line4}
