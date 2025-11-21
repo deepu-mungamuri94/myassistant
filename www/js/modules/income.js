@@ -525,7 +525,7 @@ const Income = {
                         </div>
                         <div>
                             <p class="text-xs opacity-90">Income Credit</p>
-                            <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(aggregated.totalNetPay)}</p>
+                            <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(aggregated.totalNetPay))}</p>
                         </div>
                     </div>
                     <!-- Second Line: Tax, ESPP, EPF -->
