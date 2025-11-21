@@ -626,7 +626,7 @@
         <div id="investments-view" class="hidden">
             <div class="p-5 pb-32">
                 <!-- Floating + Button (Top Right) -->
-                <button onclick="Investments.openInvestmentModal()" class="fixed right-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Investment">
+                <button onclick="Investments.openInvestmentModal()" class="fixed right-4 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Investment">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                     </svg>
@@ -645,9 +645,9 @@
             
             <!-- Fixed Bottom Bar (Search & Date Filter) -->
             <div class="fixed bottom-0 left-0 right-0 border-t border-gray-300 p-3 flex gap-2" style="z-index: 9999; background-color: #F5FEFD;">
-                <input type="text" id="investments-search" placeholder="🔍 Search investments..." class="flex-1 p-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white" oninput="Investments.handleSearch(this.value)">
-                <button onclick="Investments.openDateFilterModal()" class="px-4 py-3 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-all text-sm font-semibold whitespace-nowrap">
-                    📅 Filter
+                <input type="text" id="investments-search" placeholder="🔍 Search investments..." class="flex-1 p-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white" oninput="Investments.handleSearch(this.value)">
+                <button onclick="Investments.openDateFilterModal()" class="px-4 py-3 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded-lg transition-all text-sm font-semibold whitespace-nowrap">
+                    🕐
                 </button>
             </div>
         </div>
@@ -824,7 +824,7 @@
     <!-- INVESTMENT ADD/EDIT MODAL -->
     <div id="investment-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Investments.closeInvestmentModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <h2 id="investment-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Add Investment</h2>
+            <h2 id="investment-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">Add Investment</h2>
             
             <input type="hidden" id="investment-id">
             <input type="hidden" id="investment-is-monthly">
@@ -835,11 +835,11 @@
                 <label class="block text-sm font-semibold text-gray-700 mb-2">Goal</label>
                 <div class="flex gap-4">
                     <label class="flex items-center cursor-pointer">
-                        <input type="radio" name="investment-goal" value="SHORT_TERM" class="w-4 h-4 text-green-600 focus:ring-green-500">
+                        <input type="radio" name="investment-goal" value="SHORT_TERM" class="w-4 h-4 text-yellow-600 focus:ring-yellow-500">
                         <span class="ml-2 text-sm font-medium text-gray-700">Short Term</span>
                     </label>
                     <label class="flex items-center cursor-pointer">
-                        <input type="radio" name="investment-goal" value="LONG_TERM" checked class="w-4 h-4 text-green-600 focus:ring-green-500">
+                        <input type="radio" name="investment-goal" value="LONG_TERM" checked class="w-4 h-4 text-yellow-600 focus:ring-yellow-500">
                         <span class="ml-2 text-sm font-medium text-gray-700">Long Term</span>
                     </label>
                 </div>
@@ -848,7 +848,7 @@
             <!-- Type Selection -->
             <div class="mb-3">
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Type</label>
-                <select id="investment-type" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" onchange="Investments.handleTypeChange()">
+                <select id="investment-type" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" onchange="Investments.handleTypeChange()">
                     <option value="">Select Type</option>
                     <option value="SHARES">Shares</option>
                     <option value="GOLD">Gold</option>
@@ -876,32 +876,32 @@
     <!-- INVESTMENT DATE FILTER MODAL -->
     <div id="investment-date-filter-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Investments.closeDateFilterModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
-            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Filter Monthly Investments</h2>
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">Filter Monthly Investments</h2>
             
             <!-- Filter Options -->
             <div class="space-y-3 mb-4">
                 <label class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
-                    <input type="radio" name="investment-date-filter" value="thisMonth" checked class="w-4 h-4 text-green-600" onchange="Investments.toggleCustomDateFields()">
+                    <input type="radio" name="investment-date-filter" value="thisMonth" checked class="w-4 h-4 text-yellow-600" onchange="Investments.toggleCustomDateFields()">
                     <span class="ml-3 text-sm font-medium text-gray-700">This Month</span>
                 </label>
                 
                 <label class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
-                    <input type="radio" name="investment-date-filter" value="last6Months" class="w-4 h-4 text-green-600" onchange="Investments.toggleCustomDateFields()">
+                    <input type="radio" name="investment-date-filter" value="last6Months" class="w-4 h-4 text-yellow-600" onchange="Investments.toggleCustomDateFields()">
                     <span class="ml-3 text-sm font-medium text-gray-700">Last 6 Months</span>
                 </label>
                 
                 <label class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
-                    <input type="radio" name="investment-date-filter" value="thisYear" class="w-4 h-4 text-green-600" onchange="Investments.toggleCustomDateFields()">
+                    <input type="radio" name="investment-date-filter" value="thisYear" class="w-4 h-4 text-yellow-600" onchange="Investments.toggleCustomDateFields()">
                     <span class="ml-3 text-sm font-medium text-gray-700">This Year</span>
                 </label>
                 
                 <label class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
-                    <input type="radio" name="investment-date-filter" value="custom" class="w-4 h-4 text-green-600" onchange="Investments.toggleCustomDateFields()">
+                    <input type="radio" name="investment-date-filter" value="custom" class="w-4 h-4 text-yellow-600" onchange="Investments.toggleCustomDateFields()">
                     <span class="ml-3 text-sm font-medium text-gray-700">Custom Range</span>
                 </label>
                 
                 <label class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
-                    <input type="radio" name="investment-date-filter" value="allTime" class="w-4 h-4 text-green-600" onchange="Investments.toggleCustomDateFields()">
+                    <input type="radio" name="investment-date-filter" value="allTime" class="w-4 h-4 text-yellow-600" onchange="Investments.toggleCustomDateFields()">
                     <span class="ml-3 text-sm font-medium text-gray-700">All Time</span>
                 </label>
             </div>
@@ -910,16 +910,16 @@
             <div id="investment-custom-date-fields" class="hidden space-y-3 mb-4 p-3 bg-gray-50 rounded-lg">
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-1">From Date</label>
-                    <input type="date" id="investment-filter-start-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <input type="date" id="investment-filter-start-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-1">To Date</label>
-                    <input type="date" id="investment-filter-end-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <input type="date" id="investment-filter-end-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
                 </div>
             </div>
             
             <div class="flex space-x-3">
-                <button onclick="Investments.applyDateFilter()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                <button onclick="Investments.applyDateFilter()" class="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
                     Apply Filter
                 </button>
                 <button onclick="Investments.closeDateFilterModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
@@ -1540,7 +1540,7 @@
     <!-- EXCHANGE RATE MODAL -->
     <div id="exchange-rate-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Investments.closeExchangeRateModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
-            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Exchange Rate</h2>
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">Exchange Rate</h2>
             
             <div class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <p class="text-sm text-gray-600 mb-1">Current Rate</p>
@@ -1548,12 +1548,12 @@
             </div>
             
             <label class="block text-sm font-semibold text-gray-700 mb-2">New USD to INR Rate</label>
-            <input type="number" id="exchange-rate-input" placeholder="Enter new rate (e.g., 83.50)" step="0.01" class="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+            <input type="number" id="exchange-rate-input" placeholder="Enter new rate (e.g., 83.50)" step="0.01" class="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
             
             <p class="text-xs text-gray-600 mb-4">💡 This rate will be used to convert USD share prices to INR and will automatically recalculate all USD portfolio values</p>
             
             <div class="flex space-x-3">
-                <button onclick="Investments.saveExchangeRate()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                <button onclick="Investments.saveExchangeRate()" class="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
                     Update
                 </button>
                 <button onclick="Investments.closeExchangeRateModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
@@ -1566,7 +1566,7 @@
     <!-- GOLD RATE MODAL -->
     <div id="gold-rate-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Investments.closeGoldRateModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
-            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Gold Rate per Gram</h2>
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">Gold Rate per Gram</h2>
             
             <div class="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                 <p class="text-sm text-yellow-800 mb-1">Current Rate</p>
@@ -1576,13 +1576,13 @@
             <label class="block text-sm font-semibold text-gray-700 mb-2">New Gold Rate (₹ per gram)</label>
             <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
-                <input type="number" id="gold-rate-input" placeholder="Enter rate per gram" step="0.01" class="w-full p-3 pl-8 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="number" id="gold-rate-input" placeholder="Enter rate per gram" step="0.01" class="w-full p-3 pl-8 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
             </div>
             
             <p class="text-xs text-gray-600 mb-4">🪙 This rate will be used to calculate all gold investment values and will automatically recalculate all Gold portfolio values</p>
             
             <div class="flex space-x-3">
-                <button onclick="Investments.saveGoldRate()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                <button onclick="Investments.saveGoldRate()" class="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
                     Update
                 </button>
                 <button onclick="Investments.closeGoldRateModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
@@ -1679,15 +1679,15 @@
     <!-- SHARE PRICE MANAGEMENT MODAL -->
     <div id="share-price-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Investments.closeSharePriceModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Manage Share Prices</h2>
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">Manage Share Prices</h2>
             
             <!-- Global Reload Button -->
             <div class="mb-4 flex justify-end">
-                <button id="global-reload-btn" onclick="Investments.reloadAllSharePrices()" class="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-semibold flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button id="global-reload-btn" onclick="Investments.reloadAllSharePrices()" class="px-3 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 text-xs font-semibold flex items-center gap-1">
+                    Reload prices
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                     </svg>
-                    Reload All Prices
                 </button>
             </div>
             

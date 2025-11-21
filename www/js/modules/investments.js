@@ -80,10 +80,14 @@ const Investments = {
 
         const currentGoldRate = goldRate ? `₹${Utils.formatIndianNumber(goldRate)}/gm` : 'Set Rate';
 
+        // Check if portfolio body is currently visible
+        const portfolioBody = document.getElementById('portfolio-body');
+        const isBodyVisible = portfolioBody && !portfolioBody.classList.contains('hidden');
+
         container.innerHTML = `
             <div class="bg-white rounded-xl shadow-md overflow-hidden">
                 <!-- Header -->
-                <div class="bg-gradient-to-r from-green-600 to-emerald-600 text-white p-4 rounded-t-xl cursor-pointer" onclick="Investments.togglePortfolioBody()">
+                <div class="bg-gradient-to-r from-yellow-600 to-orange-600 text-white p-4 rounded-t-xl cursor-pointer" onclick="Investments.togglePortfolioBody()">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="text-lg font-bold">Portfolio</h3>
                         <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(totalValue))}</p>
@@ -107,15 +111,15 @@ const Investments = {
                 </div>
 
                 <!-- Body (collapsible) -->
-                <div id="portfolio-body" class="hidden">
+                <div id="portfolio-body" class="${isBodyVisible ? '' : 'hidden'}">
                     <!-- Tabs -->
                     <div class="flex border-b border-gray-200 bg-gray-50">
                         <button onclick="Investments.switchPortfolioTab('short')" 
-                                class="flex-1 py-3 px-4 text-center font-semibold transition-all ${this.currentPortfolioTab === 'short' ? 'text-green-700 border-b-2 border-green-600 bg-white' : 'text-gray-600 hover:text-gray-800'}">
+                                class="flex-1 py-3 px-4 text-center font-semibold transition-all ${this.currentPortfolioTab === 'short' ? 'text-yellow-700 border-b-2 border-yellow-600 bg-white' : 'text-gray-600 hover:text-gray-800'}">
                             Short Term<br><span class="text-xs">(₹${Utils.formatIndianNumber(Math.round(shortTermTotal))})</span>
                         </button>
                         <button onclick="Investments.switchPortfolioTab('long')" 
-                                class="flex-1 py-3 px-4 text-center font-semibold transition-all ${this.currentPortfolioTab === 'long' ? 'text-green-700 border-b-2 border-green-600 bg-white' : 'text-gray-600 hover:text-gray-800'}">
+                                class="flex-1 py-3 px-4 text-center font-semibold transition-all ${this.currentPortfolioTab === 'long' ? 'text-yellow-700 border-b-2 border-yellow-600 bg-white' : 'text-gray-600 hover:text-gray-800'}">
                             Long Term<br><span class="text-xs">(₹${Utils.formatIndianNumber(Math.round(longTermTotal))})</span>
                         </button>
                     </div>
@@ -159,7 +163,7 @@ const Investments = {
                                 <span class="font-semibold text-gray-800">${typeLabel}</span>
                                 <span class="text-xs text-gray-600">(${grouped[type].length})</span>
                             </div>
-                            <span class="font-bold text-green-700">₹${Utils.formatIndianNumber(Math.round(typeTotal))}</span>
+                            <span class="font-bold text-yellow-700">₹${Utils.formatIndianNumber(Math.round(typeTotal))}</span>
                         </div>
                         ${isExpanded ? `
                             <div class="p-3 space-y-3 bg-white">
@@ -220,7 +224,7 @@ const Investments = {
                 </div>
                 <div class="flex justify-between items-center mb-1">
                     ${line2}
-                    <span class="font-bold text-green-700">₹${Utils.formatIndianNumber(Math.round(amount))}</span>
+                    <span class="font-bold text-yellow-700">₹${Utils.formatIndianNumber(Math.round(amount))}</span>
                 </div>
                 <div class="flex justify-between items-center text-sm">
                     ${line3}
@@ -284,7 +288,7 @@ const Investments = {
 
                 html += `
                     <div class="border border-gray-300 rounded-lg overflow-hidden">
-                        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-3 flex justify-between items-center cursor-pointer"
+                        <div class="bg-gradient-to-r from-yellow-600 to-orange-600 text-white p-3 flex justify-between items-center cursor-pointer"
                              onclick="Investments.toggleYearGroup('${year}')">
                             <div class="flex items-center gap-2">
                                 <span>${isYearExpanded ? '📂' : '📁'}</span>
@@ -326,7 +330,7 @@ const Investments = {
                         <span class="font-semibold text-gray-800">${monthName} ${year}</span>
                         <span class="text-xs text-gray-600">(${investments.length})</span>
                     </div>
-                    <span class="font-bold text-green-700">₹${Utils.formatIndianNumber(Math.round(monthTotal))}</span>
+                    <span class="font-bold text-yellow-700">₹${Utils.formatIndianNumber(Math.round(monthTotal))}</span>
                 </div>
                 ${isExpanded ? `
                     <div class="p-3 space-y-3 bg-white">
@@ -376,7 +380,7 @@ const Investments = {
                 </div>
                 <div class="flex justify-between items-center mb-1">
                     ${line2}
-                    <span class="font-bold text-green-700">₹${Utils.formatIndianNumber(Math.round(amount))}</span>
+                    <span class="font-bold text-yellow-700">₹${Utils.formatIndianNumber(Math.round(amount))}</span>
                 </div>
                 <div class="flex justify-between items-center text-sm">
                     ${line3}
@@ -629,7 +633,7 @@ const Investments = {
             <div class="mb-3">
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Name</label>
                 <input type="text" id="investment-name" list="investment-name-suggestions" placeholder="Enter name" maxlength="32"
-                       class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                       class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                        oninput="Investments.updateNameSuggestions()">
                 <datalist id="investment-name-suggestions"></datalist>
             </div>
@@ -642,19 +646,19 @@ const Investments = {
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Quantity</label>
                         <input type="number" id="investment-quantity" placeholder="Qty" step="1" min="0"
-                               class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                               class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                                oninput="Investments.calculateAmount()">
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Price</label>
                         <div class="flex gap-1">
-                            <select id="investment-currency" class="w-16 p-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                            <select id="investment-currency" class="w-16 p-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                                     onchange="Investments.calculateAmount()">
                                 <option value="INR">₹</option>
                                 <option value="USD">$</option>
                             </select>
                             <input type="number" id="investment-price" placeholder="Price" step="0.01" min="0"
-                                   class="flex-1 p-2 border border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                                   class="flex-1 p-2 border border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                                    oninput="Investments.calculateAmount()">
                         </div>
                     </div>
@@ -666,7 +670,7 @@ const Investments = {
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Quantity (grams)</label>
                         <input type="number" id="investment-quantity" placeholder="Grams" step="0.01" min="0"
-                               class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                               class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                                oninput="Investments.calculateAmount()">
                     </div>
                     <div>
@@ -674,7 +678,7 @@ const Investments = {
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
                             <input type="number" id="investment-price" placeholder="Per gram" step="0.01" min="0" value="${goldRate}"
-                                   class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                                   class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                                    oninput="Investments.calculateAmount()">
                         </div>
                     </div>
@@ -687,7 +691,7 @@ const Investments = {
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
                         <input type="number" id="investment-amount" placeholder="Amount" step="0.01" min="0"
-                               class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                               class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
                     </div>
                 </div>
             `;
@@ -698,25 +702,25 @@ const Investments = {
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
                         <input type="number" id="investment-amount" placeholder="Amount" step="0.01" min="0"
-                               class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                               class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2 mb-3">
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Tenure (months)</label>
                         <input type="number" id="investment-tenure" placeholder="Months" step="1" min="1"
-                               class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                               class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Interest Rate (%)</label>
                         <input type="number" id="investment-interest-rate" placeholder="Rate" step="0.01" min="0"
-                               class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                               class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
                     </div>
                 </div>
                 <div class="mb-3">
                     <label class="block text-sm font-semibold text-gray-700 mb-1">End Date</label>
                     <input type="date" id="investment-end-date"
-                           class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                           class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
                 </div>
             `;
         }
@@ -726,16 +730,16 @@ const Investments = {
             <div class="mb-3">
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Description (optional)</label>
                 <textarea id="investment-description" placeholder="Additional details" maxlength="256" rows="2"
-                          class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
+                          class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"></textarea>
             </div>
         `;
 
         // Calculated amount display (for SHARES and GOLD)
         if (type === 'SHARES' || type === 'GOLD') {
             html += `
-                <div class="mb-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                    <p class="text-xs text-green-700 mb-1">Calculated Amount</p>
-                    <p id="investment-calculated-amount" class="text-lg font-bold text-green-800">₹0</p>
+                <div class="mb-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <p class="text-xs text-yellow-700 mb-1">Calculated Amount</p>
+                    <p id="investment-calculated-amount" class="text-lg font-bold text-yellow-800">₹0</p>
                 </div>
             `;
         }
@@ -744,7 +748,7 @@ const Investments = {
         html += `
             <div class="mb-3 flex items-center gap-2">
                 <input type="checkbox" id="investment-track-monthly" ${isEditing ? 'disabled' : ''} checked
-                       class="w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
+                       class="w-4 h-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded">
                 <label class="text-sm font-medium text-gray-700">Track as monthly investment</label>
             </div>
         `;
@@ -754,7 +758,7 @@ const Investments = {
             <div id="investment-date-container" class="mb-3">
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Date</label>
                 <input type="date" id="investment-date" value="${new Date().toISOString().split('T')[0]}"
-                       class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                       class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
             </div>
         `;
 
@@ -1364,36 +1368,38 @@ const Investments = {
         const sharePrices = window.DB.sharePrices || [];
         const activeShares = sharePrices.filter(sp => sp.active);
         
+        // Don't open modal if no shares exist
+        if (activeShares.length === 0) {
+            Toast.info('No shares in portfolio yet');
+            return;
+        }
+        
         const modal = document.getElementById('share-price-modal');
         const list = document.getElementById('share-prices-list');
         
-        if (activeShares.length === 0) {
-            list.innerHTML = '<div class="text-center py-8 text-gray-500">No shares in portfolio</div>';
-        } else {
-            list.innerHTML = activeShares.map(share => `
-                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="font-semibold text-gray-800">${share.name}</span>
-                        <div class="flex gap-2">
-                            <button onclick="Investments.reloadSingleSharePrice('${share.name}')" 
-                                    class="text-green-600 hover:text-green-800 transition-all" title="Reload Price">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                                </svg>
-                            </button>
-                            <button onclick="Investments.deleteSharePrice('${share.name}')" 
-                                    class="text-red-600 hover:text-red-800" title="Delete">
-                                🗑️
-                            </button>
-                        </div>
-                    </div>
-                    <div class="text-center">
-                        <p class="text-2xl font-bold text-gray-800">${share.currency === 'USD' ? '$' : '₹'}${Utils.formatIndianNumber(share.price)}</p>
-                        <p class="text-xs text-gray-500 mt-1">Updated: ${new Date(share.lastUpdated).toLocaleString()}</p>
+        list.innerHTML = activeShares.map(share => `
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="font-semibold text-gray-800">${share.name}</span>
+                    <div class="flex gap-2">
+                        <button onclick="Investments.reloadSingleSharePrice('${share.name}')" 
+                                class="text-yellow-600 hover:text-yellow-800 transition-all" title="Reload Price">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                        </button>
+                        <button onclick="Investments.deleteSharePrice('${share.name}')" 
+                                class="text-red-600 hover:text-red-800" title="Delete">
+                            🗑️
+                        </button>
                     </div>
                 </div>
-            `).join('');
-        }
+                <div class="text-center">
+                    <p class="text-2xl font-bold text-gray-800">${share.currency === 'USD' ? '$' : '₹'}${Utils.formatIndianNumber(share.price)}</p>
+                    <p class="text-xs text-gray-500 mt-1">Updated: ${new Date(share.lastUpdated).toLocaleString()}</p>
+                </div>
+            </div>
+        `).join('');
         
         modal.classList.remove('hidden');
     },
