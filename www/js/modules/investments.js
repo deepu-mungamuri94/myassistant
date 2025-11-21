@@ -8,6 +8,7 @@ const Investments = {
     expandedMonths: new Set(), // Track expanded months in monthly investments
     expandedYears: new Set(), // Track expanded years in monthly investments
     currentPortfolioTab: 'short', // 'short' or 'long'
+    portfolioBodyVisible: true, // Track portfolio section visibility (default expanded)
     dateFilter: 'thisMonth', // 'thisMonth', 'last6Months', 'thisYear', 'custom', 'allTime'
     customDateRange: { start: null, end: null },
     searchQuery: '',
@@ -107,9 +108,8 @@ const Investments = {
         const currentGoldRate = goldRate ? `₹${Utils.formatIndianNumber(goldRate)}/gm` : 'Set Rate';
         const currentExchangeRate = exchangeRate ? `$1 = ₹${exchangeRate.toFixed(2)}` : 'Set Rate';
 
-        // Check if portfolio body is currently visible
-        const portfolioBody = document.getElementById('portfolio-body');
-        const isBodyVisible = portfolioBody && !portfolioBody.classList.contains('hidden');
+        // Use persistent state for portfolio body visibility
+        const isBodyVisible = this.portfolioBodyVisible;
 
         container.innerHTML = `
             <div class="bg-white rounded-xl shadow-md overflow-hidden">
@@ -596,9 +596,14 @@ const Investments = {
      * Toggle portfolio body visibility
      */
     togglePortfolioBody() {
+        this.portfolioBodyVisible = !this.portfolioBodyVisible;
         const body = document.getElementById('portfolio-body');
         if (body) {
-            body.classList.toggle('hidden');
+            if (this.portfolioBodyVisible) {
+                body.classList.remove('hidden');
+            } else {
+                body.classList.add('hidden');
+            }
         }
     },
 
@@ -762,7 +767,7 @@ const Investments = {
         if (type === 'SHARES') {
             html += `
                 <div class="mb-3">
-                    <div class="grid grid-cols-[35%_65%] gap-2">
+                    <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Quantity</label>
                             <input type="number" id="investment-quantity" placeholder="Qty" step="1" min="0"
@@ -779,13 +784,13 @@ const Investments = {
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Price</label>
                             <div class="flex">
-                                <select id="investment-currency" class="w-14 p-2 border border-gray-300 rounded-l-lg border-r-0 focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-gray-50"
+                                <select id="investment-currency" class="w-12 p-2 border border-gray-300 rounded-l-lg border-r-0 focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-gray-50 text-sm"
                                         onchange="Investments.calculateAmount()">
                                     <option value="INR">₹</option>
                                     <option value="USD">$</option>
                                 </select>
                                 <input type="number" id="investment-price" placeholder="0.00" step="0.01" min="0"
-                                       class="flex-1 p-2 border border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                       class="flex-1 p-2 border border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 min-w-0"
                                        oninput="Investments.calculateAmount(); Investments.clearFieldError('price');"
                                        onblur="Investments.validateField('price')">
                             </div>
@@ -1666,12 +1671,10 @@ const Investments = {
         // Set goal
         document.querySelector(`input[name="investment-goal"][value="${investment.goal}"]`).checked = true;
         
-        // For EPF, disable goal radio buttons
-        if (investment.type === 'EPF') {
-            document.querySelectorAll('input[name="investment-goal"]').forEach(radio => {
-                radio.disabled = true;
-            });
-        }
+        // Disable goal radio buttons for all investments (cannot move between short/long term)
+        document.querySelectorAll('input[name="investment-goal"]').forEach(radio => {
+            radio.disabled = true;
+        });
         
         // Set type
         document.getElementById('investment-type').value = investment.type;

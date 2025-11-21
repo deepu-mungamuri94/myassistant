@@ -626,7 +626,7 @@
         <div id="investments-view" class="hidden">
             <div class="p-5 pb-32">
                 <!-- Floating + Button (Top Right) -->
-                <button onclick="Investments.openInvestmentModal()" class="fixed right-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Investment">
+                <button onclick="Investments.openInvestmentModal()" class="fixed right-4 bg-gradient-to-br from-green-500 via-emerald-600 to-green-700 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Investment">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                     </svg>
@@ -1667,15 +1667,15 @@
         <div class="flex flex-col items-center">
             <!-- Animated Checkmark Circle -->
             <div class="relative">
-                <svg class="w-32 h-32 animate-scale-in" viewBox="0 0 100 100">
-                    <!-- Circle -->
-                    <circle cx="50" cy="50" r="45" fill="#10B981" class="animate-fade-in"/>
+                <svg class="w-24 h-24 animate-scale-in" viewBox="0 0 100 100">
+                    <!-- Circle Border -->
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="#10B981" stroke-width="4" class="animate-fade-in"/>
                     <!-- Checkmark -->
-                    <path d="M25 50 L40 65 L75 30" stroke="white" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round" class="animate-draw-check"/>
+                    <path d="M30 50 L42 62 L70 34" stroke="#10B981" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round" class="animate-draw-check"/>
                 </svg>
             </div>
             <!-- Success Text -->
-            <p class="mt-6 text-2xl font-bold text-green-600 animate-fade-in-up">Success</p>
+            <p class="mt-4 text-xl font-bold text-green-600 animate-fade-in-up">Success</p>
         </div>
     </div>
     
