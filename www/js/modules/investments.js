@@ -246,6 +246,15 @@ const Investments = {
 
         line4 = inv.description ? `<p class="text-gray-600 text-xs mt-1">${inv.description}</p>` : '';
 
+        // Edit button HTML - hide for FD, show for others
+        const editButton = inv.type === 'FD' ? '' : `
+            <button onclick="Investments.editInvestment(${inv.id}, false)" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+            </button>
+        `;
+
         return `
             <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
                 <div class="flex justify-between items-start mb-2">
@@ -254,11 +263,7 @@ const Investments = {
                         ${typeBadge}
                     </div>
                     <div class="flex gap-1.5">
-                        <button onclick="Investments.editInvestment(${inv.id}, false)" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                            </svg>
-                        </button>
+                        ${editButton}
                         <button onclick="Investments.confirmDelete(${inv.id}, false)" class="text-red-500 hover:text-red-700 p-0.5" title="Delete">
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
@@ -418,6 +423,15 @@ const Investments = {
 
         const line4 = inv.description ? `<p class="text-gray-600 text-xs mt-1">${inv.description}</p>` : '';
 
+        // Edit button HTML - hide for FD, show for others
+        const editButton = inv.type === 'FD' ? '' : `
+            <button onclick="Investments.editInvestment(${inv.id}, true)" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+            </button>
+        `;
+
         return `
             <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
                 <div class="flex justify-between items-start mb-2">
@@ -426,11 +440,7 @@ const Investments = {
                         ${typeBadge}
                     </div>
                     <div class="flex gap-1.5">
-                        <button onclick="Investments.editInvestment(${inv.id}, true)" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                            </svg>
-                        </button>
+                        ${editButton}
                         <button onclick="Investments.confirmDelete(${inv.id}, true)" class="text-red-500 hover:text-red-700 p-0.5" title="Delete">
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
@@ -689,12 +699,17 @@ const Investments = {
 
         let html = '';
 
-        // Name field (with autocomplete)
+        // Name field (with autocomplete) - disabled for EPF when editing
+        const nameDisabled = (isEditing && type === 'EPF') ? 'disabled' : '';
+        const nameClass = (isEditing && type === 'EPF') ? 
+            'w-full p-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed' : 
+            'w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500';
+        
         html += `
             <div class="mb-3 relative">
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Name</label>
-                <input type="text" id="investment-name" placeholder="Enter name" maxlength="32"
-                       class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                <input type="text" id="investment-name" placeholder="Enter name" maxlength="32" ${nameDisabled}
+                       class="${nameClass}"
                        oninput="Investments.showNameSuggestions(this.value)"
                        onfocus="Investments.showNameSuggestions(this.value)"
                        autocomplete="off">
@@ -790,12 +805,17 @@ const Investments = {
             `;
         }
 
-        // Description field
+        // Description field - disabled for EPF when editing
+        const descDisabled = (isEditing && type === 'EPF') ? 'disabled' : '';
+        const descClass = (isEditing && type === 'EPF') ? 
+            'w-full p-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed' : 
+            'w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500';
+        
         html += `
             <div class="mb-3">
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Description (optional)</label>
-                <textarea id="investment-description" placeholder="Additional details" maxlength="256" rows="2"
-                          class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"></textarea>
+                <textarea id="investment-description" placeholder="Additional details" maxlength="256" rows="2" ${descDisabled}
+                          class="${descClass}"></textarea>
             </div>
         `;
 
@@ -1128,12 +1148,11 @@ const Investments = {
         const existing = portfolioInvestments.find(inv => `${inv.name}_${inv.type}_${inv.goal}` === userDataKey);
         
         if (existing) {
-            // Add to existing
+            // Add to existing (only for SHARES and GOLD)
             if (data.type === 'SHARES' || data.type === 'GOLD') {
                 existing.quantity = (existing.quantity || 0) + (data.quantity || 0);
-            } else if (data.type === 'EPF' || data.type === 'FD') {
-                existing.amount = (existing.amount || 0) + (data.amount || 0);
             }
+            // FD and EPF: Don't add to existing in portfolio from monthly investments
             
             // Update share price if SHARES
             if (data.type === 'SHARES') {
@@ -1167,7 +1186,13 @@ const Investments = {
         const existing = portfolioInvestments.find(inv => `${inv.name}_${inv.type}_${inv.goal}` === userDataKey);
         
         if (existing) {
-            // Show add/override modal
+            // For FD and EPF, never allow "Add to Existing" - only override or suggest new name
+            if (data.type === 'FD' || data.type === 'EPF') {
+                Toast.error(`An investment with name "${data.name}" already exists.\n\nPlease choose a different name or override the existing one.`);
+                return;
+            }
+            
+            // Show add/override modal for SHARES and GOLD
             this.pendingInvestmentData = data;
             this.showAddOrOverrideModal(existing, data);
         } else {
@@ -1367,6 +1392,13 @@ const Investments = {
         
         // Set goal
         document.querySelector(`input[name="investment-goal"][value="${investment.goal}"]`).checked = true;
+        
+        // For EPF, disable goal radio buttons
+        if (investment.type === 'EPF') {
+            document.querySelectorAll('input[name="investment-goal"]').forEach(radio => {
+                radio.disabled = true;
+            });
+        }
         
         // Set type
         document.getElementById('investment-type').value = investment.type;
