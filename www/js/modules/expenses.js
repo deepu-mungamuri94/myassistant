@@ -933,7 +933,7 @@ const Expenses = {
             html += `
                 <div class="flex justify-end mb-3">
                     <button id="toggle-date-groups-btn" onclick="Expenses.toggleAllDateGroups()" class="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all duration-200 text-xs font-semibold">
-                        📂 Expand All
+                        📁 Collapse All
                     </button>
                 </div>
             `;

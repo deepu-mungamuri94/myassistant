@@ -518,7 +518,7 @@ const RecurringExpenses = {
             html += `
                 <div class="flex justify-end mb-3">
                     <button id="toggle-recurring-groups-btn" onclick="RecurringExpenses.toggleAllDayGroups()" class="px-3 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-lg transition-all duration-200 text-xs font-semibold">
-                        📂 Expand All
+                        📁 Collapse All
                     </button>
                 </div>
             `;
