@@ -949,36 +949,46 @@
             
             <!-- Title Input with Autocomplete -->
             <div class="relative mb-3">
-                <input type="text" id="expense-modal-title" placeholder="Title (e.g., Grocery Shopping)" 
+                <input type="text" id="expense-modal-title" placeholder="Title (e.g., Grocery Shopping) *" 
                        class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                       oninput="showExpenseSuggestions(this.value)"
+                       oninput="showExpenseSuggestions(this.value); clearFieldError('expense-modal-title')"
                        onfocus="showExpenseSuggestions(this.value)"
                        autocomplete="off">
                 <div id="expense-suggestions" class="hidden absolute w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10 mt-1"></div>
+                <div id="expense-modal-title-error" class="text-red-600 text-xs mt-1 hidden"></div>
             </div>
             
-            <div class="relative mb-3">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
-                <input type="number" id="expense-modal-amount" placeholder="100" step="0.01" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+            <div class="mb-3">
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
+                    <input type="number" id="expense-modal-amount" placeholder="Amount (e.g., 100)" step="0.01" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" oninput="clearFieldError('expense-modal-amount')">
+                </div>
+                <div id="expense-modal-amount-error" class="text-red-600 text-xs mt-1 hidden"></div>
             </div>
             
-            <select id="expense-modal-category" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                <option value="">Select Category</option>
-                <option value="Food & Dining">Food & Dining</option>
-                <option value="Shopping">Shopping</option>
-                <option value="Transportation">Transportation</option>
-                <option value="Entertainment">Entertainment</option>
-                <option value="Bills & Utilities">Bills & Utilities</option>
-                <option value="Healthcare">Healthcare</option>
-                <option value="Travel">Travel</option>
-                <option value="Education">Education</option>
-                <option value="Groceries">Groceries</option>
-                <option value="emi">EMI</option>
-                <option value="recurring">Recurring</option>
-                <option value="Other">Other</option>
-            </select>
+            <div class="mb-3">
+                <select id="expense-modal-category" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" onchange="clearFieldError('expense-modal-category')">
+                    <option value="">Select Category *</option>
+                    <option value="Food & Dining">Food & Dining</option>
+                    <option value="Shopping">Shopping</option>
+                    <option value="Transportation">Transportation</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Bills & Utilities">Bills & Utilities</option>
+                    <option value="Healthcare">Healthcare</option>
+                    <option value="Travel">Travel</option>
+                    <option value="Education">Education</option>
+                    <option value="Groceries">Groceries</option>
+                    <option value="emi">EMI</option>
+                    <option value="recurring">Recurring</option>
+                    <option value="Other">Other</option>
+                </select>
+                <div id="expense-modal-category-error" class="text-red-600 text-xs mt-1 hidden"></div>
+            </div>
             
-            <input type="date" id="expense-modal-date" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+            <div class="mb-3">
+                <input type="date" id="expense-modal-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" onchange="clearFieldError('expense-modal-date')">
+                <div id="expense-modal-date-error" class="text-red-600 text-xs mt-1 hidden"></div>
+            </div>
             
             <textarea id="expense-modal-description" placeholder="Description (optional - additional details)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" rows="2"></textarea>
             
@@ -1019,7 +1029,7 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Bonus</label>
                         <div class="relative">
-                            <input type="number" id="income-bonus-percent" placeholder="20" step="0.1" class="w-full p-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <input type="number" id="income-bonus-percent" placeholder="e.g., 20" step="0.1" class="w-full p-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
                             <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">%</span>
                         </div>
                     </div>
@@ -1037,14 +1047,14 @@
                     <div>
                         <label class="block text-xs text-gray-600 mb-1">Dec-May</label>
                         <div class="relative">
-                            <input type="number" id="income-espp-cycle1" placeholder="10" step="0.1" class="w-full p-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <input type="number" id="income-espp-cycle1" placeholder="e.g., 10" step="0.1" class="w-full p-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
                             <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">%</span>
                         </div>
                     </div>
                     <div>
                         <label class="block text-xs text-gray-600 mb-1">Jun-Nov</label>
                         <div class="relative">
-                            <input type="number" id="income-espp-cycle2" placeholder="10" step="0.1" class="w-full p-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <input type="number" id="income-espp-cycle2" placeholder="e.g., 10" step="0.1" class="w-full p-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
                             <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">%</span>
                         </div>
                     </div>
@@ -1067,7 +1077,7 @@
                             </div>
                             <div>
                                 <label class="block text-xs text-gray-600 mb-1">Split Months</label>
-                                <input type="number" id="income-insurance-months" placeholder="3" min="1" max="12" class="w-full p-2 text-sm border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" oninput="Income.updateInsuranceMonths()">
+                                <input type="number" id="income-insurance-months" placeholder="e.g., 3" min="1" max="12" class="w-full p-2 text-sm border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" oninput="Income.updateInsuranceMonths()">
                             </div>
                         </div>
                         <div id="insurance-months-checkboxes" class="grid grid-cols-3 gap-2 text-xs">
@@ -1253,7 +1263,7 @@
             
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Cess Percentage (%)</label>
-                <input type="number" id="cess-percent-input" placeholder="4" step="0.01" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                <input type="number" id="cess-percent-input" placeholder="e.g., 4" step="0.01" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                 <p class="text-xs text-gray-500 mt-1">Cess is calculated on (Base Tax + Surcharge)</p>
             </div>
             
@@ -1341,25 +1351,37 @@
             <h2 id="recurring-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Add Recurring Payment</h2>
             
             <input type="hidden" id="recurring-modal-id">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-            <input type="text" id="recurring-modal-name" placeholder="e.g., LIC Premium, Car Insurance" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
-            
-            <label class="block text-sm font-medium text-gray-700 mb-1">Amount *</label>
-            <div class="relative mb-3">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
-                <input type="number" id="recurring-modal-amount" placeholder="1000" step="0.01" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                <input type="text" id="recurring-modal-name" placeholder="e.g., LIC Premium, Car Insurance" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" oninput="clearFieldError('recurring-modal-name')">
+                <div id="recurring-modal-name-error" class="text-red-600 text-xs mt-1 hidden"></div>
             </div>
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">Frequency *</label>
-            <select id="recurring-modal-frequency" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" onchange="updateRecurringFrequency()">
-                <option value="">Select Frequency</option>
-                <option value="monthly">Monthly (Every Month)</option>
-                <option value="yearly">Yearly (One Specific Month)</option>
-                <option value="custom">Custom (Multiple Months)</option>
-            </select>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Amount *</label>
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
+                    <input type="number" id="recurring-modal-amount" placeholder="Amount (e.g., 1000)" step="0.01" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" oninput="clearFieldError('recurring-modal-amount')">
+                </div>
+                <div id="recurring-modal-amount-error" class="text-red-600 text-xs mt-1 hidden"></div>
+            </div>
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">Day of Month *</label>
-            <input type="number" id="recurring-modal-day" placeholder="Day (1-31)" min="1" max="31" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Frequency *</label>
+                <select id="recurring-modal-frequency" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" onchange="updateRecurringFrequency(); clearFieldError('recurring-modal-frequency')">
+                    <option value="">Select Frequency</option>
+                    <option value="monthly">Monthly (Every Month)</option>
+                    <option value="yearly">Yearly (One Specific Month)</option>
+                    <option value="custom">Custom (Multiple Months)</option>
+                </select>
+                <div id="recurring-modal-frequency-error" class="text-red-600 text-xs mt-1 hidden"></div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Day of Month *</label>
+                <input type="number" id="recurring-modal-day" placeholder="Day (1-31)" min="1" max="31" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" oninput="clearFieldError('recurring-modal-day')">
+                <div id="recurring-modal-day-error" class="text-red-600 text-xs mt-1 hidden"></div>
+            </div>
             
             <label class="block text-sm font-medium text-gray-700 mb-1">End Date (Optional)</label>
             <div class="flex items-center gap-2 mb-3">
@@ -1374,42 +1396,43 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">Select Months *</label>
                 <div class="grid grid-cols-3 gap-2">
                     <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
-                        <input type="checkbox" class="mr-2" value="1"> Jan
+                        <input type="checkbox" class="mr-2" value="1" onchange="clearFieldError('recurring-modal-months')"> Jan
                     </label>
                     <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
-                        <input type="checkbox" class="mr-2" value="2"> Feb
+                        <input type="checkbox" class="mr-2" value="2" onchange="clearFieldError('recurring-modal-months')"> Feb
                     </label>
                     <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
-                        <input type="checkbox" class="mr-2" value="3"> Mar
+                        <input type="checkbox" class="mr-2" value="3" onchange="clearFieldError('recurring-modal-months')"> Mar
                     </label>
                     <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
-                        <input type="checkbox" class="mr-2" value="4"> Apr
+                        <input type="checkbox" class="mr-2" value="4" onchange="clearFieldError('recurring-modal-months')"> Apr
                     </label>
                     <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
-                        <input type="checkbox" class="mr-2" value="5"> May
+                        <input type="checkbox" class="mr-2" value="5" onchange="clearFieldError('recurring-modal-months')"> May
                     </label>
                     <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
-                        <input type="checkbox" class="mr-2" value="6"> Jun
+                        <input type="checkbox" class="mr-2" value="6" onchange="clearFieldError('recurring-modal-months')"> Jun
                     </label>
                     <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
-                        <input type="checkbox" class="mr-2" value="7"> Jul
+                        <input type="checkbox" class="mr-2" value="7" onchange="clearFieldError('recurring-modal-months')"> Jul
                     </label>
                     <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
-                        <input type="checkbox" class="mr-2" value="8"> Aug
+                        <input type="checkbox" class="mr-2" value="8" onchange="clearFieldError('recurring-modal-months')"> Aug
                     </label>
                     <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
-                        <input type="checkbox" class="mr-2" value="9"> Sep
+                        <input type="checkbox" class="mr-2" value="9" onchange="clearFieldError('recurring-modal-months')"> Sep
                     </label>
                     <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
-                        <input type="checkbox" class="mr-2" value="10"> Oct
+                        <input type="checkbox" class="mr-2" value="10" onchange="clearFieldError('recurring-modal-months')"> Oct
                     </label>
                     <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
-                        <input type="checkbox" class="mr-2" value="11"> Nov
+                        <input type="checkbox" class="mr-2" value="11" onchange="clearFieldError('recurring-modal-months')"> Nov
                     </label>
                     <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-orange-50">
-                        <input type="checkbox" class="mr-2" value="12"> Dec
+                        <input type="checkbox" class="mr-2" value="12" onchange="clearFieldError('recurring-modal-months')"> Dec
                     </label>
                 </div>
+                <div id="recurring-modal-months-error" class="text-red-600 text-xs mt-1 hidden"></div>
             </div>
             
             <label class="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
@@ -1443,44 +1466,63 @@
             
             <input type="hidden" id="loan-modal-id">
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">Bank Name *</label>
-            <input type="text" id="loan-modal-bank" placeholder="e.g., HDFC Bank, SBI" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Bank Name *</label>
+                <input type="text" id="loan-modal-bank" placeholder="e.g., HDFC Bank, SBI" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="clearFieldError('loan-modal-bank')">
+                <div id="loan-modal-bank-error" class="text-red-600 text-xs mt-1 hidden"></div>
+            </div>
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">Loan Type *</label>
-            <select id="loan-modal-type" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="toggleCustomLoanType()">
-                <option value="">Select Type</option>
-                <option value="Personal">Personal Loan</option>
-                <option value="Home">Home Loan</option>
-                <option value="Car">Car Loan</option>
-                <option value="Gold">Gold Loan</option>
-                <option value="Other">Other (Specify)</option>
-            </select>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Loan Type *</label>
+                <select id="loan-modal-type" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="toggleCustomLoanType(); clearFieldError('loan-modal-type')">
+                    <option value="">Select Type</option>
+                    <option value="Personal">Personal Loan</option>
+                    <option value="Home">Home Loan</option>
+                    <option value="Car">Car Loan</option>
+                    <option value="Gold">Gold Loan</option>
+                    <option value="Other">Other (Specify)</option>
+                </select>
+                <div id="loan-modal-type-error" class="text-red-600 text-xs mt-1 hidden"></div>
+            </div>
             
             <div id="custom-loan-type-section" class="hidden mb-3">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Specify Loan Type *</label>
-                <input type="text" id="loan-modal-custom-type" placeholder="e.g., Education, Medical" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="text" id="loan-modal-custom-type" placeholder="e.g., Education, Medical" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="clearFieldError('loan-modal-custom-type')">
+                <div id="loan-modal-custom-type-error" class="text-red-600 text-xs mt-1 hidden"></div>
             </div>
             
             <label class="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
             <input type="text" id="loan-modal-reason" placeholder="e.g., New car purchase, House renovation" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">Total Amount *</label>
-            <div class="relative mb-3">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
-                <input type="number" id="loan-modal-amount" placeholder="100000" step="0.01" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Total Amount *</label>
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
+                    <input type="number" id="loan-modal-amount" placeholder="Loan Amount (e.g., 100000)" step="0.01" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="clearFieldError('loan-modal-amount')">
+                </div>
+                <div id="loan-modal-amount-error" class="text-red-600 text-xs mt-1 hidden"></div>
             </div>
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">Interest Rate (per annum) *</label>
-            <div class="relative mb-3">
-                <input type="number" id="loan-modal-interest" placeholder="8.5" step="0.01" class="w-full p-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">%</span>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Interest Rate (per annum) *</label>
+                <div class="relative">
+                    <input type="number" id="loan-modal-interest" placeholder="e.g., 8.5" step="0.01" class="w-full p-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="clearFieldError('loan-modal-interest')">
+                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">%</span>
+                </div>
+                <div id="loan-modal-interest-error" class="text-red-600 text-xs mt-1 hidden"></div>
             </div>
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">Tenure (Months) *</label>
-            <input type="number" id="loan-modal-tenure" placeholder="e.g., 60 (5 years)" min="1" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Tenure (Months) *</label>
+                <input type="number" id="loan-modal-tenure" placeholder="e.g., 60 (5 years)" min="1" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="clearFieldError('loan-modal-tenure')">
+                <div id="loan-modal-tenure-error" class="text-red-600 text-xs mt-1 hidden"></div>
+            </div>
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">First EMI Date *</label>
-            <input type="date" id="loan-modal-first-emi-date" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">First EMI Date *</label>
+                <input type="date" id="loan-modal-first-emi-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="clearFieldError('loan-modal-first-emi-date')">
+                <div id="loan-modal-first-emi-date-error" class="text-red-600 text-xs mt-1 hidden"></div>
+            </div>
             
             <!-- Helper Tip -->
             <div class="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-20">
@@ -1664,7 +1706,95 @@
         </div>
     </div>
     
-    <!-- INVESTMENT SUCCESS MODAL -->
+    <!-- COMMON SUCCESS MODAL (Used across all modules) -->
+    <div id="common-success-modal" class="hidden fixed inset-0 bg-white bg-opacity-60 z-[60] flex items-center justify-center">
+        <div class="flex flex-col items-center">
+            <!-- Animated Checkmark Circle -->
+            <div class="relative">
+                <svg class="w-24 h-24 animate-scale-in" viewBox="0 0 100 100">
+                    <!-- Circle Border -->
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="#10B981" stroke-width="4" class="animate-fade-in"/>
+                    <!-- Checkmark -->
+                    <path d="M30 50 L42 62 L70 34" stroke="#10B981" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round" class="animate-draw-check"/>
+                </svg>
+            </div>
+            <!-- Success Text (Customizable) -->
+            <p id="success-modal-message" class="mt-4 text-xl font-bold text-green-600 animate-fade-in-up">Success</p>
+        </div>
+    </div>
+    
+    <!-- COMMON ERROR MODAL (Used across all modules) -->
+    <div id="common-error-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in relative">
+            <!-- Close Button (Top Right) -->
+            <button onclick="(function() { const modal = document.getElementById('common-error-modal'); Utils.hideModal('common-error-modal'); if (modal._errorCallback) { modal._errorCallback(); modal._errorCallback = null; } })()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+            
+            <div class="p-6 flex flex-col items-center">
+                <!-- Animated X Mark Circle -->
+                <div class="relative mb-4">
+                    <svg class="w-24 h-24" viewBox="0 0 100 100">
+                        <!-- Circle Border (Red) -->
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="#EF4444" stroke-width="4" class="animate-fade-in"/>
+                        <!-- X Mark -->
+                        <path d="M35 35 L65 65 M65 35 L35 65" stroke="#EF4444" stroke-width="6" stroke-linecap="round" class="animate-draw-x"/>
+                    </svg>
+                </div>
+                
+                <!-- Error Title -->
+                <h3 class="text-xl font-bold text-red-600 mb-3 animate-fade-in-up">Error</h3>
+                
+                <!-- Error Message (Customizable) -->
+                <p id="error-modal-message" class="text-gray-700 text-center leading-relaxed animate-fade-in-up">An error occurred</p>
+                
+                <!-- Close Button (Bottom) -->
+                <button onclick="(function() { const modal = document.getElementById('common-error-modal'); Utils.hideModal('common-error-modal'); if (modal._errorCallback) { modal._errorCallback(); modal._errorCallback = null; } })()" class="mt-6 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 font-semibold">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- COMMON INFO MODAL (Used across all modules for informational messages) -->
+    <div id="common-info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in relative">
+            <!-- Close Button (Top Right) -->
+            <button onclick="(function() { const modal = document.getElementById('common-info-modal'); Utils.hideModal('common-info-modal'); if (modal._infoCallback) { modal._infoCallback(); modal._infoCallback = null; } })()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+            
+            <div class="p-6 flex flex-col items-center">
+                <!-- Animated Info Icon Circle -->
+                <div class="relative mb-4">
+                    <svg class="w-24 h-24" viewBox="0 0 100 100">
+                        <!-- Circle Border (Blue) -->
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="#3B82F6" stroke-width="4" class="animate-fade-in"/>
+                        <!-- Info Icon (i) -->
+                        <circle cx="50" cy="35" r="4" fill="#3B82F6" class="animate-fade-in"/>
+                        <path d="M50 45 L50 70" stroke="#3B82F6" stroke-width="6" stroke-linecap="round" class="animate-draw-check"/>
+                    </svg>
+                </div>
+                
+                <!-- Info Title -->
+                <h3 class="text-xl font-bold text-blue-600 mb-3 animate-fade-in-up">Information</h3>
+                
+                <!-- Info Message (Customizable) -->
+                <p id="info-modal-message" class="text-gray-700 text-center leading-relaxed animate-fade-in-up">Information message</p>
+                
+                <!-- Close Button (Bottom) -->
+                <button onclick="(function() { const modal = document.getElementById('common-info-modal'); Utils.hideModal('common-info-modal'); if (modal._infoCallback) { modal._infoCallback(); modal._infoCallback = null; } })()" class="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-semibold">
+                    Got it
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- INVESTMENT SUCCESS MODAL (Backward compatibility - points to common modal) -->
     <div id="investment-success-modal" class="hidden fixed inset-0 bg-white bg-opacity-60 z-[60] flex items-center justify-center">
         <div class="flex flex-col items-center">
             <!-- Animated Checkmark Circle -->
@@ -1719,6 +1849,20 @@
             }
         }
         
+        @keyframes draw-x {
+            0% {
+                stroke-dasharray: 0, 100;
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                stroke-dasharray: 100, 0;
+                opacity: 1;
+            }
+        }
+        
         @keyframes fade-in-up {
             0% {
                 transform: translateY(10px);
@@ -1740,6 +1884,11 @@
         
         .animate-draw-check {
             animation: draw-check 0.5s ease-out 0.2s forwards;
+            stroke-dasharray: 0, 100;
+        }
+        
+        .animate-draw-x {
+            animation: draw-x 0.5s ease-out 0.2s forwards;
             stroke-dasharray: 0, 100;
         }
         
@@ -1808,10 +1957,24 @@
             <h2 id="credential-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Add Credential</h2>
             
             <input type="hidden" id="credential-modal-id">
-            <input type="text" id="credential-modal-service" placeholder="Service Name" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            
+            <div class="mb-3">
+                <input type="text" id="credential-modal-service" placeholder="Service Name *" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" oninput="clearFieldError('credential-modal-service')">
+                <div id="credential-modal-service-error" class="text-red-600 text-xs mt-1 hidden"></div>
+            </div>
+            
             <input type="text" id="credential-modal-tag" placeholder="Tag (e.g., Work, Personal, Bank)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <input type="text" id="credential-modal-username" placeholder="Username" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <input type="password" id="credential-modal-password" placeholder="Password" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            
+            <div class="mb-3">
+                <input type="text" id="credential-modal-username" placeholder="Username *" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" oninput="clearFieldError('credential-modal-username')">
+                <div id="credential-modal-username-error" class="text-red-600 text-xs mt-1 hidden"></div>
+            </div>
+            
+            <div class="mb-3">
+                <input type="password" id="credential-modal-password" placeholder="Password *" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" oninput="clearFieldError('credential-modal-password')">
+                <div id="credential-modal-password-error" class="text-red-600 text-xs mt-1 hidden"></div>
+            </div>
+            
             <textarea id="credential-modal-description" placeholder="Description (shown in list)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="2"></textarea>
             <textarea id="credential-modal-additional-details" placeholder="Additional Details (optional)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="3"></textarea>
             
@@ -1876,36 +2039,53 @@
     
     <!-- CARD ADD/EDIT MODAL -->
     <div id="card-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeCardModal()">
-        <div class="bg-gradient-to-br from-white via-green-50/30 to-green-100/40 rounded-2xl shadow-2xl p-6 max-w-md w-full border border-green-200/50">
-            <h2 id="card-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-green-700 via-green-600 to-green-500 bg-clip-text text-transparent drop-shadow-sm">Add Card</h2>
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 id="card-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-slate-600 to-blue-600 bg-clip-text text-transparent">Add Card</h2>
             
             <input type="hidden" id="card-modal-id">
             
             <label class="block text-sm font-medium text-gray-700 mb-1">Card Type</label>
-            <select id="card-modal-type" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" onchange="toggleCreditOnlyFields()">
+            <select id="card-modal-type" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="toggleCreditOnlyFields()">
                 <option value="credit">💳 Credit Card</option>
                 <option value="debit">💸 Debit Card</option>
             </select>
             
-            <input type="text" id="card-modal-name" placeholder="Card Name (e.g., HDFC Regalia)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-            <input type="text" id="card-modal-number" placeholder="Card Number (16 digits)" maxlength="19" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-            <div class="flex gap-2">
-                <input type="text" id="card-modal-expiry" placeholder="MM/YY" maxlength="5" class="flex-1 p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" oninput="formatCardExpiry(this)">
-                <input type="text" id="card-modal-cvv" placeholder="CVV" maxlength="4" class="w-24 p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+            <div class="mb-3">
+                <input type="text" id="card-modal-name" placeholder="Card Name (e.g., HDFC Regalia) *" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="clearFieldError('card-modal-name')">
+                <div id="card-modal-name-error" class="text-red-600 text-xs mt-1 hidden"></div>
+            </div>
+            
+            <div class="mb-3">
+                <input type="text" id="card-modal-number" placeholder="Card Number (16 digits) *" maxlength="19" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="clearFieldError('card-modal-number')">
+                <div id="card-modal-number-error" class="text-red-600 text-xs mt-1 hidden"></div>
+            </div>
+            
+            <div class="flex gap-2 mb-3">
+                <div class="flex-1">
+                    <input type="text" id="card-modal-expiry" placeholder="MM/YY *" maxlength="5" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="formatCardExpiry(this); clearFieldError('card-modal-expiry')">
+                    <div id="card-modal-expiry-error" class="text-red-600 text-xs mt-1 hidden"></div>
+                </div>
+                <div class="w-24">
+                    <input type="text" id="card-modal-cvv" placeholder="CVV *" maxlength="4" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="clearFieldError('card-modal-cvv')">
+                    <div id="card-modal-cvv-error" class="text-red-600 text-xs mt-1 hidden"></div>
+                </div>
             </div>
             
             <!-- Credit Card Only Fields -->
             <div id="credit-only-fields">
-                <div class="relative mb-3">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
-                    <input type="text" id="card-modal-credit-limit" placeholder="50000 (optional)" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                <div class="mb-3">
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
+                        <input type="text" id="card-modal-credit-limit" placeholder="Credit Limit (e.g., 50000) - Optional" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="clearFieldError('card-modal-credit-limit')">
+                    </div>
+                    <div id="card-modal-credit-limit-error" class="text-red-600 text-xs mt-1 hidden"></div>
                 </div>
             </div>
             
-            <textarea id="card-modal-additional-data" placeholder="Note (optional)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" rows="2"></textarea>
+            <textarea id="card-modal-additional-data" placeholder="Note (optional)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" rows="2"></textarea>
             
             <div class="flex space-x-3">
-                <button onclick="saveCardModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-700 to-green-500 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                <button onclick="saveCardModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-slate-600 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
                     Save
                 </button>
                 <button onclick="closeCardModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
@@ -2579,7 +2759,11 @@
     <!-- Core modules first -->
     <script src="js/core/database.js"></script>
     <script src="js/core/utils.js"></script>
+    <script src="js/core/dataAccess.js"></script>
     <script src="js/utils/crypto.js"></script>
+    <script src="js/utils/formatters.js"></script>
+    <script src="js/utils/validators.js"></script>
+    <script src="js/utils/calculations.js"></script>
     <script src="js/core/storage.js"></script>
     <script src="js/core/security.js"></script>
     <script src="js/core/loading.js"></script>
@@ -2608,6 +2792,7 @@
     
     <!-- UI modules -->
     <script src="js/ui/toast.js"></script>
+    <script src="js/ui/modals.js"></script>
     <script src="js/ui/chat.js"></script>
     <script src="js/ui/navigation.js"></script>
     
@@ -2675,9 +2860,9 @@
                 document.getElementById('cred-notes').value = '';
                 document.getElementById('credential-form').classList.add('hidden');
                 
-                Toast.success('Credential added successfully!');
+                Utils.showSuccess('Credential added successfully!');
             } catch (error) {
-                Toast.error(error.message);
+                Utils.showError(error.message);
             }
         }
         
@@ -2803,30 +2988,86 @@
         }
         
         window.closeCardModal = function() {
+            clearAllFormErrors('card-modal');
             document.getElementById('card-modal').classList.add('hidden');
         };
         
         window.saveCardModal = async function() {
+            // Clear all previous errors
+            clearAllFormErrors('card-modal');
+            
+            const id = document.getElementById('card-modal-id').value;
+            const cardType = document.getElementById('card-modal-type').value;
+            const name = document.getElementById('card-modal-name').value.trim();
+            const cardNumber = document.getElementById('card-modal-number').value.trim();
+            const expiry = document.getElementById('card-modal-expiry').value.trim();
+            const cvv = document.getElementById('card-modal-cvv').value.trim();
+            const creditLimit = document.getElementById('card-modal-credit-limit').value.trim();
+            const additionalData = document.getElementById('card-modal-additional-data').value.trim();
+            
+            let hasErrors = false;
+            
+            // Validate name
+            if (!name) {
+                showFieldError('card-modal-name', 'Card name is required');
+                hasErrors = true;
+            }
+            
+            // Validate card number
+            if (!cardNumber) {
+                showFieldError('card-modal-number', 'Card number is required');
+                hasErrors = true;
+            } else {
+                const cleanCardNumber = cardNumber.replace(/\s/g, '');
+                if (!/^\d{13,19}$/.test(cleanCardNumber)) {
+                    showFieldError('card-modal-number', 'Invalid card number (13-19 digits required)');
+                    hasErrors = true;
+                }
+            }
+            
+            // Validate expiry
+            if (!expiry) {
+                showFieldError('card-modal-expiry', 'Expiry date is required');
+                hasErrors = true;
+            } else if (!/^\d{2}\/\d{2,4}$/.test(expiry)) {
+                showFieldError('card-modal-expiry', 'Invalid format (use MM/YY)');
+                hasErrors = true;
+            }
+            
+            // Validate CVV
+            if (!cvv) {
+                showFieldError('card-modal-cvv', 'CVV is required');
+                hasErrors = true;
+            } else if (!/^\d{3,4}$/.test(cvv)) {
+                showFieldError('card-modal-cvv', 'Invalid CVV (3-4 digits)');
+                hasErrors = true;
+            }
+            
+            // Validate credit limit (if credit card)
+            if (cardType === 'credit' && creditLimit) {
+                const limit = parseInt(creditLimit.replace(/[₹,\s]/g, ''));
+                if (isNaN(limit) || limit <= 0) {
+                    showFieldError('card-modal-credit-limit', 'Invalid credit limit');
+                    hasErrors = true;
+                }
+            }
+            
+            // If there are errors, stop here
+            if (hasErrors) {
+                return;
+            }
+            
             try {
                 Loading.show('Saving card...');
-                
-                const id = document.getElementById('card-modal-id').value;
-                const cardType = document.getElementById('card-modal-type').value;
-                const name = document.getElementById('card-modal-name').value.trim();
-                const cardNumber = document.getElementById('card-modal-number').value.trim();
-                const expiry = document.getElementById('card-modal-expiry').value.trim();
-                const cvv = document.getElementById('card-modal-cvv').value.trim();
-                const creditLimit = document.getElementById('card-modal-credit-limit').value.trim();
-                const additionalData = document.getElementById('card-modal-additional-data').value.trim();
                 
                 if (id) {
                     // Update existing
                     await Cards.update(id, name, cardNumber, expiry, cvv, additionalData, creditLimit, cardType);
-                    Toast.success('Card updated!');
+                    Utils.showSuccess('Card updated!');
                 } else {
                     // Add new
                     await Cards.add(name, cardNumber, expiry, cvv, additionalData, creditLimit, cardType);
-                    Toast.success('Card added!');
+                    Utils.showSuccess('Card added!');
                 }
                 
                 Cards.render();
@@ -2835,7 +3076,8 @@
             } catch (error) {
                 Loading.hide();
                 console.error('Error saving card:', error);
-                Toast.error(error.message);
+                // Unexpected errors still show modal
+                Utils.showError(error.message);
             }
         }
         
@@ -2886,7 +3128,7 @@
         // Set to all time
         function setExpenseAllTime() {
             if (window.DB.expenses.length === 0) {
-                Toast.info('No expenses yet');
+                Utils.showInfo('No expenses yet');
                 return;
             }
             
@@ -2980,7 +3222,7 @@
                     const endInput = document.getElementById('investment-filter-end-date').value;
                     
                     if (!startInput || !endInput) {
-                        Toast.error('Please select both start and end dates');
+                        Utils.showError('Please select both start and end dates');
                         return;
                     }
                     
@@ -2988,7 +3230,7 @@
                     endDate = new Date(endInput);
                     
                     if (startDate > endDate) {
-                        Toast.error('Start date must be before end date');
+                        Utils.showError('Start date must be before end date');
                         return;
                     }
                     break;
@@ -3005,7 +3247,7 @@
             Investments.renderMonthlyInvestments();
             closeInvestmentDateFilterModal();
             
-            Toast.success('Filter applied successfully!');
+            Utils.showSuccess('Filter applied successfully!');
         }
         
         // Switch between Income and Expenses tabs
@@ -3015,6 +3257,12 @@
             const expensesContent = document.getElementById('expenses-tab-content');
             const incomeContent = document.getElementById('income-tab-content');
             const addButton = document.getElementById('expenses-add-btn');
+            
+            // Check if elements exist (they may not be present on all pages)
+            if (!expensesTab || !incomeTab || !expensesContent || !incomeContent || !addButton) {
+                console.warn('switchIncomeExpenseTab: Required elements not found on this page');
+                return;
+            }
             
             if (tab === 'expenses') {
                 // Show expenses tab
@@ -3109,6 +3357,7 @@
         }
         
         window.closeExpenseModal = function() {
+            clearAllFormErrors('expense-modal');
             document.getElementById('expense-modal').classList.add('hidden');
             hideExpenseSuggestions();
         }
@@ -3199,25 +3448,58 @@
         });
         
         window.saveExpenseModal = function() {
+            // Safety check
+            if (!window.Expenses) {
+                Utils.showError('Expenses module not loaded. Please refresh the page.');
+                return;
+            }
+            
+            // Clear all previous errors
+            clearAllFormErrors('expense-modal');
+            
+            const id = document.getElementById('expense-modal-id').value;
+            const title = document.getElementById('expense-modal-title').value.trim();
+            const amount = document.getElementById('expense-modal-amount').value.trim();
+            const category = document.getElementById('expense-modal-category').value;
+            const date = document.getElementById('expense-modal-date').value;
+            const description = document.getElementById('expense-modal-description').value.trim();
+            
+            let hasErrors = false;
+            
+            // Validate title
+            if (!title) {
+                showFieldError('expense-modal-title', 'Title is required');
+                hasErrors = true;
+            }
+            
+            // Validate amount
+            if (!amount) {
+                showFieldError('expense-modal-amount', 'Amount is required');
+                hasErrors = true;
+            } else if (parseFloat(amount) <= 0) {
+                showFieldError('expense-modal-amount', 'Amount must be greater than 0');
+                hasErrors = true;
+            }
+            
+            // Validate category
+            if (!category) {
+                showFieldError('expense-modal-category', 'Category is required');
+                hasErrors = true;
+            }
+            
+            // Validate date
+            if (!date) {
+                showFieldError('expense-modal-date', 'Date is required');
+                hasErrors = true;
+            }
+            
+            // If there are errors, stop here
+            if (hasErrors) {
+                return;
+            }
+            
             try {
-                // Safety check
-                if (!window.Expenses) {
-                    Toast.error('Expenses module not loaded. Please refresh the page.');
-                    return;
-                }
-                
-                const id = document.getElementById('expense-modal-id').value;
                 Loading.show(id ? 'Updating expense...' : 'Adding expense...');
-                
-                const title = document.getElementById('expense-modal-title').value.trim();
-                const amount = document.getElementById('expense-modal-amount').value.trim();
-                const category = document.getElementById('expense-modal-category').value;
-                const date = document.getElementById('expense-modal-date').value;
-                const description = document.getElementById('expense-modal-description').value.trim();
-                
-                if (!title || !amount || !category || !date) {
-                    throw new Error('Please fill all required fields');
-                }
                 
                 if (id) {
                     // Update existing expense
@@ -3230,11 +3512,11 @@
                         expense.description = description;
                         window.Storage.save();
                     }
-                    Toast.success('Expense updated!');
+                    Utils.showSuccess('Expense updated!');
                 } else {
                     // Add new expense
                     Expenses.add(title, amount, category, date, description);
-                    Toast.success('Expense added!');
+                    Utils.showSuccess('Expense added!');
                 }
                 
                 Expenses.render();
@@ -3242,7 +3524,8 @@
                 Loading.hide();
             } catch (error) {
                 Loading.hide();
-                Toast.error(error.message);
+                // Unexpected errors still show modal
+                Utils.showError(error.message);
             }
         }
         
@@ -3402,6 +3685,7 @@
         }
         
         window.closeRecurringExpenseModal = function() {
+            clearAllFormErrors('recurring-expense-modal');
             document.getElementById('recurring-expense-modal').classList.add('hidden');
         }
         
@@ -3416,67 +3700,143 @@
             }
         }
         
+        // Helper function to show field error
+        window.showFieldError = function(fieldId, message) {
+            const errorDiv = document.getElementById(fieldId + '-error');
+            const inputField = document.getElementById(fieldId);
+            if (errorDiv) {
+                errorDiv.textContent = message;
+                errorDiv.classList.remove('hidden');
+            }
+            if (inputField) {
+                inputField.classList.add('border-red-500');
+                inputField.classList.remove('border-gray-300');
+            }
+        }
+        
+        // Helper function to clear field error
+        window.clearFieldError = function(fieldId) {
+            const errorDiv = document.getElementById(fieldId + '-error');
+            const inputField = document.getElementById(fieldId);
+            if (errorDiv) {
+                errorDiv.classList.add('hidden');
+            }
+            if (inputField) {
+                inputField.classList.remove('border-red-500');
+                inputField.classList.add('border-gray-300');
+            }
+        }
+        
+        // Helper function to clear all form errors
+        window.clearAllFormErrors = function(formId) {
+            const form = document.getElementById(formId);
+            if (form) {
+                form.querySelectorAll('[id$="-error"]').forEach(errorDiv => {
+                    errorDiv.classList.add('hidden');
+                });
+                form.querySelectorAll('input, select, textarea').forEach(input => {
+                    input.classList.remove('border-red-500');
+                    input.classList.add('border-gray-300');
+                });
+            }
+        }
+        
         window.saveRecurringExpenseModal = function() {
+            // Clear all previous errors
+            clearAllFormErrors('recurring-expense-modal');
+            
+            const id = document.getElementById('recurring-modal-id').value;
+            const name = document.getElementById('recurring-modal-name').value.trim();
+            const amount = document.getElementById('recurring-modal-amount').value.trim();
+            const frequency = document.getElementById('recurring-modal-frequency').value;
+            const day = document.getElementById('recurring-modal-day').value.trim();
+            const description = document.getElementById('recurring-modal-description').value.trim();
+            const indefinite = document.getElementById('recurring-modal-indefinite').checked;
+            
+            let hasErrors = false;
+            
+            // Validate name
+            if (!name) {
+                showFieldError('recurring-modal-name', 'Name is required');
+                hasErrors = true;
+            }
+            
+            // Validate amount
+            if (!amount) {
+                showFieldError('recurring-modal-amount', 'Amount is required');
+                hasErrors = true;
+            } else if (parseFloat(amount) <= 0) {
+                showFieldError('recurring-modal-amount', 'Amount must be greater than 0');
+                hasErrors = true;
+            }
+            
+            // Validate frequency
+            if (!frequency) {
+                showFieldError('recurring-modal-frequency', 'Frequency is required');
+                hasErrors = true;
+            }
+            
+            // Validate day
+            if (!day) {
+                showFieldError('recurring-modal-day', 'Day is required');
+                hasErrors = true;
+            } else if (parseInt(day) < 1 || parseInt(day) > 31) {
+                showFieldError('recurring-modal-day', 'Day must be between 1 and 31');
+                hasErrors = true;
+            }
+            
+            // Get selected months
+            const months = [];
+            if (frequency === 'yearly' || frequency === 'custom') {
+                document.querySelectorAll('#recurring-months-section input[type="checkbox"]:checked').forEach(cb => {
+                    months.push(parseInt(cb.value));
+                });
+                
+                if (months.length === 0) {
+                    showFieldError('recurring-modal-months', 'Please select at least one month');
+                    hasErrors = true;
+                }
+                
+                // For yearly, ensure only one month is selected
+                if (frequency === 'yearly' && months.length > 1) {
+                    showFieldError('recurring-modal-months', 'Yearly frequency should have only ONE month. Use Custom for multiple months.');
+                    hasErrors = true;
+                }
+            }
+            
+            // If there are errors, stop here
+            if (hasErrors) {
+                return;
+            }
+            
+            // Get end date
+            let endDate = null;
+            if (!indefinite) {
+                const endDateValue = document.getElementById('recurring-modal-end-date').value;
+                if (endDateValue) {
+                    // Convert YYYY-MM to YYYY-MM-01 (last day of the month)
+                    const [year, month] = endDateValue.split('-');
+                    const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+                    endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+                }
+            }
+            
             try {
-                const id = document.getElementById('recurring-modal-id').value;
-                const name = document.getElementById('recurring-modal-name').value.trim();
-                const amount = document.getElementById('recurring-modal-amount').value.trim();
-                const frequency = document.getElementById('recurring-modal-frequency').value;
-                const day = document.getElementById('recurring-modal-day').value.trim();
-                const description = document.getElementById('recurring-modal-description').value.trim();
-                const indefinite = document.getElementById('recurring-modal-indefinite').checked;
-                
-                // Get end date
-                let endDate = null;
-                if (!indefinite) {
-                    const endDateValue = document.getElementById('recurring-modal-end-date').value;
-                    if (endDateValue) {
-                        // Convert YYYY-MM to YYYY-MM-01 (last day of the month)
-                        const [year, month] = endDateValue.split('-');
-                        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
-                        endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
-                    }
-                }
-                
-                // Get selected months
-                const months = [];
-                if (frequency === 'yearly' || frequency === 'custom') {
-                    document.querySelectorAll('#recurring-months-section input[type="checkbox"]:checked').forEach(cb => {
-                        months.push(parseInt(cb.value));
-                    });
-                    
-                    if (months.length === 0) {
-                        throw new Error('Please select at least one month');
-                    }
-                    
-                    // For yearly, ensure only one month is selected
-                    if (frequency === 'yearly' && months.length > 1) {
-                        throw new Error('Yearly frequency should have only ONE month selected. Use Custom for multiple months.');
-                    }
-                }
-                
-                if (!name || !amount || !frequency || !day) {
-                    throw new Error('Please fill all required fields');
-                }
-                
-                if (parseInt(day) < 1 || parseInt(day) > 31) {
-                    throw new Error('Day must be between 1 and 31');
-                }
-                
                 if (id) {
                     // Update existing
                     window.RecurringExpenses.update(id, name, amount, frequency, day, months, description, endDate);
-                    Toast.success('Recurring expense updated!');
+                    Utils.showSuccess('Recurring expense updated!');
                 } else {
                     // Add new
                     window.RecurringExpenses.add(name, amount, frequency, day, months, description, endDate);
-                    Toast.success('Recurring expense added!');
+                    Utils.showSuccess('Recurring expense added!');
                 }
                 
                 window.RecurringExpenses.render();
                 closeRecurringExpenseModal();
             } catch (error) {
-                Toast.error(error.message);
+                // Unexpected errors still show modal
+                Utils.showError(error.message);
             }
         }
         
@@ -3562,48 +3922,103 @@
         }
         
         window.closeLoanModal = function() {
+            clearAllFormErrors('loan-modal');
             document.getElementById('loan-modal').classList.add('hidden');
         }
         
         window.saveLoanModal = function() {
-            try {
-                const id = document.getElementById('loan-modal-id').value;
-                const bankName = document.getElementById('loan-modal-bank').value.trim();
-                const loanTypeSelect = document.getElementById('loan-modal-type').value;
-                const customLoanType = document.getElementById('loan-modal-custom-type').value.trim();
-                const reason = document.getElementById('loan-modal-reason').value.trim();
-                const amount = document.getElementById('loan-modal-amount').value.trim();
-                const interestRate = document.getElementById('loan-modal-interest').value.trim();
-                const tenure = document.getElementById('loan-modal-tenure').value.trim();
-                const firstEmiDate = document.getElementById('loan-modal-first-emi-date').value;
-                
-                // Determine final loan type
-                let loanType = loanTypeSelect;
-                if (loanTypeSelect === 'Other') {
-                    if (!customLoanType) {
-                        throw new Error('Please specify the loan type');
-                    }
+            // Clear all previous errors
+            clearAllFormErrors('loan-modal');
+            
+            const id = document.getElementById('loan-modal-id').value;
+            const bankName = document.getElementById('loan-modal-bank').value.trim();
+            const loanTypeSelect = document.getElementById('loan-modal-type').value;
+            const customLoanType = document.getElementById('loan-modal-custom-type').value.trim();
+            const reason = document.getElementById('loan-modal-reason').value.trim();
+            const amount = document.getElementById('loan-modal-amount').value.trim();
+            const interestRate = document.getElementById('loan-modal-interest').value.trim();
+            const tenure = document.getElementById('loan-modal-tenure').value.trim();
+            const firstEmiDate = document.getElementById('loan-modal-first-emi-date').value;
+            
+            let hasErrors = false;
+            
+            // Validate bank name
+            if (!bankName) {
+                showFieldError('loan-modal-bank', 'Bank name is required');
+                hasErrors = true;
+            }
+            
+            // Validate loan type
+            if (!loanTypeSelect) {
+                showFieldError('loan-modal-type', 'Loan type is required');
+                hasErrors = true;
+            }
+            
+            // Determine final loan type
+            let loanType = loanTypeSelect;
+            if (loanTypeSelect === 'Other') {
+                if (!customLoanType) {
+                    showFieldError('loan-modal-custom-type', 'Please specify the loan type');
+                    hasErrors = true;
+                } else {
                     loanType = customLoanType;
                 }
-                
-                if (!bankName || !loanType || !amount || !interestRate || !tenure || !firstEmiDate) {
-                    throw new Error('Please fill all required fields');
-                }
-                
+            }
+            
+            // Validate amount
+            if (!amount) {
+                showFieldError('loan-modal-amount', 'Amount is required');
+                hasErrors = true;
+            } else if (parseFloat(amount) <= 0) {
+                showFieldError('loan-modal-amount', 'Amount must be greater than 0');
+                hasErrors = true;
+            }
+            
+            // Validate interest rate
+            if (!interestRate) {
+                showFieldError('loan-modal-interest', 'Interest rate is required');
+                hasErrors = true;
+            } else if (parseFloat(interestRate) < 0) {
+                showFieldError('loan-modal-interest', 'Interest rate cannot be negative');
+                hasErrors = true;
+            }
+            
+            // Validate tenure
+            if (!tenure) {
+                showFieldError('loan-modal-tenure', 'Tenure is required');
+                hasErrors = true;
+            } else if (parseInt(tenure) <= 0) {
+                showFieldError('loan-modal-tenure', 'Tenure must be greater than 0');
+                hasErrors = true;
+            }
+            
+            // Validate first EMI date
+            if (!firstEmiDate) {
+                showFieldError('loan-modal-first-emi-date', 'First EMI date is required');
+                hasErrors = true;
+            }
+            
+            // If there are errors, stop here
+            if (hasErrors) {
+                return;
+            }
+            
+            try {
                 if (id) {
                     // Update existing
                     window.Loans.update(id, bankName, loanType, reason, amount, interestRate, tenure, firstEmiDate);
-                    Toast.success('Loan updated!');
+                    Utils.showSuccess('Loan updated!');
                 } else {
                     // Add new
                     window.Loans.add(bankName, loanType, reason, amount, interestRate, tenure, firstEmiDate);
-                    Toast.success('Loan added!');
+                    Utils.showSuccess('Loan added!');
                 }
                 
                 window.Loans.render();
                 closeLoanModal();
             } catch (error) {
-                Toast.error(error.message);
+                // Unexpected errors still show modal
+                Utils.showError(error.message);
             }
         }
         
@@ -3614,12 +4029,12 @@
             const endDate = document.getElementById('filter-end-date').value;
             
             if (!startDate || !endDate) {
-                Toast.error('Please select both start and end dates');
+                Utils.showError('Please select both start and end dates');
                 return;
             }
             
             if (new Date(startDate) > new Date(endDate)) {
-                Toast.error('Start date must be before end date');
+                Utils.showError('Start date must be before end date');
                 return;
             }
             
@@ -3653,9 +4068,9 @@
                 document.getElementById('expense-date').value = '';
                 document.getElementById('expense-form').classList.add('hidden');
                 
-                Toast.success('Expense added successfully!');
+                Utils.showSuccess('Expense added successfully!');
             } catch (error) {
-                Toast.error(error.message);
+                Utils.showError(error.message);
             }
         }
         
@@ -3862,7 +4277,7 @@
             console.log('🎨 Re-rendering investments...');
             Investments.render();
             
-            Toast.success('Added to existing investment successfully!');
+            Utils.showSuccess('Added to existing investment successfully!');
             pendingInvestmentData = null;
             console.log('🏁 handleAddToExisting completed');
         }
@@ -3971,7 +4386,7 @@
                 data = pendingInvestmentData;
             } else {
                 console.error('❌ No pending investment data in processOverride - neither on modal nor global');
-                Toast.error('Error: No investment data found');
+                Utils.showError('Error: No investment data found');
                 return;
             }
             
@@ -4037,7 +4452,7 @@
             })));
             
             console.log('✅ Showing success toast');
-            Toast.success('Investment overridden successfully!');
+            Utils.showSuccess('Investment overridden successfully!');
             
             // Clean up
             if (modal) {
@@ -4117,7 +4532,7 @@
                 'portfolio': 'Update your cumulative portfolio value. This represents your current total holdings.'
             };
             
-            Toast.show(tooltips[mode] || 'Investment mode', 'success');
+            Utils.showSuccess(tooltips[mode] || 'Investment mode');
         }
         
         async function getUsdToInrRate() {
@@ -4243,18 +4658,18 @@
                     if (id) {
                         // Update existing monthly investment
                         Investments.updateMonthlyInvestment(id, name, amount, date, term, type, quantity, notes, stockPrice, currency, usdToInrRate);
-                        Toast.success('Monthly investment updated successfully!');
+                        Utils.showSuccess('Monthly investment updated successfully!');
                     } else {
                         // Add to monthly investments
                         Investments.addMonthlyInvestment(name, amount, date, term, type, quantity, notes, stockPrice, currency, usdToInrRate);
-                        Toast.success('Monthly investment added successfully!');
+                        Utils.showSuccess('Monthly investment added successfully!');
                     }
                 } else {
                     // Check if editing or adding to existing portfolio
                     if (id) {
                         // Update existing investment
                         Investments.update(id, name, amount, term, type, quantity, notes, stockPrice, currency, usdToInrRate);
-                        Toast.success('Investment updated successfully!');
+                        Utils.showSuccess('Investment updated successfully!');
                     } else {
                         // Check if an entry with same name+type+term exists
                         console.log('🔍 Checking for existing investment:');
@@ -4281,7 +4696,7 @@
                             console.log('  Adding as new investment');
                             // Add new investment
                             Investments.add(name, amount, term, type, quantity, notes, stockPrice, currency, usdToInrRate);
-                            Toast.success('Investment added successfully!');
+                            Utils.showSuccess('Investment added successfully!');
                             Investments.render();
                             closeInvestmentModal();
                         }
@@ -4293,7 +4708,7 @@
                 Investments.render();
                 closeInvestmentModal();
             } catch (error) {
-                Toast.error(error.message);
+                Utils.showError(error.message);
             }
         }
         
@@ -4305,14 +4720,14 @@
         // Make viewCredential globally accessible
         window.viewCredential = function(id) {
             if (!window.DB?.credentials || window.DB.credentials.length === 0) {
-                Toast.error('No credentials found. Please add a credential first.');
+                Utils.showError('No credentials found. Please add a credential first.');
                 return;
             }
             
             const cred = window.DB.credentials.find(c => c.id === id);
             
             if (!cred) {
-                Toast.error('Credential not found');
+                Utils.showError('Credential not found');
                 return;
             }
             
@@ -4323,7 +4738,7 @@
             const modal = document.getElementById('credential-view-modal');
             if (!modal) {
                 console.error('credential-view-modal not found');
-                Toast.error('View modal not found');
+                Utils.showError('View modal not found');
                 return;
             }
             
@@ -4383,7 +4798,7 @@
                     document.getElementById('credential-modal-description').value = cred.description || cred.notes || '';
                     document.getElementById('credential-modal-additional-details').value = cred.additionalDetails || '';
                 } else {
-                    Toast.error('Credential not found');
+                    Utils.showError('Credential not found');
                     return;
                 }
             }
@@ -4392,33 +4807,63 @@
         };
         
         window.closeCredentialModal = function() {
+            clearAllFormErrors('credential-modal');
             document.getElementById('credential-modal').classList.add('hidden');
         };
         
         window.saveCredentialModal = function() {
+            // Clear all previous errors
+            clearAllFormErrors('credential-modal');
+            
+            const id = document.getElementById('credential-modal-id').value;
+            const service = document.getElementById('credential-modal-service').value.trim();
+            const tag = document.getElementById('credential-modal-tag').value.trim();
+            const username = document.getElementById('credential-modal-username').value.trim();
+            const password = document.getElementById('credential-modal-password').value.trim();
+            const description = document.getElementById('credential-modal-description').value.trim();
+            const additionalDetails = document.getElementById('credential-modal-additional-details').value.trim();
+            
+            let hasErrors = false;
+            
+            // Validate service
+            if (!service) {
+                showFieldError('credential-modal-service', 'Service name is required');
+                hasErrors = true;
+            }
+            
+            // Validate username
+            if (!username) {
+                showFieldError('credential-modal-username', 'Username is required');
+                hasErrors = true;
+            }
+            
+            // Validate password
+            if (!password) {
+                showFieldError('credential-modal-password', 'Password is required');
+                hasErrors = true;
+            }
+            
+            // If there are errors, stop here
+            if (hasErrors) {
+                return;
+            }
+            
             try {
-                const id = document.getElementById('credential-modal-id').value;
-                const service = document.getElementById('credential-modal-service').value.trim();
-                const tag = document.getElementById('credential-modal-tag').value.trim();
-                const username = document.getElementById('credential-modal-username').value.trim();
-                const password = document.getElementById('credential-modal-password').value.trim();
-                const description = document.getElementById('credential-modal-description').value.trim();
-                const additionalDetails = document.getElementById('credential-modal-additional-details').value.trim();
-                
                 if (id) {
                     // Update existing
                     Credentials.update(id, service, username, password, description, additionalDetails, tag);
-                    Toast.success('Credential updated!');
+                    Utils.showSuccess('Credential updated!');
                 } else {
                     // Add new
                     Credentials.add(service, username, password, description, additionalDetails, tag);
-                    Toast.success('Credential added!');
+                    Utils.showSuccess('Credential added!');
                 }
                 
                 Credentials.render();
                 closeCredentialModal();
             } catch (error) {
-                Toast.error(error.message);
+                // Unexpected errors still show modal
+                Utils.showError(error.message);
             }
         }
         
@@ -4454,7 +4899,7 @@
             const inv = window.DB.investments.find(i => i.id == id || String(i.id) === String(id));
             if (!inv) {
                 console.error('❌ Investment not found');
-                Toast.error('Investment not found');
+                Utils.showError('Investment not found');
                 return;
             }
             
@@ -4541,7 +4986,7 @@
                 const newRate = parseFloat(input.value);
                 
                 if (!newRate || isNaN(newRate) || newRate <= 0) {
-                    Toast.error('Please enter a valid exchange rate');
+                    Utils.showError('Please enter a valid exchange rate');
                     return;
                 }
                 
@@ -4566,13 +5011,13 @@
                 Loading.hide();
                 
                 if (updatedCount > 0) {
-                    Toast.success(`Rate updated to ₹${newRate}. ${updatedCount} USD stock(s) recalculated.`);
+                    Utils.showSuccess(`Rate updated to ₹${newRate}. ${updatedCount} USD stock(s) recalculated.`);
                 } else {
-                    Toast.success(`Rate updated to ₹${newRate}`);
+                    Utils.showSuccess(`Rate updated to ₹${newRate}`);
                 }
             } catch (error) {
                 Loading.hide();
-                Toast.error(error.message || 'Failed to update exchange rate');
+                Utils.showError(error.message || 'Failed to update exchange rate');
             }
         }
         
@@ -4585,7 +5030,7 @@
         function openEditStockPriceModal(id) {
             const stock = window.DB.investments.find(inv => inv.id == id);
             if (!stock || stock.type !== 'stock') {
-                Toast.error('Stock not found');
+                Utils.showError('Stock not found');
                 return;
             }
             
@@ -4631,12 +5076,12 @@
                 const quantity = parseFloat(document.getElementById('edit-stock-quantity-input').value);
                 
                 if (!price || isNaN(price) || price <= 0) {
-                    Toast.error('Please enter a valid price');
+                    Utils.showError('Please enter a valid price');
                     return;
                 }
                 
                 if (!quantity || isNaN(quantity) || quantity <= 0) {
-                    Toast.error('Please enter a valid quantity');
+                    Utils.showError('Please enter a valid quantity');
                     return;
                 }
                 
@@ -4646,10 +5091,10 @@
                 await Investments.editStockPrice(id, price, currency, quantity);
                 
                 Loading.hide();
-                Toast.success('Stock price updated successfully');
+                Utils.showSuccess('Stock price updated successfully');
             } catch (error) {
                 Loading.hide();
-                Toast.error(error.message || 'Failed to update stock price');
+                Utils.showError(error.message || 'Failed to update stock price');
             }
         }
         
@@ -4719,22 +5164,22 @@
             
             // Validate inputs
             if (!currentPin || currentPin.length !== 4) {
-                window.Toast.error('Please enter your current 4-digit PIN');
+                window.Utils.showError('Please enter your current 4-digit PIN');
                 return;
             }
             
             if (!newPin || newPin.length !== 4) {
-                window.Toast.error('New PIN must be exactly 4 digits');
+                window.Utils.showError('New PIN must be exactly 4 digits');
                 return;
             }
             
             if (newPin !== confirmPin) {
-                window.Toast.error('New PIN and confirmation do not match');
+                window.Utils.showError('New PIN and confirmation do not match');
                 return;
             }
             
             if (currentPin === newPin) {
-                window.Toast.error('New PIN must be different from current PIN');
+                window.Utils.showError('New PIN must be different from current PIN');
                 return;
             }
             
@@ -4753,7 +5198,7 @@
                 // Close modal
                 closeChangePinModal();
                 
-                window.Toast.success('✅ PIN changed successfully!');
+                window.Utils.showSuccess('✅ PIN changed successfully!');
                 
                 // Clear inputs
                 document.getElementById('change-current-pin').value = '';
@@ -4765,7 +5210,7 @@
                     window.Loading.hide();
                 }
                 
-                window.Toast.error('❌ ' + error.message);
+                window.Utils.showError('❌ ' + error.message);
                 console.error('Change PIN failed:', error);
             }
         }
@@ -4813,12 +5258,12 @@
                 const enableBiometric = document.getElementById('enable-biometric-checkbox').checked;
                 
                 if (!pin || pin.length !== 4) {
-                    Toast.error('PIN must be exactly 4 digits');
+                    Utils.showError('PIN must be exactly 4 digits');
                     return;
                 }
                 
                 if (pin !== confirmPin) {
-                    Toast.error('PINs do not match');
+                    Utils.showError('PINs do not match');
                     return;
                 }
                 
@@ -4833,7 +5278,7 @@
                         await window.Security.enableBiometric();
                     } catch (error) {
                         console.warn('Biometric setup failed:', error);
-                        Toast.show('PIN set, but biometric setup failed', 'warning');
+                        Utils.showInfo('PIN set, but biometric setup failed');
                     }
                 }
                 
@@ -4849,7 +5294,7 @@
                 window.Security.isUnlocked = true;
                 
                 Loading.hide();
-                Toast.success('🔒 PIN enabled successfully!');
+                Utils.showSuccess('🔒 PIN enabled successfully!');
                 
                 // Show master password setup next
                 setTimeout(() => {
@@ -4859,7 +5304,7 @@
             } catch (error) {
                 Loading.hide();
                 console.error('Security setup error:', error);
-                Toast.error(error.message || 'Failed to setup security');
+                Utils.showError(error.message || 'Failed to setup security');
             }
         }
         
@@ -4871,7 +5316,7 @@
                 const pin = document.getElementById('unlock-pin').value;
                 
                 if (!pin) {
-                    Toast.error('Please enter your PIN');
+                    Utils.showError('Please enter your PIN');
                     return;
                 }
                 
@@ -4891,7 +5336,7 @@
                     // Continue app initialization (no toast - just unlock silently)
                     window.App.init();
                 } else {
-                    Toast.error('❌ Incorrect PIN');
+                    Utils.showError('❌ Incorrect PIN');
                     // Shake animation
                     const input = document.getElementById('unlock-pin');
                     input.classList.add('shake');
@@ -4900,7 +5345,7 @@
             } catch (error) {
                 Loading.hide();
                 console.error('Unlock error:', error);
-                Toast.error('Failed to unlock');
+                Utils.showError('Failed to unlock');
             }
         }
         
@@ -4933,9 +5378,9 @@
                 console.error('Full error object:', JSON.stringify(error, null, 2));
                 
                 if (error.message && error.message.includes('cancelled')) {
-                    Toast.show('Biometric cancelled. Use PIN instead.', 'info');
+                    Utils.showInfo('Biometric cancelled. Use PIN instead.');
                 } else {
-                    Toast.error(`Biometric failed: ${error.message || error.code || 'Unknown error'}. Use PIN instead.`);
+                    Utils.showError(`Biometric failed: ${error.message || error.code || 'Unknown error'}. Use PIN instead.`);
                 }
             }
         }
@@ -4955,17 +5400,17 @@
             const confirmPassword = document.getElementById('onboarding-master-password-confirm').value.trim();
             
             if (!password) {
-                Toast.error('⚠️ Master password is required!\n\nThis password encrypts your backups.');
+                Utils.showError('⚠️ Master password is required!\n\nThis password encrypts your backups.');
                 return;
             }
             
             if (password.length < 6) {
-                Toast.error('⚠️ Master password must be at least 6 characters long');
+                Utils.showError('⚠️ Master password must be at least 6 characters long');
                 return;
             }
             
             if (password !== confirmPassword) {
-                Toast.error('❌ Passwords do not match');
+                Utils.showError('❌ Passwords do not match');
                 return;
             }
             
@@ -4976,7 +5421,7 @@
             // Hide modal
             document.getElementById('master-password-setup-modal').classList.add('hidden');
             
-            Toast.success('🔐 Master password set successfully!');
+            Utils.showSuccess('🔐 Master password set successfully!');
             
             // Show AI Keys setup next
             setTimeout(() => {
@@ -5002,13 +5447,13 @@
             
             // Check if at least ONE AI key is provided
             if (!geminiKey && !groqKey && !chatgptKey && !perplexityKey) {
-                Toast.error('⚠️ At least ONE AI API key is required!\n\nChoose any:\n• Gemini (recommended)\n• Groq (fastest chat)\n• ChatGPT\n• Perplexity');
+                Utils.showError('⚠️ At least ONE AI API key is required!\n\nChoose any:\n• Gemini (recommended)\n• Groq (fastest chat)\n• ChatGPT\n• Perplexity');
                 return;
             }
             
             // IMPORTANT: Check for web search capability (needed for card benefits)
             if (!geminiKey && !perplexityKey) {
-                Toast.error('⚠️ Warning: Card Benefits feature requires web search!\n\nYou need at least ONE of:\n• Gemini (recommended)\n• Perplexity\n\nGroq/ChatGPT alone will work for chat, but NOT for fetching card benefits.');
+                Utils.showError('⚠️ Warning: Card Benefits feature requires web search!\n\nYou need at least ONE of:\n• Gemini (recommended)\n• Perplexity\n\nGroq/ChatGPT alone will work for chat, but NOT for fetching card benefits.');
                 return;
             }
             
@@ -5023,7 +5468,7 @@
             // Hide modal
             document.getElementById('ai-keys-setup-modal').classList.add('hidden');
             
-            Toast.success('✅ Setup complete! Welcome to My Assistant!');
+            Utils.showSuccess('✅ Setup complete! Welcome to My Assistant!');
             
             // Start the app
             setTimeout(() => {

@@ -14,7 +14,7 @@ const Loans = {
     showDetailsModal(loanId) {
         const loan = window.DB.loans.find(l => l.id === loanId || String(l.id) === String(loanId));
         if (!loan) {
-            window.Toast.error('Loan not found');
+            Utils.showError('Loan not found');
             return;
         }
         
@@ -200,7 +200,7 @@ const Loans = {
             window.DB.loans.splice(index, 1);
             window.Storage.save();
             this.render();
-            window.Toast.success('Loan deleted successfully');
+            Utils.showSuccess('Loan deleted successfully');
         }
         return true;
     },

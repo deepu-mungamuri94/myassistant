@@ -331,7 +331,7 @@ const RecurringExpenses = {
     showDetailsModal(id) {
         const recurring = window.DB.recurringExpenses.find(r => r.id === id || String(r.id) === String(id));
         if (!recurring) {
-            window.Toast.error('Recurring expense not found');
+            Utils.showError('Recurring expense not found');
             return;
         }
         
@@ -679,7 +679,7 @@ const RecurringExpenses = {
         if (confirmed) {
             this.delete(id);
             this.render();
-            window.Toast.success('Recurring expense deleted!');
+            Utils.showSuccess('Recurring expense deleted!');
         }
     },
 

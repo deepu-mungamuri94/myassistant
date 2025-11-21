@@ -101,8 +101,8 @@ const App = {
             // Check if API key is configured
             if (!window.DB.settings.geminiApiKey && !window.DB.settings.chatGptApiKey && !window.DB.settings.perplexityApiKey) {
                 setTimeout(() => {
-                    if (window.Toast) {
-                        window.Toast.info('Welcome! Please configure your AI settings.');
+                    if (window.Utils) {
+                        window.Utils.showInfo('Welcome! Please configure your AI settings.');
                     }
                     setTimeout(() => {
                         window.Navigation.openSettings();
@@ -116,8 +116,8 @@ const App = {
             console.log('✅ App initialized successfully');
         } catch (error) {
             console.error('Initialization error:', error);
-            if (window.Toast) {
-                window.Toast.show('App initialization error', 'error');
+            if (window.Utils) {
+                window.Utils.showError('App initialization error');
             }
             // Hide splash even on error
             const splash = document.getElementById('splash-screen');
@@ -163,14 +163,14 @@ const App = {
         // Global error handler
         window.onerror = function(msg, url, lineNo, columnNo, error) {
             console.error('Global error:', { msg, url, lineNo, columnNo, error });
-            window.Toast.show('An error occurred. Check console for details.', 'error');
+            window.Utils.showError('An error occurred. Check console for details.');
             return false;
         };
         
         // Unhandled promise rejection handler
         window.onunhandledrejection = function(event) {
             console.error('Unhandled promise rejection:', event.reason);
-            window.Toast.show('An error occurred. Check console for details.', 'error');
+            window.Utils.showError('An error occurred. Check console for details.');
         };
     }
 };

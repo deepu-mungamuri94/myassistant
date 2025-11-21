@@ -156,8 +156,9 @@ const Expenses = {
         if (this.searchTerm) {
             const term = this.searchTerm.toLowerCase();
             filtered = filtered.filter(e => 
-                e.description.toLowerCase().includes(term) ||
-                e.category.toLowerCase().includes(term) ||
+                (e.title && e.title.toLowerCase().includes(term)) ||
+                (e.description && e.description.toLowerCase().includes(term)) ||
+                (e.category && e.category.toLowerCase().includes(term)) ||
                 e.amount.toString().includes(term)
             );
         }
@@ -312,7 +313,7 @@ const Expenses = {
             // Fallback to edit modal if view modal doesn't exist
             window.openLoanModal(loan.id);
         } else {
-            window.Toast.error('Loan not found');
+            Utils.showError('Loan not found');
         }
     },
     
@@ -323,7 +324,7 @@ const Expenses = {
         // Get the expense
         const expense = this.getById(expenseId);
         if (!expense) {
-            window.Toast.error('Expense not found');
+            Utils.showError('Expense not found');
             return;
         }
         
@@ -345,7 +346,7 @@ const Expenses = {
             if (foundCard) {
                 cardName = foundCard.name;
             } else {
-                window.Toast.error('Card information not found');
+                Utils.showError('Card information not found');
                 return;
             }
         }
@@ -355,7 +356,7 @@ const Expenses = {
         const card = cards.find(c => c.name === cardName);
         
         if (!card) {
-            window.Toast.error(`Card not found: ${cardName}`);
+            Utils.showError(`Card not found: ${cardName}`);
             return;
         }
         
@@ -363,7 +364,7 @@ const Expenses = {
             // Show specific EMI details in modal
             window.Cards.showEMIDetailsModal(card.name, emiReason);
         } else {
-            window.Toast.error('EMI details not available');
+            Utils.showError('EMI details not available');
         }
     },
     
@@ -382,7 +383,7 @@ const Expenses = {
             // Fallback to edit modal if view modal doesn't exist
             window.openRecurringExpenseModal(recurring.id);
         } else {
-            window.Toast.error('Recurring expense not found');
+            Utils.showError('Recurring expense not found');
         }
     },
     
@@ -413,7 +414,7 @@ const Expenses = {
         // Add to expenses
         this.add(title, amount, category, date, description, null);
         this.render();
-        window.Toast.success('Added to expenses!');
+        Utils.showSuccess('Added to expenses!');
     },
     
     /**
@@ -711,7 +712,7 @@ const Expenses = {
         }
         
         if (totalAdded > 0) {
-            window.Toast.success(`Auto-added ${totalAdded} recurring expense(s)`);
+            Utils.showSuccess(`Auto-added ${totalAdded} recurring expense(s)`);
         }
         
         // Initialize filters if not set
@@ -1075,7 +1076,7 @@ const Expenses = {
         
         this.delete(id);
         this.render();
-        window.Toast.show('Expense deleted', 'success');
+        Utils.showSuccess('Expense deleted');
     },
     
     /**
@@ -1207,8 +1208,8 @@ function migrateOldEMIExpenses(showToast = false) {
     if (migrated > 0) {
         window.Storage.save();
         console.log(`✅ Migrated ${migrated} EMI expense(s) to new format`);
-        if (showToast && window.Toast) {
-            window.Toast.success(`Migrated ${migrated} EMI expense(s) to new format`);
+        if (showToast && window.Utils) {
+            Utils.showSuccess(`Migrated ${migrated} EMI expense(s) to new format`);
         }
     }
     

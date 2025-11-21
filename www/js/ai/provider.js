@@ -116,13 +116,13 @@ const AIProvider = {
                 if (i > 0) {
                     // Fallback was used
                     console.log(`✅ SUCCESS with fallback provider: ${currentProvider.toUpperCase()} (Priority #${i + 1})`);
-                    if (window.Toast) {
-                        window.Toast.show(`✅ Response via ${currentProvider.toUpperCase()}`, 'success');
+                    if (window.Utils) {
+                        window.Utils.showSuccess(`✅ Response via ${currentProvider.toUpperCase()}`);
                     }
                 } else {
                     console.log(`✅ SUCCESS with primary provider: ${currentProvider.toUpperCase()} (Priority #1)`);
-                    if (window.Toast) {
-                        window.Toast.show(`🤖 Using ${currentProvider.toUpperCase()}`, 'info');
+                    if (window.Utils) {
+                        window.Utils.showInfo(`🤖 Using ${currentProvider.toUpperCase()}`);
                     }
                 }
                 
@@ -141,8 +141,8 @@ const AIProvider = {
                         const nextProvider = providerOrder[i + 1];
                         console.log(`🔀 Falling back to ${nextProvider.toUpperCase()} (Priority #${i + 2})...`);
                         
-                        if (window.Toast) {
-                            window.Toast.show(`⚠️ ${currentProvider} rate limit - trying ${nextProvider}...`, 'warning');
+                        if (window.Utils) {
+                            window.Utils.showInfo(`⚠️ ${currentProvider} rate limit - trying ${nextProvider}...`);
                         }
                         
                         // Continue to next iteration
@@ -194,8 +194,8 @@ const AIProvider = {
                 console.log(`✅ Web Search SUCCESS with ${provider.toUpperCase()}`);
                 
                 // Show which AI is being used for web search
-                if (window.Toast) {
-                    window.Toast.show(`🔍 Fetching via ${provider.toUpperCase()} (web search)`, 'info');
+                if (window.Utils) {
+                    window.Utils.showInfo(`🔍 Fetching via ${provider.toUpperCase()} (web search)`);
                 }
                 
                 return result;
@@ -209,8 +209,8 @@ const AIProvider = {
                     const nextProvider = searchOrder[i + 1];
                     console.log(`🔀 Falling back to ${nextProvider.toUpperCase()}...`);
                     
-                    if (window.Toast) {
-                        window.Toast.show(`⚠️ ${provider} rate limit - trying ${nextProvider}...`, 'warning');
+                    if (window.Utils) {
+                        window.Utils.showInfo(`⚠️ ${provider} rate limit - trying ${nextProvider}...`);
                     }
                     continue;
                 }

@@ -978,19 +978,19 @@ const Income = {
         };
         
         if (!data.ctc || data.ctc <= 0) {
-            window.Toast.show('Please enter a valid CTC', 'error');
+            Utils.showError('Please enter a valid CTC');
             return;
         }
         
         // Validate insurance if enabled
         if (data.hasInsurance && (data.insuranceTotal <= 0 || data.insuranceMonths.length === 0)) {
-            window.Toast.show('Please enter insurance amount and select months', 'error');
+            Utils.showError('Please enter insurance amount and select months');
             return;
         }
         
         this.save(data);
         this.closeForm();
-        window.Toast.success('Income details saved!');
+        Utils.showSuccess('Income details saved!');
     },
     
     /**
@@ -1088,19 +1088,19 @@ const Income = {
         const rate = parseFloat(document.getElementById('slab-edit-rate').value);
         
         if (!label) {
-            window.Toast.show('Please enter a label', 'error');
+            Utils.showError('Please enter a label');
             return;
         }
         if (isNaN(min)) {
-            window.Toast.show('Invalid minimum amount', 'error');
+            Utils.showError('Invalid minimum amount');
             return;
         }
         if (maxInput !== '' && isNaN(max)) {
-            window.Toast.show('Invalid maximum amount', 'error');
+            Utils.showError('Invalid maximum amount');
             return;
         }
         if (isNaN(rate)) {
-            window.Toast.show('Invalid tax rate', 'error');
+            Utils.showError('Invalid tax rate');
             return;
         }
         
@@ -1110,11 +1110,11 @@ const Income = {
         if (this.currentEditIndex === null) {
             // Add new
             data.taxSlabs.push(slabData);
-            window.Toast.success('Tax slab added!');
+            Utils.showSuccess('Tax slab added!');
         } else {
             // Edit existing
             data.taxSlabs[this.currentEditIndex] = slabData;
-            window.Toast.success('Tax slab updated!');
+            Utils.showSuccess('Tax slab updated!');
         }
         
         window.Storage.save();
@@ -1143,7 +1143,7 @@ const Income = {
         window.Storage.save();
         this.renderTaxSlabsList();
         this.render();
-        window.Toast.success('Tax slab deleted!');
+        Utils.showSuccess('Tax slab deleted!');
     },
     
     /**
@@ -1158,7 +1158,7 @@ const Income = {
         window.Storage.save();
         this.renderTaxSlabsList();
         this.render();
-        window.Toast.success('Tax slabs reset to default!');
+        Utils.showSuccess('Tax slabs reset to default!');
     },
     
     /**
@@ -1185,7 +1185,7 @@ const Income = {
         const otherDeductions = parseFloat(document.getElementById('deductions-other').value) || 0;
         
         if (stdDeduction < 0 || hraExemption < 0 || section80C < 0 || section80D < 0 || otherDeductions < 0) {
-            window.Toast.show('Deductions cannot be negative', 'error');
+            Utils.showError('Deductions cannot be negative');
             return;
         }
         
@@ -1199,7 +1199,7 @@ const Income = {
         window.Storage.save();
         this.render();
         this.closeDeductionsModal();
-        window.Toast.success('Deductions updated!');
+        Utils.showSuccess('Deductions updated!');
     },
     
     /**
@@ -1225,7 +1225,7 @@ const Income = {
         const value = parseFloat(document.getElementById('std-deduction-input').value);
         
         if (isNaN(value) || value < 0) {
-            window.Toast.show('Invalid amount', 'error');
+            Utils.showError('Invalid amount');
             return;
         }
         
@@ -1234,7 +1234,7 @@ const Income = {
         window.Storage.save();
         this.render();
         this.closeStdDeductionModal();
-        window.Toast.success('Standard Deduction updated!');
+        Utils.showSuccess('Standard Deduction updated!');
     },
     
     /**
@@ -1260,7 +1260,7 @@ const Income = {
         const value = parseFloat(document.getElementById('cess-percent-input').value);
         
         if (isNaN(value) || value < 0 || value > 100) {
-            window.Toast.show('Invalid percentage (0-100)', 'error');
+            Utils.showError('Invalid percentage (0-100)');
             return;
         }
         
@@ -1269,7 +1269,7 @@ const Income = {
         window.Storage.save();
         this.render();
         this.closeCessModal();
-        window.Toast.success('Cess percentage updated!');
+        Utils.showSuccess('Cess percentage updated!');
     },
     
     /**
@@ -1364,19 +1364,19 @@ const Income = {
         const rate = parseFloat(document.getElementById('surcharge-edit-rate').value);
         
         if (!label) {
-            window.Toast.show('Please enter a label', 'error');
+            Utils.showError('Please enter a label');
             return;
         }
         if (isNaN(min)) {
-            window.Toast.show('Invalid minimum amount', 'error');
+            Utils.showError('Invalid minimum amount');
             return;
         }
         if (maxInput !== '' && isNaN(max)) {
-            window.Toast.show('Invalid maximum amount', 'error');
+            Utils.showError('Invalid maximum amount');
             return;
         }
         if (isNaN(rate)) {
-            window.Toast.show('Invalid rate', 'error');
+            Utils.showError('Invalid rate');
             return;
         }
         
@@ -1385,10 +1385,10 @@ const Income = {
         
         if (this.currentSurchargeEditIndex === null) {
             data.surchargeSlabs.push(slabData);
-            window.Toast.success('Surcharge slab added!');
+            Utils.showSuccess('Surcharge slab added!');
         } else {
             data.surchargeSlabs[this.currentSurchargeEditIndex] = slabData;
-            window.Toast.success('Surcharge slab updated!');
+            Utils.showSuccess('Surcharge slab updated!');
         }
         
         window.Storage.save();
@@ -1409,7 +1409,7 @@ const Income = {
         window.Storage.save();
         this.renderSurchargeSlabsList();
         this.render();
-        window.Toast.success('Surcharge slab deleted!');
+        Utils.showSuccess('Surcharge slab deleted!');
     },
     
     /**
@@ -1432,7 +1432,7 @@ const Income = {
         window.Storage.save();
         this.renderSurchargeSlabsList();
         this.render();
-        window.Toast.success('Surcharge slabs reset to default!');
+        Utils.showSuccess('Surcharge slabs reset to default!');
     },
     
     /**

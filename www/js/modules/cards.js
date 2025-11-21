@@ -285,8 +285,8 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 }
                 
                 console.log(`✅ Benefits fetched for ${cardName}`);
-                if (window.Toast) {
-                    window.Toast.success(`Card benefits loaded for ${cardName}`);
+                if (window.Utils) {
+                    Utils.showSuccess(`Card benefits loaded for ${cardName}`);
                 }
             }
             
@@ -303,8 +303,8 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             }
             
             // Show error toast for user awareness
-            if (window.Toast) {
-                window.Toast.error(`Failed to fetch benefits for ${cardName}`);
+            if (window.Utils) {
+                Utils.showError(`Failed to fetch benefits for ${cardName}`);
             }
         }
     },
@@ -328,8 +328,8 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         }
         
         try {
-            if (window.Toast) {
-                window.Toast.info(`Fetching latest benefits for ${card.name}...`);
+            if (window.Utils) {
+                Utils.showInfo(`Fetching latest benefits for ${card.name}...`);
             }
             
             // Don't show card loading for manual refresh (button loading is enough)
@@ -550,7 +550,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
     showDetailsModal(cardId) {
         const card = window.DB.cards.find(c => c.id === cardId || String(c.id) === String(cardId));
         if (!card) {
-            window.Toast.error('Card not found');
+            Utils.showError('Card not found');
             return;
         }
         
@@ -599,14 +599,14 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         // Find the card
         const card = window.DB.cards.find(c => c.name === cardName || cardName.includes(c.name) || c.name.includes(cardName));
         if (!card) {
-            window.Toast.error('Card not found');
+            Utils.showError('Card not found');
             return;
         }
 
         // Find the specific EMI
         const emi = card.emis?.find(e => e.reason === emiReason);
         if (!emi) {
-            window.Toast.error('EMI not found');
+            Utils.showError('EMI not found');
             return;
         }
 
@@ -921,8 +921,8 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         
         this.delete(id);
         this.render();
-        if (window.Toast) {
-            window.Toast.show('Card deleted', 'success');
+        if (window.Utils) {
+            Utils.showSuccess('Card deleted');
         }
     },
 
@@ -1410,12 +1410,12 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         const totalCount = parseInt(document.getElementById('emi-form-total').value);
         
         if (!reason || !firstEmiDate || !totalCount) {
-            window.Toast.error('Please fill all required fields');
+            Utils.showError('Please fill all required fields');
             return;
         }
         
         if (paidCount > totalCount) {
-            window.Toast.error('Paid EMIs cannot exceed total EMIs');
+            Utils.showError('Paid EMIs cannot exceed total EMIs');
             return;
         }
         
@@ -1454,7 +1454,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         this.renderEMIs(cardId);
         this.render(); // Update card count
         document.getElementById('emi-form-modal').classList.add('hidden');
-        window.Toast.success(emiId ? 'EMI updated!' : 'EMI added!');
+        Utils.showSuccess(emiId ? 'EMI updated!' : 'EMI added!');
     },
 
     /**
@@ -1478,7 +1478,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             window.Storage.save();
             this.renderEMIs(cardId);
             this.render(); // Update card count
-            window.Toast.success('EMI marked as complete!');
+            Utils.showSuccess('EMI marked as complete!');
         }
     },
 
@@ -1499,7 +1499,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         window.Storage.save();
         this.renderEMIs(cardId);
         this.render(); // Update card count
-        window.Toast.success('EMI deleted!');
+        Utils.showSuccess('EMI deleted!');
     },
 
     /**

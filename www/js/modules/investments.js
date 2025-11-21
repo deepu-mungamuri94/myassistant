@@ -1371,7 +1371,7 @@ const Investments = {
 
         const type = document.getElementById('investment-type').value;
         if (!type) {
-            Toast.error('Please select an investment type');
+            Utils.showError('Please select an investment type');
             return;
         }
 
@@ -1801,7 +1801,7 @@ const Investments = {
         const investment = investments.find(inv => parseInt(inv.id) === parseInt(id));
         
         if (!investment) {
-            Toast.error('Investment not found');
+            Utils.showError('Investment not found');
             return;
         }
         
@@ -1876,7 +1876,7 @@ const Investments = {
         const investment = investments.find(inv => parseInt(inv.id) === parseInt(id));
         
         if (!investment) {
-            Toast.error('Investment not found');
+            Utils.showError('Investment not found');
             return;
         }
         
@@ -2050,7 +2050,7 @@ const Investments = {
         }
         
             window.Storage.save();
-        Toast.success('Investment deleted successfully');
+        Utils.showSuccess('Investment deleted successfully');
             this.render();
     },
 
@@ -2063,7 +2063,7 @@ const Investments = {
         
         // Don't open modal if no shares exist
         if (activeShares.length === 0) {
-            Toast.info('No shares in portfolio yet');
+            Utils.showInfo('No shares in portfolio yet');
             return;
         }
         
@@ -2108,7 +2108,7 @@ const Investments = {
      * Reload all share prices (placeholder for API integration)
      */
     reloadAllSharePrices() {
-        Toast.info('📊 Share price reload feature coming soon! Will integrate with stock price API.');
+        Utils.showInfo('📊 Share price reload feature coming soon! Will integrate with stock price API.');
         // TODO: Integrate with stock price API
     },
 
@@ -2116,7 +2116,7 @@ const Investments = {
      * Reload single share price (placeholder for API integration)
      */
     reloadSingleSharePrice(shareName) {
-        Toast.info(`📊 Reloading price for ${shareName}... (API integration coming soon)`);
+        Utils.showInfo(`📊 Reloading price for ${shareName}... (API integration coming soon)`);
         // TODO: Integrate with stock price API for single share
     },
 
@@ -2132,7 +2132,7 @@ const Investments = {
             window.DB.sharePrices = sharePrices;
         window.Storage.save();
             
-            Toast.success('Share price removed from tracking');
+            Utils.showSuccess('Share price removed from tracking');
             this.openSharePriceModal(); // Refresh the modal
         }
     },
@@ -2161,14 +2161,14 @@ const Investments = {
         const newRate = parseFloat(document.getElementById('exchange-rate-input').value);
         
         if (!newRate || newRate <= 0) {
-            Toast.error('Please enter a valid exchange rate');
+            Utils.showError('Please enter a valid exchange rate');
             return;
         }
         
         window.DB.exchangeRate = newRate;
         window.Storage.save();
         
-        Toast.success('Exchange rate updated successfully! Portfolio values recalculated.');
+        Utils.showSuccess('Exchange rate updated successfully! Portfolio values recalculated.');
         this.closeExchangeRateModal();
         this.render();
     },
@@ -2197,14 +2197,14 @@ const Investments = {
         const newRate = parseFloat(document.getElementById('gold-rate-input').value);
         
         if (!newRate || newRate <= 0) {
-            Toast.error('Please enter a valid gold rate');
+            Utils.showError('Please enter a valid gold rate');
             return;
         }
         
         window.DB.goldRatePerGram = newRate;
         window.Storage.save();
         
-        Toast.success('Gold rate updated successfully! Portfolio values recalculated.');
+        Utils.showSuccess('Gold rate updated successfully! Portfolio values recalculated.');
         this.closeGoldRateModal();
         this.render();
     },
@@ -2317,7 +2317,7 @@ const Investments = {
             const endDate = document.getElementById('investment-filter-end-date').value;
             
             if (!startDate || !endDate) {
-                Toast.error('Please select both start and end dates');
+                Utils.showError('Please select both start and end dates');
                 return;
             }
             

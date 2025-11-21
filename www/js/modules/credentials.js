@@ -149,7 +149,7 @@ const Credentials = {
         
         this.delete(id);
         this.render();
-        window.Toast.show('Credential deleted', 'success');
+        Utils.showSuccess('Credential deleted');
     }
 };
 

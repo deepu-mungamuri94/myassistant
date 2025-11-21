@@ -17,8 +17,8 @@ const Storage = {
             return true;
         } catch (e) {
             console.error('Storage error:', e);
-            if (window.Toast) {
-                window.Toast.show('Failed to save data', 'error');
+            if (window.Utils) {
+                window.Utils.showError('Failed to save data');
             }
             return false;
         }
@@ -58,8 +58,8 @@ const Storage = {
             // Check if master password is set
             const masterPassword = window.DB.security.masterPassword;
             if (!masterPassword) {
-                if (window.Toast) {
-                    window.Toast.show(
+                if (window.Utils) {
+                    window.Utils.showError(
                         '⚠️ Master password not set!\n\n' +
                         'Go to Settings and set a master password first.\n\n' +
                         'This is required to encrypt your backup data.',
@@ -175,16 +175,14 @@ const Storage = {
                     }
                     
                     // Show detailed error
-                    if (window.Toast) {
-                        window.Toast.show(
+                    if (window.Utils) {
+                        window.Utils.showError(
                             `❌ Export failed!\n\n` +
                             `Error: ${capacitorError.message || 'Unknown error'}\n\n` +
                             `Please check:\n` +
                             `• App has file permissions\n` +
                             `• Device has enough storage\n` +
-                            `• Try restarting the app`,
-                            'error',
-                            6000
+                            `• Try restarting the app`
                         );
                     }
                     
@@ -204,8 +202,8 @@ const Storage = {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
-            if (window.Toast) {
-                window.Toast.show('✅ Encrypted backup downloaded!\n🔐 Keep your master password safe!', 'success', 4000);
+            if (window.Utils) {
+                window.Utils.showSuccess('✅ Encrypted backup downloaded!\n🔐 Keep your master password safe!', 4000);
             }
             
             console.log('✅ Browser download completed (encrypted)');
@@ -222,13 +220,11 @@ const Storage = {
                 window.Loading.hide();
             }
             
-            if (window.Toast) {
-                window.Toast.show(
+            if (window.Utils) {
+                window.Utils.showError(
                     '❌ Export failed!\n\n' +
                     `Error: ${error.message}\n\n` +
-                    'Please try again or contact support.',
-                    'error',
-                    5000
+                    'Please try again or contact support.'
                 );
             }
             return false;
@@ -315,13 +311,12 @@ const Storage = {
             console.log('✅ Data imported successfully');
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             
-            if (window.Toast) {
-                window.Toast.show(
+            if (window.Utils) {
+                window.Utils.showSuccess(
                     '✅ Backup imported successfully!\n\n' +
                     '🔓 Data decrypted and restored\n' +
                     '🔐 Master password updated\n' +
                     '💡 You can now export from this device',
-                    'success',
                     5000
                 );
             }
@@ -350,8 +345,8 @@ const Storage = {
                 errorMessage = `❌ Import failed!\n\n${error.message}`;
             }
             
-            if (window.Toast) {
-                window.Toast.show(errorMessage, 'error', 5000);
+            if (window.Utils) {
+                window.Utils.showError(errorMessage);
             }
             return false;
         }

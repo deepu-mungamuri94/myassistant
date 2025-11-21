@@ -267,7 +267,7 @@ const Navigation = {
             const masterPassword = masterPasswordInput.value.trim();
             
             if (masterPassword && masterPassword.length < 6) {
-                window.Toast.show('⚠️ Master password must be at least 6 characters long', 'error');
+                window.Utils.showError('⚠️ Master password must be at least 6 characters long');
                 return;
             }
             
@@ -285,14 +285,14 @@ const Navigation = {
                 try {
                     if (shouldEnable) {
                         await window.Security.enableBiometric();
-                        window.Toast.show('✅ Biometric authentication enabled!', 'success');
+                        window.Utils.showSuccess('✅ Biometric authentication enabled!');
                     } else {
                         await window.Security.disableBiometric();
-                        window.Toast.show('✅ Biometric authentication disabled!', 'success');
+                        window.Utils.showSuccess('✅ Biometric authentication disabled!');
                     }
                 } catch (error) {
                     console.error('Biometric toggle error:', error);
-                    window.Toast.show('⚠️ ' + error.message, 'error');
+                    window.Utils.showInfo('⚠️ ' + error.message, 'error');
                     // Revert checkbox state
                     biometricCheckbox.checked = currentlyEnabled;
                     return;
@@ -301,7 +301,7 @@ const Navigation = {
         }
         
         if (window.Storage.save()) {
-            window.Toast.show('✅ Settings saved successfully!', 'success');
+            window.Utils.showSuccess('✅ Settings saved successfully!');
             this.closeSettings();
         }
     },
@@ -357,7 +357,7 @@ const Navigation = {
         const groqKey = groqKeyInput ? groqKeyInput.value.trim() : '';
         
         if (!geminiKey || !groqKey) {
-            window.Toast.show('⚠️ Both Gemini and Groq API keys are required!\n\n• Groq: Fast chat responses\n• Gemini: Card benefits & web search', 'error');
+            window.Utils.showError('⚠️ Both Gemini and Groq API keys are required!\n\n• Groq: Fast chat responses\n• Gemini: Card benefits & web search');
             return;
         }
         
@@ -368,7 +368,7 @@ const Navigation = {
         if (perplexityKeyInput) window.DB.settings.perplexityApiKey = perplexityKeyInput.value.trim();
         
         if (window.Storage.save()) {
-            window.Toast.show('✅ AI Settings saved successfully!', 'success');
+            window.Utils.showSuccess('✅ AI Settings saved successfully!');
             this.closeAISettings();
         }
     },
@@ -517,12 +517,12 @@ const Navigation = {
         const passwordInput = document.getElementById('import-password');
         
         if (!fileInput || !fileInput.files[0]) {
-            window.Toast.show('⚠️ Please select a file', 'error');
+            window.Utils.showError('⚠️ Please select a file');
             return;
         }
         
         if (!passwordInput || !passwordInput.value) {
-            window.Toast.show('⚠️ Please enter your master password', 'error');
+            window.Utils.showError('⚠️ Please enter your master password');
             return;
         }
         
@@ -772,7 +772,7 @@ const Navigation = {
             
             // Show success message
             if (window.Toast) {
-                window.Toast.show('✅ App reset successfully!\n\n🔐 Setting up new PIN...', 'success');
+                window.Utils.showSuccess('✅ App reset successfully!\n\n🔐 Setting up new PIN...');
             }
             
             // Reload page to trigger PIN setup
