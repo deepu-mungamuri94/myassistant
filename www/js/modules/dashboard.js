@@ -432,6 +432,7 @@ const Dashboard = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                backgroundColor: 'transparent',
                 plugins: {
                     legend: {
                         position: 'top'
@@ -521,6 +522,7 @@ const Dashboard = {
                 indexAxis: 'y', // Horizontal bars
                 responsive: true,
                 maintainAspectRatio: false,
+                backgroundColor: 'transparent',
                 plugins: {
                     legend: {
                         display: false
@@ -656,6 +658,7 @@ const Dashboard = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                backgroundColor: 'transparent',
                 animation: {
                     animateRotate: true,
                     animateScale: true
