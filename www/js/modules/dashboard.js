@@ -1205,14 +1205,106 @@ const Dashboard = {
      */
     getMonthNetPay(monthValue) {
         const [year, month] = monthValue.split('-').map(Number);
-        const payslips = window.DB.payslips || [];
         
-        const payslip = payslips.find(p => {
-            const pDate = new Date(p.date);
-            return pDate.getFullYear() === year && (pDate.getMonth() + 1) === month;
-        });
+        // Payslips need to be generated from income data
+        const incomeData = window.DB.income || {};
+        const ctc = incomeData.ctc || 0;
         
-        return payslip ? (payslip.netPay || 0) : 0;
+        if (!ctc || ctc === 0) return 0;
+        
+        // Calculate monthly net pay based on CTC
+        const bonusPercent = incomeData.bonusPercent || 0;
+        const esppPercentCycle1 = incomeData.esppPercentCycle1 || 0;
+        const esppPercentCycle2 = incomeData.esppPercentCycle2 || 0;
+        const pfPercent = incomeData.pfPercent || 12;
+        
+        // Financial year months (April to March)
+        const monthNames = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        const monthName = monthNames[month - 1];
+        
+        // Map calendar month to financial year month index
+        // Financial year: April(0), May(1), ..., March(11)
+        const fyMonths = [
+            'April', 'May', 'June', 'July', 'August', 'September',
+            'October', 'November', 'December', 'January', 'February', 'March'
+        ];
+        const fyMonthIndex = fyMonths.indexOf(monthName);
+        
+        // Calculate basic monthly values
+        const basic = ctc * 0.4;
+        const basicPay = basic / 12;
+        const hra = basicPay / 2;
+        const ctcPerMonth = ctc / 12;
+        const pfEmployer = (basic * pfPercent) / 100 / 12;
+        const pfEmployee = (basic * pfPercent) / 100 / 12;
+        const grossEarnings = ctcPerMonth - pfEmployer;
+        
+        // Determine ESPP for this month
+        const esppPercent = (fyMonthIndex >= 8 && fyMonthIndex <= 13) ? esppPercentCycle1 : esppPercentCycle2;
+        const espp = (grossEarnings * esppPercent) / 100;
+        
+        // Calculate tax (simplified - using annual tax divided by 12)
+        const stdDeduction = incomeData.stdDeduction || 75000;
+        const hraExemption = incomeData.hraExemption || 0;
+        const section80C = incomeData.section80C || 0;
+        const section80D = incomeData.section80D || 0;
+        const otherDeductions = incomeData.otherDeductions || 0;
+        
+        const taxableIncome = ctc - stdDeduction - hraExemption - section80C - section80D - otherDeductions;
+        let incomeTax = 0;
+        
+        // Apply tax slabs
+        const taxSlabs = incomeData.taxSlabs || [];
+        let remainingIncome = Math.max(taxableIncome, 0);
+        for (let slab of taxSlabs) {
+            if (remainingIncome <= 0) break;
+            const taxableInSlab = slab.max === Infinity 
+                ? remainingIncome 
+                : Math.min(remainingIncome, slab.max - slab.min);
+            incomeTax += (taxableInSlab * slab.rate) / 100;
+            remainingIncome -= taxableInSlab;
+        }
+        
+        // Apply surcharge if applicable
+        const surchargeSlabs = incomeData.surchargeSlabs || [];
+        let surcharge = 0;
+        for (let slab of surchargeSlabs) {
+            if (ctc >= slab.min && (slab.max === Infinity || ctc <= slab.max)) {
+                surcharge = (incomeTax * slab.rate) / 100;
+                break;
+            }
+        }
+        
+        // Apply cess
+        const cessPercent = incomeData.cessPercent || 4;
+        const cess = ((incomeTax + surcharge) * cessPercent) / 100;
+        const totalTax = incomeTax + surcharge + cess;
+        const monthlyTax = totalTax / 12;
+        
+        const professionalTax = 200;
+        const grossDeductions = monthlyTax + professionalTax + espp + pfEmployee;
+        let netPay = grossEarnings - grossDeductions;
+        
+        // Add bonus for specific months
+        if (monthName === 'September' || monthName === 'April') {
+            const bonusAmount = (ctc * bonusPercent / 100) / 2;
+            const bonusEspp = (bonusAmount * esppPercent) / 100;
+            netPay += bonusAmount - bonusEspp;
+        }
+        
+        // Add insurance deduction if applicable
+        const hasInsurance = incomeData.hasInsurance || false;
+        const insuranceTotal = incomeData.insuranceTotal || 0;
+        const insuranceMonths = incomeData.insuranceMonths || [];
+        if (hasInsurance && insuranceMonths.includes(month)) {
+            const insurancePerMonth = insuranceMonths.length > 0 ? insuranceTotal / insuranceMonths.length : 0;
+            netPay -= insurancePerMonth;
+        }
+        
+        return netPay;
     },
     
     /**
