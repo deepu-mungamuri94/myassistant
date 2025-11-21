@@ -94,6 +94,7 @@ const Investments = {
         });
 
         const currentGoldRate = goldRate ? `₹${Utils.formatIndianNumber(goldRate)}/gm` : 'Set Rate';
+        const currentExchangeRate = exchangeRate ? `$1 = ₹${exchangeRate.toFixed(2)}` : 'Set Rate';
 
         // Check if portfolio body is currently visible
         const portfolioBody = document.getElementById('portfolio-body');
@@ -116,7 +117,7 @@ const Investments = {
                         </button>
                         <button onclick="event.stopPropagation(); Investments.openExchangeRateModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
                             <span class="text-base">💲</span>
-                            Rupee value
+                            ${currentExchangeRate}
                         </button>
                         <button onclick="event.stopPropagation(); Investments.openGoldRateModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
                             <span class="text-base">🪙</span>
