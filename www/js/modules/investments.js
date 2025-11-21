@@ -1383,6 +1383,9 @@ const Investments = {
                 
                 // Also sync to portfolio
                 this.syncToPortfolio(investmentData, userDataKey);
+                
+                // Show success and close modal
+                this.showSuccess();
             } else {
                 // Add to portfolio only
                 this.handlePortfolioAdd(investmentData, userDataKey);
