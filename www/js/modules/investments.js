@@ -716,6 +716,7 @@ const Investments = {
                        class="${nameClass}"
                        oninput="Investments.showNameSuggestions(this.value); Investments.clearNameError();"
                        onfocus="Investments.showNameSuggestions(this.value)"
+                       onblur="Investments.validateNameDuplicate()"
                        autocomplete="off">
                 <div id="investment-name-suggestions" class="hidden absolute w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto z-50 mt-1"></div>
                 <div id="investment-name-error" class="hidden mt-1 text-sm text-red-600 flex items-start gap-1">
@@ -922,6 +923,9 @@ const Investments = {
         const suggestionsDiv = document.getElementById('investment-name-suggestions');
         suggestionsDiv.classList.add('hidden');
         suggestionsDiv.innerHTML = '';
+        
+        // Validate for duplicates after selecting suggestion
+        this.validateNameDuplicate();
     },
 
     /**
@@ -958,6 +962,58 @@ const Investments = {
         const errorDiv = document.getElementById('investment-name-error');
         if (errorDiv) {
             errorDiv.classList.add('hidden');
+        }
+    },
+
+    /**
+     * Validate name for duplicates (for FD and EPF)
+     */
+    validateNameDuplicate() {
+        const nameInput = document.getElementById('investment-name');
+        const typeInput = document.getElementById('investment-type');
+        const goalInput = document.querySelector('input[name="investment-goal"]:checked');
+        const isEditing = document.getElementById('investment-editing')?.value === 'true';
+        
+        if (!nameInput || !typeInput || !goalInput) return;
+        
+        const name = nameInput.value.trim();
+        const type = typeInput.value;
+        const goal = goalInput.value;
+        
+        // Only validate if name is not empty and type is selected
+        if (!name || !type) {
+            this.clearNameError();
+            return;
+        }
+        
+        // Only validate for FD and EPF
+        if (type !== 'FD' && type !== 'EPF') {
+            this.clearNameError();
+            return;
+        }
+        
+        // If editing, check if name is same as original (no validation needed)
+        if (isEditing && this.editingInvestment && this.editingInvestment.name === name) {
+            this.clearNameError();
+            return;
+        }
+        
+        // Check for duplicates
+        const userDataKey = `${name}_${type}_${goal}`;
+        const portfolioInvestments = window.DB.portfolioInvestments || [];
+        const existing = portfolioInvestments.find(inv => {
+            const invKey = `${inv.name}_${inv.type}_${inv.goal}`;
+            // If editing, exclude current investment from duplicate check
+            if (isEditing && this.editingInvestment && parseInt(inv.id) === parseInt(this.editingInvestment.id)) {
+                return false;
+            }
+            return invKey === userDataKey;
+        });
+        
+        if (existing) {
+            this.showNameError(type);
+        } else {
+            this.clearNameError();
         }
     },
 
