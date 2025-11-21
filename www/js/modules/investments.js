@@ -1455,13 +1455,121 @@ const Investments = {
         
         if (!investment) {
             Toast.error('Investment not found');
-                return;
-            }
-            
+            return;
+        }
+        
         const modal = document.getElementById('delete-confirm-modal');
         const message = document.getElementById('delete-confirm-message');
         
-        message.innerHTML = `Are you sure you want to delete this investment?<br><br><strong>${investment.name}</strong> [${investment.type}]<br><br>⚠️ This action cannot be recovered!`;
+        // Build detailed info based on investment type
+        let detailsHTML = '';
+        let amount = 0;
+        
+        // Type badge
+        const typeBadgeClass = {
+            'SHARES': 'badge-type-shares',
+            'GOLD': 'badge-type-gold',
+            'EPF': 'badge-type-epf',
+            'FD': 'badge-type-fd'
+        };
+        const typeBadge = `<span class="${typeBadgeClass[investment.type] || 'badge-type-shares'}">${investment.type}</span>`;
+        
+        if (investment.type === 'SHARES') {
+            const sharePrice = this.getLatestSharePrice(investment.name);
+            const price = sharePrice ? sharePrice.price : investment.price;
+            const currency = sharePrice ? sharePrice.currency : (investment.currency || 'INR');
+            amount = this.calculatePortfolioAmount(investment);
+            
+            detailsHTML = `
+                <div class="text-left space-y-2 bg-gray-50 p-4 rounded-lg">
+                    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-gray-800 text-lg">${investment.name}</span>
+                            ${typeBadge}
+                        </div>
+                        <span class="font-bold text-yellow-700 text-lg">₹${Utils.formatIndianNumber(Math.round(amount))}</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div><span class="font-semibold text-gray-700">Quantity:</span> <span class="text-gray-600">${investment.quantity}</span></div>
+                        <div><span class="font-semibold text-gray-700">Price:</span> <span class="text-gray-600">${currency === 'USD' ? '$' : '₹'}${Utils.formatIndianNumber(price)}</span></div>
+                        ${currency === 'USD' ? `<div class="col-span-2"><span class="font-semibold text-gray-700">USD Value:</span> <span class="text-gray-600">$${Utils.formatIndianNumber(investment.quantity * price)}</span></div>` : ''}
+                    </div>
+                    ${investment.description ? `<div class="text-sm text-gray-600 pt-2 border-t border-gray-200">${investment.description}</div>` : ''}
+                </div>
+            `;
+        } else if (investment.type === 'GOLD') {
+            amount = this.calculatePortfolioAmount(investment);
+            
+            detailsHTML = `
+                <div class="text-left space-y-2 bg-gray-50 p-4 rounded-lg">
+                    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-gray-800 text-lg">${investment.name}</span>
+                            ${typeBadge}
+                        </div>
+                        <span class="font-bold text-yellow-700 text-lg">₹${Utils.formatIndianNumber(Math.round(amount))}</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div><span class="font-semibold text-gray-700">Quantity:</span> <span class="text-gray-600">${investment.quantity}g</span></div>
+                        <div><span class="font-semibold text-gray-700">Price/gram:</span> <span class="text-gray-600">₹${Utils.formatIndianNumber(investment.price)}</span></div>
+                    </div>
+                    ${investment.description ? `<div class="text-sm text-gray-600 pt-2 border-t border-gray-200">${investment.description}</div>` : ''}
+                </div>
+            `;
+        } else if (investment.type === 'FD') {
+            amount = investment.amount;
+            
+            detailsHTML = `
+                <div class="text-left space-y-2 bg-gray-50 p-4 rounded-lg">
+                    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-gray-800 text-lg">${investment.name}</span>
+                            ${typeBadge}
+                        </div>
+                        <span class="font-bold text-yellow-700 text-lg">₹${Utils.formatIndianNumber(Math.round(amount))}</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div><span class="font-semibold text-gray-700">Tenure:</span> <span class="text-gray-600">${investment.tenure} months</span></div>
+                        <div><span class="font-semibold text-gray-700">Interest:</span> <span class="text-gray-600">${investment.interestRate}%</span></div>
+                        <div class="col-span-2"><span class="font-semibold text-gray-700">End Date:</span> <span class="text-gray-600">${Utils.formatLocalDate(new Date(investment.endDate))}</span></div>
+                    </div>
+                    ${investment.description ? `<div class="text-sm text-gray-600 pt-2 border-t border-gray-200">${investment.description}</div>` : ''}
+                </div>
+            `;
+        } else if (investment.type === 'EPF') {
+            amount = investment.amount;
+            
+            detailsHTML = `
+                <div class="text-left space-y-2 bg-gray-50 p-4 rounded-lg">
+                    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-gray-800 text-lg">${investment.name}</span>
+                            ${typeBadge}
+                        </div>
+                        <span class="font-bold text-yellow-700 text-lg">₹${Utils.formatIndianNumber(Math.round(amount))}</span>
+                    </div>
+                    ${investment.description ? `<div class="text-sm text-gray-600 pt-2">${investment.description}</div>` : ''}
+                </div>
+            `;
+        }
+        
+        // Add date for monthly investments
+        if (isMonthly && investment.date) {
+            detailsHTML = detailsHTML.replace('</div>', `<div class="text-sm pt-2 border-t border-gray-200"><span class="font-semibold text-gray-700">Date:</span> <span class="text-gray-600">${Utils.formatLocalDate(new Date(investment.date))}</span></div></div>`);
+        }
+        
+        message.innerHTML = `
+            <div class="mb-4">
+                <p class="text-center text-gray-700 font-semibold mb-4">Are you sure you want to delete this investment?</p>
+                ${detailsHTML}
+                <div class="mt-4 flex items-center justify-center gap-2 text-red-600 font-semibold">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                    <span>This action cannot be recovered!</span>
+                </div>
+            </div>
+        `;
         
         document.getElementById('delete-confirm-btn').onclick = () => {
             this.deleteInvestment(id, isMonthly);
