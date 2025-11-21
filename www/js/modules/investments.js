@@ -9,7 +9,7 @@ const Investments = {
     expandedYears: new Set(), // Track expanded years in monthly investments
     currentPortfolioTab: 'short', // 'short' or 'long'
     currentMonthlyTab: 'short', // 'short' or 'long' for monthly investments
-    portfolioBodyVisible: true, // Track portfolio section visibility (default expanded)
+    portfolioBodyVisible: false, // Track portfolio section visibility (default collapsed)
     dateFilter: 'thisMonth', // 'thisMonth', 'last6Months', 'thisYear', 'custom', 'allTime'
     customDateRange: { start: null, end: null },
     searchQuery: '',
@@ -40,6 +40,11 @@ const Investments = {
         if (!window.DB.sharePrices) {
             window.DB.sharePrices = [];
         }
+        
+        // Initialize current month as expanded by default
+        const now = new Date();
+        const currentMonthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
+        this.expandedMonths.add(currentMonthKey);
         window.Storage.save();
 
         // Setup click listener to hide name suggestions when clicking outside
@@ -358,17 +363,11 @@ const Investments = {
         html += '<div class="space-y-4">';
 
         if (this.dateFilter === 'thisMonth') {
-            // Show only current month, expanded by default
+            // Show only current month
             const now = new Date();
-            const currentMonthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
             const currentMonthData = grouped[now.getFullYear()]?.[now.getMonth() + 1] || [];
             
-            // Ensure current month is expanded by default
-            if (!this.expandedMonths.has(currentMonthKey)) {
-                this.expandedMonths.add(currentMonthKey);
-            }
-            
-            html += this.renderMonthGroup(now.getFullYear(), now.getMonth() + 1, currentMonthData, exchangeRate, goldRate, true);
+            html += this.renderMonthGroup(now.getFullYear(), now.getMonth() + 1, currentMonthData, exchangeRate, goldRate, false);
                 } else {
             // Show all years and months
             const years = Object.keys(grouped).sort((a, b) => b - a);
@@ -696,7 +695,7 @@ const Investments = {
         } else {
             this.expandedMonths.add(monthKey);
         }
-        this.render();
+        this.renderMonthlySection();
     },
 
     /**
@@ -708,7 +707,7 @@ const Investments = {
         } else {
             this.expandedYears.add(year);
         }
-        this.render();
+        this.renderMonthlySection();
     },
 
     /**
