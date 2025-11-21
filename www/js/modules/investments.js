@@ -225,11 +225,12 @@ const Investments = {
             line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Price:</span> ₹${Utils.formatIndianNumber(goldRate)}/gm</span>`;
             line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Qty:</span> ${inv.quantity}gm</span>`;
         } else if (inv.type === 'FD') {
-            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Amount:</span> ₹${Utils.formatIndianNumber(inv.amount)}</span>`;
-            line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Tenure:</span> ${inv.tenure} months | <span class="font-bold">Interest:</span> ${inv.interestRate}%</span>`;
+            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Tenure:</span> ${inv.tenure} months</span>`;
+            line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Interest:</span> ${inv.interestRate}%</span>`;
             line3 += `<span class="text-gray-600 text-xs"><span class="font-bold">End:</span> ${Utils.formatLocalDate(new Date(inv.endDate))}</span>`;
         } else if (inv.type === 'EPF') {
-            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Amount:</span> ₹${Utils.formatIndianNumber(inv.amount)}</span>`;
+            line2 = `<span class="text-gray-600 text-xs"></span>`;
+            line3 = `<span class="text-gray-600 text-xs"></span>`;
         }
 
         line4 = inv.description ? `<p class="text-gray-600 text-xs mt-1">${inv.description}</p>` : '';
@@ -399,7 +400,7 @@ const Investments = {
             line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Qty:</span> ${inv.quantity}gm</span>`;
             line3 += `<span class="text-gray-600 text-xs">${Utils.formatLocalDate(new Date(inv.date))}</span>`;
         } else if (inv.type === 'FD' || inv.type === 'EPF') {
-            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Amount:</span> ₹${Utils.formatIndianNumber(inv.amount)}</span>`;
+            line2 = `<span class="text-gray-600 text-xs"></span>`;
             line3 = `<span class="text-gray-600 text-xs"></span>`;
             line3 += `<span class="text-gray-600 text-xs">${Utils.formatLocalDate(new Date(inv.date))}</span>`;
         }
