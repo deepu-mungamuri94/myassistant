@@ -690,6 +690,21 @@ const Investments = {
     },
 
     /**
+     * Show success animation
+     */
+    showSuccess() {
+        const modal = document.getElementById('investment-success-modal');
+        modal.classList.remove('hidden');
+        
+        // Auto-close after 1 second
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            this.closeInvestmentModal();
+            this.render();
+        }, 1000);
+    },
+
+    /**
      * Handle type change in investment form
      */
     handleTypeChange() {
@@ -1366,9 +1381,7 @@ const Investments = {
                 const userDataKey = `${data.name}_${data.type}_${data.goal}`;
                 this.syncToPortfolio(data, userDataKey);
                 
-                Toast.success('Monthly investment updated successfully');
-                this.closeInvestmentModal();
-                this.render();
+                this.showSuccess();
             }
         } else {
             // Update portfolio investment
@@ -1385,9 +1398,7 @@ const Investments = {
             }
                 
                 window.Storage.save();
-                Toast.success('Portfolio investment updated successfully');
-                this.closeInvestmentModal();
-                this.render();
+                this.showSuccess();
             }
         }
     },
@@ -1479,9 +1490,7 @@ const Investments = {
             window.DB.portfolioInvestments = portfolioInvestments;
             window.Storage.save();
             
-            Toast.success('Investment added successfully');
-            this.closeInvestmentModal();
-            this.render();
+            this.showSuccess();
         }
     },
 
@@ -1586,9 +1595,7 @@ const Investments = {
         
         window.Storage.save();
         
-        Toast.success('Added to existing investment');
-        this.closeInvestmentModal();
-        this.render();
+        this.showSuccess();
     },
 
     /**
@@ -1634,9 +1641,7 @@ const Investments = {
         
         window.Storage.save();
         
-        Toast.success('Investment overridden successfully');
-        this.closeInvestmentModal();
-        this.render();
+        this.showSuccess();
     },
     
     /**

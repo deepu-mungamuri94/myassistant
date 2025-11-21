@@ -626,7 +626,7 @@
         <div id="investments-view" class="hidden">
             <div class="p-5 pb-32">
                 <!-- Floating + Button (Top Right) -->
-                <button onclick="Investments.openInvestmentModal()" class="fixed right-4 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Investment">
+                <button onclick="Investments.openInvestmentModal()" class="fixed right-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Investment">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                     </svg>
@@ -1661,6 +1661,91 @@
             </div>
         </div>
     </div>
+    
+    <!-- INVESTMENT SUCCESS MODAL -->
+    <div id="investment-success-modal" class="hidden fixed inset-0 bg-white bg-opacity-60 z-[60] flex items-center justify-center">
+        <div class="flex flex-col items-center">
+            <!-- Animated Checkmark Circle -->
+            <div class="relative">
+                <svg class="w-32 h-32 animate-scale-in" viewBox="0 0 100 100">
+                    <!-- Circle -->
+                    <circle cx="50" cy="50" r="45" fill="#10B981" class="animate-fade-in"/>
+                    <!-- Checkmark -->
+                    <path d="M25 50 L40 65 L75 30" stroke="white" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round" class="animate-draw-check"/>
+                </svg>
+            </div>
+            <!-- Success Text -->
+            <p class="mt-6 text-2xl font-bold text-green-600 animate-fade-in-up">Success</p>
+        </div>
+    </div>
+    
+    <style>
+        @keyframes scale-in {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.1);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes fade-in {
+            0% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+        
+        @keyframes draw-check {
+            0% {
+                stroke-dasharray: 0, 100;
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                stroke-dasharray: 100, 0;
+                opacity: 1;
+            }
+        }
+        
+        @keyframes fade-in-up {
+            0% {
+                transform: translateY(10px);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .animate-scale-in {
+            animation: scale-in 0.5s ease-out;
+        }
+        
+        .animate-fade-in {
+            animation: fade-in 0.3s ease-out;
+        }
+        
+        .animate-draw-check {
+            animation: draw-check 0.5s ease-out 0.2s forwards;
+            stroke-dasharray: 0, 100;
+        }
+        
+        .animate-fade-in-up {
+            animation: fade-in-up 0.4s ease-out 0.4s forwards;
+            opacity: 0;
+        }
+    </style>
     
     <!-- OVERRIDE CONFIRMATION MODAL -->
     <div id="override-confirm-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4">
