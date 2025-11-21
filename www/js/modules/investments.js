@@ -343,11 +343,14 @@ const Investments = {
                         Long Term<br><span class="text-xs">(₹${Utils.formatIndianNumber(Math.round(longTermTotal))})</span>
                     </button>
                 </div>
-            </div>
+                
+                <!-- Tab Content -->
+                <div class="p-4">
         `;
 
         if (filtered.length === 0) {
             html += `<div class="text-center py-12 text-gray-500">No monthly investments found</div>`;
+            html += `</div></div>`; // Close tab content and container
             container.innerHTML = html;
             return;
         }
@@ -394,7 +397,9 @@ const Investments = {
             });
             }
             
-        html += '</div>';
+        html += '</div>'; // Close space-y-4
+        html += '</div>'; // Close tab content (p-4)
+        html += '</div>'; // Close main container
         container.innerHTML = html;
     },
 
