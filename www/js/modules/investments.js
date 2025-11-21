@@ -1460,10 +1460,15 @@ const Investments = {
             // Add to existing (only for SHARES and GOLD)
             if (data.type === 'SHARES' || data.type === 'GOLD') {
                 existing.quantity = (existing.quantity || 0) + (data.quantity || 0);
+                // Update to latest price
+                existing.price = data.price;
+                if (data.type === 'SHARES') {
+                    existing.currency = data.currency;
+                }
             }
             // FD and EPF: Don't add to existing in portfolio from monthly investments
             
-            // Update share price if SHARES
+            // Update share price in storage if SHARES
             if (data.type === 'SHARES') {
                 this.updateSharePrice(data.name, data.price, data.currency);
             }
@@ -1614,11 +1619,16 @@ const Investments = {
     addToExisting(existing, newData) {
         if (newData.type === 'SHARES' || newData.type === 'GOLD') {
             existing.quantity = (existing.quantity || 0) + (newData.quantity || 0);
+            // Update to latest price
+            existing.price = newData.price;
+            if (newData.type === 'SHARES') {
+                existing.currency = newData.currency;
+            }
         } else {
             existing.amount = (existing.amount || 0) + (newData.amount || 0);
         }
         
-        // Update share price if SHARES
+        // Update share price in storage if SHARES
         if (newData.type === 'SHARES') {
             this.updateSharePrice(newData.name, newData.price, newData.currency);
         }
@@ -1664,7 +1674,7 @@ const Investments = {
     overrideExisting(existing, newData) {
         Object.assign(existing, newData);
         
-        // Update share price if SHARES
+        // Update share price in storage if SHARES
         if (newData.type === 'SHARES') {
             this.updateSharePrice(newData.name, newData.price, newData.currency);
         }
