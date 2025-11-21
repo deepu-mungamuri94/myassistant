@@ -675,7 +675,7 @@ const Investments = {
     closeInvestmentModal() {
         document.getElementById('investment-modal').classList.add('hidden');
         this.hideNameSuggestions();
-        this.clearNameError();
+        this.clearAllFieldErrors();
         this.editingInvestment = null;
     },
 
@@ -687,8 +687,8 @@ const Investments = {
         const dynamicFields = document.getElementById('investment-dynamic-fields');
         const saveBtn = document.getElementById('investment-save-btn');
         
-        // Clear any existing name error
-        this.clearNameError();
+        // Clear all field errors
+        this.clearAllFieldErrors();
         
         if (!type) {
             dynamicFields.innerHTML = '';
@@ -742,8 +742,15 @@ const Investments = {
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Quantity</label>
                             <input type="number" id="investment-quantity" placeholder="Qty" step="1" min="0"
                                    class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                                   oninput="Investments.calculateAmount()">
-                    </div>
+                                   oninput="Investments.calculateAmount(); Investments.clearFieldError('quantity');"
+                                   onblur="Investments.validateField('quantity')">
+                            <div id="investment-quantity-error" class="hidden mt-1 text-sm text-red-600 flex items-start gap-1">
+                                <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                <span id="investment-quantity-error-text"></span>
+                            </div>
+                        </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Price</label>
                             <div class="flex">
@@ -754,9 +761,16 @@ const Investments = {
                                 </select>
                                 <input type="number" id="investment-price" placeholder="0.00" step="0.01" min="0"
                                        class="flex-1 p-2 border border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                                       oninput="Investments.calculateAmount()">
-                    </div>
-                </div>
+                                       oninput="Investments.calculateAmount(); Investments.clearFieldError('price');"
+                                       onblur="Investments.validateField('price')">
+                            </div>
+                            <div id="investment-price-error" class="hidden mt-1 text-sm text-red-600 flex items-start gap-1">
+                                <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                <span id="investment-price-error-text"></span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -767,18 +781,32 @@ const Investments = {
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Quantity (grams)</label>
                         <input type="number" id="investment-quantity" placeholder="Grams" step="0.01" min="0"
                                class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                               oninput="Investments.calculateAmount()">
-                </div>
+                               oninput="Investments.calculateAmount(); Investments.clearFieldError('quantity');"
+                               onblur="Investments.validateField('quantity')">
+                        <div id="investment-quantity-error" class="hidden mt-1 text-sm text-red-600 flex items-start gap-1">
+                            <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            <span id="investment-quantity-error-text"></span>
+                        </div>
+                    </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Price/gram</label>
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
                             <input type="number" id="investment-price" placeholder="Per gram" step="0.01" min="0" value="${goldRate}"
                                    class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                                   oninput="Investments.calculateAmount()">
-            </div>
+                                   oninput="Investments.calculateAmount(); Investments.clearFieldError('price');"
+                                   onblur="Investments.validateField('price')">
                         </div>
-                                            </div>
+                        <div id="investment-price-error" class="hidden mt-1 text-sm text-red-600 flex items-start gap-1">
+                            <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            <span id="investment-price-error-text"></span>
+                        </div>
+                    </div>
+                </div>
             `;
         } else if (type === 'EPF') {
             html += `
@@ -787,9 +815,17 @@ const Investments = {
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
                         <input type="number" id="investment-amount" placeholder="Amount" step="0.01" min="0"
-                               class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                                            </div>
-                                </div>
+                               class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                               oninput="Investments.clearFieldError('amount');"
+                               onblur="Investments.validateField('amount')">
+                    </div>
+                    <div id="investment-amount-error" class="hidden mt-1 text-sm text-red-600 flex items-start gap-1">
+                        <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        <span id="investment-amount-error-text"></span>
+                    </div>
+                </div>
             `;
         } else if (type === 'FD') {
             html += `
@@ -798,25 +834,57 @@ const Investments = {
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
                         <input type="number" id="investment-amount" placeholder="Amount" step="0.01" min="0"
-                               class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                            </div>
-                                </div>
+                               class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                               oninput="Investments.clearFieldError('amount');"
+                               onblur="Investments.validateField('amount')">
+                    </div>
+                    <div id="investment-amount-error" class="hidden mt-1 text-sm text-red-600 flex items-start gap-1">
+                        <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        <span id="investment-amount-error-text"></span>
+                    </div>
+                </div>
                 <div class="grid grid-cols-2 gap-2 mb-3">
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Tenure (months)</label>
                         <input type="number" id="investment-tenure" placeholder="Months" step="1" min="1"
-                               class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                                </div>
-                            <div>
+                               class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                               oninput="Investments.clearFieldError('tenure');"
+                               onblur="Investments.validateField('tenure')">
+                        <div id="investment-tenure-error" class="hidden mt-1 text-sm text-red-600 flex items-start gap-1">
+                            <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            <span id="investment-tenure-error-text"></span>
+                        </div>
+                    </div>
+                    <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Interest Rate (%)</label>
                         <input type="number" id="investment-interest-rate" placeholder="Rate" step="0.01" min="0"
-                               class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                            </div>
+                               class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                               oninput="Investments.clearFieldError('interest-rate');"
+                               onblur="Investments.validateField('interest-rate')">
+                        <div id="investment-interest-rate-error" class="hidden mt-1 text-sm text-red-600 flex items-start gap-1">
+                            <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            <span id="investment-interest-rate-error-text"></span>
+                        </div>
                     </div>
+                </div>
                 <div class="mb-3">
                     <label class="block text-sm font-semibold text-gray-700 mb-1">End Date</label>
                     <input type="date" id="investment-end-date"
-                           class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                           class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                           onchange="Investments.clearFieldError('end-date');"
+                           onblur="Investments.validateField('end-date')">
+                    <div id="investment-end-date-error" class="hidden mt-1 text-sm text-red-600 flex items-start gap-1">
+                        <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        <span id="investment-end-date-error-text"></span>
+                    </div>
                 </div>
             `;
         }
@@ -971,6 +1039,90 @@ const Investments = {
     },
 
     /**
+     * Show field error message
+     */
+    showFieldError(fieldName, message) {
+        const errorDiv = document.getElementById(`investment-${fieldName}-error`);
+        const errorText = document.getElementById(`investment-${fieldName}-error-text`);
+        
+        if (errorDiv && errorText) {
+            errorText.textContent = message;
+            errorDiv.classList.remove('hidden');
+            errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    },
+
+    /**
+     * Clear field error message
+     */
+    clearFieldError(fieldName) {
+        const errorDiv = document.getElementById(`investment-${fieldName}-error`);
+        if (errorDiv) {
+            errorDiv.classList.add('hidden');
+        }
+    },
+
+    /**
+     * Clear all field errors
+     */
+    clearAllFieldErrors() {
+        ['name', 'quantity', 'price', 'amount', 'tenure', 'interest-rate', 'end-date'].forEach(field => {
+            this.clearFieldError(field);
+        });
+    },
+
+    /**
+     * Validate a single field
+     */
+    validateField(fieldName) {
+        const type = document.getElementById('investment-type')?.value;
+        if (!type) return true;
+
+        let isValid = true;
+
+        if (fieldName === 'quantity') {
+            const value = parseFloat(document.getElementById('investment-quantity')?.value);
+            if (!value || value <= 0) {
+                this.showFieldError('quantity', 'Please enter a valid quantity greater than 0');
+                isValid = false;
+            }
+        } else if (fieldName === 'price') {
+            const value = parseFloat(document.getElementById('investment-price')?.value);
+            if (!value || value <= 0) {
+                const label = type === 'GOLD' ? 'price per gram' : 'price';
+                this.showFieldError('price', `Please enter a valid ${label} greater than 0`);
+                isValid = false;
+            }
+        } else if (fieldName === 'amount') {
+            const value = parseFloat(document.getElementById('investment-amount')?.value);
+            if (!value || value <= 0) {
+                this.showFieldError('amount', 'Please enter a valid amount greater than 0');
+                isValid = false;
+            }
+        } else if (fieldName === 'tenure') {
+            const value = parseInt(document.getElementById('investment-tenure')?.value);
+            if (!value || value <= 0) {
+                this.showFieldError('tenure', 'Please enter a valid tenure in months');
+                isValid = false;
+            }
+        } else if (fieldName === 'interest-rate') {
+            const value = parseFloat(document.getElementById('investment-interest-rate')?.value);
+            if (value === null || value === undefined || value < 0) {
+                this.showFieldError('interest-rate', 'Please enter a valid interest rate');
+                isValid = false;
+            }
+        } else if (fieldName === 'end-date') {
+            const value = document.getElementById('investment-end-date')?.value;
+            if (!value) {
+                this.showFieldError('end-date', 'Please select an end date');
+                isValid = false;
+            }
+        }
+
+        return isValid;
+    },
+
+    /**
      * Validate name for duplicates (for FD and EPF)
      */
     validateNameDuplicate() {
@@ -1054,6 +1206,9 @@ const Investments = {
      * Save investment
      */
     saveInvestment() {
+        // Clear all previous errors
+        this.clearAllFieldErrors();
+
         const type = document.getElementById('investment-type').value;
         if (!type) {
             Toast.error('Please select an investment type');
@@ -1062,7 +1217,7 @@ const Investments = {
 
         const name = document.getElementById('investment-name')?.value.trim();
         if (!name) {
-            Toast.error('Please enter investment name');
+            this.showFieldError('name', 'Please enter investment name');
             return;
         }
 
@@ -1084,14 +1239,16 @@ const Investments = {
             const price = parseFloat(document.getElementById('investment-price').value);
             const currency = document.getElementById('investment-currency').value;
 
+            let hasError = false;
             if (!quantity || quantity <= 0) {
-                Toast.error('Please enter a valid quantity');
-                return;
+                this.showFieldError('quantity', 'Please enter a valid quantity greater than 0');
+                hasError = true;
             }
             if (!price || price <= 0) {
-                Toast.error('Please enter a valid price');
-                return;
+                this.showFieldError('price', 'Please enter a valid price greater than 0');
+                hasError = true;
             }
+            if (hasError) return;
 
             investmentData.quantity = quantity;
             investmentData.price = price;
@@ -1100,14 +1257,16 @@ const Investments = {
             const quantity = parseFloat(document.getElementById('investment-quantity').value);
             const price = parseFloat(document.getElementById('investment-price').value);
 
+            let hasError = false;
             if (!quantity || quantity <= 0) {
-                Toast.error('Please enter a valid quantity');
-                return;
+                this.showFieldError('quantity', 'Please enter a valid quantity greater than 0');
+                hasError = true;
             }
             if (!price || price <= 0) {
-                Toast.error('Please enter a valid price per gram');
-                return;
+                this.showFieldError('price', 'Please enter a valid price per gram greater than 0');
+                hasError = true;
             }
+            if (hasError) return;
 
             investmentData.quantity = quantity;
             investmentData.price = price;
@@ -1115,7 +1274,7 @@ const Investments = {
             const amount = parseFloat(document.getElementById('investment-amount').value);
 
             if (!amount || amount <= 0) {
-                Toast.error('Please enter a valid amount');
+                this.showFieldError('amount', 'Please enter a valid amount greater than 0');
                 return;
             }
 
@@ -1126,22 +1285,24 @@ const Investments = {
             const interestRate = parseFloat(document.getElementById('investment-interest-rate').value);
             const endDate = document.getElementById('investment-end-date').value;
 
+            let hasError = false;
             if (!amount || amount <= 0) {
-                Toast.error('Please enter a valid amount');
-                return;
+                this.showFieldError('amount', 'Please enter a valid amount greater than 0');
+                hasError = true;
             }
             if (!tenure || tenure <= 0) {
-                Toast.error('Please enter a valid tenure');
-                return;
-        }
-            if (!interestRate || interestRate < 0) {
-                Toast.error('Please enter a valid interest rate');
-                return;
+                this.showFieldError('tenure', 'Please enter a valid tenure in months');
+                hasError = true;
+            }
+            if (interestRate === null || interestRate === undefined || interestRate < 0) {
+                this.showFieldError('interest-rate', 'Please enter a valid interest rate');
+                hasError = true;
             }
             if (!endDate) {
-                Toast.error('Please select an end date');
-            return;
-        }
+                this.showFieldError('end-date', 'Please select an end date');
+                hasError = true;
+            }
+            if (hasError) return;
         
             investmentData.amount = amount;
             investmentData.tenure = tenure;
