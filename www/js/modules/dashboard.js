@@ -1224,6 +1224,8 @@ const Dashboard = {
         const netPay = this.getMonthNetPay(filterMonth);
         
         const balance = netPay - expenses - investments;
+        const expensesPercent = netPay > 0 ? ((expenses / netPay) * 100).toFixed(1) : 0;
+        const investmentsPercent = netPay > 0 ? ((investments / netPay) * 100).toFixed(1) : 0;
         const balancePercent = netPay > 0 ? ((balance / netPay) * 100).toFixed(1) : 0;
         
         return `
@@ -1244,9 +1246,10 @@ const Dashboard = {
                     <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
                         <div class="text-xs opacity-90 leading-tight">Expenses</div>
                         <div class="flex-1 flex items-center justify-center">
-                            <div class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(expenses))}</div>
+                            <div class="text-3xl font-bold">${expensesPercent}<span class="text-lg opacity-80">%</span></div>
                         </div>
-                        <div class="flex items-center justify-end">
+                        <div class="flex items-center justify-between">
+                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(expenses))}</div>
                             <button onclick="Dashboard.showTooltip(event, 'Total expenses for selected month from Expenses page')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
                         </div>
                     </div>
@@ -1254,16 +1257,17 @@ const Dashboard = {
                     <div class="bg-gradient-to-br from-yellow-500 to-orange-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
                         <div class="text-xs opacity-90 leading-tight">Investments</div>
                         <div class="flex-1 flex items-center justify-center">
-                            <div class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(investments))}</div>
+                            <div class="text-3xl font-bold">${investmentsPercent}<span class="text-lg opacity-80">%</span></div>
                         </div>
-                        <div class="flex items-center justify-end">
+                        <div class="flex items-center justify-between">
+                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(investments))}</div>
                             <button onclick="Dashboard.showTooltip(event, 'Total monthly investments added in selected month')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
                         </div>
                     </div>
                     
                     <div class="bg-gradient-to-br ${balance >= 0 ? 'from-teal-500 to-cyan-600' : 'from-gray-500 to-gray-600'} rounded-lg p-3 text-white shadow-lg relative flex flex-col">
                         <div class="text-xs opacity-90 leading-tight">Balance</div>
-                        <div class="flex-1 flex flex-col items-center justify-center">
+                        <div class="flex-1 flex items-center justify-center">
                             <div class="text-3xl font-bold">${balancePercent}<span class="text-lg opacity-80">%</span></div>
                         </div>
                         <div class="flex items-center justify-between">
