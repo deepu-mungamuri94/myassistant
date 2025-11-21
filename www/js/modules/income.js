@@ -857,9 +857,12 @@ const Income = {
                             <span class="text-gray-600">Base Tax</span>
                             <span class="font-semibold">₹${Utils.formatIndianNumber(taxInfo.baseTax)}</span>
                         </div>
-                        <div class="flex justify-between py-2 border-b">
-                            <span class="text-gray-600">Surcharge (${taxInfo.surchargeRate}%) <button onclick="Income.manageSurchargeSlabs()" class="text-xs text-blue-600 hover:text-blue-800" title="Manage Slabs">⚙️</button></span>
-                            <span class="font-semibold">₹${Utils.formatIndianNumber(taxInfo.surcharge)}</span>
+                        <div class="flex justify-between items-center py-2 border-b">
+                            <span class="text-gray-600">Surcharge (${taxInfo.surchargeRate}%)</span>
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold">₹${Utils.formatIndianNumber(taxInfo.surcharge)}</span>
+                                <button onclick="Income.manageSurchargeSlabs()" class="text-xs text-blue-600 hover:text-blue-800" title="Manage Slabs">⚙️</button>
+                            </div>
                         </div>
                         <div class="flex justify-between items-center py-2 border-b">
                             <span class="text-gray-600">Cess (${taxInfo.cessPercent}%)</span>
