@@ -185,13 +185,17 @@ const Investments = {
                 
                 const isExpanded = this.expandedTypes.has(`${this.currentPortfolioTab}-${type}`);
                 const typeLabel = type === 'FD' ? 'Fixed Deposit' : type === 'EPF' ? 'EPF' : type === 'GOLD' ? 'Gold' : 'Shares';
+                const typeIcon = type === 'SHARES' ? '📈' : type === 'GOLD' ? '🪙' : type === 'EPF' ? '💼' : '🏦';
 
                 html += `
                     <div class="mb-3 border border-gray-200 rounded-lg overflow-hidden">
                         <div class="bg-gray-100 p-3 flex justify-between items-center cursor-pointer hover:bg-gray-150" 
                              onclick="Investments.toggleTypeGroup('${this.currentPortfolioTab}', '${type}')">
                             <div class="flex items-center gap-2">
-                                <span class="text-lg">${isExpanded ? '📂' : '📁'}</span>
+                                <svg class="w-4 h-4 transition-transform duration-200 text-gray-600 ${isExpanded ? '' : '-rotate-90'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                                <span class="text-lg">${typeIcon}</span>
                                 <span class="font-semibold text-gray-800">${typeLabel}</span>
                                 <span class="text-xs text-gray-600">(${grouped[type].length})</span>
                             </div>
@@ -245,11 +249,11 @@ const Investments = {
             line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Interest:</span> ${inv.interestRate}%</span>`;
             line3 += `<span class="text-gray-600 text-xs"><span class="font-bold">End:</span> ${Utils.formatLocalDate(new Date(inv.endDate))}</span>`;
         } else if (inv.type === 'EPF') {
-            line2 = `<span class="text-gray-600 text-xs"></span>`;
+            line2 = inv.description ? `<span class="text-gray-600 text-xs">${inv.description}</span>` : '';
             line3 = `<span class="text-gray-600 text-xs"></span>`;
         }
 
-        line4 = inv.description ? `<p class="text-gray-600 text-xs mt-1">${inv.description}</p>` : '';
+        line4 = (inv.type === 'EPF' ? '' : (inv.description ? `<p class="text-gray-600 text-xs mt-1">${inv.description}</p>` : ''));
 
         // Edit button HTML - hide for FD, show for others
         const editButton = inv.type === 'FD' ? '' : `
@@ -420,13 +424,16 @@ const Investments = {
             line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Price:</span> ₹${Utils.formatIndianNumber(inv.price)}/gm</span>`;
             line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Qty:</span> ${inv.quantity}gm</span>`;
             line3 += `<span class="text-gray-600 text-xs">${Utils.formatLocalDate(new Date(inv.date))}</span>`;
-        } else if (inv.type === 'FD' || inv.type === 'EPF') {
+        } else if (inv.type === 'FD') {
             line2 = `<span class="text-gray-600 text-xs"></span>`;
             line3 = `<span class="text-gray-600 text-xs"></span>`;
             line3 += `<span class="text-gray-600 text-xs">${Utils.formatLocalDate(new Date(inv.date))}</span>`;
+        } else if (inv.type === 'EPF') {
+            line2 = inv.description ? `<span class="text-gray-600 text-xs">${inv.description}</span>` : '';
+            line3 = `<span class="text-gray-600 text-xs">${Utils.formatLocalDate(new Date(inv.date))}</span>`;
         }
 
-        const line4 = inv.description ? `<p class="text-gray-600 text-xs mt-1">${inv.description}</p>` : '';
+        const line4 = (inv.type === 'EPF' ? '' : (inv.description ? `<p class="text-gray-600 text-xs mt-1">${inv.description}</p>` : ''));
 
         // Edit button HTML - hide for FD, show for others
         const editButton = inv.type === 'FD' ? '' : `
@@ -663,7 +670,10 @@ const Investments = {
         document.getElementById('investment-save-btn').classList.add('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
         document.getElementById('investment-save-btn').classList.remove('bg-gradient-to-r', 'from-green-600', 'to-emerald-600', 'text-white', 'hover:shadow-lg', 'transform', 'hover:scale-105');
         
-        // Set default goal to Long Term
+        // Set default goal to Long Term and enable both radio buttons
+        document.querySelectorAll('input[name="investment-goal"]').forEach(radio => {
+            radio.disabled = false;
+        });
         document.querySelector('input[name="investment-goal"][value="LONG_TERM"]').checked = true;
         
         document.getElementById('investment-modal').classList.remove('hidden');
