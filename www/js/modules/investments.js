@@ -1838,10 +1838,12 @@ const Investments = {
         const typeBadge = `<span class="${typeBadgeClass[investment.type] || 'badge-type-shares'}">${investment.type}</span>`;
         
         if (investment.type === 'SHARES') {
-            const sharePrice = this.getLatestSharePrice(investment.name);
-            const price = sharePrice ? sharePrice.price : investment.price;
-            const currency = sharePrice ? sharePrice.currency : (investment.currency || 'INR');
-            amount = this.calculatePortfolioAmount(investment);
+            // For monthly investments, use their own price; for portfolio, use latest share price
+            const price = isMonthly ? investment.price : (this.getLatestSharePrice(investment.name)?.price || investment.price);
+            const currency = isMonthly ? (investment.currency || 'INR') : (this.getLatestSharePrice(investment.name)?.currency || investment.currency || 'INR');
+            
+            // Use correct calculation method based on investment type
+            amount = isMonthly ? this.calculateMonthlyAmount(investment) : this.calculatePortfolioAmount(investment);
             
             detailsHTML = `
                 <div class="text-left space-y-2 bg-gray-50 p-4 rounded-lg">
@@ -1856,12 +1858,14 @@ const Investments = {
                         <div><span class="font-semibold text-gray-700">Quantity:</span> <span class="text-gray-600">${investment.quantity}</span></div>
                         <div><span class="font-semibold text-gray-700">Price:</span> <span class="text-gray-600">${currency === 'USD' ? '$' : '₹'}${Utils.formatIndianNumber(price)}</span></div>
                         ${currency === 'USD' ? `<div class="col-span-2"><span class="font-semibold text-gray-700">USD Value:</span> <span class="text-gray-600">$${Utils.formatIndianNumber(investment.quantity * price)}</span></div>` : ''}
+                        ${isMonthly && investment.date ? `<div class="col-span-2"><span class="font-semibold text-gray-700">Date:</span> <span class="text-gray-600">${Utils.formatLocalDate(new Date(investment.date))}</span></div>` : ''}
                     </div>
                     ${investment.description ? `<div class="text-sm text-gray-600 pt-2 border-t border-gray-200">${investment.description}</div>` : ''}
                 </div>
             `;
         } else if (investment.type === 'GOLD') {
-            amount = this.calculatePortfolioAmount(investment);
+            // Use correct calculation method based on investment type
+            amount = isMonthly ? this.calculateMonthlyAmount(investment) : this.calculatePortfolioAmount(investment);
             
             detailsHTML = `
                 <div class="text-left space-y-2 bg-gray-50 p-4 rounded-lg">
@@ -1875,6 +1879,7 @@ const Investments = {
                     <div class="grid grid-cols-2 gap-2 text-sm">
                         <div><span class="font-semibold text-gray-700">Quantity:</span> <span class="text-gray-600">${investment.quantity}g</span></div>
                         <div><span class="font-semibold text-gray-700">Price/gram:</span> <span class="text-gray-600">₹${Utils.formatIndianNumber(investment.price)}</span></div>
+                        ${isMonthly && investment.date ? `<div class="col-span-2"><span class="font-semibold text-gray-700">Date:</span> <span class="text-gray-600">${Utils.formatLocalDate(new Date(investment.date))}</span></div>` : ''}
                     </div>
                     ${investment.description ? `<div class="text-sm text-gray-600 pt-2 border-t border-gray-200">${investment.description}</div>` : ''}
                 </div>
@@ -1895,6 +1900,7 @@ const Investments = {
                         <div><span class="font-semibold text-gray-700">Tenure:</span> <span class="text-gray-600">${investment.tenure} months</span></div>
                         <div><span class="font-semibold text-gray-700">Interest:</span> <span class="text-gray-600">${investment.interestRate}%</span></div>
                         <div class="col-span-2"><span class="font-semibold text-gray-700">End Date:</span> <span class="text-gray-600">${Utils.formatLocalDate(new Date(investment.endDate))}</span></div>
+                        ${isMonthly && investment.date ? `<div class="col-span-2"><span class="font-semibold text-gray-700">Date Added:</span> <span class="text-gray-600">${Utils.formatLocalDate(new Date(investment.date))}</span></div>` : ''}
                     </div>
                     ${investment.description ? `<div class="text-sm text-gray-600 pt-2 border-t border-gray-200">${investment.description}</div>` : ''}
                 </div>
@@ -1911,14 +1917,10 @@ const Investments = {
                         </div>
                         <span class="font-bold text-yellow-700 text-lg">₹${Utils.formatIndianNumber(Math.round(amount))}</span>
                     </div>
-                    ${investment.description ? `<div class="text-sm text-gray-600 pt-2">${investment.description}</div>` : ''}
+                    ${isMonthly && investment.date ? `<div class="text-sm pt-2 border-t border-gray-200"><span class="font-semibold text-gray-700">Date:</span> <span class="text-gray-600">${Utils.formatLocalDate(new Date(investment.date))}</span></div>` : ''}
+                    ${investment.description ? `<div class="text-sm text-gray-600 pt-2 ${isMonthly && investment.date ? '' : 'border-t border-gray-200'}">${investment.description}</div>` : ''}
                 </div>
             `;
-        }
-        
-        // Add date for monthly investments
-        if (isMonthly && investment.date) {
-            detailsHTML = detailsHTML.replace('</div>', `<div class="text-sm pt-2 border-t border-gray-200"><span class="font-semibold text-gray-700">Date:</span> <span class="text-gray-600">${Utils.formatLocalDate(new Date(investment.date))}</span></div></div>`);
         }
         
         // Warning message based on investment type
