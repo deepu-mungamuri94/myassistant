@@ -7,18 +7,16 @@ const DB = {
     credentials: [],
     cards: [],
     expenses: [],
-    investments: [], // Existing investments (cumulative portfolio)
-    monthlyInvestments: [], // Monthly investment tracking
+    portfolioInvestments: [], // Portfolio investments (id, name, type, goal, quantity, price, currency, amount, tenure, endDate, interestRate, description)
+    monthlyInvestments: [], // Monthly investment tracking (id, name, type, goal, quantity, price, currency, amount, date, description)
+    sharePrices: [], // Share price tracking (name, price, currency, active, lastUpdated)
     recurringExpenses: [], // Custom recurring expenses (LIC, insurance, etc.)
     loans: [], // Loan tracking
     income: null, // Income and payslip data
     dismissedRecurringExpenses: [], // Track dismissed auto-recurring expenses
     chatHistory: [],
-    exchangeRate: {
-        rate: 83, // Default USD to INR rate
-        lastUpdated: null
-    },
-    goldRatePerGram: null, // Gold rate in INR per gram
+    exchangeRate: 83, // Default USD to INR rate
+    goldRatePerGram: 7000, // Gold rate in INR per gram (default)
 
     settings: {
         aiProvider: 'gemini',

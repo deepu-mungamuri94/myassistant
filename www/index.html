@@ -624,7 +624,32 @@
         
         <!-- INVESTMENTS VIEW -->
         <div id="investments-view" class="hidden">
-            <!-- Content removed - only header visible -->
+            <div class="p-5 pb-32">
+                <!-- Floating + Button (Top Right) -->
+                <button onclick="Investments.openInvestmentModal()" class="fixed right-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Investment">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+                
+                <!-- Portfolio Section -->
+                <div id="investments-portfolio-section" class="mb-6">
+                    <!-- Will be rendered by Investments.render() -->
+                </div>
+                
+                <!-- Monthly Investments Section -->
+                <div id="investments-monthly-section">
+                    <!-- Will be rendered by Investments.render() -->
+                </div>
+            </div>
+            
+            <!-- Fixed Bottom Bar (Search & Date Filter) -->
+            <div class="fixed bottom-0 left-0 right-0 border-t border-gray-300 p-3 flex gap-2" style="z-index: 9999; background-color: #F5FEFD;">
+                <input type="text" id="investments-search" placeholder="🔍 Search investments..." class="flex-1 p-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white" oninput="Investments.handleSearch(this.value)">
+                <button onclick="Investments.openDateFilterModal()" class="px-4 py-3 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-all text-sm font-semibold whitespace-nowrap">
+                    📅 Filter
+                </button>
+            </div>
         </div>
         
         <!-- CREDENTIALS VIEW -->
@@ -797,102 +822,51 @@
     </div>
     
     <!-- INVESTMENT ADD/EDIT MODAL -->
-    <div id="investment-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeInvestmentModal()">
+    <div id="investment-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Investments.closeInvestmentModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <h2 id="investment-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">Add Investment</h2>
+            <h2 id="investment-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Add Investment</h2>
             
-            <input type="hidden" id="investment-modal-id">
+            <input type="hidden" id="investment-id">
+            <input type="hidden" id="investment-is-monthly">
+            <input type="hidden" id="investment-editing">
             
-            <!-- Investment Mode Selection -->
-            <div class="mb-4">
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Add to</label>
-                <div class="flex gap-4 items-center">
+            <!-- Goal Selection (Short Term & Long Term) -->
+            <div id="goal-field" class="mb-4">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Goal</label>
+                <div class="flex gap-4">
                     <label class="flex items-center cursor-pointer">
-                        <input type="radio" name="investment-mode" value="current" id="investment-mode-current" checked class="w-4 h-4 text-yellow-600 border-gray-300 focus:ring-yellow-500" onchange="toggleInvestmentMode()">
-                        <span class="ml-2 text-sm font-medium text-gray-700">Month</span>
-                        <button type="button" onclick="showInvestmentModeTooltip(event, 'month')" class="ml-1 w-4 h-4 rounded-full bg-yellow-100 hover:bg-yellow-200 flex items-center justify-center text-yellow-700 text-xs font-bold">i</button>
+                        <input type="radio" name="investment-goal" value="SHORT_TERM" class="w-4 h-4 text-green-600 focus:ring-green-500">
+                        <span class="ml-2 text-sm font-medium text-gray-700">Short Term</span>
                     </label>
                     <label class="flex items-center cursor-pointer">
-                        <input type="radio" name="investment-mode" value="existing" id="investment-mode-existing" class="w-4 h-4 text-yellow-600 border-gray-300 focus:ring-yellow-500" onchange="toggleInvestmentMode()">
-                        <span class="ml-2 text-sm font-medium text-gray-700">Portfolio</span>
-                        <button type="button" onclick="showInvestmentModeTooltip(event, 'portfolio')" class="ml-1 w-4 h-4 rounded-full bg-yellow-100 hover:bg-yellow-200 flex items-center justify-center text-yellow-700 text-xs font-bold">i</button>
+                        <input type="radio" name="investment-goal" value="LONG_TERM" checked class="w-4 h-4 text-green-600 focus:ring-green-500">
+                        <span class="ml-2 text-sm font-medium text-gray-700">Long Term</span>
                     </label>
                 </div>
             </div>
             
-            <!-- Date field for Current investments -->
-            <div id="investment-date-field" class="mb-3">
-                <label class="block text-sm font-semibold text-gray-700 mb-1">Investment Date</label>
-                <input type="date" id="investment-modal-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+            <!-- Type Selection -->
+            <div class="mb-3">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Type</label>
+                <select id="investment-type" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" onchange="Investments.handleTypeChange()">
+                    <option value="">Select Type</option>
+                    <option value="SHARES">Shares</option>
+                    <option value="GOLD">Gold</option>
+                    <option value="EPF">EPF</option>
+                    <option value="FD">Fixed Deposit</option>
+                </select>
             </div>
             
-            <div class="mb-3 relative">
-                <input type="text" id="investment-modal-name" list="investment-names-list" placeholder="Name (e.g., HDFC Bank, Apple Inc)" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" autocomplete="off">
-                <datalist id="investment-names-list">
-                    <!-- Will be populated dynamically -->
-                </datalist>
+            <!-- Dynamic Fields Container -->
+            <div id="investment-dynamic-fields">
+                <!-- Fields will be dynamically added here based on type -->
             </div>
             
-            <select id="investment-modal-type" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" onchange="toggleInvestmentFields()">
-                <option value="stock">Stocks / Shares</option>
-                <option value="mutual_fund">Mutual Fund</option>
-                <option value="fd">Fixed Deposit</option>
-                <option value="epf">EPF (Provident Fund)</option>
-                <option value="gold">Gold</option>
-                <option value="other">Other</option>
-            </select>
-            
-            <!-- Other Type Field -->
-            <div id="other-type-field" class="hidden mb-3">
-                <input type="text" id="investment-modal-other-type" placeholder="Specify type (e.g., Bonds, PPF)" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
-            </div>
-            
-            <select id="investment-modal-term" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                <option value="">Select Term</option>
-                <option value="long">Long Term (>3 years)</option>
-                <option value="short">Short Term (<3 years)</option>
-            </select>
-            
-            <!-- Stock/Mutual Fund fields -->
-            <div id="stock-fields" class="mb-3">
-                <label class="block text-sm font-semibold text-gray-700 mb-2" id="stock-price-label">Price per Share</label>
-                <div class="flex gap-2">
-                    <input type="number" id="investment-modal-stock-price" placeholder="Price" step="0.01" class="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" oninput="calculateStockAmount()">
-                    <select id="investment-modal-currency" class="w-24 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" onchange="calculateStockAmount()">
-                        <option value="INR">₹ INR</option>
-                        <option value="USD">$ USD</option>
-                    </select>
-                </div>
-                <input type="number" id="investment-modal-quantity" placeholder="Quantity" step="0.01" class="w-full p-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" oninput="calculateStockAmount()">
-                <p id="calculated-amount" class="text-sm text-gray-600 mt-1"></p>
-            </div>
-            
-            <!-- Gold-specific fields -->
-            <div id="gold-fields" class="hidden mb-3">
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Price per Gram</label>
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
-                    <input type="number" id="investment-modal-gold-price" placeholder="Price per gram" step="0.01" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" oninput="calculateGoldAmount()">
-                </div>
-                <input type="number" id="investment-modal-gold-grams" placeholder="Grams" step="0.01" class="w-full p-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" oninput="calculateGoldAmount()">
-                <p id="calculated-gold-amount" class="text-sm text-gray-600 mt-1"></p>
-            </div>
-            
-            <!-- Non-stock amount field -->
-            <div id="amount-field" class="mb-3">
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
-                    <input type="number" id="investment-modal-amount" placeholder="10000" step="0.01" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                </div>
-            </div>
-            
-            <textarea id="investment-modal-notes" placeholder="Notes (optional)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" rows="2"></textarea>
-            
-            <div class="flex space-x-3">
-                <button onclick="saveInvestmentModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
-                    Save
+            <div class="flex space-x-3 mt-4">
+                <button id="investment-save-btn" onclick="Investments.saveInvestment()" disabled class="flex-1 px-4 py-2 bg-gray-300 text-gray-500 rounded-lg font-semibold cursor-not-allowed">
+                    Update
                 </button>
-                <button onclick="closeInvestmentModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                <button onclick="Investments.closeInvestmentModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
                     Cancel
                 </button>
             </div>
@@ -900,55 +874,55 @@
     </div>
     
     <!-- INVESTMENT DATE FILTER MODAL -->
-    <div id="investment-date-filter-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeInvestmentDateFilterModal()">
+    <div id="investment-date-filter-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Investments.closeDateFilterModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
-            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">Filter Monthly Investments</h2>
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Filter Monthly Investments</h2>
             
             <!-- Filter Options -->
             <div class="space-y-3 mb-4">
                 <label class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
-                    <input type="radio" name="investment-date-filter" value="current" checked class="w-4 h-4 text-yellow-600" onchange="toggleCustomDateFields()">
-                    <span class="ml-3 text-sm font-medium text-gray-700">Current Month</span>
+                    <input type="radio" name="investment-date-filter" value="thisMonth" checked class="w-4 h-4 text-green-600" onchange="Investments.toggleCustomDateFields()">
+                    <span class="ml-3 text-sm font-medium text-gray-700">This Month</span>
                 </label>
                 
                 <label class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
-                    <input type="radio" name="investment-date-filter" value="6months" class="w-4 h-4 text-yellow-600" onchange="toggleCustomDateFields()">
+                    <input type="radio" name="investment-date-filter" value="last6Months" class="w-4 h-4 text-green-600" onchange="Investments.toggleCustomDateFields()">
                     <span class="ml-3 text-sm font-medium text-gray-700">Last 6 Months</span>
                 </label>
                 
                 <label class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
-                    <input type="radio" name="investment-date-filter" value="year" class="w-4 h-4 text-yellow-600" onchange="toggleCustomDateFields()">
+                    <input type="radio" name="investment-date-filter" value="thisYear" class="w-4 h-4 text-green-600" onchange="Investments.toggleCustomDateFields()">
                     <span class="ml-3 text-sm font-medium text-gray-700">This Year</span>
                 </label>
                 
                 <label class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
-                    <input type="radio" name="investment-date-filter" value="all" class="w-4 h-4 text-yellow-600" onchange="toggleCustomDateFields()">
-                    <span class="ml-3 text-sm font-medium text-gray-700">All Time</span>
+                    <input type="radio" name="investment-date-filter" value="custom" class="w-4 h-4 text-green-600" onchange="Investments.toggleCustomDateFields()">
+                    <span class="ml-3 text-sm font-medium text-gray-700">Custom Range</span>
                 </label>
                 
                 <label class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
-                    <input type="radio" name="investment-date-filter" value="custom" class="w-4 h-4 text-yellow-600" onchange="toggleCustomDateFields()">
-                    <span class="ml-3 text-sm font-medium text-gray-700">Custom Range</span>
+                    <input type="radio" name="investment-date-filter" value="allTime" class="w-4 h-4 text-green-600" onchange="Investments.toggleCustomDateFields()">
+                    <span class="ml-3 text-sm font-medium text-gray-700">All Time</span>
                 </label>
             </div>
             
             <!-- Custom Date Range Fields -->
-            <div id="custom-date-fields" class="hidden space-y-3 mb-4 p-3 bg-gray-50 rounded-lg">
+            <div id="investment-custom-date-fields" class="hidden space-y-3 mb-4 p-3 bg-gray-50 rounded-lg">
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-1">From Date</label>
-                    <input type="date" id="investment-filter-start-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                    <input type="date" id="investment-filter-start-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-1">To Date</label>
-                    <input type="date" id="investment-filter-end-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                    <input type="date" id="investment-filter-end-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
                 </div>
             </div>
             
             <div class="flex space-x-3">
-                <button onclick="applyInvestmentDateFilter()" class="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                <button onclick="Investments.applyDateFilter()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
                     Apply Filter
                 </button>
-                <button onclick="closeInvestmentDateFilterModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                <button onclick="Investments.closeDateFilterModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
                     Cancel
                 </button>
             </div>
@@ -1564,26 +1538,25 @@
     </div>
     
     <!-- EXCHANGE RATE MODAL -->
-    <div id="exchange-rate-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeExchangeRateModal()">
+    <div id="exchange-rate-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Investments.closeExchangeRateModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
-            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">Exchange Rate</h2>
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Exchange Rate</h2>
             
             <div class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <p class="text-sm text-gray-600 mb-1">Current Rate</p>
                 <p id="current-rate-display" class="text-2xl font-bold text-gray-800">₹83.00</p>
-                <p class="text-xs text-gray-500 mt-1">Last updated: <span id="rate-last-updated">Never</span></p>
             </div>
             
             <label class="block text-sm font-semibold text-gray-700 mb-2">New USD to INR Rate</label>
-            <input type="number" id="exchange-rate-input" placeholder="Enter new rate (e.g., 83.50)" step="0.01" class="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+            <input type="number" id="exchange-rate-input" placeholder="Enter new rate (e.g., 83.50)" step="0.01" class="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
             
-            <p class="text-xs text-gray-600 mb-4">💡 This rate will be used to convert USD stock prices to INR</p>
+            <p class="text-xs text-gray-600 mb-4">💡 This rate will be used to convert USD share prices to INR and will automatically recalculate all USD portfolio values</p>
             
             <div class="flex space-x-3">
-                <button onclick="saveExchangeRate()" class="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                <button onclick="Investments.saveExchangeRate()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
                     Update
                 </button>
-                <button onclick="closeExchangeRateModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                <button onclick="Investments.closeExchangeRateModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
                     Cancel
                 </button>
             </div>
@@ -1591,9 +1564,9 @@
     </div>
     
     <!-- GOLD RATE MODAL -->
-    <div id="gold-rate-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) document.getElementById('gold-rate-modal').classList.add('hidden')">
+    <div id="gold-rate-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Investments.closeGoldRateModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
-            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">Gold Rate per Gram</h2>
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Gold Rate per Gram</h2>
             
             <div class="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                 <p class="text-sm text-yellow-800 mb-1">Current Rate</p>
@@ -1603,16 +1576,16 @@
             <label class="block text-sm font-semibold text-gray-700 mb-2">New Gold Rate (₹ per gram)</label>
             <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
-                <input type="number" id="gold-rate-input" placeholder="Enter rate per gram" step="0.01" class="w-full p-3 pl-8 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                <input type="number" id="gold-rate-input" placeholder="Enter rate per gram" step="0.01" class="w-full p-3 pl-8 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
             
-            <p class="text-xs text-gray-600 mb-4">🪙 This rate will be used to calculate all gold investment values</p>
+            <p class="text-xs text-gray-600 mb-4">🪙 This rate will be used to calculate all gold investment values and will automatically recalculate all Gold portfolio values</p>
             
             <div class="flex space-x-3">
-                <button onclick="Investments.setGoldRate()" class="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                <button onclick="Investments.saveGoldRate()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
                     Update
                 </button>
-                <button onclick="document.getElementById('gold-rate-modal').classList.add('hidden')" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                <button onclick="Investments.closeGoldRateModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
                     Cancel
                 </button>
             </div>
@@ -1703,38 +1676,29 @@
         </div>
     </div>
     
-    <!-- EDIT STOCK PRICE MODAL -->
-    <div id="edit-stock-price-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeEditStockPriceModal()">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
-            <h2 id="edit-stock-name-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">Edit Stock Price</h2>
+    <!-- SHARE PRICE MANAGEMENT MODAL -->
+    <div id="share-price-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Investments.closeSharePriceModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Manage Share Prices</h2>
             
-            <input type="hidden" id="edit-stock-id">
-            
-            <div class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <p class="text-sm text-gray-600 mb-1">Current Price</p>
-                <p id="current-stock-price-display" class="text-xl font-bold text-gray-800">-</p>
-            </div>
-            
-            <label class="block text-sm font-semibold text-gray-700 mb-2">New Stock Price</label>
-            <div class="flex gap-2 mb-3">
-                <input type="number" id="edit-stock-price-input" placeholder="Enter price" step="0.01" class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                <select id="edit-stock-currency-input" class="w-28 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                    <option value="INR">₹ INR</option>
-                    <option value="USD">$ USD</option>
-                </select>
-            </div>
-            
-            <label class="block text-sm font-semibold text-gray-700 mb-2">Quantity</label>
-            <input type="number" id="edit-stock-quantity-input" placeholder="Enter quantity" step="0.01" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
-            
-            <p class="text-xs text-gray-600 mb-4">💡 Manually entered prices will be stored until next live update</p>
-            
-            <div class="flex space-x-3">
-                <button onclick="saveEditStockPrice()" class="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
-                    Save
+            <!-- Global Reload Button -->
+            <div class="mb-4 flex justify-end">
+                <button id="global-reload-btn" onclick="Investments.reloadAllSharePrices()" class="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-semibold flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    Reload All Prices
                 </button>
-                <button onclick="closeEditStockPriceModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
-                    Cancel
+            </div>
+            
+            <!-- Share Prices List -->
+            <div id="share-prices-list" class="space-y-3">
+                <!-- Will be populated dynamically -->
+            </div>
+            
+            <div class="flex justify-end mt-4">
+                <button onclick="Investments.closeSharePriceModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Close
                 </button>
             </div>
         </div>
