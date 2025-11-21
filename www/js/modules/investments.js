@@ -358,10 +358,15 @@ const Investments = {
         html += '<div class="space-y-4">';
 
         if (this.dateFilter === 'thisMonth') {
-            // Show only current month, expanded
+            // Show only current month, expanded by default
             const now = new Date();
-            const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const currentMonthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
             const currentMonthData = grouped[now.getFullYear()]?.[now.getMonth() + 1] || [];
+            
+            // Ensure current month is expanded by default
+            if (!this.expandedMonths.has(currentMonthKey)) {
+                this.expandedMonths.add(currentMonthKey);
+            }
             
             html += this.renderMonthGroup(now.getFullYear(), now.getMonth() + 1, currentMonthData, exchangeRate, goldRate, true);
                 } else {
@@ -406,12 +411,12 @@ const Investments = {
     /**
      * Render a month group
      */
-    renderMonthGroup(year, month, investments, exchangeRate, goldRate, forceExpanded = false) {
+    renderMonthGroup(year, month, investments, exchangeRate, goldRate, showYear = true) {
         const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
                            'July', 'August', 'September', 'October', 'November', 'December'];
         const monthName = monthNames[month - 1];
         const monthKey = `${year}-${month}`;
-        const isExpanded = forceExpanded || this.expandedMonths.has(monthKey);
+        const isExpanded = this.expandedMonths.has(monthKey);
         const monthTotal = investments.reduce((sum, inv) => sum + this.calculateMonthlyAmount(inv, goldRate), 0);
 
         return `
@@ -422,7 +427,7 @@ const Investments = {
                         <svg class="w-4 h-4 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                         </svg>
-                        <span class="font-semibold text-gray-800">${monthName} ${year}</span>
+                        <span class="font-semibold text-gray-800">${monthName}${showYear ? ` ${year}` : ''}</span>
                         <span class="text-xs text-gray-600">(${investments.length})</span>
                     </div>
                     <span class="font-bold text-yellow-700">₹${Utils.formatIndianNumber(Math.round(monthTotal))}</span>
@@ -635,11 +640,20 @@ const Investments = {
     togglePortfolioBody() {
         this.portfolioBodyVisible = !this.portfolioBodyVisible;
         const body = document.getElementById('portfolio-body');
+        const header = body?.closest('.bg-white')?.querySelector('.bg-gradient-to-r');
+        const chevron = header?.querySelector('svg');
+        
         if (body) {
             if (this.portfolioBodyVisible) {
                 body.classList.remove('hidden');
+                header?.classList.remove('rounded-xl');
+                header?.classList.add('rounded-t-xl');
+                chevron?.classList.remove('-rotate-90');
             } else {
                 body.classList.add('hidden');
+                header?.classList.remove('rounded-t-xl');
+                header?.classList.add('rounded-xl');
+                chevron?.classList.add('-rotate-90');
             }
         }
     },
