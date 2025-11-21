@@ -117,10 +117,10 @@ const Investments = {
                 <div class="bg-gradient-to-r from-yellow-600 to-orange-600 text-white p-4 ${isBodyVisible ? 'rounded-t-xl' : 'rounded-xl'} cursor-pointer" onclick="Investments.togglePortfolioBody()">
                     <div class="flex justify-between items-center mb-3">
                         <div class="flex items-center gap-2">
-                            <h3 class="text-lg font-bold">Portfolio</h3>
-                            <svg class="w-5 h-5 transition-transform duration-200 ${isBodyVisible ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 transition-transform duration-200 ${isBodyVisible ? '' : '-rotate-90'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                             </svg>
+                            <h3 class="text-lg font-bold">Portfolio</h3>
                         </div>
                         <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(totalValue))}</p>
                     </div>
