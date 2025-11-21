@@ -6,6 +6,8 @@
 const Dashboard = {
     // Store selected month range
     selectedMonthRange: null,
+    // Store selected filter month for second line cards
+    selectedFilterMonth: null,
     
     /**
      * Render dashboard
@@ -45,7 +47,7 @@ const Dashboard = {
                     </div>
                     <div class="flex items-center justify-between">
                         <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(recurringExpenses)}</div>
-                        <button onclick="Dashboard.showTooltip(event, 'Recurring payments: Scheduled payments excluding monthly Loans/EMIs')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                        <button onclick="Dashboard.showTooltip(event, 'Recurring payments (Current Month): Scheduled payments excluding monthly Loans/EMIs')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
                     </div>
                 </div>
                 <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
@@ -55,7 +57,7 @@ const Dashboard = {
                     </div>
                     <div class="flex items-center justify-between">
                         <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(totalEmis)}</div>
-                        <button onclick="Dashboard.showTooltip(event, 'Loans / EMIs: Total monthly EMIs from active loans and credit cards')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                        <button onclick="Dashboard.showTooltip(event, 'Loans / EMIs (Current Month): Total monthly EMIs from active loans and credit cards')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
                     </div>
                 </div>
                 <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
@@ -65,10 +67,12 @@ const Dashboard = {
                     </div>
                     <div class="flex items-center justify-between">
                         <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(regularExpenses)}</div>
-                        <button onclick="Dashboard.showTooltip(event, 'Regular Expenses: All monthly expenses without Recurring payments and Monthly EMIs')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                        <button onclick="Dashboard.showTooltip(event, 'Regular Expenses (Current Month): All monthly expenses without Recurring payments and Monthly EMIs')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
                     </div>
                 </div>
             </div>
+            
+            ${this.renderMonthlyBreakdown()}
             
             <!-- Category Expenses Chart -->
             <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
@@ -1118,6 +1122,158 @@ const Dashboard = {
         
         // Re-render charts
         this.renderIncomeExpenseChart();
+    },
+    
+    /**
+     * Get current filter month value (YYYY-MM format)
+     */
+    getFilterMonthValue() {
+        if (this.selectedFilterMonth) {
+            return this.selectedFilterMonth;
+        }
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    },
+    
+    /**
+     * Get formatted month for display
+     */
+    getFormattedFilterMonth(value) {
+        if (!value) return 'Select Month';
+        const [year, month] = value.split('-');
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${monthNames[parseInt(month) - 1]} ${year}`;
+    },
+    
+    /**
+     * Update filter month button text
+     */
+    updateFilterMonthButton() {
+        const input = document.getElementById('filter-month-selector');
+        const button = document.getElementById('filter-month-button');
+        if (input && button) {
+            this.selectedFilterMonth = input.value;
+            button.textContent = this.getFormattedFilterMonth(input.value) + ' ▼';
+            this.render();
+        }
+    },
+    
+    /**
+     * Get total expenses for selected filter month
+     */
+    getMonthExpenses(monthValue) {
+        const [year, month] = monthValue.split('-').map(Number);
+        const expenses = window.DB.expenses || [];
+        
+        return expenses
+            .filter(exp => {
+                const expDate = new Date(exp.date);
+                return expDate.getFullYear() === year && (expDate.getMonth() + 1) === month;
+            })
+            .reduce((sum, exp) => sum + (exp.amount || 0), 0);
+    },
+    
+    /**
+     * Get total monthly investments for selected filter month
+     */
+    getMonthInvestments(monthValue) {
+        const [year, month] = monthValue.split('-').map(Number);
+        const monthlyInvestments = window.DB.monthlyInvestments || [];
+        const goldRate = window.DB.goldRatePerGram || 7000;
+        
+        return monthlyInvestments
+            .filter(inv => {
+                const invDate = new Date(inv.date);
+                return invDate.getFullYear() === year && (invDate.getMonth() + 1) === month;
+            })
+            .reduce((sum, inv) => {
+                if (inv.type === 'SHARES') {
+                    const exchangeRate = typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : 83;
+                    return sum + (inv.price * inv.quantity * (inv.currency === 'USD' ? exchangeRate : 1));
+                } else if (inv.type === 'GOLD') {
+                    return sum + (inv.price * inv.quantity);
+                } else if (inv.type === 'EPF' || inv.type === 'FD') {
+                    return sum + (inv.amount || 0);
+                }
+                return sum;
+            }, 0);
+    },
+    
+    /**
+     * Get net pay for selected filter month
+     */
+    getMonthNetPay(monthValue) {
+        const [year, month] = monthValue.split('-').map(Number);
+        const payslips = window.DB.payslips || [];
+        
+        const payslip = payslips.find(p => {
+            const pDate = new Date(p.date);
+            return pDate.getFullYear() === year && (pDate.getMonth() + 1) === month;
+        });
+        
+        return payslip ? (payslip.netPay || 0) : 0;
+    },
+    
+    /**
+     * Render monthly breakdown section (second line)
+     */
+    renderMonthlyBreakdown() {
+        const filterMonth = this.getFilterMonthValue();
+        const expenses = this.getMonthExpenses(filterMonth);
+        const investments = this.getMonthInvestments(filterMonth);
+        const netPay = this.getMonthNetPay(filterMonth);
+        
+        const balance = netPay - expenses - investments;
+        const balancePercent = netPay > 0 ? ((balance / netPay) * 100).toFixed(1) : 0;
+        
+        return `
+            <!-- Month Filter and Breakdown Cards -->
+            <div class="mb-4">
+                <!-- Month Selector -->
+                <div class="flex justify-center mb-3">
+                    <div class="relative">
+                        <input type="month" id="filter-month-selector" value="${filterMonth}" onchange="Dashboard.updateFilterMonthButton()" class="absolute opacity-0 pointer-events-none" />
+                        <button id="filter-month-button" onclick="document.getElementById('filter-month-selector').showPicker()" class="px-4 py-2 border-2 border-yellow-300 rounded-lg text-sm font-semibold text-yellow-700 hover:bg-yellow-50 transition-all whitespace-nowrap bg-white shadow-sm">
+                            ${this.getFormattedFilterMonth(filterMonth)} ▼
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Breakdown Cards -->
+                <div class="grid grid-cols-3 gap-3 max-w-full">
+                    <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                        <div class="text-xs opacity-90 leading-tight">Expenses</div>
+                        <div class="flex-1 flex items-center justify-center">
+                            <div class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(expenses))}</div>
+                        </div>
+                        <div class="flex items-center justify-end">
+                            <button onclick="Dashboard.showTooltip(event, 'Total expenses for selected month from Expenses page')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-br from-yellow-500 to-orange-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                        <div class="text-xs opacity-90 leading-tight">Investments</div>
+                        <div class="flex-1 flex items-center justify-center">
+                            <div class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(investments))}</div>
+                        </div>
+                        <div class="flex items-center justify-end">
+                            <button onclick="Dashboard.showTooltip(event, 'Total monthly investments added in selected month')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-br ${balance >= 0 ? 'from-teal-500 to-cyan-600' : 'from-gray-500 to-gray-600'} rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                        <div class="text-xs opacity-90 leading-tight">Balance</div>
+                        <div class="flex-1 flex flex-col items-center justify-center">
+                            <div class="text-3xl font-bold">${balancePercent}<span class="text-lg opacity-80">%</span></div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(balance))}</div>
+                            <button onclick="Dashboard.showTooltip(event, 'Balance: Net Pay - (Expenses + Investments) for selected month')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 };
 
