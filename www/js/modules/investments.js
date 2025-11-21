@@ -658,24 +658,26 @@ const Investments = {
         // Type-specific fields
         if (type === 'SHARES') {
             html += `
-                <div class="grid grid-cols-2 gap-2 mb-3">
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Quantity</label>
-                        <input type="number" id="investment-quantity" placeholder="Qty" step="1" min="0"
-                               class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                               oninput="Investments.calculateAmount()">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Price</label>
-                        <div class="flex gap-1">
-                            <select id="investment-currency" class="w-16 p-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                                    onchange="Investments.calculateAmount()">
-                                <option value="INR">₹</option>
-                                <option value="USD">$</option>
-                            </select>
-                            <input type="number" id="investment-price" placeholder="Price" step="0.01" min="0"
-                                   class="flex-1 p-2 border border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                <div class="mb-3">
+                    <div class="grid grid-cols-[35%_65%] gap-2">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Quantity</label>
+                            <input type="number" id="investment-quantity" placeholder="Qty" step="1" min="0"
+                                   class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                                    oninput="Investments.calculateAmount()">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Price</label>
+                            <div class="flex">
+                                <select id="investment-currency" class="w-14 p-2 border border-gray-300 rounded-l-lg border-r-0 focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-gray-50"
+                                        onchange="Investments.calculateAmount()">
+                                    <option value="INR">₹</option>
+                                    <option value="USD">$</option>
+                                </select>
+                                <input type="number" id="investment-price" placeholder="0.00" step="0.01" min="0"
+                                       class="flex-1 p-2 border border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                       oninput="Investments.calculateAmount()">
+                            </div>
                         </div>
                     </div>
                 </div>
