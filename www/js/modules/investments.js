@@ -39,6 +39,17 @@ const Investments = {
             window.DB.sharePrices = [];
         }
         window.Storage.save();
+
+        // Setup click listener to hide name suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            const suggestionsDiv = document.getElementById('investment-name-suggestions');
+            const nameInput = document.getElementById('investment-name');
+            if (suggestionsDiv && nameInput && 
+                !suggestionsDiv.contains(e.target) && 
+                e.target !== nameInput) {
+                this.hideNameSuggestions();
+            }
+        });
     },
 
     /**
@@ -188,7 +199,7 @@ const Investments = {
                         ` : ''}
                     </div>
                 `;
-            }
+        }
         });
 
         return html || `<div class="text-center py-8 text-gray-500">No investments in this category</div>`;
@@ -290,12 +301,12 @@ const Investments = {
 
         // Apply date filter
         filtered = this.applyDateFilterToInvestments(filtered);
-
+        
         if (filtered.length === 0) {
             container.innerHTML = `<div class="text-center py-12 text-gray-500">No monthly investments found</div>`;
             return;
         }
-
+        
         // Group by year and month
         const grouped = this.groupByYearMonth(filtered);
 
@@ -308,7 +319,7 @@ const Investments = {
             const currentMonthData = grouped[now.getFullYear()]?.[now.getMonth() + 1] || [];
             
             html += this.renderMonthGroup(now.getFullYear(), now.getMonth() + 1, currentMonthData, exchangeRate, goldRate, true);
-        } else {
+                } else {
             // Show all years and months
             const years = Object.keys(grouped).sort((a, b) => b - a);
             years.forEach(year => {
@@ -337,8 +348,8 @@ const Investments = {
                     </div>
                 `;
             });
-        }
-
+            }
+            
         html += '</div>';
         container.innerHTML = html;
     },
@@ -462,7 +473,7 @@ const Investments = {
             const date = new Date(inv.date);
             const year = date.getFullYear();
             const month = date.getMonth() + 1;
-            
+                        
             if (!grouped[year]) {
                 grouped[year] = {};
             }
@@ -648,6 +659,7 @@ const Investments = {
      */
     closeInvestmentModal() {
         document.getElementById('investment-modal').classList.add('hidden');
+        this.hideNameSuggestions();
         this.editingInvestment = null;
     },
 
@@ -666,7 +678,7 @@ const Investments = {
             saveBtn.classList.remove('bg-gradient-to-r', 'from-green-600', 'to-emerald-600', 'text-white', 'hover:shadow-lg', 'transform', 'hover:scale-105');
             return;
         }
-
+        
         // Enable save button
         saveBtn.disabled = false;
         saveBtn.classList.remove('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
@@ -679,15 +691,17 @@ const Investments = {
 
         // Name field (with autocomplete)
         html += `
-            <div class="mb-3">
+            <div class="mb-3 relative">
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Name</label>
-                <input type="text" id="investment-name" list="investment-name-suggestions" placeholder="Enter name" maxlength="32"
+                <input type="text" id="investment-name" placeholder="Enter name" maxlength="32"
                        class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                       oninput="Investments.updateNameSuggestions()">
-                <datalist id="investment-name-suggestions"></datalist>
+                       oninput="Investments.showNameSuggestions(this.value)"
+                       onfocus="Investments.showNameSuggestions(this.value)"
+                       autocomplete="off">
+                <div id="investment-name-suggestions" class="hidden absolute w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto z-50 mt-1"></div>
             </div>
         `;
-
+        
         // Type-specific fields
         if (type === 'SHARES') {
             html += `
@@ -698,7 +712,7 @@ const Investments = {
                             <input type="number" id="investment-quantity" placeholder="Qty" step="1" min="0"
                                    class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                                    oninput="Investments.calculateAmount()">
-                        </div>
+                    </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Price</label>
                             <div class="flex">
@@ -710,8 +724,8 @@ const Investments = {
                                 <input type="number" id="investment-price" placeholder="0.00" step="0.01" min="0"
                                        class="flex-1 p-2 border border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                                        oninput="Investments.calculateAmount()">
-                            </div>
-                        </div>
+                    </div>
+                </div>
                     </div>
                 </div>
             `;
@@ -723,7 +737,7 @@ const Investments = {
                         <input type="number" id="investment-quantity" placeholder="Grams" step="0.01" min="0"
                                class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                                oninput="Investments.calculateAmount()">
-                    </div>
+                </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Price/gram</label>
                         <div class="relative">
@@ -731,9 +745,9 @@ const Investments = {
                             <input type="number" id="investment-price" placeholder="Per gram" step="0.01" min="0" value="${goldRate}"
                                    class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                                    oninput="Investments.calculateAmount()">
+            </div>
                         </div>
-                    </div>
-                </div>
+                                            </div>
             `;
         } else if (type === 'EPF') {
             html += `
@@ -743,8 +757,8 @@ const Investments = {
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
                         <input type="number" id="investment-amount" placeholder="Amount" step="0.01" min="0"
                                class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                    </div>
-                </div>
+                                            </div>
+                                </div>
             `;
         } else if (type === 'FD') {
             html += `
@@ -754,20 +768,20 @@ const Investments = {
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
                         <input type="number" id="investment-amount" placeholder="Amount" step="0.01" min="0"
                                class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                    </div>
-                </div>
+                            </div>
+                                </div>
                 <div class="grid grid-cols-2 gap-2 mb-3">
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Tenure (months)</label>
                         <input type="number" id="investment-tenure" placeholder="Months" step="1" min="1"
                                class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                    </div>
-                    <div>
+                                </div>
+                            <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Interest Rate (%)</label>
                         <input type="number" id="investment-interest-rate" placeholder="Rate" step="0.01" min="0"
                                class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                            </div>
                     </div>
-                </div>
                 <div class="mb-3">
                     <label class="block text-sm font-semibold text-gray-700 mb-1">End Date</label>
                     <input type="date" id="investment-end-date"
@@ -828,21 +842,67 @@ const Investments = {
         // If editing, populate fields
         if (isEditing && this.editingInvestment) {
             this.populateEditFields(this.editingInvestment);
-        }
+                    }
     },
 
     /**
-     * Update name suggestions based on selected type
+     * Show name suggestions based on selected type and input
      */
-    updateNameSuggestions() {
-        const type = document.getElementById('investment-type').value;
-        if (!type) return;
+    showNameSuggestions(searchTerm) {
+        const suggestionsDiv = document.getElementById('investment-name-suggestions');
+        const type = document.getElementById('investment-type')?.value;
+        
+        if (!type || !searchTerm || searchTerm.length < 1) {
+            suggestionsDiv.classList.add('hidden');
+            suggestionsDiv.innerHTML = '';
+            return;
+        }
 
         const portfolioData = window.DB.portfolioInvestments || [];
         const names = [...new Set(portfolioData.filter(inv => inv.type === type).map(inv => inv.name))];
         
-        const datalist = document.getElementById('investment-name-suggestions');
-        datalist.innerHTML = names.map(name => `<option value="${name}">`).join('');
+        // Filter names that match the search term
+        const filteredNames = names.filter(name => 
+            name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+        if (filteredNames.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            suggestionsDiv.innerHTML = '';
+            return;
+        }
+
+        // Build suggestions HTML
+        const suggestionsHTML = filteredNames.map(name => `
+            <div class="px-3 py-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                 onclick="Investments.selectNameSuggestion('${name.replace(/'/g, "\\'")}')">
+                <span class="text-sm text-gray-700">${name}</span>
+            </div>
+        `).join('');
+
+        suggestionsDiv.innerHTML = suggestionsHTML;
+        suggestionsDiv.classList.remove('hidden');
+    },
+
+    /**
+     * Select a name suggestion
+     */
+    selectNameSuggestion(name) {
+        document.getElementById('investment-name').value = name;
+        const suggestionsDiv = document.getElementById('investment-name-suggestions');
+        suggestionsDiv.classList.add('hidden');
+        suggestionsDiv.innerHTML = '';
+    },
+
+    /**
+     * Hide name suggestions
+     */
+    hideNameSuggestions() {
+        const suggestionsDiv = document.getElementById('investment-name-suggestions');
+        if (suggestionsDiv) {
+            suggestionsDiv.classList.add('hidden');
+            suggestionsDiv.innerHTML = '';
+        }
     },
 
     /**
@@ -853,7 +913,7 @@ const Investments = {
         const amountDisplay = document.getElementById('investment-calculated-amount');
         
         if (!amountDisplay) return;
-
+        
         if (type === 'SHARES') {
             const quantity = parseFloat(document.getElementById('investment-quantity').value) || 0;
             const price = parseFloat(document.getElementById('investment-price').value) || 0;
@@ -956,16 +1016,16 @@ const Investments = {
             if (!tenure || tenure <= 0) {
                 Toast.error('Please enter a valid tenure');
                 return;
-            }
+        }
             if (!interestRate || interestRate < 0) {
                 Toast.error('Please enter a valid interest rate');
                 return;
             }
             if (!endDate) {
                 Toast.error('Please select an end date');
-                return;
-            }
-
+            return;
+        }
+        
             investmentData.amount = amount;
             investmentData.tenure = tenure;
             investmentData.interestRate = interestRate;
@@ -996,7 +1056,7 @@ const Investments = {
             }
         }
     },
-
+    
     /**
      * Update existing investment
      */
@@ -1034,7 +1094,7 @@ const Investments = {
                 // Update share price if SHARES
                 if (data.type === 'SHARES') {
                     this.updateSharePrice(data.name, data.price, data.currency);
-                }
+            }
                 
                 window.Storage.save();
                 Toast.success('Portfolio investment updated successfully');
@@ -1043,7 +1103,7 @@ const Investments = {
             }
         }
     },
-
+    
     /**
      * Add to monthly investments
      */
@@ -1215,7 +1275,7 @@ const Investments = {
         
         modal.classList.remove('hidden');
     },
-
+    
     /**
      * Add to existing investment
      */
@@ -1285,7 +1345,7 @@ const Investments = {
         this.closeInvestmentModal();
         this.render();
     },
-
+    
     /**
      * Edit investment
      */
@@ -1363,9 +1423,9 @@ const Investments = {
         
         if (!investment) {
             Toast.error('Investment not found');
-            return;
-        }
-        
+                return;
+            }
+            
         const modal = document.getElementById('delete-confirm-modal');
         const message = document.getElementById('delete-confirm-message');
         
@@ -1391,7 +1451,7 @@ const Investments = {
         
         if (isMonthly) {
             window.DB.monthlyInvestments = window.DB.monthlyInvestments.filter(inv => parseInt(inv.id) !== parsedId);
-        } else {
+            } else {
             const investment = window.DB.portfolioInvestments.find(inv => parseInt(inv.id) === parsedId);
             window.DB.portfolioInvestments = window.DB.portfolioInvestments.filter(inv => parseInt(inv.id) !== parsedId);
             
@@ -1407,9 +1467,9 @@ const Investments = {
             }
         }
         
-        window.Storage.save();
+            window.Storage.save();
         Toast.success('Investment deleted successfully');
-        this.render();
+            this.render();
     },
 
     /**
@@ -1454,7 +1514,7 @@ const Investments = {
         
         modal.classList.remove('hidden');
     },
-
+    
     /**
      * Close share price modal
      */
@@ -1488,7 +1548,7 @@ const Investments = {
         if (index !== -1) {
             sharePrices.splice(index, 1);
             window.DB.sharePrices = sharePrices;
-            window.Storage.save();
+        window.Storage.save();
             
             Toast.success('Share price removed from tracking');
             this.openSharePriceModal(); // Refresh the modal
@@ -1530,7 +1590,7 @@ const Investments = {
         this.closeExchangeRateModal();
         this.render();
     },
-
+    
     /**
      * Open gold rate modal
      */
@@ -1540,14 +1600,14 @@ const Investments = {
         document.getElementById('gold-rate-input').value = '';
         document.getElementById('gold-rate-modal').classList.remove('hidden');
     },
-
+            
     /**
      * Close gold rate modal
      */
     closeGoldRateModal() {
         document.getElementById('gold-rate-modal').classList.add('hidden');
     },
-
+    
     /**
      * Save gold rate
      */
