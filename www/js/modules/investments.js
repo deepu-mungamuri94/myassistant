@@ -8,6 +8,7 @@ const Investments = {
     expandedMonths: new Set(), // Track expanded months in monthly investments
     expandedYears: new Set(), // Track expanded years in monthly investments
     currentPortfolioTab: 'short', // 'short' or 'long'
+    currentMonthlyTab: 'short', // 'short' or 'long' for monthly investments
     portfolioBodyVisible: true, // Track portfolio section visibility (default expanded)
     dateFilter: 'thisMonth', // 'thisMonth', 'last6Months', 'thisYear', 'custom', 'allTime'
     customDateRange: { start: null, end: null },
@@ -303,8 +304,17 @@ const Investments = {
         const exchangeRate = this.getExchangeRate();
         const goldRate = window.DB.goldRatePerGram || 7000;
 
-        // Apply search filter
-        let filtered = monthlyData;
+        // Separate by term first
+        const shortTermData = monthlyData.filter(inv => inv.goal === 'SHORT_TERM');
+        const longTermData = monthlyData.filter(inv => inv.goal === 'LONG_TERM');
+
+        // Calculate term totals
+        const shortTermTotal = shortTermData.reduce((sum, inv) => sum + this.calculateMonthlyAmount(inv, goldRate), 0);
+        const longTermTotal = longTermData.reduce((sum, inv) => sum + this.calculateMonthlyAmount(inv, goldRate), 0);
+
+        // Apply search filter based on current tab
+        const currentTabData = this.currentMonthlyTab === 'short' ? shortTermData : longTermData;
+        let filtered = currentTabData;
         if (this.searchQuery) {
             const query = this.searchQuery.toLowerCase();
             filtered = filtered.filter(inv => 
@@ -316,15 +326,33 @@ const Investments = {
         // Apply date filter
         filtered = this.applyDateFilterToInvestments(filtered);
         
-        if (filtered.length === 0) {
-            container.innerHTML = `<div class="text-center py-12 text-gray-500">No monthly investments found</div>`;
-            return;
-        }
-        
         // Group by year and month
         const grouped = this.groupByYearMonth(filtered);
 
-        let html = '<div class="space-y-4">';
+        // Build HTML with tabs
+        let html = `
+            <div class="bg-white rounded-xl shadow-md overflow-hidden mb-4">
+                <!-- Tabs -->
+                <div class="flex border-b border-gray-200 bg-gray-50">
+                    <button onclick="Investments.switchMonthlyTab('short')" 
+                            class="flex-1 py-3 px-4 text-center font-semibold transition-all ${this.currentMonthlyTab === 'short' ? 'text-yellow-700 border-b-2 border-yellow-600 bg-white' : 'text-gray-600 hover:text-gray-800'}">
+                        Short Term<br><span class="text-xs">(₹${Utils.formatIndianNumber(Math.round(shortTermTotal))})</span>
+                    </button>
+                    <button onclick="Investments.switchMonthlyTab('long')" 
+                            class="flex-1 py-3 px-4 text-center font-semibold transition-all ${this.currentMonthlyTab === 'long' ? 'text-yellow-700 border-b-2 border-yellow-600 bg-white' : 'text-gray-600 hover:text-gray-800'}">
+                        Long Term<br><span class="text-xs">(₹${Utils.formatIndianNumber(Math.round(longTermTotal))})</span>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        if (filtered.length === 0) {
+            html += `<div class="text-center py-12 text-gray-500">No monthly investments found</div>`;
+            container.innerHTML = html;
+            return;
+        }
+
+        html += '<div class="space-y-4">';
 
         if (this.dateFilter === 'thisMonth') {
             // Show only current month, expanded
@@ -349,7 +377,9 @@ const Investments = {
                         <div class="bg-gradient-to-r from-yellow-600 to-orange-600 text-white p-3 flex justify-between items-center cursor-pointer"
                              onclick="Investments.toggleYearGroup('${year}')">
                             <div class="flex items-center gap-2">
-                                <span>${isYearExpanded ? '📂' : '📁'}</span>
+                                <svg class="w-4 h-4 transition-transform duration-200 ${isYearExpanded ? '' : '-rotate-90'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
                                 <span class="font-bold">${year}</span>
                             </div>
                             <span class="font-bold">₹${Utils.formatIndianNumber(Math.round(yearTotal))}</span>
@@ -384,7 +414,9 @@ const Investments = {
                 <div class="bg-gray-100 p-3 flex justify-between items-center cursor-pointer hover:bg-gray-150"
                      onclick="Investments.toggleMonthGroup('${monthKey}')">
                     <div class="flex items-center gap-2">
-                        <span>${isExpanded ? '📂' : '📁'}</span>
+                        <svg class="w-4 h-4 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
                         <span class="font-semibold text-gray-800">${monthName} ${year}</span>
                         <span class="text-xs text-gray-600">(${investments.length})</span>
                     </div>
@@ -612,6 +644,14 @@ const Investments = {
      */
     switchPortfolioTab(tab) {
         this.currentPortfolioTab = tab;
+        this.render();
+    },
+
+    /**
+     * Switch monthly investments tab
+     */
+    switchMonthlyTab(tab) {
+        this.currentMonthlyTab = tab;
         this.render();
     },
 
