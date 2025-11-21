@@ -2200,6 +2200,20 @@ const Investments = {
         }
         
         this.dateFilter = selected;
+        
+        // Manage expanded state based on filter
+        if (selected === 'thisMonth') {
+            // Expand current month for 'This Month' filter
+            const now = new Date();
+            const currentMonthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
+            this.expandedMonths.clear();
+            this.expandedMonths.add(currentMonthKey);
+        } else {
+            // Collapse all for other filters
+            this.expandedMonths.clear();
+            this.expandedYears.clear();
+        }
+        
         this.closeDateFilterModal();
         this.renderMonthlySection();
     }
