@@ -365,7 +365,13 @@ const Investments = {
         if (this.dateFilter === 'thisMonth') {
             // Show only current month
             const now = new Date();
+            const currentMonthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
             const currentMonthData = grouped[now.getFullYear()]?.[now.getMonth() + 1] || [];
+            
+            // Ensure current month is expanded
+            if (!this.expandedMonths.has(currentMonthKey)) {
+                this.expandedMonths.add(currentMonthKey);
+            }
             
             html += this.renderMonthGroup(now.getFullYear(), now.getMonth() + 1, currentMonthData, exchangeRate, goldRate, false);
                 } else {
