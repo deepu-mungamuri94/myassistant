@@ -153,11 +153,18 @@ const Investments = {
                         </div>
                     </div>
                     
-                    <!-- Minimal View/Hide Button (peeking from behind) -->
+                    <!-- Drag Handle Style View Button -->
                     <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
                         <button onclick="Investments.togglePortfolioBody()" 
-                                class="px-6 py-1 bg-white text-gray-700 text-xs font-medium rounded-full shadow-md hover:shadow-lg transition-all duration-200 border border-gray-200">
-                            ${isBodyVisible ? 'Hide' : 'View'}
+                                class="flex flex-col items-center gap-1 px-8 py-2 bg-white rounded-full shadow-md hover:shadow-lg transition-all duration-200 border border-gray-200">
+                            <!-- Drag Handle Lines -->
+                            <div class="flex gap-1">
+                                <div class="w-1 h-1 bg-gray-400 rounded-full"></div>
+                                <div class="w-1 h-1 bg-gray-400 rounded-full"></div>
+                                <div class="w-1 h-1 bg-gray-400 rounded-full"></div>
+                            </div>
+                            <!-- Text -->
+                            <span class="text-[10px] text-gray-600 font-medium">${isBodyVisible ? 'Hide' : 'View'}</span>
                         </button>
                     </div>
                 </div>
