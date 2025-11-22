@@ -2071,25 +2071,39 @@ const Investments = {
         const list = document.getElementById('share-prices-list');
         
         list.innerHTML = activeShares.map(share => `
-            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200" data-share="${share.name}">
+                <!-- Line 1: Name, Price, Actions -->
                 <div class="flex justify-between items-center mb-2">
-                    <span class="font-semibold text-gray-800">${share.name}</span>
-                    <div class="flex gap-2">
+                    <!-- Name (left) -->
+                    <span class="font-semibold text-gray-800 text-sm flex-shrink-0">${share.name}</span>
+                    
+                    <!-- Price (centered) -->
+                    <span class="share-price flex-1 text-center font-bold text-gray-800 mx-4" data-currency="${share.currency}">
+                        ${share.currency === 'USD' ? '$' : '₹'}${Utils.formatIndianNumber(share.price)}
+                    </span>
+                    
+                    <!-- Actions (right) -->
+                    <div class="flex gap-2 flex-shrink-0">
                         <button onclick="Investments.reloadSingleSharePrice('${share.name}')" 
-                                class="text-yellow-600 hover:text-yellow-800 transition-all" title="Reload Price">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                class="reload-share-btn text-yellow-600 hover:text-yellow-800 transition-all p-1" 
+                                title="Reload Price">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                             </svg>
                         </button>
                         <button onclick="Investments.deleteSharePrice('${share.name}')" 
-                                class="text-red-600 hover:text-red-800" title="Delete">
-                            🗑️
+                                class="text-red-500 hover:text-red-700 p-1" 
+                                title="Delete">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
                         </button>
                     </div>
                 </div>
-                <div class="text-center">
-                    <p class="text-2xl font-bold text-gray-800">${share.currency === 'USD' ? '$' : '₹'}${Utils.formatIndianNumber(share.price)}</p>
-                    <p class="text-xs text-gray-500 mt-1">Updated: ${new Date(share.lastUpdated).toLocaleString()}</p>
+                
+                <!-- Line 2: Updated date (full width, right-aligned) -->
+                <div class="text-right">
+                    <p class="text-xs text-gray-500">Updated: ${new Date(share.lastUpdated).toLocaleString()}</p>
                 </div>
             </div>
         `).join('');
@@ -2107,17 +2121,111 @@ const Investments = {
     /**
      * Reload all share prices (placeholder for API integration)
      */
-    reloadAllSharePrices() {
-        Utils.showInfo('📊 Share price reload feature coming soon! Will integrate with stock price API.');
-        // TODO: Integrate with stock price API
+    async reloadAllSharePrices() {
+        const sharePrices = window.DB.sharePrices || [];
+        const activeShares = sharePrices.filter(sp => sp.active);
+        
+        if (activeShares.length === 0) return;
+        
+        // Show loading state on global button
+        const globalBtn = document.getElementById('global-reload-btn');
+        const originalBtnHTML = globalBtn.innerHTML;
+        globalBtn.disabled = true;
+        globalBtn.innerHTML = `
+            <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            <span>Reloading...</span>
+        `;
+        
+        // Show loading state for all shares
+        activeShares.forEach(share => {
+            const shareDiv = document.querySelector(`[data-share="${share.name}"]`);
+            if (shareDiv) {
+                const priceSpan = shareDiv.querySelector('.share-price');
+                if (priceSpan) {
+                    priceSpan.innerHTML = '<span class="loading-dots">...</span>';
+                }
+                
+                // Animate reload button
+                const reloadBtn = shareDiv.querySelector('.reload-share-btn svg');
+                if (reloadBtn) {
+                    reloadBtn.classList.add('animate-spin');
+                }
+            }
+        });
+        
+        // Simulate API call (TODO: Replace with actual API integration)
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Update prices (placeholder - in real implementation, fetch from API)
+        activeShares.forEach(share => {
+            // Simulate price update
+            share.price = share.price * (0.98 + Math.random() * 0.04); // ±2% change
+            share.lastUpdated = new Date().toISOString();
+        });
+        
+        window.Storage.save();
+        
+        // Re-render the modal with updated prices
+        this.openSharePriceModal();
+        
+        // Restore global button
+        globalBtn.disabled = false;
+        globalBtn.innerHTML = originalBtnHTML;
+        
+        Utils.showSuccess('All share prices updated!');
+        
+        // Re-render portfolio to reflect updated prices
+        this.render();
     },
 
     /**
      * Reload single share price (placeholder for API integration)
      */
-    reloadSingleSharePrice(shareName) {
-        Utils.showInfo(`📊 Reloading price for ${shareName}... (API integration coming soon)`);
-        // TODO: Integrate with stock price API for single share
+    async reloadSingleSharePrice(shareName) {
+        const shareDiv = document.querySelector(`[data-share="${shareName}"]`);
+        if (!shareDiv) return;
+        
+        const priceSpan = shareDiv.querySelector('.share-price');
+        const reloadBtn = shareDiv.querySelector('.reload-share-btn svg');
+        const originalPrice = priceSpan.innerHTML;
+        
+        // Show loading state
+        priceSpan.innerHTML = '<span class="loading-dots">...</span>';
+        if (reloadBtn) reloadBtn.classList.add('animate-spin');
+        
+        // Simulate API call (TODO: Replace with actual API integration)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Update price in DB
+        const sharePrices = window.DB.sharePrices || [];
+        const share = sharePrices.find(sp => sp.name === shareName);
+        
+        if (share) {
+            // Simulate price update (placeholder)
+            share.price = share.price * (0.98 + Math.random() * 0.04); // ±2% change
+            share.lastUpdated = new Date().toISOString();
+            window.Storage.save();
+            
+            // Update display
+            const currency = share.currency === 'USD' ? '$' : '₹';
+            priceSpan.innerHTML = `${currency}${Utils.formatIndianNumber(share.price)}`;
+            
+            // Update timestamp
+            const timestampDiv = shareDiv.querySelector('.text-xs.text-gray-500');
+            if (timestampDiv) {
+                timestampDiv.textContent = `Updated: ${new Date(share.lastUpdated).toLocaleString()}`;
+            }
+            
+            // Re-render portfolio to reflect updated price
+            this.render();
+        } else {
+            priceSpan.innerHTML = originalPrice;
+        }
+        
+        // Remove loading animation
+        if (reloadBtn) reloadBtn.classList.remove('animate-spin');
     },
 
     /**

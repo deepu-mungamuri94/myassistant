@@ -1896,6 +1896,42 @@
             animation: fade-in-up 0.4s ease-out 0.4s forwards;
             opacity: 0;
         }
+        
+        @keyframes loading-dots {
+            0%, 20% {
+                content: '.';
+            }
+            40% {
+                content: '..';
+            }
+            60%, 100% {
+                content: '...';
+            }
+        }
+        
+        .loading-dots {
+            display: inline-block;
+            animation: loading-dots 1.5s infinite;
+            font-weight: bold;
+            color: #6b7280;
+        }
+        
+        .loading-dots::after {
+            content: '';
+            animation: loading-dots-content 1.5s infinite;
+        }
+        
+        @keyframes loading-dots-content {
+            0%, 20% {
+                content: '.';
+            }
+            40% {
+                content: '..';
+            }
+            60%, 100% {
+                content: '...';
+            }
+        }
     </style>
     
     <!-- OVERRIDE CONFIRMATION MODAL -->
@@ -1925,28 +1961,30 @@
     
     <!-- SHARE PRICE MANAGEMENT MODAL -->
     <div id="share-price-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Investments.closeSharePriceModal()">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">Manage Share Prices</h2>
-            
-            <!-- Global Reload Button -->
-            <div class="mb-4 flex justify-end">
-                <button id="global-reload-btn" onclick="Investments.reloadAllSharePrices()" class="px-3 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 text-xs font-semibold flex items-center gap-1">
-                    Reload prices
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                    </svg>
-                </button>
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+            <!-- Header -->
+            <div class="p-6 pb-4">
+                <h2 class="text-2xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">Manage Share Prices</h2>
             </div>
             
-            <!-- Share Prices List -->
-            <div id="share-prices-list" class="space-y-3">
+            <!-- Share Prices List (scrollable) -->
+            <div id="share-prices-list" class="flex-1 overflow-y-auto px-6 space-y-3">
                 <!-- Will be populated dynamically -->
             </div>
             
-            <div class="flex justify-end mt-4">
-                <button onclick="Investments.closeSharePriceModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
-                    Close
-                </button>
+            <!-- Bottom Buttons (fixed) -->
+            <div class="p-6 pt-4 border-t border-gray-200 bg-white rounded-b-2xl">
+                <div class="flex gap-3 justify-center">
+                    <button id="global-reload-btn" onclick="Investments.reloadAllSharePrices()" class="flex-1 max-w-xs px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-semibold flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4 reload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <span>Reload prices</span>
+                    </button>
+                    <button onclick="Investments.closeSharePriceModal()" class="flex-1 max-w-xs px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                        Close
+                    </button>
+                </div>
             </div>
         </div>
     </div>
