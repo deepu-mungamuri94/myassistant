@@ -1976,7 +1976,7 @@ const Investments = {
                     </div>
                     <div class="grid grid-cols-2 gap-2 text-sm">
                         <div><span class="font-semibold text-gray-700">Quantity:</span> <span class="text-gray-600">${investment.quantity}</span></div>
-                        <div><span class="font-semibold text-gray-700">Price:</span> <span class="text-gray-600">${currency === 'USD' ? '$' : '₹'}${Utils.formatIndianNumber(price)}</span></div>
+                        <div class="text-right"><span class="font-semibold text-gray-700">Price:</span> <span class="text-gray-600">${currency === 'USD' ? '$' : '₹'}${Utils.formatIndianNumber(price)}</span></div>
                         ${currency === 'USD' ? `<div class="col-span-2"><span class="font-semibold text-gray-700">USD Value:</span> <span class="text-gray-600">$${Utils.formatIndianNumber(investment.quantity * price)}</span></div>` : ''}
                         ${isMonthly && investment.date ? `<div class="col-span-2"><span class="font-semibold text-gray-700">Date:</span> <span class="text-gray-600">${Utils.formatLocalDate(new Date(investment.date))}</span></div>` : ''}
                     </div>
@@ -1998,7 +1998,7 @@ const Investments = {
                     </div>
                     <div class="grid grid-cols-2 gap-2 text-sm">
                         <div><span class="font-semibold text-gray-700">Quantity:</span> <span class="text-gray-600">${investment.quantity}g</span></div>
-                        <div><span class="font-semibold text-gray-700">Price/gram:</span> <span class="text-gray-600">₹${Utils.formatIndianNumber(investment.price)}</span></div>
+                        <div class="text-right"><span class="font-semibold text-gray-700">Price/gram:</span> <span class="text-gray-600">₹${Utils.formatIndianNumber(investment.price)}</span></div>
                         ${isMonthly && investment.date ? `<div class="col-span-2"><span class="font-semibold text-gray-700">Date:</span> <span class="text-gray-600">${Utils.formatLocalDate(new Date(investment.date))}</span></div>` : ''}
                     </div>
                     ${investment.description ? `<div class="text-sm text-gray-600 pt-2 border-t border-gray-200">${investment.description}</div>` : ''}
@@ -2018,7 +2018,7 @@ const Investments = {
                     </div>
                     <div class="grid grid-cols-2 gap-2 text-sm">
                         <div><span class="font-semibold text-gray-700">Tenure:</span> <span class="text-gray-600">${investment.tenure} months</span></div>
-                        <div><span class="font-semibold text-gray-700">Interest:</span> <span class="text-gray-600">${investment.interestRate}%</span></div>
+                        <div class="text-right"><span class="font-semibold text-gray-700">Interest:</span> <span class="text-gray-600">${investment.interestRate}%</span></div>
                         <div class="col-span-2"><span class="font-semibold text-gray-700">End Date:</span> <span class="text-gray-600">${Utils.formatLocalDate(new Date(investment.endDate))}</span></div>
                         ${isMonthly && investment.date ? `<div class="col-span-2"><span class="font-semibold text-gray-700">Date Added:</span> <span class="text-gray-600">${Utils.formatLocalDate(new Date(investment.date))}</span></div>` : ''}
                     </div>
