@@ -879,6 +879,10 @@ const Expenses = {
         // Clear list
         list.innerHTML = '';
         
+        // Calculate totals for each tab
+        const upcomingTotal = upcomingRecurring.reduce((sum, e) => sum + e.amount, 0);
+        const completedTotal = completedRecurring.reduce((sum, e) => sum + e.amount, 0);
+        
         // Render recurring expenses section (if any)
         if (totalRecurring > 0) {
             list.innerHTML += `
@@ -898,14 +902,20 @@ const Expenses = {
                                     <button onclick="Expenses.switchRecurringTab('upcoming')" 
                                             id="recurring-tab-upcoming"
                                             class="flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-blue-500 text-blue-600">
-                                        🕐 Upcoming (${upcomingRecurring.length})
+                                        <div class="flex flex-col items-center">
+                                            <span>🕐 Upcoming (${upcomingRecurring.length})</span>
+                                            <span class="text-xs font-bold mt-0.5">${Utils.formatCurrency(upcomingTotal)}</span>
+                                        </div>
                                     </button>
                                 ` : ''}
                                 ${completedRecurring.length > 0 ? `
                                     <button onclick="Expenses.switchRecurringTab('completed')" 
                                             id="recurring-tab-completed"
                                             class="flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-                                        ✓ Completed (${completedRecurring.length})
+                                        <div class="flex flex-col items-center">
+                                            <span>✓ Completed (${completedRecurring.length})</span>
+                                            <span class="text-xs font-bold mt-0.5">${Utils.formatCurrency(completedTotal)}</span>
+                                        </div>
                                     </button>
                                 ` : ''}
                             </div>
@@ -1220,10 +1230,10 @@ const Expenses = {
         if (tab === 'upcoming') {
             // Activate upcoming tab
             if (upcomingTab) {
-                upcomingTab.className = 'px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-blue-500 text-blue-600';
+                upcomingTab.className = 'flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-blue-500 text-blue-600';
             }
             if (completedTab) {
-                completedTab.className = 'px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+                completedTab.className = 'flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
             }
             
             // Show upcoming content
@@ -1232,10 +1242,10 @@ const Expenses = {
         } else if (tab === 'completed') {
             // Activate completed tab
             if (upcomingTab) {
-                upcomingTab.className = 'px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+                upcomingTab.className = 'flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
             }
             if (completedTab) {
-                completedTab.className = 'px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-green-500 text-green-600';
+                completedTab.className = 'flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-green-500 text-green-600';
             }
             
             // Show completed content
