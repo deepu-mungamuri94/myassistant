@@ -801,8 +801,16 @@
                             This password encrypts your exported data with AES-256 encryption
                         </span>
                     </label>
-                    <input type="password" id="master-password" placeholder="Enter master password" 
-                           class="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                    <div class="relative">
+                        <input type="password" id="master-password" placeholder="Enter master password" 
+                               class="w-full p-3 pr-12 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                        <button type="button" onclick="togglePasswordVisibility('master-password')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                            <svg id="master-password-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
                     <p class="text-xs text-amber-600 mt-2 flex items-start gap-1">
                         <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
@@ -2079,12 +2087,28 @@
             <input type="text" id="credential-modal-tag" placeholder="Tag (e.g., Work, Personal, Bank)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
             
             <div class="mb-3">
-                <input type="text" id="credential-modal-username" placeholder="Username *" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" oninput="clearFieldError('credential-modal-username')">
+                <div class="relative">
+                    <input type="password" id="credential-modal-username" placeholder="Username *" class="w-full p-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" oninput="clearFieldError('credential-modal-username')">
+                    <button type="button" onclick="togglePasswordVisibility('credential-modal-username')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                        <svg id="credential-modal-username-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                    </button>
+                </div>
                 <div id="credential-modal-username-error" class="text-red-600 text-xs mt-1 hidden"></div>
             </div>
             
             <div class="mb-3">
-                <input type="password" id="credential-modal-password" placeholder="Password *" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" oninput="clearFieldError('credential-modal-password')">
+                <div class="relative">
+                    <input type="password" id="credential-modal-password" placeholder="Password *" class="w-full p-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" oninput="clearFieldError('credential-modal-password')">
+                    <button type="button" onclick="togglePasswordVisibility('credential-modal-password')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                        <svg id="credential-modal-password-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                    </button>
+                </div>
                 <div id="credential-modal-password-error" class="text-red-600 text-xs mt-1 hidden"></div>
             </div>
             
@@ -2308,8 +2332,16 @@
                 
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Master Password</label>
-                    <input type="password" id="import-password" placeholder="Enter master password used during export" 
-                           class="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500">
+                    <div class="relative">
+                        <input type="password" id="import-password" placeholder="Enter master password used during export" 
+                               class="w-full p-3 pr-12 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500">
+                        <button type="button" onclick="togglePasswordVisibility('import-password')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                            <svg id="import-password-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
                     <p class="text-xs text-gray-500 mt-1">🔐 This is the password you set in Settings before exporting</p>
                 </div>
             </div>
@@ -2342,14 +2374,30 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Master Password (min 6 characters)</label>
-                    <input type="password" id="onboarding-master-password" placeholder="Enter master password" 
-                           class="w-full px-4 py-3 border-2 border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <div class="relative">
+                        <input type="password" id="onboarding-master-password" placeholder="Enter master password" 
+                               class="w-full px-4 py-3 pr-12 border-2 border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button type="button" onclick="togglePasswordVisibility('onboarding-master-password')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                            <svg id="onboarding-master-password-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Confirm Password</label>
-                    <input type="password" id="onboarding-master-password-confirm" placeholder="Confirm master password" 
-                           class="w-full px-4 py-3 border-2 border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <div class="relative">
+                        <input type="password" id="onboarding-master-password-confirm" placeholder="Confirm master password" 
+                               class="w-full px-4 py-3 pr-12 border-2 border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button type="button" onclick="togglePasswordVisibility('onboarding-master-password-confirm')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                            <svg id="onboarding-master-password-confirm-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 flex gap-2">
@@ -5347,6 +5395,32 @@
             if (confirmInput.value.length === 4) {
                 // Auto-submit after 4 digits
                 setTimeout(() => setupSecurity(), 100);
+            }
+        }
+        
+        /**
+         * Toggle password visibility for any password field
+         */
+        function togglePasswordVisibility(fieldId) {
+            const input = document.getElementById(fieldId);
+            const eyeIcon = document.getElementById(fieldId + '-eye');
+            
+            if (!input || !eyeIcon) return;
+            
+            // Toggle input type
+            if (input.type === 'password') {
+                input.type = 'text';
+                // Change to "eye-slash" icon (visible password)
+                eyeIcon.innerHTML = `
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                `;
+            } else {
+                input.type = 'password';
+                // Change back to "eye" icon (hidden password)
+                eyeIcon.innerHTML = `
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                `;
             }
         }
         
