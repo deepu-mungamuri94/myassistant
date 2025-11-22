@@ -710,32 +710,20 @@ const Dashboard = {
      */
     getMinimumNetPay() {
         const income = window.DB.income;
-        console.log('=== MINIMUM NET PAY DEBUG ===');
-        console.log('Income data:', income);
         
         if (!income || !income.ctc) {
-            console.log('No income or CTC found, returning 0');
             return 0;
         }
         
         const { ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent } = income;
-        console.log('CTC:', ctc, 'Bonus:', bonusPercent, 'ESPP1:', esppPercentCycle1, 'ESPP2:', esppPercentCycle2, 'PF:', pfPercent);
         
         const yearlyPayslips = window.Income.generateYearlyPayslips(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent);
-        console.log('Generated payslips:', yearlyPayslips.length);
         
         if (yearlyPayslips.length === 0) {
-            console.log('No payslips generated, returning 0');
             return 0;
         }
         
-        // Find minimum net pay
-        yearlyPayslips.forEach((p, i) => {
-            console.log(`  ${p.month}: ₹${p.totalNetPay}`);
-        });
-        
         const minNetPay = Math.min(...yearlyPayslips.map(p => p.totalNetPay));
-        console.log('Minimum Net Pay:', minNetPay);
         return minNetPay;
     },
     
@@ -743,32 +731,25 @@ const Dashboard = {
      * Get total recurring expenses for current month (excluding Loan EMI and Credit Card EMI)
      */
     getTotalRecurringExpenses() {
-        console.log('=== RECURRING EXPENSES DEBUG ===');
         
         const today = new Date();
         const currentYear = today.getFullYear();
         const currentMonth = today.getMonth() + 1; // 1-12
         
-        console.log(`Calculating for: ${currentYear}-${String(currentMonth).padStart(2, '0')}`);
-        
         if (!window.RecurringExpenses) {
-            console.log('RecurringExpenses module not available');
             return 0;
         }
         
         // Get all recurring expenses due this month using the same logic as Recurring page
         const allRecurring = window.RecurringExpenses.getAll();
-        console.log('Total recurring items:', allRecurring.length);
         
         let total = 0;
         let excludedTotal = 0;
         
         allRecurring.forEach((recurring, i) => {
-            console.log(`${i+1}. ${recurring.name} - Category: "${recurring.category || 'none'}" - Amount: ₹${recurring.amount}`);
             
             // Skip inactive
             if (recurring.isActive === false) {
-                console.log(`   ✗ Skipped (inactive)`);
                 return;
             }
             
@@ -777,7 +758,6 @@ const Dashboard = {
                 const endDate = new Date(recurring.endDate);
                 const checkDate = new Date(currentYear, currentMonth - 1, 1);
                 if (checkDate > endDate) {
-                    console.log(`   ✗ Skipped (ended before this month)`);
                     return;
                 }
             }
@@ -789,18 +769,12 @@ const Dashboard = {
                 const category = recurring.category || '';
                 if (category === 'Loan EMI' || category === 'Credit Card EMI') {
                     excludedTotal += recurring.amount;
-                    console.log(`   ✗ Excluded ₹${recurring.amount} (EMI category: "${category}")`);
                 } else {
                     total += recurring.amount;
-                    console.log(`   ✓ Added ₹${recurring.amount}`);
                 }
-            } else {
-                console.log(`   ✗ Not due in current month`);
             }
         });
         
-        console.log(`Total Recurring Expenses (excluding EMIs): ₹${total}`);
-        console.log(`Excluded EMIs: ₹${excludedTotal}`);
         return total;
     },
     
@@ -816,14 +790,8 @@ const Dashboard = {
         const currentMonth = today.getMonth(); // 0-11
         let total = 0;
         
-        console.log('=== EMIs DEBUG ===');
-        console.log(`Current Month: ${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`);
-        console.log('Total loans:', loans.length);
-        console.log('Total cards:', cards.length);
-        
         // Add active loan EMIs
         loans.forEach((loan, i) => {
-            console.log(`Loan ${i+1}: ${loan.bankName || 'Unknown'} - ${loan.reason || loan.loanType || 'Loan'}`);
             
             // Check if loan has started before or during this month
             const firstDate = new Date(loan.firstEmiDate);
@@ -831,34 +799,22 @@ const Dashboard = {
             const currentMonthStart = new Date(currentYear, currentMonth, 1);
             
             if (firstEmiMonth > currentMonthStart) {
-                console.log(`  ✗ Not started yet (starts: ${loan.firstEmiDate})`);
                 return;
             }
             
             // Calculate remaining EMIs and EMI amount
             if (window.Loans) {
                 const remaining = window.Loans.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
-                console.log(`  EMIs Remaining: ${remaining.emisRemaining} / ${loan.tenure}`);
                 
                 // Calculate EMI amount if not stored
                 let emiAmount = loan.emi;
                 if (!emiAmount && loan.amount && loan.interestRate && loan.tenure) {
                     emiAmount = window.Loans.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
-                    console.log(`  Monthly EMI (calculated): ₹${emiAmount}`);
-                } else {
-                    console.log(`  Monthly EMI (stored): ₹${emiAmount || 'N/A'}`);
                 }
                 
                 if (remaining.emisRemaining > 0 && emiAmount) {
                     total += parseFloat(emiAmount);
-                    console.log(`  ✓ Added ₹${emiAmount} to total (EMI is due this month)`);
-                } else if (remaining.emisRemaining > 0) {
-                    console.log(`  ✗ EMI amount not available (need amount, rate, tenure)`);
-                } else {
-                    console.log(`  ✗ Loan completed`);
                 }
-            } else {
-                console.log(`  ✗ Loans module not available`);
             }
         });
         
@@ -869,11 +825,8 @@ const Dashboard = {
                 return;
             }
             
-            console.log(`Card ${i+1}: ${card.nickname || card.name}`);
             if (card.emis && card.emis.length > 0) {
-                console.log(`  Total EMI entries: ${card.emis.length}`);
                 card.emis.forEach((emi, j) => {
-                    console.log(`    EMI ${j+1}: ${emi.reason}`);
                     
                     // Check if EMI has started before or during this month
                     if (emi.firstEmiDate) {
@@ -882,7 +835,6 @@ const Dashboard = {
                         const currentMonthStart = new Date(currentYear, currentMonth, 1);
                         
                         if (emiFirstMonth > currentMonthStart) {
-                            console.log(`      ✗ Not started yet (starts: ${emi.firstEmiDate})`);
                             return;
                         }
                     }
@@ -892,21 +844,13 @@ const Dashboard = {
                     const totalCount = emi.totalCount || emi.totalEmis || 0;
                     const remaining = totalCount - paidCount;
                     
-                    console.log(`      Paid: ${paidCount} / Total: ${totalCount}, Remaining: ${remaining}`);
-                    console.log(`      EMI Amount: ₹${emi.emiAmount || 'N/A'}`);
-                    console.log(`      Status: ${emi.status || 'active'}, Completed: ${emi.completed}`);
-                    
                     if (!emi.completed && remaining > 0 && emi.emiAmount) {
                         total += parseFloat(emi.emiAmount);
-                        console.log(`      ✓ Added ₹${emi.emiAmount} to total (EMI is due this month)`);
-                    } else {
-                        console.log(`      ✗ Skipped (completed: ${emi.completed}, remaining: ${remaining})`);
                     }
                 });
             }
         });
         
-        console.log('Total EMIs for current month: ₹', total);
         return total;
     },
     

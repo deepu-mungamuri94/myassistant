@@ -719,25 +719,57 @@
                 
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Gemini API Key</label>
-                    <input type="password" id="gemini-api-key" placeholder="Enter your Gemini API key" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <div class="relative">
+                        <input type="password" id="gemini-api-key" placeholder="Enter your Gemini API key" class="w-full p-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <button type="button" onclick="togglePasswordVisibility('gemini-api-key')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                            <svg id="gemini-api-key-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
                     <p class="text-xs text-gray-500 mt-1">Get your API key from <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-purple-600 underline">Google AI Studio</a></p>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Groq API Key</label>
-                    <input type="password" id="groq-api-key" placeholder="Enter your Groq API key" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <div class="relative">
+                        <input type="password" id="groq-api-key" placeholder="Enter your Groq API key" class="w-full p-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <button type="button" onclick="togglePasswordVisibility('groq-api-key')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                            <svg id="groq-api-key-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
                     <p class="text-xs text-gray-500 mt-1">Get your API key from <a href="https://console.groq.com/keys" target="_blank" class="text-purple-600 underline">Groq Console</a> (Free tier: 30 req/min)</p>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">ChatGPT API Key</label>
-                    <input type="password" id="chatgpt-api-key" placeholder="Enter your ChatGPT API key" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <div class="relative">
+                        <input type="password" id="chatgpt-api-key" placeholder="Enter your ChatGPT API key" class="w-full p-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <button type="button" onclick="togglePasswordVisibility('chatgpt-api-key')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                            <svg id="chatgpt-api-key-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
                     <p class="text-xs text-gray-500 mt-1">Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-purple-600 underline">OpenAI Platform</a></p>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Perplexity API Key</label>
-                    <input type="password" id="perplexity-api-key" placeholder="Enter your Perplexity API key" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <div class="relative">
+                        <input type="password" id="perplexity-api-key" placeholder="Enter your Perplexity API key" class="w-full p-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <button type="button" onclick="togglePasswordVisibility('perplexity-api-key')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                            <svg id="perplexity-api-key-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
                     <p class="text-xs text-gray-500 mt-1">Get your API key from <a href="https://www.perplexity.ai/settings/api" target="_blank" class="text-purple-600 underline">Perplexity Settings</a></p>
                 </div>
             </div>
@@ -2444,29 +2476,61 @@
                 
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Gemini API Key <span class="text-red-600">*</span></label>
-                    <input type="password" id="onboarding-gemini-key" placeholder="Enter Gemini API key" 
-                           class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
+                    <div class="relative">
+                        <input type="password" id="onboarding-gemini-key" placeholder="Enter Gemini API key" 
+                               class="w-full px-3 py-2 pr-10 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
+                        <button type="button" onclick="togglePasswordVisibility('onboarding-gemini-key')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                            <svg id="onboarding-gemini-key-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
                     <p class="text-xs text-gray-500 mt-1">Get from <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-pink-600 underline">Google AI Studio</a></p>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Groq API Key</label>
-                    <input type="password" id="onboarding-groq-key" placeholder="Enter Groq API key" 
-                           class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
+                    <div class="relative">
+                        <input type="password" id="onboarding-groq-key" placeholder="Enter Groq API key" 
+                               class="w-full px-3 py-2 pr-10 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
+                        <button type="button" onclick="togglePasswordVisibility('onboarding-groq-key')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                            <svg id="onboarding-groq-key-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
                     <p class="text-xs text-gray-500 mt-1">Get from <a href="https://console.groq.com/keys" target="_blank" class="text-pink-600 underline">Groq Console</a></p>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">ChatGPT API Key</label>
-                    <input type="password" id="onboarding-chatgpt-key" placeholder="Enter ChatGPT API key" 
-                           class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
+                    <div class="relative">
+                        <input type="password" id="onboarding-chatgpt-key" placeholder="Enter ChatGPT API key" 
+                               class="w-full px-3 py-2 pr-10 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
+                        <button type="button" onclick="togglePasswordVisibility('onboarding-chatgpt-key')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                            <svg id="onboarding-chatgpt-key-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
                     <p class="text-xs text-gray-500 mt-1">Get from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-pink-600 underline">OpenAI Platform</a></p>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Perplexity API Key <span class="text-red-600">*</span></label>
-                    <input type="password" id="onboarding-perplexity-key" placeholder="Enter Perplexity API key" 
-                           class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
+                    <div class="relative">
+                        <input type="password" id="onboarding-perplexity-key" placeholder="Enter Perplexity API key" 
+                               class="w-full px-3 py-2 pr-10 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
+                        <button type="button" onclick="togglePasswordVisibility('onboarding-perplexity-key')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                            <svg id="onboarding-perplexity-key-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
                     <p class="text-xs text-gray-500 mt-1">Get from <a href="https://www.perplexity.ai/settings/api" target="_blank" class="text-pink-600 underline">Perplexity Settings</a></p>
                 </div>
                 
@@ -5401,11 +5465,21 @@
         /**
          * Toggle password visibility for any password field
          */
-        function togglePasswordVisibility(fieldId) {
+        async function togglePasswordVisibility(fieldId) {
             const input = document.getElementById(fieldId);
             const eyeIcon = document.getElementById(fieldId + '-eye');
             
             if (!input || !eyeIcon) return;
+            
+            // Special handling for master password - require authentication
+            if (fieldId === 'master-password' && input.type === 'password') {
+                // Try to authenticate before revealing master password
+                const authenticated = await authenticateForMasterPassword();
+                if (!authenticated) {
+                    Utils.showError('Authentication required to view Master Password');
+                    return;
+                }
+            }
             
             // Toggle input type
             if (input.type === 'password') {
@@ -5421,6 +5495,110 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                 `;
+            }
+        }
+        
+        /**
+         * Authenticate user before revealing master password
+         */
+        async function authenticateForMasterPassword() {
+            // Check if biometric is enabled and available
+            if (window.DB.security.biometricEnabled && window.Security) {
+                try {
+                    const biometricResult = await window.Security.authenticateBiometric();
+                    if (biometricResult) {
+                        return true;
+                    }
+                } catch (error) {
+                    // Fallback to PIN if biometric fails
+                }
+            }
+            
+            // Fallback to PIN authentication
+            if (window.DB.security.pin) {
+                return new Promise((resolve) => {
+                    // Create a simple PIN prompt modal
+                    const modalHTML = `
+                        <div id="master-password-auth-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[80] flex items-center justify-center p-4">
+                            <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full">
+                                <h3 class="text-xl font-bold mb-4 text-gray-800">🔐 Authentication Required</h3>
+                                <p class="text-gray-600 mb-4">Enter your PIN to view Master Password</p>
+                                <input type="password" id="master-password-auth-pin" inputmode="numeric" maxlength="4" 
+                                       placeholder="Enter 4-digit PIN" 
+                                       class="w-full px-4 py-3 border-2 border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-center text-2xl tracking-widest font-bold mb-4"
+                                       autofocus>
+                                <div class="flex gap-2">
+                                    <button onclick="verifyMasterPasswordAuth()" class="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-semibold">
+                                        Verify
+                                    </button>
+                                    <button onclick="cancelMasterPasswordAuth()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.insertAdjacentHTML('beforeend', modalHTML);
+                    
+                    // Store resolver
+                    window._masterPasswordAuthResolver = resolve;
+                    
+                    // Auto-submit on 4 digits
+                    document.getElementById('master-password-auth-pin').addEventListener('input', function(e) {
+                        if (e.target.value.length === 4) {
+                            setTimeout(() => verifyMasterPasswordAuth(), 100);
+                        }
+                    });
+                });
+            }
+            
+            // No authentication set up
+            return true;
+        }
+        
+        /**
+         * Verify PIN for master password authentication
+         */
+        function verifyMasterPasswordAuth() {
+            const pin = document.getElementById('master-password-auth-pin').value;
+            const storedPinHash = window.DB.security.pin;
+            
+            if (!pin || pin.length !== 4) {
+                Utils.showError('Please enter a 4-digit PIN');
+                return;
+            }
+            
+            // Hash the entered PIN
+            window.Security.hashPin(pin).then(hash => {
+                if (hash === storedPinHash) {
+                    // Success
+                    const modal = document.getElementById('master-password-auth-modal');
+                    if (modal) modal.remove();
+                    
+                    if (window._masterPasswordAuthResolver) {
+                        window._masterPasswordAuthResolver(true);
+                        delete window._masterPasswordAuthResolver;
+                    }
+                } else {
+                    // Wrong PIN
+                    Utils.showError('Incorrect PIN. Please try again.');
+                    document.getElementById('master-password-auth-pin').value = '';
+                    document.getElementById('master-password-auth-pin').focus();
+                }
+            });
+        }
+        
+        /**
+         * Cancel master password authentication
+         */
+        function cancelMasterPasswordAuth() {
+            const modal = document.getElementById('master-password-auth-modal');
+            if (modal) modal.remove();
+            
+            if (window._masterPasswordAuthResolver) {
+                window._masterPasswordAuthResolver(false);
+                delete window._masterPasswordAuthResolver;
             }
         }
         
