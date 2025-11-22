@@ -286,16 +286,25 @@ const RecurringExpenses = {
                     }
                     
                     // Check if expense already exists
-                    const existingExpense = window.DB.expenses.find(exp => 
-                        exp.title === recurring.name &&
-                        exp.date === dueDateStr &&
-                        exp.amount === recurring.amount
-                    );
+                    // First check by recurringId (handles name changes), then by title/date/amount
+                    const existingExpense = window.DB.expenses.find(exp => {
+                        // If expense has recurringId and it matches, it's the same recurring expense
+                        if (exp.recurringId && String(exp.recurringId) === String(recurring.id)) {
+                            // Check if it's in the same month
+                            const expDate = new Date(exp.date);
+                            const expMonthKey = `${expDate.getFullYear()}-${String(expDate.getMonth() + 1).padStart(2, '0')}`;
+                            return expMonthKey === monthKey;
+                        }
+                        // Fallback to title/date/amount matching (for legacy entries)
+                        return exp.title === recurring.name &&
+                               exp.date === dueDateStr &&
+                               Math.abs(exp.amount - recurring.amount) < 0.01;
+                    });
                     
                     if (!existingExpense) {
                         // Add as expense
                         try {
-                            window.Expenses.add(
+                            const expense = window.Expenses.add(
                                 recurring.name,
                                 recurring.amount,
                                 'recurring',
@@ -304,13 +313,18 @@ const RecurringExpenses = {
                                 null
                             );
                             
+                            // Store recurring ID in the expense for tracking
+                            if (expense) {
+                                expense.recurringId = recurring.id;
+                            }
+                            
                             recurring.addedToExpenses.push(monthKey);
                             addedCount++;
                         } catch (error) {
                             console.error('Failed to add recurring expense:', error);
                         }
                     } else {
-                        // Mark as added even if it exists
+                        // Mark as added even if it exists (manually added earlier)
                         recurring.addedToExpenses.push(monthKey);
                     }
                 }

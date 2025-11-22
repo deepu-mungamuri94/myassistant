@@ -403,7 +403,7 @@ const Expenses = {
     /**
      * Manually add a recurring expense to expenses
      */
-    addRecurringExpense(title, amount, category, date, description) {
+    addRecurringExpense(title, amount, category, date, description, recurringId = null) {
         // Remove from dismissed list if it was dismissed
         if (window.DB.dismissedRecurringExpenses) {
             window.DB.dismissedRecurringExpenses = window.DB.dismissedRecurringExpenses.filter(d => 
@@ -411,8 +411,34 @@ const Expenses = {
             );
         }
         
-        // Add to expenses
-        this.add(title, amount, category, date, description, null);
+        // Add to expenses with recurring ID for tracking
+        const expense = this.add(title, amount, category, date, description, null);
+        
+        // If this is from a recurring expense, mark the month as added to prevent duplicates
+        if (recurringId && window.RecurringExpenses) {
+            const recurring = window.DB.recurringExpenses.find(r => String(r.id) === String(recurringId));
+            if (recurring) {
+                // Extract year-month from the date
+                const expenseDate = new Date(date);
+                const monthKey = `${expenseDate.getFullYear()}-${String(expenseDate.getMonth() + 1).padStart(2, '0')}`;
+                
+                // Mark this month as added if not already
+                if (!recurring.addedToExpenses) {
+                    recurring.addedToExpenses = [];
+                }
+                if (!recurring.addedToExpenses.includes(monthKey)) {
+                    recurring.addedToExpenses.push(monthKey);
+                    window.Storage.save();
+                    console.log(`Marked recurring expense "${recurring.name}" as added for ${monthKey}`);
+                }
+                
+                // Store recurring ID in the expense for future reference
+                if (expense) {
+                    expense.recurringId = recurringId;
+                }
+            }
+        }
+        
         this.render();
         Utils.showSuccess('Added to expenses!');
     },
@@ -639,7 +665,8 @@ const Expenses = {
                     date: recurring.dueDate,
                     description: recurring.description || 'Recurring expense',
                     suggestedCard: null,
-                    isRecurring: true
+                    isRecurring: true,
+                    recurringId: recurring.id // Store recurring ID for tracking
                 });
             });
             
@@ -652,7 +679,8 @@ const Expenses = {
                     date: recurring.dueDate,
                     description: recurring.description || 'Recurring expense',
                     suggestedCard: null,
-                    isRecurring: true
+                    isRecurring: true,
+                    recurringId: recurring.id // Store recurring ID for tracking
                 });
             });
         }
@@ -818,7 +846,7 @@ const Expenses = {
                                         <div class="flex items-center gap-2 ml-2">
                                             <span class="text-sm font-semibold text-blue-700">${Utils.formatCurrency(exp.amount)}</span>
                                             ${!existsInExpenses ? `
-                                                <button onclick="Expenses.addRecurringExpense('${Utils.escapeHtml(exp.title).replace(/'/g, "\\'")}', ${exp.amount}, '${exp.category}', '${exp.date}', '${Utils.escapeHtml(exp.description || '').replace(/'/g, "\\'")}'); event.stopPropagation();" 
+                                                <button onclick="Expenses.addRecurringExpense('${Utils.escapeHtml(exp.title).replace(/'/g, "\\'")}', ${exp.amount}, '${exp.category}', '${exp.date}', '${Utils.escapeHtml(exp.description || '').replace(/'/g, "\\'")}', '${exp.recurringId || ''}'); event.stopPropagation();" 
                                                         class="px-2 py-0.5 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors flex items-center gap-1" 
                                                         title="Add to Expenses">
                                                     <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
