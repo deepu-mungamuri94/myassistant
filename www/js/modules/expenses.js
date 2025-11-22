@@ -63,6 +63,7 @@ const Expenses = {
                 date: expense.date,
                 amount: expense.amount,
                 category: expense.category,
+                recurringId: expense.recurringId || null, // Store recurringId for better tracking
                 dismissedAt: Utils.getCurrentTimestamp()
             };
             
@@ -72,6 +73,20 @@ const Expenses = {
             
             // Add to dismissed list
             window.DB.dismissedRecurringExpenses.push(dismissal);
+            
+            // Remove the month marking from the recurring expense's addedToExpenses
+            // This allows the user to manually add it again if they change their mind
+            if (expense.recurringId && window.RecurringExpenses) {
+                const recurring = window.DB.recurringExpenses.find(r => String(r.id) === String(expense.recurringId));
+                if (recurring && recurring.addedToExpenses) {
+                    const expenseDate = new Date(expense.date);
+                    const monthKey = `${expenseDate.getFullYear()}-${String(expenseDate.getMonth() + 1).padStart(2, '0')}`;
+                    
+                    // Remove this month from addedToExpenses
+                    recurring.addedToExpenses = recurring.addedToExpenses.filter(m => m !== monthKey);
+                    console.log(`Removed month ${monthKey} from recurring "${recurring.name}" after deletion`);
+                }
+            }
         }
         
         window.DB.expenses = window.DB.expenses.filter(e => e.id !== id);
@@ -390,14 +405,20 @@ const Expenses = {
     /**
      * Check if a recurring expense has been dismissed
      */
-    isDismissed(title, date, amount) {
+    isDismissed(title, date, amount, recurringId = null) {
         if (!window.DB.dismissedRecurringExpenses) return false;
         
-        return window.DB.dismissedRecurringExpenses.some(d => 
-            d.title === title && 
-            d.date === date && 
-            Math.abs(d.amount - amount) < 0.01
-        );
+        return window.DB.dismissedRecurringExpenses.some(d => {
+            // First check by recurringId if available (handles name changes)
+            if (recurringId && d.recurringId && String(d.recurringId) === String(recurringId)) {
+                // Check if it's the same date
+                return d.date === date;
+            }
+            // Fallback to title/date/amount matching (for legacy dismissed entries)
+            return d.title === title && 
+                   d.date === date && 
+                   Math.abs(d.amount - amount) < 0.01;
+        });
     },
     
     /**
@@ -406,9 +427,14 @@ const Expenses = {
     addRecurringExpense(title, amount, category, date, description, recurringId = null) {
         // Remove from dismissed list if it was dismissed
         if (window.DB.dismissedRecurringExpenses) {
-            window.DB.dismissedRecurringExpenses = window.DB.dismissedRecurringExpenses.filter(d => 
-                !(d.title === title && d.date === date && Math.abs(d.amount - amount) < 0.01)
-            );
+            window.DB.dismissedRecurringExpenses = window.DB.dismissedRecurringExpenses.filter(d => {
+                // Check by recurringId first (handles name changes)
+                if (recurringId && d.recurringId && String(d.recurringId) === String(recurringId)) {
+                    return d.date !== date; // Remove if same date
+                }
+                // Fallback to title/date/amount matching
+                return !(d.title === title && d.date === date && Math.abs(d.amount - amount) < 0.01);
+            });
         }
         
         // Add to expenses with recurring ID for tracking

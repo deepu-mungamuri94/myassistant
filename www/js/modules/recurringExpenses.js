@@ -277,8 +277,8 @@ const RecurringExpenses = {
                     
                     const dueDateStr = Utils.formatLocalDate(dueDate);
                     
-                    // Check if dismissed by user
-                    const isDismissed = window.Expenses && window.Expenses.isDismissed(recurring.name, dueDateStr, recurring.amount);
+                    // Check if dismissed by user (pass recurringId for better tracking)
+                    const isDismissed = window.Expenses && window.Expenses.isDismissed(recurring.name, dueDateStr, recurring.amount, recurring.id);
                     
                     if (isDismissed) {
                         console.log('Recurring expense dismissed by user, skipping:', recurring.name);
