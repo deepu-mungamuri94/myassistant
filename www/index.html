@@ -11,6 +11,18 @@
     <!-- Custom Styles -->
     <link rel="stylesheet" href="css/styles.css">
     
+    <!-- Credential Tag Group Chevron Rotation -->
+    <style>
+        /* Rotate chevron down when details is open (expanded) */
+        details.credential-tag-group[open] .credential-chevron {
+            transform: rotate(0deg);
+        }
+        /* Rotate chevron right when details is closed (collapsed) */
+        details.credential-tag-group:not([open]) .credential-chevron {
+            transform: rotate(-90deg);
+        }
+    </style>
+    
     <!-- Capacitor Core (for native features) -->
     <script type="module">
         import { Capacitor } from 'https://cdn.jsdelivr.net/npm/@capacitor/core@latest/dist/index.js';
@@ -667,7 +679,7 @@
                 <!-- Main Credentials Section -->
                 <div class="bg-transparent">
                     <!-- Section Header -->
-                    <div class="bg-transparent px-4 py-3 mb-1.5">
+                    <div class="bg-transparent px-4 py-3 mb-1">
                         <div class="flex items-center justify-between">
                             <span id="credentials-count" class="text-gray-700 text-sm font-semibold">0 credentials</span>
                             <button id="toggle-credentials-groups-btn" onclick="Credentials.toggleAllGroups()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all text-xs font-semibold">
