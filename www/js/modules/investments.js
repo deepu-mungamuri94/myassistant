@@ -2072,18 +2072,13 @@ const Investments = {
         
         list.innerHTML = activeShares.map(share => `
             <div class="bg-gray-50 p-3 rounded-lg border border-gray-200" data-share="${share.name}">
-                <!-- Line 1: Name, Price, Actions -->
+                <!-- Line 1: Name (left), Actions (right) -->
                 <div class="flex justify-between items-center mb-2">
                     <!-- Name (left) -->
-                    <span class="font-semibold text-gray-800 text-sm flex-shrink-0">${share.name}</span>
-                    
-                    <!-- Price (centered) -->
-                    <span class="share-price flex-1 text-center font-bold text-gray-800 mx-4" data-currency="${share.currency}">
-                        ${share.currency === 'USD' ? '$' : '₹'}${Utils.formatIndianNumber(share.price)}
-                    </span>
+                    <span class="font-semibold text-gray-800 text-sm">${share.name}</span>
                     
                     <!-- Actions (right) -->
-                    <div class="flex gap-2 flex-shrink-0">
+                    <div class="flex gap-2">
                         <button onclick="Investments.reloadSingleSharePrice('${share.name}')" 
                                 class="reload-share-btn text-yellow-600 hover:text-yellow-800 transition-all p-1" 
                                 title="Reload Price">
@@ -2101,9 +2096,15 @@ const Investments = {
                     </div>
                 </div>
                 
-                <!-- Line 2: Updated date (full width, right-aligned) -->
-                <div class="text-right">
+                <!-- Line 2: Updated date (left), Price (right) -->
+                <div class="flex justify-between items-center">
+                    <!-- Updated date (left) -->
                     <p class="text-xs text-gray-500">Updated: ${new Date(share.lastUpdated).toLocaleString()}</p>
+                    
+                    <!-- Price (right, dark green) -->
+                    <span class="share-price text-sm font-bold text-green-700" data-currency="${share.currency}">
+                        ${share.currency === 'USD' ? '$' : '₹'}${Utils.formatIndianNumber(share.price)}
+                    </span>
                 </div>
             </div>
         `).join('');
