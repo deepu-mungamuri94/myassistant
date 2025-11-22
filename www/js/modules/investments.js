@@ -125,52 +125,38 @@ const Investments = {
         const isBodyVisible = this.portfolioBodyVisible;
 
         container.innerHTML = `
-            <div class="bg-white rounded-xl shadow-md overflow-visible">
-                <!-- Header -->
-                <div class="relative">
-                    <div class="bg-gradient-to-r from-yellow-600 to-orange-600 text-white p-4 ${isBodyVisible ? 'rounded-t-xl' : 'rounded-xl'}">
-                        <div class="flex justify-between items-center mb-3">
-                            <div class="flex items-center gap-2">
-                                <h3 class="text-lg font-bold">Portfolio</h3>
-                            </div>
-                            <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(totalValue))}</p>
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <!-- Header (clickable to expand/collapse) -->
+                <div class="bg-gradient-to-r from-yellow-600 to-orange-600 text-white p-4 ${isBodyVisible ? 'rounded-t-xl' : 'rounded-xl'} cursor-pointer" onclick="Investments.togglePortfolioBody()">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 transition-transform duration-200 ${isBodyVisible ? '' : '-rotate-90'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                            <h3 class="text-lg font-bold">Portfolio</h3>
                         </div>
-                        <div class="grid grid-cols-3 gap-2">
-                            <button onclick="Investments.openSharePriceModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                                </svg>
-                                Stocks
-                            </button>
-                            <button onclick="Investments.openExchangeRateModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
-                                <span class="text-base">💲</span>
-                                ${currentExchangeRate}
-                            </button>
-                            <button onclick="Investments.openGoldRateModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
-                                <span class="text-base">🪙</span>
-                                ${currentGoldRate}
-                            </button>
-                        </div>
+                        <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(totalValue))}</p>
                     </div>
-                    
-                    <!-- Drag Handle Style View Button -->
-                    <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
-                        <button onclick="Investments.togglePortfolioBody()" 
-                                class="flex flex-col items-center gap-1 px-8 py-2 bg-white rounded-full shadow-md hover:shadow-lg transition-all duration-200 border border-gray-200">
-                            <!-- Drag Handle Lines -->
-                            <div class="flex gap-1">
-                                <div class="w-1 h-1 bg-gray-400 rounded-full"></div>
-                                <div class="w-1 h-1 bg-gray-400 rounded-full"></div>
-                                <div class="w-1 h-1 bg-gray-400 rounded-full"></div>
-                            </div>
-                            <!-- Text -->
-                            <span class="text-[10px] text-gray-600 font-medium">${isBodyVisible ? 'Hide' : 'View'}</span>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="event.stopPropagation(); Investments.openSharePriceModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            Stocks
+                        </button>
+                        <button onclick="event.stopPropagation(); Investments.openExchangeRateModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
+                            <span class="text-base">💲</span>
+                            ${currentExchangeRate}
+                        </button>
+                        <button onclick="event.stopPropagation(); Investments.openGoldRateModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
+                            <span class="text-base">🪙</span>
+                            ${currentGoldRate}
                         </button>
                     </div>
                 </div>
 
                 <!-- Body (collapsible) -->
-                <div id="portfolio-body" class="${isBodyVisible ? 'mt-4' : 'hidden'}">
+                <div id="portfolio-body" class="${isBodyVisible ? '' : 'hidden'}">
                     <!-- Tabs -->
                     <div class="flex border-b border-gray-200 bg-gray-50">
                         <button onclick="Investments.switchPortfolioTab('short')" 
