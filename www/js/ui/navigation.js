@@ -340,8 +340,6 @@ const Navigation = {
             const chatGptModelInput = document.getElementById('chatgpt-model');
             const perplexityModelInput = document.getElementById('perplexity-model');
             
-            const providerSelect = document.getElementById('ai-provider');
-            
             // Set API keys
             if (geminiKeyInput) geminiKeyInput.value = window.DB.settings.geminiApiKey || '';
             if (groqKeyInput) groqKeyInput.value = window.DB.groqApiKey || '';
@@ -353,8 +351,6 @@ const Navigation = {
             if (groqModelInput) groqModelInput.value = window.DB.settings.groqModel || 'llama-3.3-70b-versatile';
             if (chatGptModelInput) chatGptModelInput.value = window.DB.settings.chatGptModel || 'gpt-4o-mini';
             if (perplexityModelInput) perplexityModelInput.value = window.DB.settings.perplexityModel || 'llama-3.1-sonar-large-128k-online';
-            
-            if (providerSelect) providerSelect.value = window.DB.settings.aiProvider || 'gemini';
             
             // Load priority order
             this.renderPriorityOrder();
@@ -410,8 +406,9 @@ const Navigation = {
         }
         window.DB.settings[config.model] = model || oldModel;
         
-        // Show testing message
-        window.Utils.showInfo(`Testing ${provider.charAt(0).toUpperCase() + provider.slice(1)}...`);
+        // Show progress modal instead of info popup
+        const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+        window.Utils.showProgressModal(`Testing ${providerName} connection...`, true);
         
         try {
             // Make a test call with a simple prompt
@@ -429,11 +426,11 @@ const Navigation = {
             }
             
             const displayModel = model || oldModel;
-            window.Utils.showSuccess(`✅ ${provider.charAt(0).toUpperCase() + provider.slice(1)} Test Successful!\n\nModel: ${displayModel}\n\nResponse received and working properly.`);
+            window.Utils.showProgressSuccess(`${providerName} test successful!\n\nModel: ${displayModel}\n\nConnection working properly.`, true);
             
         } catch (error) {
             console.error(`Test failed for ${provider}:`, error);
-            window.Utils.showError(`❌ ${provider.charAt(0).toUpperCase() + provider.slice(1)} Test Failed\n\n${error.message}\n\nPlease check your API key and model ID.`);
+            window.Utils.showProgressError(`${providerName} test failed\n\n${error.message}\n\nPlease check your API key and model.`);
         } finally {
             // Restore old values
             if (config.dbKey === 'root') {
@@ -446,8 +443,6 @@ const Navigation = {
     },
     
     saveAISettings() {
-        const providerSelect = document.getElementById('ai-provider');
-        
         // API Keys
         const geminiKeyInput = document.getElementById('gemini-api-key');
         const groqKeyInput = document.getElementById('groq-api-key');
@@ -469,8 +464,7 @@ const Navigation = {
             return;
         }
         
-        // Save provider and API keys
-        if (providerSelect) window.DB.settings.aiProvider = providerSelect.value;
+        // Save API keys
         if (geminiKeyInput) window.DB.settings.geminiApiKey = geminiKey;
         if (groqKeyInput) window.DB.groqApiKey = groqKey;
         if (chatGptKeyInput) window.DB.settings.chatGptApiKey = chatGptKeyInput.value.trim();
