@@ -5476,7 +5476,6 @@
                 // Try to authenticate before revealing master password
                 const authenticated = await authenticateForMasterPassword();
                 if (!authenticated) {
-                    Utils.showError('Authentication required to view Master Password');
                     return;
                 }
             }
@@ -5499,23 +5498,27 @@
         }
         
         /**
-         * Authenticate user before revealing master password
+         * Authenticate user before revealing master password (reuses existing auth system)
          */
         async function authenticateForMasterPassword() {
             // Check if biometric is enabled and available
             if (window.DB.security.biometricEnabled && window.Security) {
                 try {
-                    const biometricResult = await window.Security.authenticateBiometric();
-                    if (biometricResult) {
+                    Loading.show('Authenticating...');
+                    const success = await window.Security.authenticateWithBiometric();
+                    Loading.hide();
+                    
+                    if (success) {
                         return true;
                     }
                 } catch (error) {
-                    // Fallback to PIN if biometric fails
+                    Loading.hide();
+                    // Fallback to PIN if biometric fails/cancelled
                 }
             }
             
             // Fallback to PIN authentication
-            if (window.DB.security.pin) {
+            if (window.DB.security.pinHash) {
                 return new Promise((resolve) => {
                     // Create a simple PIN prompt modal
                     const modalHTML = `
@@ -5558,21 +5561,26 @@
         }
         
         /**
-         * Verify PIN for master password authentication
+         * Verify PIN for master password authentication (reuses existing Security.unlockWithPin)
          */
-        function verifyMasterPasswordAuth() {
+        async function verifyMasterPasswordAuth() {
             const pin = document.getElementById('master-password-auth-pin').value;
-            const storedPinHash = window.DB.security.pin;
             
             if (!pin || pin.length !== 4) {
                 Utils.showError('Please enter a 4-digit PIN');
                 return;
             }
             
-            // Hash the entered PIN
-            window.Security.hashPin(pin).then(hash => {
-                if (hash === storedPinHash) {
-                    // Success
+            try {
+                Loading.show('Verifying...');
+                
+                // Use existing Security.unlockWithPin method
+                const success = await window.Security.unlockWithPin(pin);
+                
+                Loading.hide();
+                
+                if (success) {
+                    // Success - close modal and resolve
                     const modal = document.getElementById('master-password-auth-modal');
                     if (modal) modal.remove();
                     
@@ -5586,7 +5594,12 @@
                     document.getElementById('master-password-auth-pin').value = '';
                     document.getElementById('master-password-auth-pin').focus();
                 }
-            });
+            } catch (error) {
+                Loading.hide();
+                Utils.showError('Authentication failed');
+                document.getElementById('master-password-auth-pin').value = '';
+                document.getElementById('master-password-auth-pin').focus();
+            }
         }
         
         /**
