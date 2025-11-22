@@ -132,7 +132,7 @@ const Credentials = {
                     <!-- Tag Header -->
                     <summary class="cursor-pointer px-4 py-2.5 bg-gradient-to-r from-blue-200 to-cyan-200 hover:from-blue-300 hover:to-cyan-300 transition-colors flex justify-between items-center" onclick="Credentials.toggleTag('${Utils.escapeHtml(tag).replace(/'/g, "\\'")}')">
                         <span class="font-semibold text-gray-700 text-sm">${Utils.escapeHtml(tag)}</span>
-                        <span class="text-xs text-gray-500 font-medium">${count}</span>
+                        <span class="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 text-white text-xs font-bold">${count}</span>
                     </summary>
                     
                     <!-- Credentials in this tag -->
