@@ -40,6 +40,13 @@ Your capabilities:
 - Track performance and suggest rebalancing strategies
 - Consider USD to INR conversion rates provided
 
+Investment Data Structure:
+- All investments have an "amount" field in INR (Indian Rupees)
+- For SHARES: amount = price × quantity (USD shares are converted to INR using exchange rate)
+- For GOLD: amount = current gold rate per gram × quantity in grams
+- For FD and EPF: amount is the direct deposit amount
+- Use the "amount" field for all calculations and analysis
+
 When providing recommendations:
 - Be specific about percentages and amounts
 - Explain rationale for diversification suggestions
@@ -333,21 +340,45 @@ Use Indian Rupee (₹) for all amounts.`;
                 } else {
                     // Legacy: return full data (fallback)
                     const investments = window.DB.portfolioInvestments || [];
+                    const exchangeRate = window.DB.exchangeRate?.rate || window.DB.exchangeRate || 83;
+                    const goldRate = window.DB.goldRatePerGram || 7000;
+                    const sharePrices = window.DB.sharePrices || [];
+                    
+                    // Calculate amount for each investment
+                    const calculateAmount = (inv) => {
+                        if (inv.type === 'SHARES') {
+                            const sharePrice = sharePrices.find(sp => sp.name === inv.name && sp.active);
+                            const price = sharePrice ? sharePrice.price : (inv.price || 0);
+                            const currency = sharePrice ? sharePrice.currency : (inv.currency || 'INR');
+                            const amount = price * (inv.quantity || 0);
+                            return currency === 'USD' ? amount * exchangeRate : amount;
+                        } else if (inv.type === 'GOLD') {
+                            return goldRate * (inv.quantity || 0);
+                        } else if (inv.type === 'EPF' || inv.type === 'FD') {
+                            return parseFloat(inv.amount) || 0;
+                        }
+                        return 0;
+                    };
+                    
                     return {
                         mode: 'investments',
-                        investments: investments.map(inv => ({
-                            name: inv.name,
-                            type: inv.type,
-                            goal: inv.goal,
-                            amount: inv.amount,
-                            price: inv.price,
-                            currency: inv.currency,
-                            quantity: inv.quantity,
-                            createdAt: inv.createdAt,
-                            lastUpdated: inv.lastUpdated
-                        })),
-                        total: investments.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0),
-                        exchangeRate: window.DB.exchangeRate?.rate || 83
+                        investments: investments.map(inv => {
+                            const calculatedAmount = calculateAmount(inv);
+                            return {
+                                name: inv.name,
+                                type: inv.type,
+                                goal: inv.goal,
+                                amount: calculatedAmount,
+                                price: inv.price,
+                                currency: inv.currency,
+                                quantity: inv.quantity,
+                                createdAt: inv.createdAt,
+                                lastUpdated: inv.lastUpdated
+                            };
+                        }),
+                        total: investments.reduce((sum, inv) => sum + calculateAmount(inv), 0),
+                        exchangeRate: exchangeRate,
+                        goldRate: goldRate
                     };
                 }
                 

@@ -121,13 +121,34 @@ Important:
             };
         }
 
+        // Get calculation parameters
+        const exchangeRate = window.DB.exchangeRate?.rate || window.DB.exchangeRate || 83;
+        const goldRate = window.DB.goldRatePerGram || 7000;
+        const sharePrices = window.DB.sharePrices || [];
+        
+        // Helper to calculate amount for any investment
+        const calculateAmount = (inv) => {
+            if (inv.type === 'SHARES') {
+                const sharePrice = sharePrices.find(sp => sp.name === inv.name && sp.active);
+                const price = sharePrice ? sharePrice.price : (inv.price || 0);
+                const currency = sharePrice ? sharePrice.currency : (inv.currency || 'INR');
+                const amount = price * (inv.quantity || 0);
+                return currency === 'USD' ? amount * exchangeRate : amount;
+            } else if (inv.type === 'GOLD') {
+                return goldRate * (inv.quantity || 0);
+            } else if (inv.type === 'EPF' || inv.type === 'FD') {
+                return parseFloat(inv.amount) || 0;
+            }
+            return 0;
+        };
+
         // Get unique types, goals, and currencies
         const types = [...new Set(investments.map(i => i.type).filter(Boolean))];
         const goals = [...new Set(investments.map(i => i.goal).filter(Boolean))];
         const currencies = [...new Set(investments.map(i => i.currency).filter(Boolean))];
         
-        // Get amount range
-        const amounts = investments.map(i => parseFloat(i.amount)).filter(a => !isNaN(a));
+        // Get amount range (using calculated amounts)
+        const amounts = investments.map(i => calculateAmount(i)).filter(a => !isNaN(a) && a > 0);
         const minAmount = amounts.length > 0 ? Math.min(...amounts) : 0;
         const maxAmount = amounts.length > 0 ? Math.max(...amounts) : 0;
         
@@ -142,7 +163,7 @@ Important:
                     { name: 'name', type: 'string', description: 'Investment name (e.g., "Apple", "ICICI FD")' },
                     { name: 'type', type: 'string', description: 'Investment type (SHARES, GOLD, FD, EPF)', values: types },
                     { name: 'goal', type: 'string', description: 'Investment goal/term (SHORT_TERM or LONG_TERM)', values: goals },
-                    { name: 'amount', type: 'number', description: 'Total investment amount in INR' },
+                    { name: 'amount', type: 'number', description: 'Total investment amount in INR (calculated as price × quantity for SHARES/GOLD)' },
                     { name: 'quantity', type: 'number', description: 'Quantity (for SHARES/GOLD)' },
                     { name: 'price', type: 'number', description: 'Unit price (for SHARES/GOLD)' },
                     { name: 'currency', type: 'string', description: 'Currency (INR or USD)', values: currencies },
@@ -168,8 +189,9 @@ Important:
                     min: Math.round(minAmount),
                     max: Math.round(maxAmount)
                 },
-                totalPortfolioValue: investments.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0),
-                exchangeRate: window.DB.exchangeRate?.rate || window.DB.exchangeRate || 83
+                totalPortfolioValue: investments.reduce((sum, i) => sum + calculateAmount(i), 0),
+                exchangeRate: exchangeRate,
+                goldRate: goldRate
             },
             queryInstructions: `
 To query investments data, return a JSON object with this structure:
@@ -186,6 +208,10 @@ IMPORTANT - Field Clarifications:
 - "type" field contains: SHARES, GOLD, FD (Fixed Deposit), EPF (Employee Provident Fund)
 - "goal" field contains: SHORT_TERM, LONG_TERM (NOT in type field!)
 - Always use i.goal for SHORT_TERM/LONG_TERM, NOT i.type
+- "amount" field is pre-calculated in INR:
+  * For SHARES: amount = price × quantity (USD shares converted to INR)
+  * For GOLD: amount = gold rate per gram × quantity
+  * For FD/EPF: amount = direct deposit amount
 
 Examples:
 1. Total long-term investments:
