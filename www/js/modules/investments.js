@@ -1939,6 +1939,11 @@ const Investments = {
         const modal = document.getElementById('delete-confirm-modal');
         const message = document.getElementById('delete-confirm-message');
         
+        // Get required data for calculations
+        const exchangeRate = this.getExchangeRate();
+        const goldRate = window.DB.goldRatePerGram || 7000;
+        const sharePrices = window.DB.sharePrices || [];
+        
         // Build detailed info based on investment type
         let detailsHTML = '';
         let amount = 0;
@@ -1958,7 +1963,7 @@ const Investments = {
             const currency = isMonthly ? (investment.currency || 'INR') : (this.getLatestSharePrice(investment.name)?.currency || investment.currency || 'INR');
             
             // Use correct calculation method based on investment type
-            amount = isMonthly ? this.calculateMonthlyAmount(investment) : this.calculatePortfolioAmount(investment);
+            amount = isMonthly ? this.calculateMonthlyAmount(investment) : this.calculatePortfolioAmount(investment, exchangeRate, goldRate, sharePrices);
             
             detailsHTML = `
                 <div class="text-left space-y-2 bg-gray-50 p-4 rounded-lg">
@@ -1980,7 +1985,7 @@ const Investments = {
             `;
         } else if (investment.type === 'GOLD') {
             // Use correct calculation method based on investment type
-            amount = isMonthly ? this.calculateMonthlyAmount(investment) : this.calculatePortfolioAmount(investment);
+            amount = isMonthly ? this.calculateMonthlyAmount(investment) : this.calculatePortfolioAmount(investment, exchangeRate, goldRate, sharePrices);
             
             detailsHTML = `
                 <div class="text-left space-y-2 bg-gray-50 p-4 rounded-lg">
