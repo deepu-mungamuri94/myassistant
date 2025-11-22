@@ -127,36 +127,44 @@ const Investments = {
         container.innerHTML = `
             <div class="bg-white rounded-xl shadow-md overflow-hidden">
                 <!-- Header -->
-                <div class="bg-gradient-to-r from-yellow-600 to-orange-600 text-white p-4 ${isBodyVisible ? 'rounded-t-xl' : 'rounded-xl'} cursor-pointer" onclick="Investments.togglePortfolioBody()">
+                <div class="bg-gradient-to-r from-yellow-600 to-orange-600 text-white p-4 ${isBodyVisible ? 'rounded-t-xl' : 'rounded-xl'}">
                     <div class="flex justify-between items-center mb-3">
                         <div class="flex items-center gap-2">
-                            <svg class="w-5 h-5 transition-transform duration-200 ${isBodyVisible ? '' : '-rotate-90'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
                             <h3 class="text-lg font-bold">Portfolio</h3>
                         </div>
                         <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(totalValue))}</p>
                     </div>
                     <div class="grid grid-cols-3 gap-2">
-                        <button onclick="event.stopPropagation(); Investments.openSharePriceModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
+                        <button onclick="Investments.openSharePriceModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                             </svg>
                             Stocks
                         </button>
-                        <button onclick="event.stopPropagation(); Investments.openExchangeRateModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
+                        <button onclick="Investments.openExchangeRateModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
                             <span class="text-base">💲</span>
                             ${currentExchangeRate}
                         </button>
-                        <button onclick="event.stopPropagation(); Investments.openGoldRateModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
+                        <button onclick="Investments.openGoldRateModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
                             <span class="text-base">🪙</span>
                             ${currentGoldRate}
                         </button>
                     </div>
                 </div>
 
+                <!-- View/Hide Button (Centered, attached to body) -->
+                <div class="flex justify-center -mt-3 relative z-10">
+                    <button onclick="Investments.togglePortfolioBody()" 
+                            class="px-6 py-1.5 bg-gradient-to-r from-yellow-600 to-orange-600 text-white text-sm font-semibold rounded-full shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2">
+                        <span>${isBodyVisible ? 'Hide' : 'View'}</span>
+                        <svg class="w-4 h-4 transition-transform duration-200 ${isBodyVisible ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                </div>
+
                 <!-- Body (collapsible) -->
-                <div id="portfolio-body" class="${isBodyVisible ? '' : 'hidden'}">
+                <div id="portfolio-body" class="${isBodyVisible ? 'mt-3' : 'hidden'}">
                     <!-- Tabs -->
                     <div class="flex border-b border-gray-200 bg-gray-50">
                         <button onclick="Investments.switchPortfolioTab('short')" 
@@ -343,15 +351,15 @@ const Investments = {
 
         // Build HTML with tabs
         let html = `
-            <div class="bg-white rounded-xl shadow-md overflow-hidden mb-4">
+            <div class="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-xl shadow-md overflow-hidden mb-4">
                 <!-- Tabs -->
-                <div class="flex border-b border-gray-200 bg-gray-50">
+                <div class="flex border-b border-orange-200 bg-orange-100/50">
                     <button onclick="Investments.switchMonthlyTab('short')" 
-                            class="flex-1 py-2 px-3 text-center text-sm font-medium transition-all ${this.currentMonthlyTab === 'short' ? 'text-yellow-700 border-b-2 border-yellow-600 bg-white' : 'text-gray-600 hover:text-gray-800'}">
+                            class="flex-1 py-2 px-3 text-center text-sm font-medium transition-all ${this.currentMonthlyTab === 'short' ? 'text-orange-700 border-b-2 border-orange-600 bg-orange-50' : 'text-gray-600 hover:text-gray-800'}">
                         Short Term<br><span class="text-xs">(₹${Utils.formatIndianNumber(Math.round(shortTermTotal))})</span>
                     </button>
                     <button onclick="Investments.switchMonthlyTab('long')" 
-                            class="flex-1 py-2 px-3 text-center text-sm font-medium transition-all ${this.currentMonthlyTab === 'long' ? 'text-yellow-700 border-b-2 border-yellow-600 bg-white' : 'text-gray-600 hover:text-gray-800'}">
+                            class="flex-1 py-2 px-3 text-center text-sm font-medium transition-all ${this.currentMonthlyTab === 'long' ? 'text-orange-700 border-b-2 border-orange-600 bg-orange-50' : 'text-gray-600 hover:text-gray-800'}">
                         Long Term<br><span class="text-xs">(₹${Utils.formatIndianNumber(Math.round(longTermTotal))})</span>
                     </button>
                 </div>
