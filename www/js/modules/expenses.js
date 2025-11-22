@@ -302,7 +302,28 @@ const Expenses = {
         
         // Custom recurring expense - navigate to recurring page
         if (expense.category === 'recurring') {
-            return `<button onclick="Expenses.showRecurringDetails('${escapeJs(expense.title)}')" class="text-xs text-blue-600 hover:text-blue-800 mt-1" style="text-decoration:none;">🔗 More Info...</button>`;
+            // Check if the recurring expense still exists (by ID if available, otherwise by name)
+            let recurringExists = false;
+            
+            if (expense.recurringId && window.DB.recurringExpenses) {
+                // Check by ID (more reliable, handles name changes)
+                recurringExists = window.DB.recurringExpenses.some(r => 
+                    String(r.id) === String(expense.recurringId)
+                );
+            } else if (window.DB.recurringExpenses) {
+                // Fallback to name check for legacy expenses
+                recurringExists = window.DB.recurringExpenses.some(r => r.name === expense.title);
+            }
+            
+            if (recurringExists) {
+                // Use recurringId if available (more reliable), otherwise use title
+                const identifier = expense.recurringId ? expense.recurringId : escapeJs(expense.title);
+                const idParam = expense.recurringId ? identifier : `'${identifier}'`;
+                return `<button onclick="Expenses.showRecurringDetails(${idParam})" class="text-xs text-blue-600 hover:text-blue-800 mt-1" style="text-decoration:none;">🔗 More Info...</button>`;
+            } else {
+                // Recurring expense template was deleted
+                return `<span class="text-xs text-gray-400 italic mt-1">⚠️ Schedule deleted</span>`;
+            }
         }
         
         return '';
@@ -385,11 +406,22 @@ const Expenses = {
     
     /**
      * Show recurring expense details in view-only modal
+     * @param {string|number} nameOrId - Can be recurringId or recurringName
      */
-    showRecurringDetails(recurringName) {
-        // Find the recurring expense by name
+    showRecurringDetails(nameOrId) {
+        // Find the recurring expense by ID or name
         const recurringExpenses = window.DB.recurringExpenses || [];
-        const recurring = recurringExpenses.find(r => r.name === recurringName);
+        let recurring = null;
+        
+        // Try to find by ID first (if it's a number or numeric string)
+        if (!isNaN(nameOrId)) {
+            recurring = recurringExpenses.find(r => String(r.id) === String(nameOrId));
+        }
+        
+        // If not found by ID, try by name (for backward compatibility)
+        if (!recurring) {
+            recurring = recurringExpenses.find(r => r.name === nameOrId);
+        }
         
         if (recurring && window.RecurringExpenses && window.RecurringExpenses.showDetailsModal) {
             // Show recurring details in view modal
@@ -398,7 +430,7 @@ const Expenses = {
             // Fallback to edit modal if view modal doesn't exist
             window.openRecurringExpenseModal(recurring.id);
         } else {
-            Utils.showError('Recurring expense not found');
+            Utils.showError('Recurring expense schedule not found. It may have been deleted.');
         }
     },
     

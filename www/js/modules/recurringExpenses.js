@@ -685,8 +685,21 @@ const RecurringExpenses = {
         const recurring = this.getById(id);
         if (!recurring) return;
         
+        // Check if there are any expenses with this recurringId
+        const linkedExpenses = window.DB.expenses.filter(e => 
+            e.recurringId && String(e.recurringId) === String(id)
+        );
+        
+        let message = `Delete "${recurring.name}"?`;
+        
+        if (linkedExpenses.length > 0) {
+            message += `\n\n⚠️ Warning: ${linkedExpenses.length} expense(s) are linked to this recurring expense. They will remain in your expenses but won't be connected to any recurring schedule.`;
+        }
+        
+        message += '\n\nThis action cannot be undone.';
+        
         const confirmed = await Utils.confirm(
-            `Delete "${recurring.name}"? This action cannot be undone.`,
+            message,
             'Delete Recurring Expense'
         );
         
