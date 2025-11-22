@@ -248,7 +248,7 @@ const Investments = {
             const sharePrice = sharePrices.find(sp => sp.name === inv.name && sp.active);
             const currentPrice = sharePrice ? sharePrice.price : inv.price;
             const currencySymbol = (sharePrice?.currency || inv.currency) === 'USD' ? '$' : '₹';
-            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Price:</span> ${currencySymbol}${Utils.formatIndianNumber(currentPrice)}</span>`;
+            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Price:</span> ${currencySymbol}${Utils.formatIndianNumber(parseFloat(currentPrice).toFixed(2))}</span>`;
             line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Qty:</span> ${inv.quantity}</span>`;
             if ((sharePrice?.currency || inv.currency) === 'USD') {
                 const usdAmount = currentPrice * inv.quantity;
@@ -1417,7 +1417,8 @@ const Investments = {
             if (hasError) return;
 
             investmentData.quantity = quantity;
-            investmentData.price = price;
+            // Round price to 2 decimal places
+            investmentData.price = Math.round(price * 100) / 100;
             investmentData.currency = currency;
         } else if (type === 'GOLD') {
             const quantity = parseFloat(document.getElementById('investment-quantity').value);
@@ -1435,7 +1436,8 @@ const Investments = {
             if (hasError) return;
 
             investmentData.quantity = quantity;
-            investmentData.price = price;
+            // Round price to 2 decimal places
+            investmentData.price = Math.round(price * 100) / 100;
         } else if (type === 'EPF') {
             const amount = parseFloat(document.getElementById('investment-amount').value);
 
@@ -1569,8 +1571,8 @@ const Investments = {
             // Add to existing (only for SHARES and GOLD)
             if (data.type === 'SHARES' || data.type === 'GOLD') {
                 existing.quantity = (existing.quantity || 0) + (data.quantity || 0);
-                // Update to latest price
-                existing.price = data.price;
+                // Update to latest price (rounded to 2 decimals)
+                existing.price = Math.round(data.price * 100) / 100;
                 if (data.type === 'SHARES') {
                     existing.currency = data.currency;
                 }
@@ -1646,13 +1648,15 @@ const Investments = {
         const existing = sharePrices.find(sp => sp.name === name);
         
         if (existing) {
-            existing.price = price;
+            // Round price to 2 decimal places
+            existing.price = Math.round(price * 100) / 100;
             existing.currency = currency;
             existing.lastUpdated = new Date().toISOString();
         } else {
             sharePrices.push({
                 name,
-                price,
+                // Round price to 2 decimal places
+                price: Math.round(price * 100) / 100,
                 currency,
                 active: true,
                 lastUpdated: new Date().toISOString()
@@ -1728,8 +1732,8 @@ const Investments = {
     addToExisting(existing, newData) {
         if (newData.type === 'SHARES' || newData.type === 'GOLD') {
             existing.quantity = (existing.quantity || 0) + (newData.quantity || 0);
-            // Update to latest price
-            existing.price = newData.price;
+            // Update to latest price (rounded to 2 decimals)
+            existing.price = Math.round(newData.price * 100) / 100;
             if (newData.type === 'SHARES') {
                 existing.currency = newData.currency;
             }
@@ -2110,7 +2114,7 @@ const Investments = {
                     
                     <!-- Price (right, dark green) -->
                     <span class="share-price text-sm font-bold text-green-700" data-currency="${share.currency}">
-                        ${share.currency === 'USD' ? '$' : '₹'}${Utils.formatIndianNumber(share.price)}
+                        ${share.currency === 'USD' ? '$' : '₹'}${Utils.formatIndianNumber(share.price.toFixed(2))}
                     </span>
                 </div>
             </div>
@@ -2168,8 +2172,10 @@ const Investments = {
         
         // Update prices (placeholder - in real implementation, fetch from API)
         activeShares.forEach(share => {
-            // Simulate price update
-            share.price = share.price * (0.98 + Math.random() * 0.04); // ±2% change
+            // Simulate price update (±2% change)
+            const newPrice = share.price * (0.98 + Math.random() * 0.04);
+            // Round to 2 decimal places
+            share.price = Math.round(newPrice * 100) / 100;
             share.lastUpdated = new Date().toISOString();
         });
         
@@ -2211,14 +2217,16 @@ const Investments = {
         const share = sharePrices.find(sp => sp.name === shareName);
         
         if (share) {
-            // Simulate price update (placeholder)
-            share.price = share.price * (0.98 + Math.random() * 0.04); // ±2% change
+            // Simulate price update (±2% change)
+            const newPrice = share.price * (0.98 + Math.random() * 0.04);
+            // Round to 2 decimal places
+            share.price = Math.round(newPrice * 100) / 100;
             share.lastUpdated = new Date().toISOString();
             window.Storage.save();
             
             // Update display
             const currency = share.currency === 'USD' ? '$' : '₹';
-            priceSpan.innerHTML = `${currency}${Utils.formatIndianNumber(share.price)}`;
+            priceSpan.innerHTML = `${currency}${Utils.formatIndianNumber(share.price.toFixed(2))}`;
             
             // Update timestamp
             const timestampDiv = shareDiv.querySelector('.text-xs.text-gray-500');
@@ -2259,7 +2267,8 @@ const Investments = {
     openEditPriceModal(shareName, currentPrice, currency) {
         document.getElementById('edit-share-name').textContent = shareName;
         document.getElementById('edit-share-currency').textContent = currency === 'USD' ? '$' : '₹';
-        document.getElementById('edit-share-price-input').value = currentPrice;
+        // Format price to 2 decimals
+        document.getElementById('edit-share-price-input').value = parseFloat(currentPrice).toFixed(2);
         document.getElementById('edit-share-price-error').textContent = '';
         document.getElementById('edit-share-price-error').classList.add('hidden');
         
@@ -2298,7 +2307,8 @@ const Investments = {
         const share = sharePrices.find(sp => sp.name === this.editingShare.name);
         
         if (share) {
-            share.price = newPrice;
+            // Round to 2 decimal places for DB storage
+            share.price = Math.round(newPrice * 100) / 100;
             share.lastUpdated = new Date().toISOString();
             window.Storage.save();
             
