@@ -637,6 +637,43 @@ const Investments = {
     },
 
     /**
+     * Get latest share price from storage
+     */
+    getLatestSharePrice(shareName) {
+        const sharePrices = window.DB.sharePrices || [];
+        return sharePrices.find(sp => sp.name === shareName && sp.active);
+    },
+
+    /**
+     * Update portfolio entries with new share price
+     */
+    updatePortfolioSharePrice(shareName, newPrice, currency) {
+        const portfolioInvestments = window.DB.portfolioInvestments || [];
+        
+        // Update all portfolio entries with this share
+        portfolioInvestments.forEach(inv => {
+            if (inv.type === 'SHARES' && inv.name === shareName) {
+                inv.price = newPrice;
+                inv.currency = currency;
+            }
+        });
+    },
+
+    /**
+     * Update portfolio entries with new gold price
+     */
+    updatePortfolioGoldPrice(newGoldRate) {
+        const portfolioInvestments = window.DB.portfolioInvestments || [];
+        
+        // Update all portfolio entries with GOLD
+        portfolioInvestments.forEach(inv => {
+            if (inv.type === 'GOLD') {
+                inv.price = newGoldRate;
+            }
+        });
+    },
+
+    /**
      * Apply date filter to investments
      */
     applyDateFilterToInvestments(investments) {
@@ -1843,12 +1880,27 @@ const Investments = {
         
         if (investment.type === 'SHARES') {
             document.getElementById('investment-quantity').value = investment.quantity;
-            document.getElementById('investment-price').value = investment.price;
-            document.getElementById('investment-currency').value = investment.currency;
+            
+            // For portfolio investments, use latest price from storage; for monthly, use historical price
+            if (investment.isMonthly) {
+                document.getElementById('investment-price').value = investment.price;
+                document.getElementById('investment-currency').value = investment.currency;
+            } else {
+                const latestSharePrice = this.getLatestSharePrice(investment.name);
+                document.getElementById('investment-price').value = latestSharePrice ? latestSharePrice.price : investment.price;
+                document.getElementById('investment-currency').value = latestSharePrice ? latestSharePrice.currency : investment.currency;
+            }
             this.calculateAmount();
         } else if (investment.type === 'GOLD') {
             document.getElementById('investment-quantity').value = investment.quantity;
-            document.getElementById('investment-price').value = investment.price;
+            
+            // For portfolio investments, use latest gold rate; for monthly, use historical price
+            if (investment.isMonthly) {
+                document.getElementById('investment-price').value = investment.price;
+            } else {
+                const goldRate = window.DB.goldRatePerGram || 7000;
+                document.getElementById('investment-price').value = goldRate || investment.price;
+            }
             this.calculateAmount();
         } else if (investment.type === 'EPF') {
             document.getElementById('investment-amount').value = investment.amount;
@@ -2188,6 +2240,9 @@ const Investments = {
             // Round to 2 decimal places
             share.price = Math.round(newPrice * 100) / 100;
             share.lastUpdated = new Date().toISOString();
+            
+            // Also update portfolio entries with this share
+            this.updatePortfolioSharePrice(share.name, share.price, share.currency);
         });
         
         window.Storage.save();
@@ -2233,6 +2288,10 @@ const Investments = {
             // Round to 2 decimal places
             share.price = Math.round(newPrice * 100) / 100;
             share.lastUpdated = new Date().toISOString();
+            
+            // Also update portfolio entries with this share
+            this.updatePortfolioSharePrice(share.name, share.price, share.currency);
+            
             window.Storage.save();
             
             // Update display
@@ -2332,6 +2391,10 @@ const Investments = {
             // Round to 2 decimal places for DB storage
             share.price = Math.round(newPrice * 100) / 100;
             share.lastUpdated = new Date().toISOString();
+            
+            // Also update portfolio entries with this share
+            this.updatePortfolioSharePrice(share.name, share.price, share.currency);
+            
             window.Storage.save();
             
             Utils.showSuccess('Share price updated!');
@@ -2414,6 +2477,10 @@ const Investments = {
         }
         
         window.DB.goldRatePerGram = newRate;
+        
+        // Also update portfolio entries with GOLD
+        this.updatePortfolioGoldPrice(newRate);
+        
         window.Storage.save();
         
         Utils.showSuccess('Gold rate updated successfully! Portfolio values recalculated.');
