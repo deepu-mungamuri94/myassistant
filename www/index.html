@@ -677,7 +677,7 @@
                     </div>
                     
                     <!-- Section Body -->
-                    <div id="credentials-list" class="p-3 space-y-2">
+                    <div id="credentials-list" class="p-3 space-y-4">
                         <!-- Credentials grouped by tag will be listed here -->
                     </div>
                 </div>
@@ -2117,20 +2117,20 @@
     <!-- CREDENTIAL ADD/EDIT MODAL -->
     <div id="credential-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeCredentialModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
-            <h2 id="credential-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Add Credential</h2>
+            <h2 id="credential-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">Add Credential</h2>
             
             <input type="hidden" id="credential-modal-id">
             
             <div class="mb-3">
-                <input type="text" id="credential-modal-service" placeholder="Service Name *" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" oninput="clearFieldError('credential-modal-service')">
+                <input type="text" id="credential-modal-service" placeholder="Service Name *" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="clearFieldError('credential-modal-service')">
                 <div id="credential-modal-service-error" class="text-red-600 text-xs mt-1 hidden"></div>
             </div>
             
-            <input type="text" id="credential-modal-tag" placeholder="Tag (e.g., Work, Personal, Bank)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <input type="text" id="credential-modal-tag" placeholder="Tag (e.g., Work, Personal, Bank)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
             
             <div class="mb-3">
                 <div class="relative">
-                    <input type="password" id="credential-modal-username" placeholder="Username *" class="w-full p-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" oninput="clearFieldError('credential-modal-username')">
+                    <input type="password" id="credential-modal-username" placeholder="Username *" class="w-full p-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="clearFieldError('credential-modal-username')">
                     <button type="button" onclick="togglePasswordVisibility('credential-modal-username')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
                         <svg id="credential-modal-username-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -2143,7 +2143,7 @@
             
             <div class="mb-3">
                 <div class="relative">
-                    <input type="password" id="credential-modal-password" placeholder="Password *" class="w-full p-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" oninput="clearFieldError('credential-modal-password')">
+                    <input type="password" id="credential-modal-password" placeholder="Password *" class="w-full p-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="clearFieldError('credential-modal-password')">
                     <button type="button" onclick="togglePasswordVisibility('credential-modal-password')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
                         <svg id="credential-modal-password-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -2154,11 +2154,11 @@
                 <div id="credential-modal-password-error" class="text-red-600 text-xs mt-1 hidden"></div>
             </div>
             
-            <textarea id="credential-modal-description" placeholder="Description (shown in list)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="2"></textarea>
-            <textarea id="credential-modal-additional-details" placeholder="Additional Details (optional)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="3"></textarea>
+            <textarea id="credential-modal-description" placeholder="Description (shown in list)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" rows="2"></textarea>
+            <textarea id="credential-modal-additional-details" placeholder="Additional Details (optional)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3"></textarea>
             
             <div class="flex space-x-3">
-                <button onclick="saveCredentialModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                <button onclick="saveCredentialModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
                     Save
                 </button>
                 <button onclick="closeCredentialModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">

@@ -130,9 +130,9 @@ const Credentials = {
                 <!-- Tag Group -->
                 <details class="credential-tag-group bg-white rounded-lg border border-gray-200 overflow-hidden" ${isExpanded ? 'open' : ''}>
                     <!-- Tag Header -->
-                    <summary class="cursor-pointer px-4 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors flex justify-between items-center" onclick="Credentials.toggleTag('${Utils.escapeHtml(tag).replace(/'/g, "\\'")}')">
-                        <span class="font-semibold text-gray-700 text-sm">${Utils.escapeHtml(tag)}</span>
-                        <span class="text-xs text-gray-500 font-medium">${count}</span>
+                    <summary class="cursor-pointer px-4 py-2.5 bg-gradient-to-r from-blue-700 to-cyan-700 hover:from-blue-800 hover:to-cyan-800 transition-colors flex justify-between items-center" onclick="Credentials.toggleTag('${Utils.escapeHtml(tag).replace(/'/g, "\\'")}')">
+                        <span class="font-semibold text-white text-sm">${Utils.escapeHtml(tag)}</span>
+                        <span class="text-xs text-white/80 font-medium">${count}</span>
                     </summary>
                     
                     <!-- Credentials in this tag -->
@@ -171,10 +171,13 @@ const Credentials = {
                                         </div>
                                     </div>
                                     
-                                    <!-- Line 2: Description (full width) -->
-                                    ${description ? `
-                                        <p class="text-xs text-gray-600 leading-relaxed pl-6">${Utils.escapeHtml(description)}</p>
-                                    ` : ''}
+                                    <!-- Line 2: Description (left) + Date Added (right) -->
+                                    <div class="flex justify-between items-start pl-6 gap-2">
+                                        ${description ? `
+                                            <p class="text-xs text-gray-600 leading-relaxed flex-1">${Utils.escapeHtml(description)}</p>
+                                        ` : '<span class="flex-1"></span>'}
+                                        <span class="text-xs text-gray-400 flex-shrink-0">${Utils.formatDate(cred.createdAt)}</span>
+                                    </div>
                                 </div>
                             `;
                         }).join('')}
