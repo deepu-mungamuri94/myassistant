@@ -2074,7 +2074,16 @@ const Investments = {
         const modal = document.getElementById('share-price-modal');
         const list = document.getElementById('share-prices-list');
         
-        list.innerHTML = activeShares.map(share => `
+        // Check portfolio investments once
+        const portfolioInvestments = window.DB.portfolioInvestments || [];
+        
+        list.innerHTML = activeShares.map(share => {
+            // Check if share exists in portfolio
+            const existsInPortfolio = portfolioInvestments.some(inv => 
+                inv.type === 'SHARES' && inv.name === share.name
+            );
+            
+            return `
             <div class="bg-gray-50 p-3 rounded-lg border border-gray-200" data-share="${share.name}">
                 <!-- Line 1: Name (left), Actions (right) -->
                 <div class="flex justify-between items-center mb-2">
@@ -2098,8 +2107,9 @@ const Investments = {
                             </svg>
                         </button>
                         <button onclick="Investments.deleteSharePrice('${share.name}')" 
-                                class="text-red-500 hover:text-red-700 p-1" 
-                                title="Delete">
+                                class="p-1 ${existsInPortfolio ? 'text-gray-400 cursor-not-allowed' : 'text-red-500 hover:text-red-700'}" 
+                                title="${existsInPortfolio ? 'Cannot delete - exists in portfolio' : 'Delete'}"
+                                ${existsInPortfolio ? 'disabled' : ''}>
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
                             </svg>
@@ -2118,7 +2128,8 @@ const Investments = {
                     </span>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
         
         modal.classList.remove('hidden');
     },
@@ -2248,13 +2259,24 @@ const Investments = {
      * Delete share price from storage
      */
     deleteSharePrice(shareName) {
+        // Check if share exists in portfolio
+        const portfolioInvestments = window.DB.portfolioInvestments || [];
+        const existsInPortfolio = portfolioInvestments.some(inv => 
+            inv.type === 'SHARES' && inv.name === shareName
+        );
+        
+        if (existsInPortfolio) {
+            Utils.showError(`Cannot delete "${shareName}" - it exists in your portfolio. Remove it from portfolio first.`);
+            return;
+        }
+        
         const sharePrices = window.DB.sharePrices || [];
         const index = sharePrices.findIndex(sp => sp.name === shareName);
         
         if (index !== -1) {
             sharePrices.splice(index, 1);
             window.DB.sharePrices = sharePrices;
-        window.Storage.save();
+            window.Storage.save();
             
             Utils.showSuccess('Share price removed from tracking');
             this.openSharePriceModal(); // Refresh the modal
