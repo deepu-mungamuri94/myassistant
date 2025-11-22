@@ -128,11 +128,11 @@ const Credentials = {
             
             return `
                 <!-- Tag Group -->
-                <details class="credential-tag-group bg-white rounded-lg border border-gray-200 overflow-hidden" ${isExpanded ? 'open' : ''}>
+                <details class="credential-tag-group bg-white rounded-lg border border-gray-200 overflow-hidden" open>
                     <!-- Tag Header -->
-                    <summary class="cursor-pointer px-4 py-2.5 bg-gradient-to-r from-blue-400 to-cyan-400 hover:from-blue-500 hover:to-cyan-500 transition-colors flex justify-between items-center" onclick="Credentials.toggleTag('${Utils.escapeHtml(tag).replace(/'/g, "\\'")}')">
-                        <span class="font-semibold text-white text-sm">${Utils.escapeHtml(tag)}</span>
-                        <span class="text-xs text-white/90 font-medium">${count}</span>
+                    <summary class="cursor-pointer px-4 py-2.5 bg-gradient-to-r from-blue-200 to-cyan-200 hover:from-blue-300 hover:to-cyan-300 transition-colors flex justify-between items-center" onclick="Credentials.toggleTag('${Utils.escapeHtml(tag).replace(/'/g, "\\'")}')">
+                        <span class="font-semibold text-gray-700 text-sm">${Utils.escapeHtml(tag)}</span>
+                        <span class="text-xs text-gray-500 font-medium">${count}</span>
                     </summary>
                     
                     <!-- Credentials in this tag -->
