@@ -669,13 +669,15 @@
                     <!-- Section Header -->
                     <div class="bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-3">
                         <div class="flex items-center justify-between">
-                            <h3 class="text-white font-bold text-base">Credentials</h3>
-                            <span id="credentials-count" class="bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-semibold">0 credentials</span>
+                            <span id="credentials-count" class="text-white text-sm font-semibold">0 credentials</span>
+                            <button id="toggle-credentials-groups-btn" onclick="Credentials.toggleAllGroups()" class="px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-lg transition-all text-xs font-semibold">
+                                📂 Expand All
+                            </button>
                         </div>
                     </div>
                     
                     <!-- Section Body -->
-                    <div id="credentials-list" class="divide-y divide-gray-200">
+                    <div id="credentials-list" class="p-3 space-y-2">
                         <!-- Credentials grouped by tag will be listed here -->
                     </div>
                 </div>

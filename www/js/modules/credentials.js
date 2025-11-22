@@ -4,6 +4,8 @@
  */
 
 const Credentials = {
+    expandedTags: new Set(), // Track which tag groups are expanded
+    
     /**
      * Add a new credential
      */
@@ -122,15 +124,16 @@ const Credentials = {
         list.innerHTML = Object.keys(groupedByTag).sort().map(tag => {
             const credentials = groupedByTag[tag];
             const count = credentials.length;
+            const isExpanded = this.expandedTags.has(tag);
             
             return `
                 <!-- Tag Group -->
-                <div class="bg-gray-50">
+                <details class="credential-tag-group bg-white rounded-lg border border-gray-200 overflow-hidden" ${isExpanded ? 'open' : ''}>
                     <!-- Tag Header -->
-                    <div class="flex justify-between items-center px-4 py-2 bg-gray-100 border-b border-gray-200">
+                    <summary class="cursor-pointer px-4 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors flex justify-between items-center" onclick="Credentials.toggleTag('${Utils.escapeHtml(tag).replace(/'/g, "\\'")}')">
                         <span class="font-semibold text-gray-700 text-sm">${Utils.escapeHtml(tag)}</span>
                         <span class="text-xs text-gray-500 font-medium">${count}</span>
-                    </div>
+                    </summary>
                     
                     <!-- Credentials in this tag -->
                     <div class="divide-y divide-gray-200">
@@ -176,9 +179,54 @@ const Credentials = {
                             `;
                         }).join('')}
                     </div>
-                </div>
+                </details>
             `;
         }).join('');
+    },
+    
+    /**
+     * Toggle a specific tag group
+     */
+    toggleTag(tag) {
+        if (this.expandedTags.has(tag)) {
+            this.expandedTags.delete(tag);
+        } else {
+            this.expandedTags.add(tag);
+        }
+    },
+    
+    /**
+     * Toggle expand/collapse all tag groups
+     */
+    toggleAllGroups() {
+        const groups = document.querySelectorAll('.credential-tag-group');
+        const allExpanded = Array.from(groups).every(group => group.hasAttribute('open'));
+        
+        groups.forEach(group => {
+            if (allExpanded) {
+                group.removeAttribute('open');
+            } else {
+                group.setAttribute('open', '');
+            }
+        });
+        
+        // Update button text
+        const button = document.getElementById('toggle-credentials-groups-btn');
+        if (button) {
+            button.textContent = allExpanded ? '📂 Expand All' : '📁 Collapse All';
+        }
+        
+        // Update expanded state
+        if (allExpanded) {
+            this.expandedTags.clear();
+        } else {
+            // Add all tags to expanded set
+            const tags = Array.from(groups).map(group => {
+                const summary = group.querySelector('summary span');
+                return summary ? summary.textContent : '';
+            }).filter(t => t);
+            tags.forEach(tag => this.expandedTags.add(tag));
+        }
     },
 
 
