@@ -664,29 +664,20 @@
                     </svg>
                 </button>
                 
-                <!-- Header Card -->
-                <div class="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl shadow-xl p-5 mb-4">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-                                <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <h2 class="text-white font-bold text-xl">Credentials</h2>
-                                <p id="credentials-count" class="text-white/90 text-sm font-medium">0 credentials</p>
-                            </div>
-                        </div>
-                        <div class="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2">
-                            <p class="text-white font-bold text-2xl" id="credentials-count-number">0</p>
+                <!-- Main Credentials Section -->
+                <div class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
+                    <!-- Section Header -->
+                    <div class="bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-3">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-white font-bold text-base">Credentials</h3>
+                            <span id="credentials-count" class="bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-semibold">0 credentials</span>
                         </div>
                     </div>
-                </div>
-                
-                <!-- Credentials List -->
-                <div id="credentials-list" class="space-y-3">
-                    <!-- Credentials will be listed here -->
+                    
+                    <!-- Section Body -->
+                    <div id="credentials-list" class="divide-y divide-gray-200">
+                        <!-- Credentials grouped by tag will be listed here -->
+                    </div>
                 </div>
             </div>
             
