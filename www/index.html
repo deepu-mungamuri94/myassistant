@@ -18,7 +18,7 @@
         import { CapacitorHttp } from 'https://cdn.jsdelivr.net/npm/@capacitor/core@latest/dist/index.js';
         // Preserve existing native plugins and add web-specific ones
         const existingPlugins = window.Capacitor?.Plugins || {};
-        window.Capacitor = { ...Capacitor, Plugins: { ...existingPlugins, StatusBar, Http: CapacitorHttp } };
+        window.Capacitor = { ...Capacitor, Plugins: { ...existingPlugins, StatusBar, CapacitorHttp } };
         console.log('🔌 Capacitor initialized with plugins:', Object.keys(window.Capacitor.Plugins));
     </script>
 </head>
@@ -1791,6 +1791,44 @@
                     Got it
                 </button>
             </div>
+        </div>
+    </div>
+    
+    <!-- PROGRESS MODAL (Used for showing loading status with updates) -->
+    <div id="progress-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-[70] flex items-center justify-center">
+        <!-- Close Button (Top Right - initially hidden, fixed position) -->
+        <button id="progress-modal-close-btn" onclick="Utils.closeProgressModal()" class="hidden fixed top-8 right-8 text-gray-400 hover:text-white transition-colors z-[71]">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+        
+        <div class="flex flex-col items-center">
+            <!-- Loading Spinner (shown during progress) -->
+            <div id="progress-spinner" class="mb-4">
+                <svg class="w-16 h-16 animate-spin text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+            </div>
+            
+            <!-- Success Icon (hidden initially) -->
+            <div id="progress-success-icon" class="hidden">
+                <svg class="w-24 h-24 animate-scale-in" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="#10B981" stroke-width="4" class="animate-fade-in"/>
+                    <path d="M30 50 L42 62 L70 34" stroke="#10B981" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round" class="animate-draw-check"/>
+                </svg>
+            </div>
+            
+            <!-- Error Icon (hidden initially) -->
+            <div id="progress-error-icon" class="hidden">
+                <svg class="w-24 h-24" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="#EF4444" stroke-width="4" class="animate-fade-in"/>
+                    <path d="M35 35 L65 65 M65 35 L35 65" stroke="#EF4444" stroke-width="6" stroke-linecap="round" class="animate-draw-x"/>
+                </svg>
+            </div>
+            
+            <!-- Status Message -->
+            <p id="progress-modal-message" class="mt-4 text-lg font-bold text-white animate-fade-in-up text-center leading-relaxed">Loading...</p>
         </div>
     </div>
     

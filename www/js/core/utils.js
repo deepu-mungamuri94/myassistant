@@ -543,6 +543,136 @@ const Utils = {
                 modal._infoCallback = callback;
             }
         }
+    },
+
+    /**
+     * Show progress modal with loading spinner
+     * @param {string} message - Message to display
+     * @param {boolean} showLoading - Whether to show the loading spinner
+     */
+    showProgressModal(message = 'Loading...', showLoading = true) {
+        const modal = document.getElementById('progress-modal');
+        const spinner = document.getElementById('progress-spinner');
+        const successIcon = document.getElementById('progress-success-icon');
+        const errorIcon = document.getElementById('progress-error-icon');
+        const messageEl = document.getElementById('progress-modal-message');
+        const closeBtn = document.getElementById('progress-modal-close-btn');
+        
+        if (!modal || !spinner || !successIcon || !errorIcon || !messageEl || !closeBtn) return;
+        
+        // Aggressively hide common-info-modal if visible
+        const infoModal = document.getElementById('common-info-modal');
+        if (infoModal && !infoModal.classList.contains('hidden')) {
+            infoModal.classList.add('hidden');
+        }
+        
+        // Reset state: show spinner, hide icons, hide close button
+        spinner.classList.remove('hidden');
+        successIcon.classList.add('hidden');
+        errorIcon.classList.add('hidden');
+        closeBtn.classList.add('hidden');
+        
+        if (!showLoading) {
+            spinner.classList.add('hidden');
+        }
+        
+        messageEl.innerHTML = message;
+        modal.classList.remove('hidden');
+    },
+
+    /**
+     * Update progress modal message (keeps it open)
+     * @param {string} message - New message to display
+     * @param {boolean} showLoading - Whether to show the loading spinner
+     */
+    updateProgressModal(message, showLoading = true) {
+        const modal = document.getElementById('progress-modal');
+        const spinner = document.getElementById('progress-spinner');
+        const messageEl = document.getElementById('progress-modal-message');
+        
+        if (!modal || !spinner || !messageEl) return;
+        
+        // Aggressively hide common-info-modal if visible
+        const infoModal = document.getElementById('common-info-modal');
+        if (infoModal && !infoModal.classList.contains('hidden')) {
+            infoModal.classList.add('hidden');
+        }
+        
+        if (showLoading) {
+            spinner.classList.remove('hidden');
+        } else {
+            spinner.classList.add('hidden');
+        }
+        
+        messageEl.innerHTML = message;
+    },
+
+    /**
+     * Show success in progress modal
+     * @param {string} message - Success message
+     * @param {boolean} autoClose - Whether to auto-close after 1.5 seconds
+     */
+    showProgressSuccess(message, autoClose = false) {
+        const modal = document.getElementById('progress-modal');
+        const spinner = document.getElementById('progress-spinner');
+        const successIcon = document.getElementById('progress-success-icon');
+        const errorIcon = document.getElementById('progress-error-icon');
+        const messageEl = document.getElementById('progress-modal-message');
+        const closeBtn = document.getElementById('progress-modal-close-btn');
+        
+        if (!modal || !spinner || !successIcon || !errorIcon || !messageEl || !closeBtn) return;
+        
+        // Hide spinner and error, show success
+        spinner.classList.add('hidden');
+        errorIcon.classList.add('hidden');
+        successIcon.classList.remove('hidden');
+        
+        messageEl.innerHTML = message;
+        
+        if (autoClose) {
+            // Auto-close after 1.5 seconds
+            setTimeout(() => {
+                this.closeProgressModal();
+            }, 1500);
+        } else {
+            // Show close button for manual close
+            closeBtn.classList.remove('hidden');
+        }
+    },
+
+    /**
+     * Show error in progress modal (manual close only)
+     * @param {string} message - Error message
+     */
+    showProgressError(message) {
+        const modal = document.getElementById('progress-modal');
+        const spinner = document.getElementById('progress-spinner');
+        const successIcon = document.getElementById('progress-success-icon');
+        const errorIcon = document.getElementById('progress-error-icon');
+        const messageEl = document.getElementById('progress-modal-message');
+        const closeBtn = document.getElementById('progress-modal-close-btn');
+        
+        if (!modal || !spinner || !successIcon || !errorIcon || !messageEl || !closeBtn) return;
+        
+        // Hide spinner and success, show error
+        spinner.classList.add('hidden');
+        successIcon.classList.add('hidden');
+        errorIcon.classList.remove('hidden');
+        
+        messageEl.innerHTML = message;
+        
+        // Show close button for manual close
+        closeBtn.classList.remove('hidden');
+    },
+
+    /**
+     * Close/hide progress modal
+     */
+    closeProgressModal() {
+        const modal = document.getElementById('progress-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
     }
 };
 

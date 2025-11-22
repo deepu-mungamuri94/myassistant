@@ -101,17 +101,22 @@ const Cards = {
      * Fetch card benefits from AI and store in database
      */
     async fetchAndStoreBenefits(cardId, cardName, showLoading = true) {
+        // Suppress AIProvider info messages if using progress modal
+        if (showLoading && window.AIProvider) {
+            window.AIProvider.suppressInfoMessages = true;
+        }
+        
         try {
-            // Show loading overlay on the card
+            // Show progress modal
             if (showLoading) {
-                this.showCardLoading(cardId);
+                Utils.showProgressModal(`💳 Fetching benefits for ${cardName}...<br><span class="text-sm text-gray-600">Searching official bank website</span>`, true);
             }
             
             // Check if AI is configured
             if (!window.AIProvider || !window.AIProvider.isConfigured()) {
                 console.warn('AI not configured, skipping benefits fetch');
                 if (showLoading) {
-                    this.hideCardLoading(cardId);
+                    Utils.showProgressError(`❌ AI not configured<br><span class="text-sm text-gray-600">Please configure AI in settings</span>`);
                 }
                 return;
             }
@@ -285,26 +290,25 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 }
                 
                 console.log(`✅ Benefits fetched for ${cardName}`);
-                if (window.Utils) {
+                if (showLoading) {
+                    Utils.showProgressSuccess(`✅ Benefits loaded!<br><span class="text-sm text-gray-600">${cardName} benefits updated</span>`, true);
+                } else if (window.Utils) {
                     Utils.showSuccess(`Card benefits loaded for ${cardName}`);
                 }
-            }
-            
-            // Hide loading overlay
-            if (showLoading) {
-                this.hideCardLoading(cardId);
             }
         } catch (error) {
             console.error(`Failed to fetch benefits for ${cardName}:`, error);
             
-            // Hide loading overlay
+            // Show error in progress modal or regular error
             if (showLoading) {
-                this.hideCardLoading(cardId);
-            }
-            
-            // Show error toast for user awareness
-            if (window.Utils) {
+                Utils.showProgressError(`❌ Failed to fetch benefits<br><span class="text-sm text-gray-600">${error.message}</span>`);
+            } else if (window.Utils) {
                 Utils.showError(`Failed to fetch benefits for ${cardName}`);
+            }
+        } finally {
+            // Re-enable AIProvider info messages
+            if (showLoading && window.AIProvider) {
+                window.AIProvider.suppressInfoMessages = false;
             }
         }
     },
@@ -328,12 +332,8 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         }
         
         try {
-            if (window.Utils) {
-                Utils.showInfo(`Fetching latest benefits for ${card.name}...`);
-            }
-            
-            // Don't show card loading for manual refresh (button loading is enough)
-            await this.fetchAndStoreBenefits(cardId, card.name, false);
+            // Use progress modal for status updates
+            await this.fetchAndStoreBenefits(cardId, card.name, true);
             
             // Re-render to show View button now enabled
             this.render();

@@ -2199,13 +2199,132 @@ const Investments = {
     },
 
     /**
-     * Reload all share prices (placeholder for API integration)
+     * Fetch stock tickers from LLM for all shares
+     * Step 1: Convert stock names to ticker symbols
+     */
+    async fetchTickersFromLLM() {
+        const shareNames = window.DB.sharePrices
+            .filter(s => s.active)
+            .map(s => s.name);
+        
+        if (shareNames.length === 0) {
+            throw new Error('No active shares found');
+        }
+
+        // Build prompt for LLM
+        const prompt = `You are a stock market expert. I need stock ticker symbols for the following companies:
+
+${shareNames.map((name, idx) => `${idx + 1}. ${name}`).join('\n')}
+
+For EACH company, provide:
+- ticker: Official stock ticker symbol
+- exchange: NSE (for Indian stocks) or NASDAQ/NYSE (for US stocks)
+- currency: INR or USD
+
+IMPORTANT RULES:
+- For Indian stocks: Use NSE ticker with .NS suffix (e.g., "RELIANCE.NS", "TCS.NS")
+- For US stocks: Use standard ticker WITHOUT suffix (e.g., "AAPL", "MSFT")
+- If a stock exists on both NSE and BSE, prefer NSE
+- If you're unsure about a company, set ticker to null
+
+Respond ONLY with valid JSON (no markdown, no explanation):
+{
+  "Company Name 1": {
+    "ticker": "SYMBOL.NS",
+    "exchange": "NSE",
+    "currency": "INR"
+  },
+  "Company Name 2": {
+    "ticker": "AAPL",
+    "exchange": "NASDAQ",
+    "currency": "USD"
+  }
+}`;
+
+        try {
+            // Use existing AI framework with priority order
+            const response = await window.AIProvider.call(prompt, null);
+            
+            // Parse JSON response (handle markdown code blocks if present)
+            let cleanedResponse = response.trim();
+            if (cleanedResponse.startsWith('```')) {
+                cleanedResponse = cleanedResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+            }
+            
+            const tickerData = JSON.parse(cleanedResponse);
+            
+            return tickerData;
+            
+        } catch (error) {
+            throw new Error(`Failed to fetch tickers: ${error.message}`);
+        }
+    },
+
+    /**
+     * Fetch actual stock price from Yahoo Finance API
+     * @param {string} ticker - Stock ticker (e.g., "AAPL" or "RELIANCE.NS")
+     */
+    async fetchPriceFromYahoo(ticker) {
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
+        
+        try {
+            let data;
+            
+            // Use Capacitor CapacitorHttp for native apps (bypasses CORS)
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) {
+                const response = await window.Capacitor.Plugins.CapacitorHttp.get({
+                    url: url,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    }
+                });
+                
+                if (response.status !== 200) {
+                    throw new Error(`Yahoo Finance API returned ${response.status}`);
+                }
+                
+                // CapacitorHttp returns data directly
+                data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+            } else {
+                // Fallback to fetch for web/testing (will have CORS issues on web)
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`Yahoo Finance API returned ${response.status}`);
+                }
+                
+                data = await response.json();
+            }
+            
+            // Extract price from response
+            const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+            
+            if (!price) {
+                throw new Error('Price not found in response');
+            }
+            
+            return Math.round(price * 100) / 100; // Round to 2 decimals
+            
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    /**
+     * Reload all share prices (LLM + Yahoo Finance)
+     * Step 1: Fetch tickers from LLM (if not already stored)
+     * Step 2: Fetch prices from Yahoo Finance
      */
     async reloadAllSharePrices() {
         const sharePrices = window.DB.sharePrices || [];
         const activeShares = sharePrices.filter(sp => sp.active);
         
         if (activeShares.length === 0) return;
+        
+        // Suppress AIProvider info messages (progress modal handles feedback)
+        if (window.AIProvider) {
+            window.AIProvider.suppressInfoMessages = true;
+        }
         
         // Show loading state on global button
         const globalBtn = document.getElementById('global-reload-btn');
@@ -2232,41 +2351,154 @@ const Investments = {
                 if (reloadBtn) {
                     reloadBtn.classList.add('animate-spin');
                 }
+                
+                // Hide any previous errors
+                const errorDiv = shareDiv.querySelector('.share-error');
+                if (errorDiv) {
+                    errorDiv.classList.add('hidden');
+                }
             }
         });
         
-        // Simulate API call (TODO: Replace with actual API integration)
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Update prices (placeholder - in real implementation, fetch from API)
-        activeShares.forEach(share => {
-            // Simulate price update (±2% change)
-            const newPrice = share.price * (0.98 + Math.random() * 0.04);
-            // Round to 2 decimal places
-            share.price = Math.round(newPrice * 100) / 100;
-            share.lastUpdated = new Date().toISOString();
+        try {
+            // Step 1: Fetch tickers from LLM (only for shares without tickers - saves API calls)
+            // Note: Individual reload always fetches ticker to catch symbol changes
+            const sharesNeedingTickers = activeShares.filter(s => !s.ticker);
             
-            // Also update portfolio entries with this share
-            this.updatePortfolioSharePrice(share.name, share.price, share.currency);
-        });
-        
-        window.Storage.save();
-        
-        // Re-render the modal with updated prices
-        this.openSharePriceModal();
-        
-        // Restore global button
-        globalBtn.disabled = false;
-        globalBtn.innerHTML = originalBtnHTML;
-        
-        Utils.showSuccess('All share prices updated!<br>Portfolio values recalculated');
-        
-        // Re-render portfolio to reflect updated prices
-        this.render();
+            if (sharesNeedingTickers.length > 0) {
+                // Show progress: Fetching stock symbols
+                Utils.showProgressModal(`🔍 Fetching stock symbols...<br><span class="text-sm text-gray-600">Analyzing ${sharesNeedingTickers.length} stock(s)</span>`, true);
+                
+                const tickerData = await this.fetchTickersFromLLM();
+                
+                // Update shares with ticker info
+                activeShares.forEach(share => {
+                    const tickerInfo = tickerData[share.name];
+                    if (tickerInfo && tickerInfo.ticker) {
+                        share.ticker = tickerInfo.ticker;
+                        share.exchange = tickerInfo.exchange;
+                        share.currency = tickerInfo.currency;
+                    }
+                });
+                
+                window.Storage.save();
+            } else {
+                // Skip ticker fetch, go straight to price update
+                Utils.showProgressModal(`📊 Fetching stock prices...<br><span class="text-sm text-gray-600">Updating ${activeShares.length} stock(s)</span>`, true);
+            }
+            
+            // Update progress: Fetching stock prices
+            Utils.updateProgressModal(`📊 Fetching stock prices...<br><span class="text-sm text-gray-600">Updating ${activeShares.length} stock(s)</span>`, true);
+            
+            // Step 2: Fetch prices from Yahoo Finance for shares with tickers
+            let successCount = 0;
+            let errorCount = 0;
+            const errors = [];
+            
+            for (let i = 0; i < activeShares.length; i++) {
+                const share = activeShares[i];
+                
+                // Update progress with current stock
+                Utils.updateProgressModal(`📊 Fetching stock prices...<br><span class="text-sm text-gray-600">Updating ${share.name} (${i + 1}/${activeShares.length})</span>`, true);
+                
+                if (!share.ticker) {
+                    errorCount++;
+                    errors.push(share.name);
+                    
+                    // Show error in UI
+                    const shareDiv = document.querySelector(`[data-share="${share.name}"]`);
+                    if (shareDiv) {
+                        const priceSpan = shareDiv.querySelector('.share-price');
+                        if (priceSpan) {
+                            priceSpan.innerHTML = `<span class="text-xs text-red-600">No ticker</span>`;
+                        }
+                        
+                        // Show inline error
+                        const errorDiv = shareDiv.querySelector('.share-error');
+                        if (errorDiv) {
+                            errorDiv.textContent = 'Unable to find ticker symbol';
+                            errorDiv.classList.remove('hidden');
+                        }
+                    }
+                    continue;
+                }
+                
+                try {
+                    const newPrice = await this.fetchPriceFromYahoo(share.ticker);
+                    share.price = newPrice;
+                    share.lastUpdated = new Date().toISOString();
+                    
+                    // Also update portfolio entries with this share
+                    this.updatePortfolioSharePrice(share.name, share.price, share.currency);
+                    
+                    successCount++;
+                    
+                } catch (error) {
+                    errorCount++;
+                    errors.push(share.name);
+                    
+                    // Show error in UI
+                    const shareDiv = document.querySelector(`[data-share="${share.name}"]`);
+                    if (shareDiv) {
+                        const priceSpan = shareDiv.querySelector('.share-price');
+                        if (priceSpan) {
+                            priceSpan.innerHTML = `<span class="text-xs text-red-600">API error</span>`;
+                        }
+                        
+                        // Show inline error
+                        const errorDiv = shareDiv.querySelector('.share-error');
+                        if (errorDiv) {
+                            errorDiv.textContent = `Failed to fetch price: ${error.message}`;
+                            errorDiv.classList.remove('hidden');
+                        }
+                    }
+                }
+            }
+            
+            window.Storage.save();
+            
+            // Re-render the modal with updated prices
+            this.openSharePriceModal();
+            
+            // Restore global button
+            globalBtn.disabled = false;
+            globalBtn.innerHTML = originalBtnHTML;
+            
+            // Show result in progress modal
+            if (successCount > 0 && errorCount === 0) {
+                // All success
+                Utils.showProgressSuccess(`✅ All prices updated!<br><span class="text-sm text-gray-600">${successCount} stock(s) updated successfully</span>`, true);
+            } else if (successCount > 0 && errorCount > 0) {
+                // Partial success
+                Utils.showProgressError(`⚠️ Partially completed<br><span class="text-sm">${successCount} updated, ${errorCount} failed</span><br><span class="text-xs text-red-600">${errors.join(', ')}</span>`);
+            } else {
+                // All failed
+                Utils.showProgressError(`❌ Update failed<br><span class="text-sm">All ${errorCount} stock(s) failed</span><br><span class="text-xs text-gray-600">Check inline errors below each stock</span>`);
+            }
+            
+            // Re-render portfolio to reflect updated prices
+            this.render();
+            
+        } catch (error) {
+            // Restore global button
+            globalBtn.disabled = false;
+            globalBtn.innerHTML = originalBtnHTML;
+            
+            // Re-render modal to restore prices
+            this.openSharePriceModal();
+            
+            // Show error in progress modal
+            Utils.showProgressError(`❌ Failed to reload prices<br><span class="text-sm text-gray-600">${error.message}</span>`);
+        } finally {
+            // Re-enable AIProvider info messages
+            if (window.AIProvider) {
+                window.AIProvider.suppressInfoMessages = false;
+            }
+        }
     },
 
     /**
-     * Reload single share price (placeholder for API integration)
+     * Reload single share price (LLM + Yahoo Finance)
      */
     async reloadSingleSharePrice(shareName) {
         const shareDiv = document.querySelector(`[data-share="${shareName}"]`);
@@ -2280,18 +2512,50 @@ const Investments = {
         priceSpan.innerHTML = '<span class="loading-dots">...</span>';
         if (reloadBtn) reloadBtn.classList.add('animate-spin');
         
-        // Simulate API call (TODO: Replace with actual API integration)
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Hide any previous errors
+        const errorDiv = shareDiv.querySelector('.share-error');
+        if (errorDiv) {
+            errorDiv.classList.add('hidden');
+        }
         
-        // Update price in DB
+        // Suppress AIProvider info messages (progress modal handles feedback)
+        if (window.AIProvider) {
+            window.AIProvider.suppressInfoMessages = true;
+        }
+        
+        // Show progress modal
+        Utils.showProgressModal(`📊 Updating ${shareName}...<br><span class="text-sm text-gray-600">Fetching latest price</span>`, true);
+        
+        // Find share in DB
         const sharePrices = window.DB.sharePrices || [];
         const share = sharePrices.find(sp => sp.name === shareName);
         
-        if (share) {
-            // Simulate price update (±2% change)
-            const newPrice = share.price * (0.98 + Math.random() * 0.04);
-            // Round to 2 decimal places
-            share.price = Math.round(newPrice * 100) / 100;
+        if (!share) {
+            priceSpan.innerHTML = originalPrice;
+            if (reloadBtn) reloadBtn.classList.remove('animate-spin');
+            Utils.closeProgressModal();
+            return;
+        }
+        
+        try {
+            // Step 1: ALWAYS fetch ticker from LLM (ticker symbols can change over time)
+            Utils.updateProgressModal(`🔍 Fetching stock symbol...<br><span class="text-sm text-gray-600">Analyzing ${shareName}</span>`, true);
+            const tickerData = await this.fetchTickersFromLLM();
+            const tickerInfo = tickerData[shareName];
+            
+            if (tickerInfo && tickerInfo.ticker) {
+                share.ticker = tickerInfo.ticker;
+                share.exchange = tickerInfo.exchange;
+                share.currency = tickerInfo.currency;
+                window.Storage.save();
+            } else {
+                throw new Error('Could not fetch ticker from LLM');
+            }
+            
+            // Step 2: Fetch price from Yahoo Finance
+            Utils.updateProgressModal(`📊 Fetching price from market...<br><span class="text-sm text-gray-600">Updating ${shareName}</span>`, true);
+            const newPrice = await this.fetchPriceFromYahoo(share.ticker);
+            share.price = newPrice;
             share.lastUpdated = new Date().toISOString();
             
             // Also update portfolio entries with this share
@@ -2309,14 +2573,33 @@ const Investments = {
                 timestampDiv.textContent = `Updated: ${new Date(share.lastUpdated).toLocaleString()}`;
             }
             
+            // Show success
+            Utils.showProgressSuccess(`✅ Price updated!<br><span class="text-sm text-gray-600">${shareName}: ${currency}${newPrice}</span>`, true);
+            
             // Re-render portfolio to reflect updated price
             this.render();
-        } else {
+            
+        } catch (error) {
+            // Restore original price
             priceSpan.innerHTML = originalPrice;
+            
+            // Show error in progress modal
+            Utils.showProgressError(`❌ Failed to update ${shareName}<br><span class="text-sm text-gray-600">${error.message}</span>`);
+            
+            // Show inline error message below the share item
+            if (errorDiv) {
+                errorDiv.textContent = `Unable to fetch price. ${error.message}`;
+                errorDiv.classList.remove('hidden');
+            }
+        } finally {
+            // Remove loading animation
+            if (reloadBtn) reloadBtn.classList.remove('animate-spin');
+            
+            // Re-enable AIProvider info messages
+            if (window.AIProvider) {
+                window.AIProvider.suppressInfoMessages = false;
+            }
         }
-        
-        // Remove loading animation
-        if (reloadBtn) reloadBtn.classList.remove('animate-spin');
     },
 
     /**

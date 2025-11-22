@@ -4,6 +4,9 @@
  */
 
 const AIProvider = {
+    // Flag to suppress Utils.showInfo messages (e.g., during progress modal operations)
+    suppressInfoMessages: false,
+    
     /**
      * Get all available providers (with API keys configured)
      */
@@ -121,7 +124,7 @@ const AIProvider = {
                     }
                 } else {
                     console.log(`✅ SUCCESS with primary provider: ${currentProvider.toUpperCase()} (Priority #1)`);
-                    if (window.Utils) {
+                    if (window.Utils && !this.suppressInfoMessages) {
                         window.Utils.showInfo(`🤖 Using ${currentProvider.toUpperCase()}`);
                     }
                 }
@@ -141,7 +144,7 @@ const AIProvider = {
                         const nextProvider = providerOrder[i + 1];
                         console.log(`🔀 Falling back to ${nextProvider.toUpperCase()} (Priority #${i + 2})...`);
                         
-                        if (window.Utils) {
+                        if (window.Utils && !this.suppressInfoMessages) {
                             window.Utils.showInfo(`⚠️ ${currentProvider} rate limit - trying ${nextProvider}...`);
                         }
                         
@@ -194,7 +197,7 @@ const AIProvider = {
                 console.log(`✅ Web Search SUCCESS with ${provider.toUpperCase()}`);
                 
                 // Show which AI is being used for web search
-                if (window.Utils) {
+                if (window.Utils && !this.suppressInfoMessages) {
                     window.Utils.showInfo(`🔍 Fetching via ${provider.toUpperCase()} (web search)`);
                 }
                 
@@ -209,7 +212,7 @@ const AIProvider = {
                     const nextProvider = searchOrder[i + 1];
                     console.log(`🔀 Falling back to ${nextProvider.toUpperCase()}...`);
                     
-                    if (window.Utils) {
+                    if (window.Utils && !this.suppressInfoMessages) {
                         window.Utils.showInfo(`⚠️ ${provider} rate limit - trying ${nextProvider}...`);
                     }
                     continue;
