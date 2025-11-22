@@ -292,12 +292,39 @@ const Expenses = {
         
         // Loan EMI - navigate to loans page
         if (this.isLoanEMIExpense(expense)) {
-            return `<button onclick="Expenses.showLoanDetails('${escapeJs(expense.title)}')" class="text-xs text-blue-600 hover:text-blue-800 mt-1" style="text-decoration:none;">🔗 More Info...</button>`;
+            // Check if the loan still exists
+            const loans = window.DB.loans || [];
+            const loanExists = loans.some(l => {
+                const displayTitle = l.loanType === 'Other' && l.customLoanType 
+                    ? `${l.bankName} ${l.customLoanType} EMI`
+                    : `${l.bankName} ${l.loanType} EMI`;
+                return expense.title === displayTitle || expense.title.includes(l.bankName);
+            });
+            
+            if (loanExists) {
+                return `<button onclick="Expenses.showLoanDetails('${escapeJs(expense.title)}')" class="text-xs text-blue-600 hover:text-blue-800 mt-1" style="text-decoration:none;">🔗 More Info...</button>`;
+            } else {
+                // Loan was deleted
+                return `<span class="text-xs text-gray-400 italic mt-1">⚠️ Loan deleted</span>`;
+            }
         }
         
         // Card EMI - show EMI details modal (pass expense ID to access suggestedCard)
         if (expense.category === 'emi' && expense.title && (expense.title.startsWith('Card EMI:') || expense.title.startsWith('EMI:'))) {
-            return `<button onclick="Expenses.showCardEMIDetails(${expense.id})" class="text-xs text-blue-600 hover:text-blue-800 mt-1" style="text-decoration:none;">🔗 More Info...</button>`;
+            // Check if the card still exists
+            const cardName = expense.suggestedCard;
+            let cardExists = false;
+            
+            if (cardName && window.DB.cards) {
+                cardExists = window.DB.cards.some(c => c.name === cardName);
+            }
+            
+            if (cardExists) {
+                return `<button onclick="Expenses.showCardEMIDetails(${expense.id})" class="text-xs text-blue-600 hover:text-blue-800 mt-1" style="text-decoration:none;">🔗 More Info...</button>`;
+            } else {
+                // Card was deleted
+                return `<span class="text-xs text-gray-400 italic mt-1">⚠️ Card deleted</span>`;
+            }
         }
         
         // Custom recurring expense - navigate to recurring page
@@ -349,7 +376,7 @@ const Expenses = {
             // Fallback to edit modal if view modal doesn't exist
             window.openLoanModal(loan.id);
         } else {
-            Utils.showError('Loan not found');
+            Utils.showError('Loan not found. It may have been deleted.');
         }
     },
     
@@ -392,7 +419,7 @@ const Expenses = {
         const card = cards.find(c => c.name === cardName);
         
         if (!card) {
-            Utils.showError(`Card not found: ${cardName}`);
+            Utils.showError(`Card not found: ${cardName}. It may have been deleted.`);
             return;
         }
         

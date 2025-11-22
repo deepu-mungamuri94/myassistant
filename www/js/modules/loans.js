@@ -188,8 +188,30 @@ const Loans = {
         const loan = this.getById(id);
         if (!loan) throw new Error('Loan not found');
         
+        // Check if there are any EMI expenses linked to this loan
+        const loanEmiTitle = `${loan.bankName} ${loan.loanType || 'Loan'} EMI`;
+        const linkedExpenses = window.DB.expenses.filter(e => 
+            e.title === loanEmiTitle || e.title.includes(loan.bankName)
+        );
+        
+        // Check if loan is still active (has remaining EMIs)
+        const remaining = this.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
+        const isActive = remaining.emisRemaining > 0;
+        
+        let message = `Delete loan "${loan.reason}" from ${loan.bankName}?`;
+        
+        if (linkedExpenses.length > 0) {
+            message += `\n\n⚠️ Warning: ${linkedExpenses.length} EMI expense(s) are linked to this loan. They will remain in your expenses but the loan link will show as deleted.`;
+        }
+        
+        if (isActive) {
+            message += `\n\n⚠️ This loan has ${remaining.emisRemaining} pending EMI(s). Auto-adding will stop after deletion.`;
+        }
+        
+        message += '\n\nThis action cannot be undone.';
+        
         const confirmed = await window.Utils.confirm(
-            `Delete loan "${loan.reason}" from ${loan.bankName}?`,
+            message,
             'Delete Loan'
         );
         

@@ -913,8 +913,31 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
      * Delete with confirmation
      */
     async deleteWithConfirm(id) {
+        const card = this.getById(id);
+        if (!card) return;
+        
+        // Check if there are any expenses linked to this card
+        const linkedExpenses = window.DB.expenses.filter(e => 
+            e.suggestedCard === card.name
+        );
+        
+        // Check if there are active EMIs
+        const activeEMIs = card.emis ? card.emis.filter(e => !e.completed) : [];
+        
+        let message = `Delete "${card.name}"?`;
+        
+        if (linkedExpenses.length > 0) {
+            message += `\n\n⚠️ Warning: ${linkedExpenses.length} expense(s) are linked to this card. They will remain in your expenses but the card link will show as deleted.`;
+        }
+        
+        if (activeEMIs.length > 0) {
+            message += `\n\n⚠️ ${activeEMIs.length} active EMI(s) will stop auto-adding to expenses after deletion.`;
+        }
+        
+        message += '\n\nThis action cannot be undone.';
+        
         const confirmed = await window.Utils.confirm(
-            'This will permanently delete this credit card and its rules. Are you sure?',
+            message,
             'Delete Credit Card'
         );
         if (!confirmed) return;
