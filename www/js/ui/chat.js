@@ -134,17 +134,17 @@ const Chat = {
         if (!chatMessages) return;
         
         const messageDiv = document.createElement('div');
-        messageDiv.className = `message p-3 rounded-lg mb-2 ${role === 'user' ? 'bg-purple-100 ml-8' : 'bg-white border border-gray-200 mr-8 shadow-sm'}`;
+        messageDiv.className = `message p-2.5 rounded-lg mb-2 ${role === 'user' ? 'bg-blue-50 border border-blue-200 ml-8' : 'bg-gray-50 border border-gray-300 mr-8'}`;
         if (id) messageDiv.id = id;
         
         // Format assistant messages for better readability
         const formattedContent = role === 'assistant' ? this.formatAIResponse(content) : Utils.escapeHtml(content);
         
         messageDiv.innerHTML = `
-            <div class="font-semibold text-sm mb-2 ${role === 'user' ? 'text-purple-700' : 'text-indigo-700'}">
+            <div class="font-semibold text-xs mb-1.5 ${role === 'user' ? 'text-blue-700' : 'text-indigo-700'}">
                 ${role === 'user' ? '👤 You' : '🤖 AI Assistant'}
             </div>
-            <div class="text-gray-800">${formattedContent}</div>
+            <div class="text-xs text-gray-800 leading-relaxed">${formattedContent}</div>
         `;
         
         chatMessages.appendChild(messageDiv);
@@ -192,10 +192,10 @@ const Chat = {
                     html += '</div>';
                 }
                 const cardName = line.replace(/^(RECOMMENDED:|USE:|BEST CARD:|SUGGESTION:)\s*/i, '');
-                html += `<div class="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-lg p-3 mb-3">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-2xl">💳</span>
-                        <span class="font-bold text-green-800 text-base">${Utils.escapeHtml(cardName)}</span>
+                html += `<div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-300 rounded-lg p-2 mb-2">
+                    <div class="flex items-center gap-1.5 mb-1">
+                        <span class="text-lg">💳</span>
+                        <span class="font-bold text-green-800 text-xs">${Utils.escapeHtml(cardName)}</span>
                     </div>`;
                 inRecommendation = true;
                 continue;
@@ -212,9 +212,9 @@ const Chat = {
                     inRecommendation = false;
                 }
                 const headerText = line.replace(/:$/, '');
-                html += `<div class="mt-3 mb-2">
-                    <div class="bg-gradient-to-r from-indigo-100 to-purple-100 px-3 py-2 rounded-lg">
-                        <h3 class="font-bold text-indigo-800 text-sm uppercase tracking-wide">${Utils.escapeHtml(headerText)}</h3>
+                html += `<div class="mt-2 mb-1.5">
+                    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 px-2 py-1.5 rounded-lg">
+                        <h3 class="font-bold text-indigo-800 text-xs uppercase tracking-wide">${Utils.escapeHtml(headerText)}</h3>
                     </div>
                 </div>`;
                 continue;
@@ -223,7 +223,7 @@ const Chat = {
             // List items with various formats
             if (line.match(/^[-*•►▪]\s/) || line.match(/^\d+[\.)]\s/)) {
                 if (!inList) {
-                    html += '<div class="ml-2"><ul class="space-y-2">';
+                    html += '<div class="ml-1"><ul class="space-y-1.5">';
                     inList = true;
                 }
                 let content = line.replace(/^[-*•►▪]\s/, '').replace(/^\d+[\.)]\s/, '');
@@ -236,16 +236,16 @@ const Chat = {
                     const parts = content.split(':');
                     const key = parts[0].trim();
                     const value = parts.slice(1).join(':').trim();
-                    html += `<li class="flex items-start gap-2 text-sm bg-gray-50 p-2 rounded-lg">
-                        <span class="text-indigo-600 flex-shrink-0 mt-0.5">✓</span>
+                    html += `<li class="flex items-start gap-1.5 text-xs bg-white border border-gray-200 p-1.5 rounded">
+                        <span class="text-indigo-600 flex-shrink-0 mt-0.5 text-xs">✓</span>
                         <div class="flex-1">
                             <span class="font-semibold text-gray-800">${Utils.escapeHtml(key)}:</span>
                             <span class="text-gray-700 ml-1">${value}</span>
                         </div>
                     </li>`;
                 } else {
-                    html += `<li class="flex items-start gap-2 text-sm bg-gray-50 p-2 rounded-lg">
-                        <span class="text-indigo-600 flex-shrink-0 mt-0.5">✓</span>
+                    html += `<li class="flex items-start gap-1.5 text-xs bg-white border border-gray-200 p-1.5 rounded">
+                        <span class="text-indigo-600 flex-shrink-0 mt-0.5 text-xs">✓</span>
                         <span class="text-gray-700">${content}</span>
                     </li>`;
                 }
@@ -258,8 +258,8 @@ const Chat = {
                     html += '</ul></div>';
                     inList = false;
                 }
-                html += `<div class="mt-2 mb-1">
-                    <h4 class="font-semibold text-indigo-700 text-sm">${Utils.escapeHtml(line)}</h4>
+                html += `<div class="mt-1.5 mb-1">
+                    <h4 class="font-semibold text-indigo-700 text-xs">${Utils.escapeHtml(line)}</h4>
                 </div>`;
                 continue;
             }
@@ -273,7 +273,7 @@ const Chat = {
             // Highlight amounts and card names in paragraphs
             line = line.replace(/(₹[\d,]+)/g, '<span class="font-bold text-green-700">$1</span>');
             
-            html += `<p class="text-sm text-gray-700 mb-2 leading-relaxed">${line}</p>`;
+            html += `<p class="text-xs text-gray-700 mb-1.5 leading-relaxed">${line}</p>`;
         }
         
         if (inList) {
@@ -283,7 +283,7 @@ const Chat = {
             html += '</div>';
         }
         
-        return html || `<p class="text-sm text-gray-700">${Utils.escapeHtml(text)}</p>`;
+        return html || `<p class="text-xs text-gray-700 leading-relaxed">${Utils.escapeHtml(text)}</p>`;
     },
 
     /**
