@@ -656,16 +656,33 @@
         
         <!-- CREDENTIALS VIEW -->
         <div id="credentials-view" class="hidden">
-            <div class="p-5 pb-32">
+            <div class="p-4 pb-32">
                 <!-- Floating + Button (Top Right) -->
-                <button onclick="openCredentialModal()" class="fixed right-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Credential">
+                <button onclick="openCredentialModal()" class="fixed right-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Credential">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                     </svg>
                 </button>
                 
-                <!-- Credentials Count -->
-                <p id="credentials-count" class="text-xs text-gray-500 mb-4">0 credentials</p>
+                <!-- Header Card -->
+                <div class="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl shadow-xl p-5 mb-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                                <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-white font-bold text-xl">Credentials</h2>
+                                <p id="credentials-count" class="text-white/90 text-sm font-medium">0 credentials</p>
+                            </div>
+                        </div>
+                        <div class="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2">
+                            <p class="text-white font-bold text-2xl" id="credentials-count-number">0</p>
+                        </div>
+                    </div>
+                </div>
                 
                 <!-- Credentials List -->
                 <div id="credentials-list" class="space-y-3">

@@ -822,11 +822,11 @@ const Navigation = {
     
     /**
      * Check if authentication is required for credentials page
-     * Authentication is valid for 5 seconds
+     * Authentication is valid for 10 seconds
      */
     async checkCredentialsAuth() {
         const now = Date.now();
-        const AUTH_TIMEOUT = 5000; // 5 seconds
+        const AUTH_TIMEOUT = 10000; // 10 seconds
         
         // Check if we have a recent authentication
         if (this.lastAuthTimestamp && (now - this.lastAuthTimestamp) < AUTH_TIMEOUT) {
