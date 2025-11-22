@@ -2481,16 +2481,24 @@ const Investments = {
             return;
         }
         
-        window.DB.goldRatePerGram = newRate;
+        // Round to 2 decimal places
+        window.DB.goldRatePerGram = Math.round(newRate * 100) / 100;
         
-        // Also update portfolio entries with GOLD
-        this.updatePortfolioGoldPrice(newRate);
+        // Also update portfolio entries with GOLD (sync the price field)
+        this.updatePortfolioGoldPrice(window.DB.goldRatePerGram);
         
         window.Storage.save();
         
-        Utils.showSuccess('Gold rate updated!<br>Portfolio values recalculated');
+        // Close modal first, then render to ensure clean UI update
         this.closeGoldRateModal();
+        
+        // Force complete re-render (portfolio + monthly sections)
         this.render();
+        
+        // Small delay to ensure DOM is updated before showing success
+        setTimeout(() => {
+            Utils.showSuccess('Gold rate updated!<br>Portfolio values recalculated');
+        }, 100);
     },
 
     /**
