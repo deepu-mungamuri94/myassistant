@@ -300,6 +300,27 @@ Important:
     },
 
     /**
+     * Calculate amount for an investment item
+     */
+    calculateInvestmentAmount(item) {
+        if (item.type === 'SHARES') {
+            const sharePrices = window.DB.sharePrices || [];
+            const sharePrice = sharePrices.find(sp => sp.name === item.name && sp.active);
+            const price = sharePrice ? sharePrice.price : (item.price || 0);
+            const currency = sharePrice ? sharePrice.currency : (item.currency || 'INR');
+            const exchangeRate = window.DB.exchangeRate?.rate || window.DB.exchangeRate || 83;
+            const amount = price * (item.quantity || 0);
+            return currency === 'USD' ? amount * exchangeRate : amount;
+        } else if (item.type === 'GOLD') {
+            const goldRate = window.DB.goldRatePerGram || 7000;
+            return goldRate * (item.quantity || 0);
+        } else if (item.type === 'EPF' || item.type === 'FD') {
+            return parseFloat(item.amount) || 0;
+        }
+        return 0;
+    },
+
+    /**
      * Execute a filter query safely
      */
     executeQuery(queryObj, mode) {
@@ -366,6 +387,14 @@ Important:
                 }
             });
 
+            // Helper to get field value (with calculation for investment amounts)
+            const getFieldValue = (item, field) => {
+                if (mode === 'investments' && field === 'amount') {
+                    return this.calculateInvestmentAmount(item);
+                }
+                return parseFloat(item[field]) || 0;
+            };
+
             // Apply aggregation
             let result;
             
@@ -373,7 +402,7 @@ Important:
                 result = {
                     type: 'sum',
                     field: queryObj.aggregationField,
-                    value: filtered.reduce((sum, item) => sum + (parseFloat(item[queryObj.aggregationField]) || 0), 0),
+                    value: filtered.reduce((sum, item) => sum + getFieldValue(item, queryObj.aggregationField), 0),
                     count: filtered.length
                 };
             } else if (queryObj.aggregation === 'count') {
@@ -382,7 +411,7 @@ Important:
                     value: filtered.length
                 };
             } else if (queryObj.aggregation === 'average' && queryObj.aggregationField) {
-                const sum = filtered.reduce((s, item) => s + (parseFloat(item[queryObj.aggregationField]) || 0), 0);
+                const sum = filtered.reduce((s, item) => s + getFieldValue(item, queryObj.aggregationField), 0);
                 result = {
                     type: 'average',
                     field: queryObj.aggregationField,
@@ -412,7 +441,7 @@ Important:
                     grouped[key].count++;
                     
                     if (queryObj.aggregationField) {
-                        grouped[key].sum += parseFloat(item[queryObj.aggregationField]) || 0;
+                        grouped[key].sum += getFieldValue(item, queryObj.aggregationField);
                     }
                 });
                 
