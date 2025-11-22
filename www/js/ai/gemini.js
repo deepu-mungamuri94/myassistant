@@ -4,20 +4,21 @@
  */
 
 const GeminiAI = {
-    API_ENDPOINT: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent',
-
     /**
      * Call Gemini AI API
      */
     async call(prompt, context = null) {
         const apiKey = window.DB.settings.geminiApiKey;
+        const model = window.DB.settings.geminiModel || 'gemini-2.0-flash-lite';
         
         if (!apiKey) {
             throw new Error('Please configure your Gemini API key in Settings');
         }
         
+        const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+        
         let fullPrompt = prompt;
-        let systemInstruction = this.getSystemInstruction(context);
+        let systemInstruction = window.AIProvider.getSystemInstruction(context);
         
         // Check if context has system_instruction (for CardAdvisor-style prompts)
         if (context && context.system_instruction) {
@@ -43,7 +44,7 @@ const GeminiAI = {
             payload.tools = [{ "google_search": {} }];
         }
         
-        const response = await fetch(`${this.API_ENDPOINT}?key=${apiKey}`, {
+        const response = await fetch(`${API_ENDPOINT}?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -51,44 +52,12 @@ const GeminiAI = {
         
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.error?.message || 'AI request failed');
+            const errorMsg = error.error?.message || 'AI request failed';
+            throw new Error(`Gemini (${model}): ${errorMsg}`);
         }
         
         const data = await response.json();
         return data.candidates[0].content.parts[0].text;
-    },
-    
-    /**
-     * Get system instruction based on context mode
-     */
-    getSystemInstruction(context) {
-        if (!context || !context.mode) {
-            return 'You are a helpful financial assistant.';
-        }
-        
-        switch(context.mode) {
-            case 'credit_cards':
-                return `You are a credit card advisor. Use ONLY the stored benefit information provided. DO NOT search online.
-Analyze the stored benefits data to recommend the best card for user queries.
-Focus on: reward rates, category-specific benefits, cashback, milestone bonuses.
-Never ask for or reference sensitive information like card numbers or CVV.`;
-                
-            case 'expenses':
-                return `You are an expense analysis expert. Analyze the expense data provided to answer user queries.
-You can: calculate totals, group by categories/months/years, identify spending patterns, compare periods.
-Provide insights with specific numbers, dates, and trends.
-Use Indian Rupee (₹) for all amounts.`;
-                
-            case 'investments':
-                return `You are an investment portfolio analyst. Analyze the investment data provided to answer user queries.
-You can: calculate total portfolio value, analyze asset allocation, track performance, identify gaps.
-Handle stocks, long-term, short-term investments, and provident funds.
-Consider USD to INR conversion rates provided.
-Use Indian Rupee (₹) for all amounts.`;
-                
-            default:
-                return 'You are a helpful financial assistant.';
-        }
     },
     
     /**

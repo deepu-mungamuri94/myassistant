@@ -15,8 +15,8 @@ const DB = {
     income: null, // Income and payslip data
     dismissedRecurringExpenses: [], // Track dismissed auto-recurring expenses
     chatHistory: [],
-    exchangeRate: 83, // Default USD to INR rate
-    goldRatePerGram: 7000, // Gold rate in INR per gram (default)
+    exchangeRate: 89, // Default USD to INR rate
+    goldRatePerGram: 11400, // Gold rate in INR per gram (default)
 
     settings: {
         aiProvider: 'gemini',
@@ -24,6 +24,11 @@ const DB = {
         groqApiKey: '',
         chatGptApiKey: '',
         perplexityApiKey: '',
+        // Model IDs for each provider (can be updated by user)
+        geminiModel: 'gemini-2.0-flash-lite',
+        groqModel: 'llama-3.3-70b-versatile',
+        chatGptModel: 'gpt-4o-mini',
+        perplexityModel: 'llama-3.1-sonar-large-128k-online',
         // Priority order for AI fallback (Groq is FIXED at #1 for chat, rest is configurable)
         priorityOrder: ['groq', 'gemini', 'chatgpt', 'perplexity']
     },

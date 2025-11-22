@@ -8,6 +8,53 @@ const AIProvider = {
     suppressInfoMessages: false,
     
     /**
+     * Get system instruction based on context mode (used by all providers)
+     */
+    getSystemInstruction(context) {
+        if (!context || !context.mode) {
+            return 'You are a helpful financial assistant.';
+        }
+        
+        switch(context.mode) {
+            case 'credit_cards':
+                return `You are a credit card advisor. Use ONLY the stored benefit information provided. DO NOT search online.
+Analyze the stored benefits data to recommend the best card for user queries.
+Focus on: reward rates, category-specific benefits, cashback, milestone bonuses.
+Never ask for or reference sensitive information like card numbers or CVV.`;
+                
+            case 'expenses':
+                return `You are an expense analysis expert. Analyze the expense data provided to answer user queries.
+You can: calculate totals, group by categories/months/years, identify spending patterns, compare periods.
+Provide insights with specific numbers, dates, and trends.
+Use Indian Rupee (₹) for all amounts.`;
+                
+            case 'investments':
+                return `You are an expert investment portfolio analyst and financial advisor. Analyze the investment data provided to answer user queries.
+
+Your capabilities:
+- Calculate total portfolio value and asset allocation percentages
+- Analyze diversification across investment types (SHARES, GOLD, FD, EPF)
+- Compare SHORT_TERM vs LONG_TERM allocation
+- Identify portfolio gaps and missing asset classes
+- Provide diversification recommendations based on risk profile and goals
+- Track performance and suggest rebalancing strategies
+- Consider USD to INR conversion rates provided
+
+When providing recommendations:
+- Be specific about percentages and amounts
+- Explain rationale for diversification suggestions
+- Consider Indian market context (equity, gold, fixed income, EPF)
+- Mention risk-reward tradeoffs
+- Suggest realistic action steps
+
+Use Indian Rupee (₹) for all amounts.`;
+                
+            default:
+                return 'You are a helpful financial assistant.';
+        }
+    },
+    
+    /**
      * Get all available providers (with API keys configured)
      */
     getAvailableProviders() {
@@ -237,8 +284,9 @@ const AIProvider = {
     /**
      * Prepare context for AI based on selected mode
      * @param {string} mode - 'general', 'cards', 'expenses', or 'investments'
+     * @param {boolean} useMetadata - If true, return metadata instead of full data (for expenses/investments)
      */
-    prepareContext(mode = 'general') {
+    prepareContext(mode = 'general', useMetadata = false) {
         switch(mode) {
             case 'general':
                 return {
@@ -247,7 +295,7 @@ const AIProvider = {
                 };
                 
             case 'cards':
-                // Only include credit cards (not debit cards) for AI advisor
+                // Cards mode always sends full data (it's already minimal)
                 const creditCards = window.DB.cards.filter(c => !c.cardType || c.cardType === 'credit');
                 return {
                     mode: 'credit_cards',
@@ -259,36 +307,49 @@ const AIProvider = {
                 };
                 
             case 'expenses':
-                return {
-                    mode: 'expenses',
-                    expenses: window.DB.expenses.map(e => ({
-                        title: e.title,
-                        description: e.description,
-                        amount: e.amount,
-                        category: e.category,
-                        date: e.date,
-                        createdAt: e.createdAt
-                    })),
-                    total: window.DB.expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0)
-                };
+                if (useMetadata) {
+                    // Return metadata for two-phase query
+                    return window.QueryEngine.generateExpensesMetadata();
+                } else {
+                    // Legacy: return full data
+                    return {
+                        mode: 'expenses',
+                        expenses: window.DB.expenses.map(e => ({
+                            title: e.title,
+                            description: e.description,
+                            amount: e.amount,
+                            category: e.category,
+                            date: e.date,
+                            createdAt: e.createdAt
+                        })),
+                        total: window.DB.expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0)
+                    };
+                }
                 
             case 'investments':
-                return {
-                    mode: 'investments',
-                    investments: window.DB.investments.map(inv => ({
-                        name: inv.name,
-                        type: inv.type,
-                        amount: inv.amount,
-                        term: inv.term,
-                        inputStockPrice: inv.inputStockPrice,
-                        inputCurrency: inv.inputCurrency,
-                        quantity: inv.quantity,
-                        createdAt: inv.createdAt,
-                        lastUpdated: inv.lastUpdated
-                    })),
-                    total: window.DB.investments.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0),
-                    exchangeRate: window.DB.exchangeRate?.rate || 83
-                };
+                if (useMetadata) {
+                    // Return metadata for two-phase query
+                    return window.QueryEngine.generateInvestmentsMetadata();
+                } else {
+                    // Legacy: return full data (fallback)
+                    const investments = window.DB.portfolioInvestments || [];
+                    return {
+                        mode: 'investments',
+                        investments: investments.map(inv => ({
+                            name: inv.name,
+                            type: inv.type,
+                            goal: inv.goal,
+                            amount: inv.amount,
+                            price: inv.price,
+                            currency: inv.currency,
+                            quantity: inv.quantity,
+                            createdAt: inv.createdAt,
+                            lastUpdated: inv.lastUpdated
+                        })),
+                        total: investments.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0),
+                        exchangeRate: window.DB.exchangeRate?.rate || 83
+                    };
+                }
                 
             default:
                 return { mode: 'unknown' };

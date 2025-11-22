@@ -1,6 +1,6 @@
 /**
  * Groq AI Provider
- * Uses Mixtral-8x7b model for fast, efficient AI responses
+ * Uses Llama 3.3 70B Versatile model for fast, efficient AI responses
  * Groq offers high rate limits and low latency
  */
 
@@ -8,7 +8,7 @@ const GroqAI = {
     name: 'Groq',
     
     /**
-     * Call Groq API with Mixtral model
+     * Call Groq API with Llama 3.3 70B model
      * @param {string} userMessage - The user's question/prompt
      * @param {string} systemInstructions - System instructions for the AI
      * @param {Array} conversationHistory - Previous messages for context
@@ -16,20 +16,32 @@ const GroqAI = {
      */
     async call(userMessage, systemInstructions = '', conversationHistory = []) {
         const apiKey = window.DB.groqApiKey;
+        const model = window.DB.settings.groqModel || 'llama-3.3-70b-versatile';
         
         if (!apiKey) {
             throw new Error('Groq API key not configured. Please add it in Settings.');
         }
         
         try {
+            // Get smart system instructions based on context
+            let systemMessage = '';
+            if (typeof systemInstructions === 'object' && systemInstructions !== null) {
+                // Use common system instruction for this mode
+                systemMessage = window.AIProvider.getSystemInstruction(systemInstructions);
+                // Append context data
+                systemMessage += '\n\nContext Data:\n' + JSON.stringify(systemInstructions, null, 2);
+            } else if (typeof systemInstructions === 'string') {
+                systemMessage = systemInstructions;
+            }
+            
             // Build messages array
             const messages = [];
             
             // Add system message if provided
-            if (systemInstructions) {
+            if (systemMessage) {
                 messages.push({
                     role: 'system',
-                    content: systemInstructions
+                    content: systemMessage
                 });
             }
             
@@ -44,7 +56,7 @@ const GroqAI = {
                 content: userMessage
             });
             
-            console.log('🚀 Calling Groq API with Mixtral...');
+            console.log('🚀 Calling Groq API with Llama 3.3 70B...');
             
             const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
@@ -53,7 +65,7 @@ const GroqAI = {
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'mixtral-8x7b-32768', // Mixtral with 32K context window
+                    model: model,
                     messages: messages,
                     temperature: 0.7,
                     max_tokens: 2048,
@@ -68,10 +80,11 @@ const GroqAI = {
                 
                 // Check for rate limit errors
                 if (response.status === 429) {
-                    throw new Error('RATE_LIMIT: Groq API rate limit exceeded');
+                    throw new Error(`RATE_LIMIT: Groq (${model}) rate limit exceeded`);
                 }
                 
-                throw new Error(errorData.error?.message || `Groq API error: ${response.status}`);
+                const errorMsg = errorData.error?.message || `API error: ${response.status}`;
+                throw new Error(`Groq (${model}): ${errorMsg}`);
             }
             
             const data = await response.json();

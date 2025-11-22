@@ -66,7 +66,7 @@ const Chat = {
             return;
         }
         
-        if (mode === 'investments' && (!window.DB.investments || window.DB.investments.length === 0)) {
+        if (mode === 'investments' && (!window.DB.portfolioInvestments || window.DB.portfolioInvestments.length === 0)) {
             this.addMessage('assistant', `⚠️ **No Investments Found**\n\nPlease add some investments first to analyze your portfolio.\n\n📍 Go to Menu → Investments → Add New`);
             if (input) {
                 input.value = '';
@@ -89,11 +89,25 @@ const Chat = {
         this.addMessage('assistant', '<span class="loading-dots">Thinking</span>', loadingId);
         
         try {
-            // Prepare context based on mode
-            const context = window.AIProvider.prepareContext(mode);
+            // Suppress AI provider info messages during chat (reduces UI clutter)
+            const previousSuppressState = window.AIProvider.suppressInfoMessages;
+            window.AIProvider.suppressInfoMessages = true;
             
-            // Call AI
-            const response = await window.AIProvider.call(message, context);
+            let response;
+            
+            try {
+                // Use two-phase query for expenses and investments (large data)
+                if (mode === 'expenses' || mode === 'investments') {
+                    response = await this.executeTwoPhaseQuery(message, mode, loadingId);
+                } else {
+                    // Use traditional flow for cards and general (small data or web search needed)
+                    const context = window.AIProvider.prepareContext(mode, false);
+                    response = await window.AIProvider.call(message, context);
+                }
+            } finally {
+                // Restore previous suppress state
+                window.AIProvider.suppressInfoMessages = previousSuppressState;
+            }
             
             // Remove loading, add response
             const loadingElement = document.getElementById(loadingId);
@@ -124,6 +138,142 @@ const Chat = {
                 sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
+    },
+
+    /**
+     * Execute two-phase query for large datasets (expenses/investments)
+     * Phase 1: Send metadata + query → AI returns filter code
+     * Phase 2: Execute filter, send filtered data → AI returns analysis
+     */
+    async executeTwoPhaseQuery(userQuery, mode, loadingId) {
+        // For chat, always send metadata with each query since they're independent questions
+        // (unlike a conversation where context is maintained)
+        const metadataContext = window.AIProvider.prepareContext(mode, true);
+        
+        // Update loading message
+        const loading = document.getElementById(loadingId);
+        if (loading) {
+            loading.querySelector('.loading-dots').textContent = 'Analyzing query structure';
+        }
+        
+        // Build phase 1 prompt (always includes metadata for chat)
+        const phase1Prompt = this.buildPhase1Prompt(userQuery, mode, metadataContext);
+        
+        try {
+            // Call AI to get query
+            const aiQueryResponse = await window.AIProvider.call(phase1Prompt, null);
+            
+            // Parse query from AI response
+            const queryObj = window.QueryEngine.parseAIQuery(aiQueryResponse);
+            
+            if (!queryObj) {
+                throw new Error('Could not understand the query. Please try rephrasing your question.');
+            }
+            
+            console.log('📊 Parsed Query:', queryObj);
+            
+            // Update loading message
+            const loading = document.getElementById(loadingId);
+            if (loading) {
+                loading.querySelector('.loading-dots').textContent = 'Executing query on local data';
+            }
+            
+            // PHASE 2: Execute query locally
+            const queryResult = window.QueryEngine.executeQuery(queryObj, mode);
+            
+            if (!queryResult.success) {
+                throw new Error(`Query execution failed: ${queryResult.error}`);
+            }
+            
+            console.log('✅ Query Result:', queryResult);
+            
+            // Update loading message
+            if (loading) {
+                loading.querySelector('.loading-dots').textContent = 'Analyzing results';
+            }
+            
+            // PHASE 3: Send results to AI for analysis
+            const phase2Prompt = this.buildPhase2Prompt(userQuery, queryResult, mode);
+            const finalResponse = await window.AIProvider.call(phase2Prompt, null);
+            
+            return finalResponse;
+            
+        } catch (error) {
+            console.error('Two-phase query error:', error);
+            
+            // Fallback: If query fails, try with full data (legacy mode)
+            console.warn('⚠️ Falling back to legacy mode with full data');
+            const fullContext = window.AIProvider.prepareContext(mode, false);
+            return await window.AIProvider.call(userQuery, fullContext);
+        }
+    },
+    
+    /**
+     * Build Phase 1 prompt (metadata → query code)
+     */
+    buildPhase1Prompt(userQuery, mode, metadataContext) {
+        // Always include full metadata for each query (chat queries are independent)
+        const datasetName = mode === 'expenses' ? 'expenses' : 'investments';
+        return `I have a ${datasetName} dataset with the following structure:
+
+${JSON.stringify(metadataContext, null, 2)}
+
+User Query: "${userQuery}"
+
+Your task: Generate a JavaScript query to answer this question. ${metadataContext.queryInstructions}
+
+Return ONLY a JSON object, no extra text or explanation outside the JSON.`;
+    },
+    
+    /**
+     * Build Phase 2 prompt (filtered data → analysis)
+     */
+    buildPhase2Prompt(userQuery, queryResult, mode) {
+        const datasetName = mode === 'expenses' ? 'expenses' : 'investments';
+        let resultSummary;
+        
+        if (queryResult.result.type === 'sum') {
+            resultSummary = `Query returned ${queryResult.result.count} ${datasetName}.\nTotal ${queryResult.result.field}: ₹${Utils.formatIndianNumber(Math.round(queryResult.result.value))}`;
+        } else if (queryResult.result.type === 'count') {
+            resultSummary = `Query returned ${queryResult.result.value} ${datasetName}.`;
+        } else if (queryResult.result.type === 'average') {
+            resultSummary = `Query returned ${queryResult.result.count} ${datasetName}.\nAverage ${queryResult.result.field}: ₹${Utils.formatIndianNumber(Math.round(queryResult.result.value))}`;
+        } else if (queryResult.result.type === 'group') {
+            const groupSummary = Object.keys(queryResult.result.groups).map(key => {
+                const group = queryResult.result.groups[key];
+                return `  ${key}: ${group.count} items, Total: ₹${Utils.formatIndianNumber(Math.round(group.sum))}`;
+            }).join('\n');
+            resultSummary = `Query grouped by ${queryResult.result.groupBy}:\n${groupSummary}`;
+        } else {
+            // Return sample data (limit to 20 items)
+            const sampleData = queryResult.result.data.slice(0, 20);
+            resultSummary = `Query returned ${queryResult.result.count} ${datasetName}.\n\nSample data (first ${sampleData.length} items):\n${JSON.stringify(sampleData, null, 2)}`;
+        }
+        
+        const isInvestments = mode === 'investments';
+        const analysisGuidance = isInvestments 
+            ? `
+
+For portfolio analysis questions, provide:
+- Asset allocation percentages and diversification analysis
+- Specific gaps or over-concentration issues
+- Concrete recommendations with amounts/percentages
+- Risk-reward considerations
+- Action steps for rebalancing if needed`
+            : '';
+
+        return `User asked: "${userQuery}"
+
+I executed a query on my ${datasetName} database and got these results:
+
+${resultSummary}
+
+Please provide a clear, helpful analysis of these results that directly answers the user's question. Format your response with:
+- Key insights and numbers (with percentages for ${isInvestments ? 'asset allocation' : 'spending patterns'})
+- Breakdowns or comparisons if relevant
+- Actionable recommendations if applicable${analysisGuidance}
+
+Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
     },
 
     /**
@@ -338,23 +488,26 @@ const Chat = {
                     </p>
                 </div>`;
         } else if (mode === 'investments') {
+            const investmentCount = (window.DB.portfolioInvestments || []).length;
             welcomeHTML = `
                 <div class="text-center text-gray-500 text-sm px-4">
-                    <p class="text-lg mb-3">💰 <strong>Investment Analyzer</strong></p>
-                    <p class="mb-2">Get insights on your investment portfolio!</p>
+                    <p class="text-lg mb-3">💰 <strong>Investment Portfolio Advisor</strong></p>
+                    <p class="mb-2">Get insights, diversification analysis, and recommendations!</p>
                     
                     <div class="bg-yellow-50 p-3 rounded-lg text-left mb-3">
                         <p class="text-xs font-semibold text-yellow-800 mb-2">💡 Try asking:</p>
                         <ul class="text-xs space-y-1 text-yellow-700">
-                            <li>• "Portfolio summary and allocation"</li>
-                            <li>• "Stock vs long-term breakdown"</li>
-                            <li>• "USD investments total value"</li>
-                            <li>• "Diversification recommendations"</li>
+                            <li>• "How is my portfolio diversified?"</li>
+                            <li>• "What percentage is in stocks vs fixed deposits?"</li>
+                            <li>• "Show my short-term vs long-term allocation"</li>
+                            <li>• "What am I missing in my portfolio?"</li>
+                            <li>• "Give me diversification recommendations"</li>
+                            <li>• "Is my portfolio too risky?"</li>
                         </ul>
                     </div>
                     
                     <p class="text-xs text-gray-400 mt-2">
-                        💼 Analyzing ${window.DB.investments.length} investments
+                        💼 Analyzing ${investmentCount} investments
                     </p>
                 </div>`;
         } else if (mode === 'general') {

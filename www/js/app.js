@@ -93,9 +93,12 @@ const App = {
             // Navigate to default view (Dashboard)
             window.Navigation.navigateTo('dashboard');
             
-            // Load chat history if exists
+            // Clear chat history on app start for clean slate
+            // (Prevents mode mismatch issues when reopening app)
             if (window.Chat) {
-                window.Chat.loadHistory();
+                window.DB.chatHistory = [];
+                window.Storage.save();
+                window.Chat.updateWelcomeMessage();
             }
             
             // Check if API key is configured

@@ -11,14 +11,20 @@ const ChatGPT = {
      */
     async call(prompt, context = null) {
         const apiKey = window.DB.settings.chatGptApiKey;
+        const model = window.DB.settings.chatGptModel || 'gpt-4o-mini';
         
         if (!apiKey) {
             throw new Error('Please configure your ChatGPT API key in Settings');
         }
         
-        let fullPrompt = prompt;
+        // Get smart system instructions
+        let systemMessage = window.AIProvider ? window.AIProvider.getSystemInstruction(context) : 'You are a helpful financial assistant.';
+        let userMessage = prompt;
+        
         if (context) {
-            fullPrompt = `Context:\n${JSON.stringify(context, null, 2)}\n\nUser Query: ${prompt}\n\nProvide helpful insights based on the context.`;
+            // Append context data to system message
+            systemMessage += '\n\nContext Data:\n' + JSON.stringify(context, null, 2);
+            userMessage = `User Query: ${prompt}\n\nProvide helpful insights based on the context data provided in the system message.`;
         }
         
         const response = await fetch(this.API_ENDPOINT, {
@@ -28,15 +34,15 @@ const ChatGPT = {
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: 'gpt-4o-mini',
+                model: model,
                 messages: [
                     {
                         role: 'system',
-                        content: 'You are a financial advisor specializing in credit card recommendations. When given card names, search online for their current benefits, rewards, cashback rates, and promotional offers from official bank websites. Provide specific, actionable recommendations with sources. Never ask for or reference sensitive information like card numbers, CVV, or expiry dates.'
+                        content: systemMessage
                     },
                     {
                         role: 'user',
-                        content: fullPrompt
+                        content: userMessage
                     }
                 ]
             })
@@ -44,7 +50,8 @@ const ChatGPT = {
         
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.error?.message || 'ChatGPT request failed');
+            const errorMsg = error.error?.message || 'API request failed';
+            throw new Error(`ChatGPT (${model}): ${errorMsg}`);
         }
         
         const data = await response.json();

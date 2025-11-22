@@ -328,17 +328,32 @@ const Navigation = {
     openAISettings() {
         const modal = document.getElementById('ai-settings-modal');
         if (modal) {
-            // Load current AI settings
+            // Load current AI settings - API Keys
             const geminiKeyInput = document.getElementById('gemini-api-key');
             const groqKeyInput = document.getElementById('groq-api-key');
             const chatGptKeyInput = document.getElementById('chatgpt-api-key');
             const perplexityKeyInput = document.getElementById('perplexity-api-key');
+            
+            // Load current AI settings - Models
+            const geminiModelInput = document.getElementById('gemini-model');
+            const groqModelInput = document.getElementById('groq-model');
+            const chatGptModelInput = document.getElementById('chatgpt-model');
+            const perplexityModelInput = document.getElementById('perplexity-model');
+            
             const providerSelect = document.getElementById('ai-provider');
             
+            // Set API keys
             if (geminiKeyInput) geminiKeyInput.value = window.DB.settings.geminiApiKey || '';
             if (groqKeyInput) groqKeyInput.value = window.DB.groqApiKey || '';
             if (chatGptKeyInput) chatGptKeyInput.value = window.DB.settings.chatGptApiKey || '';
             if (perplexityKeyInput) perplexityKeyInput.value = window.DB.settings.perplexityApiKey || '';
+            
+            // Set models (with defaults)
+            if (geminiModelInput) geminiModelInput.value = window.DB.settings.geminiModel || 'gemini-2.0-flash-lite';
+            if (groqModelInput) groqModelInput.value = window.DB.settings.groqModel || 'llama-3.3-70b-versatile';
+            if (chatGptModelInput) chatGptModelInput.value = window.DB.settings.chatGptModel || 'gpt-4o-mini';
+            if (perplexityModelInput) perplexityModelInput.value = window.DB.settings.perplexityModel || 'llama-3.1-sonar-large-128k-online';
+            
             if (providerSelect) providerSelect.value = window.DB.settings.aiProvider || 'gemini';
             
             // Load priority order
@@ -361,12 +376,89 @@ const Navigation = {
     /**
      * Save AI Settings
      */
+    /**
+     * Test AI provider connection
+     */
+    async testProvider(provider) {
+        const keyMap = {
+            'gemini': { key: 'geminiApiKey', model: 'geminiModel', keyInput: 'gemini-api-key', modelInput: 'gemini-model', dbKey: 'settings' },
+            'groq': { key: 'groqApiKey', model: 'groqModel', keyInput: 'groq-api-key', modelInput: 'groq-model', dbKey: 'root' },
+            'chatgpt': { key: 'chatGptApiKey', model: 'chatGptModel', keyInput: 'chatgpt-api-key', modelInput: 'chatgpt-model', dbKey: 'settings' },
+            'perplexity': { key: 'perplexityApiKey', model: 'perplexityModel', keyInput: 'perplexity-api-key', modelInput: 'perplexity-model', dbKey: 'settings' }
+        };
+        
+        const config = keyMap[provider];
+        if (!config) return;
+        
+        // Get API key and model from inputs
+        const apiKey = document.getElementById(config.keyInput)?.value?.trim();
+        const model = document.getElementById(config.modelInput)?.value?.trim();
+        
+        if (!apiKey) {
+            window.Utils.showError(`Please enter ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key first`);
+            return;
+        }
+        
+        // Temporarily save to DB for testing
+        const oldKey = config.dbKey === 'root' ? window.DB.groqApiKey : window.DB.settings[config.key];
+        const oldModel = window.DB.settings[config.model];
+        
+        if (config.dbKey === 'root') {
+            window.DB.groqApiKey = apiKey;
+        } else {
+            window.DB.settings[config.key] = apiKey;
+        }
+        window.DB.settings[config.model] = model || oldModel;
+        
+        // Show testing message
+        window.Utils.showInfo(`Testing ${provider.charAt(0).toUpperCase() + provider.slice(1)}...`);
+        
+        try {
+            // Make a test call with a simple prompt
+            let testPrompt = "Say 'test successful' if you receive this message.";
+            let response;
+            
+            if (provider === 'gemini') {
+                response = await window.GeminiAI.call(testPrompt, null);
+            } else if (provider === 'groq') {
+                response = await window.GroqAI.call(testPrompt, '', []);
+            } else if (provider === 'chatgpt') {
+                response = await window.ChatGPT.call(testPrompt, null);
+            } else if (provider === 'perplexity') {
+                response = await window.Perplexity.call(testPrompt, null);
+            }
+            
+            const displayModel = model || oldModel;
+            window.Utils.showSuccess(`✅ ${provider.charAt(0).toUpperCase() + provider.slice(1)} Test Successful!\n\nModel: ${displayModel}\n\nResponse received and working properly.`);
+            
+        } catch (error) {
+            console.error(`Test failed for ${provider}:`, error);
+            window.Utils.showError(`❌ ${provider.charAt(0).toUpperCase() + provider.slice(1)} Test Failed\n\n${error.message}\n\nPlease check your API key and model ID.`);
+        } finally {
+            // Restore old values
+            if (config.dbKey === 'root') {
+                window.DB.groqApiKey = oldKey;
+            } else {
+                window.DB.settings[config.key] = oldKey;
+            }
+            window.DB.settings[config.model] = oldModel;
+        }
+    },
+    
     saveAISettings() {
         const providerSelect = document.getElementById('ai-provider');
+        
+        // API Keys
         const geminiKeyInput = document.getElementById('gemini-api-key');
         const groqKeyInput = document.getElementById('groq-api-key');
         const chatGptKeyInput = document.getElementById('chatgpt-api-key');
         const perplexityKeyInput = document.getElementById('perplexity-api-key');
+        
+        // Models
+        const geminiModelInput = document.getElementById('gemini-model');
+        const groqModelInput = document.getElementById('groq-model');
+        const chatGptModelInput = document.getElementById('chatgpt-model');
+        const perplexityModelInput = document.getElementById('perplexity-model');
         
         // Validate: Require both Groq and Gemini API keys
         const geminiKey = geminiKeyInput ? geminiKeyInput.value.trim() : '';
@@ -377,11 +469,26 @@ const Navigation = {
             return;
         }
         
+        // Save provider and API keys
         if (providerSelect) window.DB.settings.aiProvider = providerSelect.value;
         if (geminiKeyInput) window.DB.settings.geminiApiKey = geminiKey;
         if (groqKeyInput) window.DB.groqApiKey = groqKey;
         if (chatGptKeyInput) window.DB.settings.chatGptApiKey = chatGptKeyInput.value.trim();
         if (perplexityKeyInput) window.DB.settings.perplexityApiKey = perplexityKeyInput.value.trim();
+        
+        // Save models (with defaults if empty)
+        if (geminiModelInput) {
+            window.DB.settings.geminiModel = geminiModelInput.value.trim() || 'gemini-2.0-flash-lite';
+        }
+        if (groqModelInput) {
+            window.DB.settings.groqModel = groqModelInput.value.trim() || 'llama-3.3-70b-versatile';
+        }
+        if (chatGptModelInput) {
+            window.DB.settings.chatGptModel = chatGptModelInput.value.trim() || 'gpt-4o-mini';
+        }
+        if (perplexityModelInput) {
+            window.DB.settings.perplexityModel = perplexityModelInput.value.trim() || 'llama-3.1-sonar-large-128k-online';
+        }
         
         if (window.Storage.save()) {
             window.Utils.showSuccess('✅ AI Settings saved successfully!');
