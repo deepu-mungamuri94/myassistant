@@ -2079,6 +2079,13 @@ const Investments = {
                     
                     <!-- Actions (right) -->
                     <div class="flex gap-2">
+                        <button onclick="Investments.openEditPriceModal('${share.name}', ${share.price}, '${share.currency}')" 
+                                class="text-blue-600 hover:text-blue-800 transition-all p-1" 
+                                title="Edit Price">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                        </button>
                         <button onclick="Investments.reloadSingleSharePrice('${share.name}')" 
                                 class="reload-share-btn text-yellow-600 hover:text-yellow-800 transition-all p-1" 
                                 title="Reload Price">
@@ -2243,6 +2250,70 @@ const Investments = {
             
             Utils.showSuccess('Share price removed from tracking');
             this.openSharePriceModal(); // Refresh the modal
+        }
+    },
+
+    /**
+     * Open edit price modal
+     */
+    openEditPriceModal(shareName, currentPrice, currency) {
+        document.getElementById('edit-share-name').textContent = shareName;
+        document.getElementById('edit-share-currency').textContent = currency === 'USD' ? '$' : '₹';
+        document.getElementById('edit-share-price-input').value = currentPrice;
+        document.getElementById('edit-share-price-error').textContent = '';
+        document.getElementById('edit-share-price-error').classList.add('hidden');
+        
+        // Store current editing share
+        this.editingShare = { name: shareName, currency: currency };
+        
+        document.getElementById('edit-share-price-modal').classList.remove('hidden');
+    },
+
+    /**
+     * Close edit price modal
+     */
+    closeEditPriceModal() {
+        document.getElementById('edit-share-price-modal').classList.add('hidden');
+        this.editingShare = null;
+    },
+
+    /**
+     * Save edited share price
+     */
+    saveEditedSharePrice() {
+        const priceInput = document.getElementById('edit-share-price-input');
+        const errorDiv = document.getElementById('edit-share-price-error');
+        const newPrice = parseFloat(priceInput.value);
+        
+        // Validation
+        if (!priceInput.value || isNaN(newPrice) || newPrice <= 0) {
+            errorDiv.textContent = 'Price must be greater than 0';
+            errorDiv.classList.remove('hidden');
+            priceInput.focus();
+            return;
+        }
+        
+        // Update price in storage
+        const sharePrices = window.DB.sharePrices || [];
+        const share = sharePrices.find(sp => sp.name === this.editingShare.name);
+        
+        if (share) {
+            share.price = newPrice;
+            share.lastUpdated = new Date().toISOString();
+            window.Storage.save();
+            
+            Utils.showSuccess('Share price updated!');
+            
+            // Close edit modal
+            this.closeEditPriceModal();
+            
+            // Refresh share price modal
+            this.openSharePriceModal();
+            
+            // Re-render portfolio to reflect updated price
+            this.render();
+        } else {
+            Utils.showError('Share not found');
         }
     },
 
