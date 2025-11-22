@@ -12,6 +12,9 @@ const Navigation = {
      * Navigate to a specific view
      */
     async navigateTo(view) {
+        // Close menu immediately to prevent it from blocking auth modals
+        this.closeMenu();
+        
         // Special handling for credentials page - require authentication
         if (view === 'credentials') {
             const authenticated = await this.checkCredentialsAuth();
@@ -25,6 +28,7 @@ const Navigation = {
             // Stop session renewal when leaving credentials page
             this.stopCredentialsSession();
         }
+        
         // Hide all views
         document.querySelectorAll('[id$="-view"]').forEach(v => v.classList.add('hidden'));
         
@@ -40,8 +44,6 @@ const Navigation = {
             // Refresh view data
             this.refreshView(view);
         }
-        
-        this.closeMenu();
     },
 
     /**
