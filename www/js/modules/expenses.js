@@ -857,11 +857,21 @@ const Expenses = {
                             <div id="recurring-content-upcoming" class="space-y-1.5">
                                 ${upcomingRecurring.map(exp => {
                                     // Check if this expense is already in expenses list
-                                    const existsInExpenses = window.DB.expenses.find(e => 
-                                        e.title === exp.title && 
-                                        e.date === exp.date && 
-                                        Math.abs(e.amount - exp.amount) < 0.01
-                                    );
+                                    // Check by recurringId first (handles amount/name changes), then by title/date/amount
+                                    const existsInExpenses = window.DB.expenses.find(e => {
+                                        // Check by recurringId if available (handles edited amounts and renamed expenses)
+                                        if (exp.recurringId && e.recurringId && String(e.recurringId) === String(exp.recurringId)) {
+                                            // Check if it's in the same month
+                                            const expDate = new Date(exp.date);
+                                            const eDate = new Date(e.date);
+                                            return expDate.getFullYear() === eDate.getFullYear() && 
+                                                   expDate.getMonth() === eDate.getMonth();
+                                        }
+                                        // Fallback to title/date/amount matching (for legacy entries)
+                                        return e.title === exp.title && 
+                                               e.date === exp.date && 
+                                               Math.abs(e.amount - exp.amount) < 0.01;
+                                    });
                                     
                                     return `
                                     <div class="flex justify-between items-center py-1.5 px-2 bg-blue-50 rounded border border-blue-100">
