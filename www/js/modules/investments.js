@@ -126,16 +126,16 @@ const Investments = {
 
         container.innerHTML = `
             <div class="bg-white rounded-xl shadow-md overflow-visible">
-                <!-- Header with integrated View/Hide button -->
+                <!-- Header -->
                 <div class="relative">
-                    <div class="bg-gradient-to-r from-yellow-600 to-orange-600 text-white p-4 ${isBodyVisible ? 'rounded-t-xl' : 'rounded-xl'} pb-4">
+                    <div class="bg-gradient-to-r from-yellow-600 to-orange-600 text-white p-4 ${isBodyVisible ? 'rounded-t-xl' : 'rounded-xl'}">
                         <div class="flex justify-between items-center mb-3">
                             <div class="flex items-center gap-2">
                                 <h3 class="text-lg font-bold">Portfolio</h3>
                             </div>
                             <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(totalValue))}</p>
                         </div>
-                        <div class="grid grid-cols-3 gap-2 mb-2">
+                        <div class="grid grid-cols-3 gap-2">
                             <button onclick="Investments.openSharePriceModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -153,21 +153,17 @@ const Investments = {
                         </div>
                     </div>
                     
-                    <!-- Integrated View/Hide Button (Bulged out from header) -->
-                    <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 z-10">
+                    <!-- Minimal View/Hide Button (peeking from behind) -->
+                    <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
                         <button onclick="Investments.togglePortfolioBody()" 
-                                class="px-8 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-sm font-bold shadow-xl hover:shadow-2xl transition-all duration-200 flex items-center gap-2"
-                                style="border-radius: 0.75rem 0.75rem 1.5rem 1.5rem;">
-                            <span>${isBodyVisible ? 'Hide' : 'View'}</span>
-                            <svg class="w-4 h-4 transition-transform duration-200 ${isBodyVisible ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
+                                class="px-6 py-1 bg-white text-gray-700 text-xs font-medium rounded-full shadow-md hover:shadow-lg transition-all duration-200 border border-gray-200">
+                            ${isBodyVisible ? 'Hide' : 'View'}
                         </button>
                     </div>
                 </div>
 
                 <!-- Body (collapsible) -->
-                <div id="portfolio-body" class="${isBodyVisible ? 'mt-6' : 'hidden'}">
+                <div id="portfolio-body" class="${isBodyVisible ? 'mt-4' : 'hidden'}">
                     <!-- Tabs -->
                     <div class="flex border-b border-gray-200 bg-gray-50">
                         <button onclick="Investments.switchPortfolioTab('short')" 
