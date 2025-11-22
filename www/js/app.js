@@ -18,21 +18,21 @@ const App = {
             // Check security status FIRST
             const isSecuritySetup = window.Security && window.Security.isSetup();
             
-            // Hide splash screen
+            // Hide splash screen (reduced delay for faster startup)
             setTimeout(() => {
                 const splash = document.getElementById('splash-screen');
                 if (splash) {
                     splash.style.opacity = '0';
-                    splash.style.transition = 'opacity 0.5s ease-out';
+                    splash.style.transition = 'opacity 0.3s ease-out';
                     setTimeout(() => {
                         splash.style.display = 'none';
-                    }, 500);
+                    }, 300);
                 }
-            }, 800);
+            }, 200);
             
             // Security flow
             if (!isSecuritySetup) {
-                // First time: Show security setup
+                // First time: Show security setup (reduced delay for faster startup)
                 console.log('🔒 First launch - showing security setup');
                 setTimeout(() => {
                     document.getElementById('security-setup-modal').classList.remove('hidden');
@@ -40,13 +40,13 @@ const App = {
                     if (window.checkBiometricAvailability) {
                         window.checkBiometricAvailability();
                     }
-                }, 1000);
+                }, 300);
                 return; // Stop here, will continue after setup
             }
             
             // Security is set up, check if already unlocked
             if (!window.Security.isUnlocked) {
-                // Show unlock screen
+                // Show unlock screen (reduced delay for faster startup)
                 console.log('🔒 App locked - showing unlock screen');
                 setTimeout(() => {
                     const unlockModal = document.getElementById('security-unlock-modal');
@@ -55,7 +55,7 @@ const App = {
                     // Auto-focus PIN input
                     const pinInput = document.getElementById('unlock-pin');
                     if (pinInput) {
-                        setTimeout(() => pinInput.focus(), 300);
+                        setTimeout(() => pinInput.focus(), 200);
                     }
                     
                     // Show biometric button if enabled
@@ -80,10 +80,10 @@ const App = {
                                 } catch (error) {
                                     console.log('ℹ️ Could not check biometric availability:', error);
                                 }
-                            }, 500);
+                            }, 400);
                         }
                     }
-                }, 1000);
+                }, 300);
                 return; // Stop here, will continue after unlock
             }
             
