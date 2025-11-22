@@ -2259,7 +2259,7 @@ const Investments = {
         globalBtn.disabled = false;
         globalBtn.innerHTML = originalBtnHTML;
         
-        Utils.showSuccess('All share prices updated!');
+        Utils.showSuccess('All share prices updated!<br>Portfolio values recalculated');
         
         // Re-render portfolio to reflect updated prices
         this.render();
@@ -2402,7 +2402,7 @@ const Investments = {
             
             window.Storage.save();
             
-            Utils.showSuccess('Share price updated!');
+            Utils.showSuccess('Share price updated!<br>Portfolio values recalculated');
             
             // Close edit modal
             this.closeEditPriceModal();
@@ -2488,7 +2488,7 @@ const Investments = {
         
         window.Storage.save();
         
-        Utils.showSuccess('Gold rate updated successfully! Portfolio values recalculated.');
+        Utils.showSuccess('Gold rate updated!<br>Portfolio values recalculated');
         this.closeGoldRateModal();
         this.render();
     },

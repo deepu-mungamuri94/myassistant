@@ -465,7 +465,7 @@ const Utils = {
 
             const messageEl = document.getElementById('success-modal-message');
             if (messageEl) {
-                messageEl.textContent = message;
+                messageEl.innerHTML = message;
             }
 
             modal.classList.remove('hidden');

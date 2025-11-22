@@ -251,7 +251,7 @@ const ModalManager = {
         // Update message if element exists
         const messageEl = document.getElementById('success-modal-message');
         if (messageEl) {
-            messageEl.textContent = message;
+            messageEl.innerHTML = message;
         }
 
         // Show modal
