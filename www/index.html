@@ -5711,6 +5711,11 @@
                     // Hide unlock modal
                     document.getElementById('security-unlock-modal').classList.add('hidden');
                     
+                    // Update auth timestamp for credentials page grace period
+                    if (window.Navigation) {
+                        window.Navigation.updateAuthTimestamp();
+                    }
+                    
                     // Continue app initialization (no toast - just unlock silently)
                     window.App.init();
                 } else {
@@ -5743,6 +5748,11 @@
                 if (success) {
                     // Hide unlock modal
                     document.getElementById('security-unlock-modal').classList.add('hidden');
+                    
+                    // Update auth timestamp for credentials page grace period
+                    if (window.Navigation) {
+                        window.Navigation.updateAuthTimestamp();
+                    }
                     
                     // Continue app initialization (no toast - just unlock silently)
                     window.App.init();
