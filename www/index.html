@@ -25,12 +25,16 @@
     
     <!-- Capacitor Core (for native features) -->
     <script type="module">
-        import { Capacitor } from 'https://cdn.jsdelivr.net/npm/@capacitor/core@latest/dist/index.js';
+        import { Capacitor, registerPlugin } from 'https://cdn.jsdelivr.net/npm/@capacitor/core@latest/dist/index.js';
         import { StatusBar } from 'https://cdn.jsdelivr.net/npm/@capacitor/status-bar@latest/dist/index.js';
         import { CapacitorHttp } from 'https://cdn.jsdelivr.net/npm/@capacitor/core@latest/dist/index.js';
+        
+        // Import App plugin
+        const App = registerPlugin('App');
+        
         // Preserve existing native plugins and add web-specific ones
         const existingPlugins = window.Capacitor?.Plugins || {};
-        window.Capacitor = { ...Capacitor, Plugins: { ...existingPlugins, StatusBar, CapacitorHttp } };
+        window.Capacitor = { ...Capacitor, Plugins: { ...existingPlugins, StatusBar, CapacitorHttp, App } };
         console.log('🔌 Capacitor initialized with plugins:', Object.keys(window.Capacitor.Plugins));
     </script>
 </head>
@@ -1857,9 +1861,9 @@
     </div>
     
     <!-- PROGRESS MODAL (Used for showing loading status with updates) -->
-    <div id="progress-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-[70] flex items-center justify-center">
+    <div id="progress-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-[10000] flex items-center justify-center">
         <!-- Close Button (Top Right - initially hidden, fixed position) -->
-        <button id="progress-modal-close-btn" onclick="Utils.closeProgressModal()" class="hidden fixed top-8 right-8 text-gray-400 hover:text-white transition-colors z-[71]">
+        <button id="progress-modal-close-btn" onclick="Utils.closeProgressModal()" class="hidden fixed top-8 right-8 text-gray-400 hover:text-white transition-colors z-[10001]">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -2632,7 +2636,7 @@
     </div>
     
     <!-- SECURITY UNLOCK MODAL -->
-    <div id="security-unlock-modal" class="hidden fixed inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 z-[1001] flex items-center justify-center p-4">
+    <div id="security-unlock-modal" class="hidden fixed inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 z-[10000] flex items-center justify-center p-4">
         <div class="p-8 max-w-md w-full">
             <div class="text-center mb-6">
                 <div class="w-24 h-24 mx-auto mb-4">
@@ -2677,15 +2681,16 @@
                         </g>
                     </svg>
                 </div>
-                <h2 class="text-2xl font-bold text-white drop-shadow-lg">
+                <h2 id="security-unlock-title" class="text-2xl font-bold text-white drop-shadow-lg">
                     My Assistant
                 </h2>
                 <p class="text-white/80 text-xs mt-1">Enter your 4-digit PIN</p>
             </div>
             
             <div class="space-y-3">
+                <div id="security-unlock-error" class="text-red-300 text-center text-sm font-semibold mb-2 hidden"></div>
                 <div>
-                    <input type="password" id="unlock-pin" inputmode="numeric" maxlength="4"
+                    <input type="password" id="security-unlock-pin" inputmode="numeric" maxlength="4"
                            class="w-full px-3 py-3 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent text-center text-2xl tracking-widest font-semibold bg-white/20 backdrop-blur-sm text-white placeholder-white/60"
                            placeholder="••••"
                            oninput="handleUnlockPinInput()">
@@ -5641,7 +5646,7 @@
          * Handle unlock PIN input with auto-submit
          */
         function handleUnlockPinInput() {
-            const input = document.getElementById('unlock-pin');
+            const input = document.getElementById('security-unlock-pin');
             if (input.value.length === 4) {
                 // Auto-submit after 4 digits
                 setTimeout(() => unlockWithPin(), 100);
@@ -5713,7 +5718,7 @@
          */
         async function unlockWithPin() {
             try {
-                const pin = document.getElementById('unlock-pin').value;
+                const pin = document.getElementById('security-unlock-pin').value;
                 
                 if (!pin) {
                     Utils.showError('Please enter your PIN');
@@ -5728,24 +5733,41 @@
                 
                 if (success) {
                     // Clear input
-                    document.getElementById('unlock-pin').value = '';
+                    document.getElementById('security-unlock-pin').value = '';
+                    
+                    // Clear error
+                    const errorElement = document.getElementById('security-unlock-error');
+                    if (errorElement) {
+                        errorElement.classList.add('hidden');
+                        errorElement.textContent = '';
+                    }
                     
                     // Hide unlock modal
                     document.getElementById('security-unlock-modal').classList.add('hidden');
                     
-                    // Update auth timestamp for credentials page grace period
-                    if (window.Navigation) {
-                        window.Navigation.updateAuthTimestamp();
+                    // Check if this is for authentication (not app unlock)
+                    if (window._securityAuthResolve) {
+                        window._securityAuthResolve(true);
+                        delete window._securityAuthResolve;
+                    } else {
+                        // This is app unlock - continue initialization
+                        window.App.init();
+                    }
+                } else {
+                    // Show error
+                    const errorElement = document.getElementById('security-unlock-error');
+                    if (errorElement) {
+                        errorElement.classList.remove('hidden');
+                        errorElement.textContent = '❌ Incorrect PIN';
                     }
                     
-                    // Continue app initialization (no toast - just unlock silently)
-                    window.App.init();
-                } else {
-                    Utils.showError('❌ Incorrect PIN');
                     // Shake animation
-                    const input = document.getElementById('unlock-pin');
+                    const input = document.getElementById('security-unlock-pin');
                     input.classList.add('shake');
                     setTimeout(() => input.classList.remove('shake'), 500);
+                    
+                    // Clear input
+                    document.getElementById('security-unlock-pin').value = '';
                 }
             } catch (error) {
                 Loading.hide();
@@ -5771,13 +5793,14 @@
                     // Hide unlock modal
                     document.getElementById('security-unlock-modal').classList.add('hidden');
                     
-                    // Update auth timestamp for credentials page grace period
-                    if (window.Navigation) {
-                        window.Navigation.updateAuthTimestamp();
+                    // Check if this is for authentication (not app unlock)
+                    if (window._securityAuthResolve) {
+                        window._securityAuthResolve(true);
+                        delete window._securityAuthResolve;
+                    } else {
+                        // This is app unlock - continue initialization
+                        window.App.init();
                     }
-                    
-                    // Continue app initialization (no toast - just unlock silently)
-                    window.App.init();
                 }
             } catch (error) {
                 Loading.hide();

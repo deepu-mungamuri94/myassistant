@@ -5,8 +5,6 @@
 
 const Navigation = {
     currentView: 'dashboard',
-    lastAuthTimestamp: null, // Track last successful authentication
-    credentialsPageInterval: null, // Interval to keep session alive while on credentials page
     
     /**
      * Navigate to a specific view
@@ -15,18 +13,19 @@ const Navigation = {
         // Close menu immediately to prevent it from blocking auth modals
         this.closeMenu();
         
-        // Special handling for credentials page - require authentication
-        if (view === 'credentials') {
-            const authenticated = await this.checkCredentialsAuth();
-            if (!authenticated) {
-                return; // Don't navigate if auth failed
-            }
-            
-            // Start keeping session alive while on credentials page
-            this.startCredentialsSession();
-        } else {
-            // Stop session renewal when leaving credentials page
-            this.stopCredentialsSession();
+        // Track page changes for session management
+        const securePages = ['cards', 'credentials'];
+        const currentPageIsSecure = securePages.includes(this.currentView);
+        const newPageIsSecure = securePages.includes(view);
+        
+        // If currently on a secure page and navigating away, mark that we left
+        if (currentPageIsSecure && this.currentView !== view) {
+            window.Security.clearCurrentPage();
+        }
+        
+        // If entering a secure page, mark it as current
+        if (newPageIsSecure) {
+            window.Security.setCurrentPage(view);
         }
         
         // Hide all views
@@ -820,180 +819,6 @@ const Navigation = {
         this.showBackupConfirm();
     },
     
-    /**
-     * Check if authentication is required for credentials page
-     * Authentication is valid for 10 seconds
-     */
-    async checkCredentialsAuth() {
-        const now = Date.now();
-        const AUTH_TIMEOUT = 10000; // 10 seconds
-        
-        // Check if we have a recent authentication
-        if (this.lastAuthTimestamp && (now - this.lastAuthTimestamp) < AUTH_TIMEOUT) {
-            // Authentication still valid
-            return true;
-        }
-        
-        // Need to authenticate
-        const authenticated = await this.authenticateForCredentials();
-        if (authenticated) {
-            this.lastAuthTimestamp = Date.now();
-        }
-        return authenticated;
-    },
-    
-    /**
-     * Authenticate user for credentials page access
-     */
-    async authenticateForCredentials() {
-        // Check if biometric is enabled and available
-        if (window.DB.security.biometricEnabled && window.Security) {
-            try {
-                Loading.show('Authenticating...');
-                const success = await window.Security.authenticateWithBiometric();
-                Loading.hide();
-                
-                if (success) {
-                    return true;
-                }
-            } catch (error) {
-                Loading.hide();
-                // Fallback to PIN if biometric fails/cancelled
-            }
-        }
-        
-        // Fallback to PIN authentication
-        if (window.DB.security.pinHash) {
-            return new Promise((resolve) => {
-                // Create a simple PIN prompt modal
-                const modalHTML = `
-                    <div id="credentials-auth-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[80] flex items-center justify-center p-4">
-                        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full">
-                            <h3 class="text-xl font-bold mb-4 text-gray-800">🔐 Credentials Access</h3>
-                            <p class="text-gray-600 mb-4">Enter your PIN to access credentials</p>
-                            <input type="password" id="credentials-auth-pin" inputmode="numeric" maxlength="4" 
-                                   placeholder="Enter 4-digit PIN" 
-                                   class="w-full px-4 py-3 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-2xl tracking-widest font-bold mb-4"
-                                   autofocus>
-                            <div class="flex gap-2">
-                                <button onclick="Navigation.verifyCredentialsAuth()" class="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-semibold">
-                                    Verify
-                                </button>
-                                <button onclick="Navigation.cancelCredentialsAuth()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                document.body.insertAdjacentHTML('beforeend', modalHTML);
-                
-                // Store resolver
-                window._credentialsAuthResolver = resolve;
-                
-                // Auto-submit on 4 digits
-                document.getElementById('credentials-auth-pin').addEventListener('input', function(e) {
-                    if (e.target.value.length === 4) {
-                        setTimeout(() => Navigation.verifyCredentialsAuth(), 100);
-                    }
-                });
-            });
-        }
-        
-        // No authentication set up
-        return true;
-    },
-    
-    /**
-     * Verify PIN for credentials page authentication
-     */
-    async verifyCredentialsAuth() {
-        const pin = document.getElementById('credentials-auth-pin').value;
-        
-        if (!pin || pin.length !== 4) {
-            Utils.showError('Please enter a 4-digit PIN');
-            return;
-        }
-        
-        try {
-            Loading.show('Verifying...');
-            
-            // Use existing Security.unlockWithPin method
-            const success = await window.Security.unlockWithPin(pin);
-            
-            Loading.hide();
-            
-            if (success) {
-                // Success - close modal and resolve
-                const modal = document.getElementById('credentials-auth-modal');
-                if (modal) modal.remove();
-                
-                if (window._credentialsAuthResolver) {
-                    window._credentialsAuthResolver(true);
-                    delete window._credentialsAuthResolver;
-                }
-            } else {
-                // Wrong PIN
-                Utils.showError('Incorrect PIN. Please try again.');
-                document.getElementById('credentials-auth-pin').value = '';
-                document.getElementById('credentials-auth-pin').focus();
-            }
-        } catch (error) {
-            Loading.hide();
-            Utils.showError('Authentication failed');
-            document.getElementById('credentials-auth-pin').value = '';
-            document.getElementById('credentials-auth-pin').focus();
-        }
-    },
-    
-    /**
-     * Cancel credentials authentication
-     */
-    cancelCredentialsAuth() {
-        const modal = document.getElementById('credentials-auth-modal');
-        if (modal) modal.remove();
-        
-        if (window._credentialsAuthResolver) {
-            window._credentialsAuthResolver(false);
-            delete window._credentialsAuthResolver;
-        }
-    },
-    
-    /**
-     * Start keeping credentials session alive
-     * Updates timestamp every second while on credentials page
-     */
-    startCredentialsSession() {
-        // Clear any existing interval
-        this.stopCredentialsSession();
-        
-        // Update timestamp every second to keep session alive
-        this.credentialsPageInterval = setInterval(() => {
-            if (this.currentView === 'credentials') {
-                this.lastAuthTimestamp = Date.now();
-            } else {
-                this.stopCredentialsSession();
-            }
-        }, 1000); // Update every second
-    },
-    
-    /**
-     * Stop credentials session renewal
-     */
-    stopCredentialsSession() {
-        if (this.credentialsPageInterval) {
-            clearInterval(this.credentialsPageInterval);
-            this.credentialsPageInterval = null;
-        }
-    },
-    
-    /**
-     * Update auth timestamp (called on app unlock)
-     */
-    updateAuthTimestamp() {
-        this.lastAuthTimestamp = Date.now();
-    }
 };
 
 // Export for use in other modules

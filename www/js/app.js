@@ -172,6 +172,114 @@ const App = {
             console.error('Unhandled promise rejection:', event.reason);
             window.Utils.showError('An error occurred. Check console for details.');
         };
+        
+        // App lifecycle listeners (for native app)
+        this.setupAppLifecycleListeners();
+    },
+    
+    /**
+     * Setup app lifecycle listeners for background/foreground detection
+     */
+    setupAppLifecycleListeners() {
+        console.log('🔧 Setting up app lifecycle listeners...');
+        
+        // Try Capacitor App plugin first (if available)
+        if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+            console.log('📱 Native platform detected');
+            console.log('🔌 Available plugins:', Object.keys(window.Capacitor.Plugins || {}));
+            
+            const CapApp = window.Capacitor.Plugins.App;
+            
+            if (CapApp) {
+                console.log('✅ Using Capacitor App plugin');
+                try {
+                    CapApp.addListener('pause', () => {
+                        console.log('🔴 PAUSE (Capacitor) - App going to background');
+                        if (window.Security) window.Security.onAppSuspended();
+                    });
+                    
+                    CapApp.addListener('resume', () => {
+                        console.log('🟢 RESUME (Capacitor) - App coming to foreground');
+                        this.handleAppResume();
+                    });
+                    
+                    console.log('✅ Capacitor App lifecycle listeners registered');
+                    return; // Success, no need for fallback
+                } catch (error) {
+                    console.error('❌ Capacitor App plugin error:', error);
+                }
+            } else {
+                console.log('ℹ️ Capacitor App plugin not available, using Visibility API fallback');
+            }
+        }
+        
+        // Fallback: Use Page Visibility API (works on both web and mobile)
+        console.log('✅ Using Page Visibility API as fallback');
+        
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                // Page is hidden (app went to background or minimized)
+                console.log('🔴 HIDDEN (Visibility API) - App/tab going to background');
+                if (window.Security) {
+                    window.Security.onAppSuspended();
+                }
+            } else {
+                // Page is visible (app came to foreground or tab focused)
+                console.log('🟢 VISIBLE (Visibility API) - App/tab coming to foreground');
+                this.handleAppResume();
+            }
+        });
+        
+        console.log('✅ Page Visibility API listeners registered');
+    },
+    
+    /**
+     * Handle app resume - show lock if needed
+     */
+    handleAppResume() {
+        if (!window.Security) {
+            console.error('❌ Security module not available!');
+            return;
+        }
+        
+        const shouldLock = window.Security.onAppResumed();
+        console.log('🔒 Should lock?', shouldLock);
+        
+        if (shouldLock) {
+            console.log('🔐 Locking app and showing unlock modal');
+            // Show unlock modal
+            const unlockModal = document.getElementById('security-unlock-modal');
+            if (unlockModal) {
+                unlockModal.classList.remove('hidden');
+                
+                // Auto-focus PIN input
+                const pinInput = document.getElementById('security-unlock-pin');
+                if (pinInput) {
+                    setTimeout(() => pinInput.focus(), 300);
+                }
+                
+                // Try biometric if enabled
+                if (window.DB.security.biometricEnabled) {
+                    const bioBtn = document.getElementById('biometric-unlock-btn');
+                    if (bioBtn) bioBtn.classList.remove('hidden');
+                    
+                    setTimeout(async () => {
+                        try {
+                            const isAvailable = await window.Security.isBiometricAvailable();
+                            if (isAvailable && window.unlockWithBiometric) {
+                                window.unlockWithBiometric().catch(() => {
+                                    console.log('ℹ️ Biometric cancelled');
+                                });
+                            }
+                        } catch (error) {
+                            console.log('ℹ️ Biometric check failed:', error);
+                        }
+                    }, 500);
+                }
+            } else {
+                console.error('❌ Unlock modal not found!');
+            }
+        }
     }
 };
 
