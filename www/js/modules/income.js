@@ -155,6 +155,15 @@ const Income = {
         const data = this.getData();
         const stdDeduction = data.stdDeduction;
         
+        // Calculate employer PF contribution (not taxable up to 7.5L per year)
+        const basic = this.calculateBasic(ctc);
+        const pfPercent = data.pfPercent || 12;
+        const employerPFAnnual = (basic * pfPercent) / 100;
+        
+        // Only amount above 7.5L is taxable (as per Indian tax law)
+        const taxableEmployerPF = Math.max(0, employerPFAnnual - 750000);
+        const exemptEmployerPF = Math.min(employerPFAnnual, 750000);
+        
         // Calculate all deductions
         const hraExemption = data.hraExemption || 0;
         const section80C = data.section80C || 0;
@@ -163,7 +172,9 @@ const Income = {
         
         // All deductions reduce taxable income
         const totalDeductions = stdDeduction + hraExemption + section80C + section80D + otherDeductions;
-        const taxableIncome = Math.max(0, ctc - totalDeductions);
+        
+        // Exclude exempt employer PF from taxable income, include only taxable portion
+        const taxableIncome = Math.max(0, ctc - exemptEmployerPF - totalDeductions);
         
         // Get tax slabs (sorted by min amount)
         const taxSlabs = [...data.taxSlabs].sort((a, b) => a.min - b.min);
@@ -233,6 +244,9 @@ const Income = {
             section80D: section80D,
             otherDeductions: otherDeductions,
             totalDeductions: totalDeductions,
+            employerPFAnnual: employerPFAnnual,
+            exemptEmployerPF: exemptEmployerPF,
+            taxableEmployerPF: taxableEmployerPF,
             taxableIncome: taxableIncome,
             cessPercent: data.cessPercent,
             slabs: slabs
@@ -821,6 +835,16 @@ const Income = {
                                     <span class="text-gray-600">CTC (Gross Income)</span>
                                     <span class="font-semibold">₹${Utils.formatIndianNumber(data.ctc)}</span>
                                 </div>
+                                ${taxInfo.exemptEmployerPF > 0 ? `
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Employer PF (Exempt)</span>
+                                    <span class="font-semibold text-green-700">-₹${Utils.formatIndianNumber(taxInfo.exemptEmployerPF)}</span>
+                                </div>` : ''}
+                                ${taxInfo.taxableEmployerPF > 0 ? `
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Employer PF (Taxable)</span>
+                                    <span class="font-semibold text-red-600">+₹${Utils.formatIndianNumber(taxInfo.taxableEmployerPF)}</span>
+                                </div>` : ''}
                                 ${taxInfo.stdDeduction > 0 ? `
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Standard Deduction</span>
