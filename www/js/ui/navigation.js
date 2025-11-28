@@ -160,6 +160,10 @@ const Navigation = {
         const menu = document.getElementById('side-menu');
         if (menu) {
             menu.classList.remove('hidden');
+            // Prevent background scroll when menu is open
+            document.body.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.width = '100%';
         }
     },
 
@@ -170,6 +174,10 @@ const Navigation = {
         const menu = document.getElementById('side-menu');
         if (menu) {
             menu.classList.add('hidden');
+            // Re-enable background scroll when menu is closed
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
         }
     },
 

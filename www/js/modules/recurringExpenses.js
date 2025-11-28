@@ -500,18 +500,18 @@ const RecurringExpenses = {
         
         let html = '';
         
-        // Monthly Estimation Banner
+        // Monthly Estimation Banner - Dashboard Style (Distinct warm colors)
         html += `
             <div class="grid grid-cols-2 gap-3 mb-4">
-                <div class="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border-2 border-blue-300">
-                    <p class="text-xs font-semibold text-blue-600 mb-1">This Month (${currentMonthName})</p>
-                    <p class="text-base font-bold text-blue-800">₹${Utils.formatIndianNumber(currentMonthTotal)}</p>
-                    <p class="text-xs text-blue-500 mt-1">Expected recurring</p>
+                <div class="bg-gradient-to-br from-orange-600 to-amber-600 rounded-xl p-4 text-white shadow-lg">
+                    <p class="text-xs opacity-90 mb-1 leading-tight">This Month</p>
+                    <p class="text-2xl font-bold mb-0.5">₹${Utils.formatIndianNumber(currentMonthTotal)}</p>
+                    <p class="text-[10px] opacity-80">${currentMonthName} • Expected recurring</p>
                 </div>
-                <div class="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border-2 border-purple-300">
-                    <p class="text-xs font-semibold text-purple-600 mb-1">Next Month (${nextMonthName})</p>
-                    <p class="text-base font-bold text-purple-800">₹${Utils.formatIndianNumber(nextMonthTotal)}</p>
-                    <p class="text-xs text-purple-500 mt-1">Expected recurring</p>
+                <div class="bg-gradient-to-br from-amber-700 to-yellow-700 rounded-xl p-4 text-white shadow-lg">
+                    <p class="text-xs opacity-90 mb-1 leading-tight">Next Month</p>
+                    <p class="text-2xl font-bold mb-0.5">₹${Utils.formatIndianNumber(nextMonthTotal)}</p>
+                    <p class="text-[10px] opacity-80">${nextMonthName} • Expected recurring</p>
                 </div>
             </div>
         `;
