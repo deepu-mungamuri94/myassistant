@@ -942,16 +942,29 @@ const Expenses = {
                                                Math.abs(e.amount - exp.amount) < 0.01;
                                     });
                                     
+                                    // Calculate next payment count for display
+                                    let displayDescription = exp.description || '';
+                                    if (exp.recurringId) {
+                                        const recurring = window.DB.recurringExpenses.find(r => String(r.id) === String(exp.recurringId));
+                                        if (recurring && recurring.addedToExpenses) {
+                                            const nextPaymentNumber = recurring.addedToExpenses.length + 1;
+                                            // Update description to show next payment count if it contains a pattern like "3/6"
+                                            displayDescription = displayDescription.replace(/(\d+)\/(\d+)/, (match, current, total) => {
+                                                return `${nextPaymentNumber}/${total}`;
+                                            });
+                                        }
+                                    }
+                                    
                                     return `
                                     <div class="flex justify-between items-center py-1.5 px-2 bg-blue-50 rounded border border-blue-100">
                                         <div class="flex-1 min-w-0">
                                             <p class="text-sm font-medium text-gray-800 truncate">${Utils.escapeHtml(exp.title)}</p>
-                                            <p class="text-xs text-gray-500">${exp.description ? Utils.escapeHtml(exp.description) + ' • ' : ''}${Utils.formatDate(exp.date)}</p>
+                                            <p class="text-xs text-gray-500">${displayDescription ? Utils.escapeHtml(displayDescription) + ' • ' : ''}${Utils.formatDate(exp.date)}</p>
                                         </div>
                                         <div class="flex items-center gap-2 ml-2">
                                             <span class="text-sm font-semibold text-blue-700">${Utils.formatCurrency(exp.amount)}</span>
                                             ${!existsInExpenses ? `
-                                                <button onclick="Expenses.addRecurringExpense('${Utils.escapeHtml(exp.title).replace(/'/g, "\\'")}', ${exp.amount}, '${exp.category}', '${exp.date}', '${Utils.escapeHtml(exp.description || '').replace(/'/g, "\\'")}', '${exp.recurringId || ''}'); event.stopPropagation();" 
+                                                <button onclick="Expenses.addRecurringExpense('${Utils.escapeHtml(exp.title).replace(/'/g, "\\'")}', ${exp.amount}, '${exp.category}', '${exp.date}', '${Utils.escapeHtml(displayDescription || '').replace(/'/g, "\\'")}', '${exp.recurringId || ''}'); event.stopPropagation();" 
                                                         class="px-2 py-0.5 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors flex items-center gap-1" 
                                                         title="Add to Expenses">
                                                     <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">

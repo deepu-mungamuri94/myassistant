@@ -316,11 +316,14 @@ const Investments = {
         const exchangeRate = this.getExchangeRate();
         const goldRate = window.DB.goldRatePerGram || 7000;
 
-        // Separate by term first
-        const shortTermData = monthlyData.filter(inv => inv.goal === 'SHORT_TERM');
-        const longTermData = monthlyData.filter(inv => inv.goal === 'LONG_TERM');
+        // Apply date filter FIRST to all data
+        const dateFilteredData = this.applyDateFilterToInvestments(monthlyData);
 
-        // Calculate term totals
+        // Separate by term AFTER date filtering
+        const shortTermData = dateFilteredData.filter(inv => inv.goal === 'SHORT_TERM');
+        const longTermData = dateFilteredData.filter(inv => inv.goal === 'LONG_TERM');
+
+        // Calculate term totals (now correctly filtered by date)
         const shortTermTotal = shortTermData.reduce((sum, inv) => sum + this.calculateMonthlyAmount(inv, goldRate), 0);
         const longTermTotal = longTermData.reduce((sum, inv) => sum + this.calculateMonthlyAmount(inv, goldRate), 0);
 
@@ -334,9 +337,6 @@ const Investments = {
                 (inv.description && inv.description.toLowerCase().includes(query))
             );
         }
-
-        // Apply date filter
-        filtered = this.applyDateFilterToInvestments(filtered);
         
         // Group by year and month
         const grouped = this.groupByYearMonth(filtered);
