@@ -3731,19 +3731,18 @@
                 return;
             }
             
-            // Get unique expense titles with their details
+            // Get unique expense titles with their details (most recent record for each title)
             const expensesMap = new Map();
             window.DB.expenses.forEach(exp => {
                 const title = exp.title || exp.description;
                 if (title && title.toLowerCase().includes(searchTerm.toLowerCase())) {
-                    if (!expensesMap.has(title)) {
-                        expensesMap.set(title, {
-                            title: title,
-                            category: exp.category,
-                            amount: exp.amount,
-                            description: exp.description
-                        });
-                    }
+                    // Always update the map - this keeps the most recent record for each title
+                    expensesMap.set(title, {
+                        title: title,
+                        category: exp.category,
+                        amount: exp.amount,
+                        description: exp.description
+                    });
                 }
             });
             
