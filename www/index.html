@@ -6028,10 +6028,19 @@
                 console.error('Error code:', error.code);
                 console.error('Full error object:', JSON.stringify(error, null, 2));
                 
-                if (error.message && error.message.includes('cancelled')) {
-                    Utils.showInfo('Biometric cancelled. Use PIN instead.');
+                // Only show error if unlock modal is still visible
+                // (If user logged in with PIN already, modal would be hidden)
+                const unlockModal = document.getElementById('security-unlock-modal');
+                const isModalVisible = unlockModal && !unlockModal.classList.contains('hidden');
+                
+                if (isModalVisible) {
+                    if (error.message && error.message.includes('cancelled')) {
+                        Utils.showInfo('Biometric cancelled. Use PIN instead.');
+                    } else {
+                        Utils.showError(`Biometric failed: ${error.message || error.code || 'Unknown error'}. Use PIN instead.`);
+                    }
                 } else {
-                    Utils.showError(`Biometric failed: ${error.message || error.code || 'Unknown error'}. Use PIN instead.`);
+                    console.log('ℹ️ Unlock modal already closed (user logged in with PIN), skipping error message');
                 }
             }
         }
