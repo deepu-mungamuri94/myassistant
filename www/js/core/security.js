@@ -197,7 +197,8 @@ const Security = {
             titleElement.textContent = reason;
             pinInput.value = '';
             errorElement.classList.add('hidden');
-            errorElement.textContent = '';
+            const errorText = errorElement.querySelector('p');
+            if (errorText) errorText.textContent = '';
             
             // Store resolve function for later use
             window._securityAuthResolve = resolve;
