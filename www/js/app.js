@@ -60,7 +60,7 @@ const App = {
                     
                     // Show biometric button if enabled
                     if (window.DB.security.biometricEnabled) {
-                        document.getElementById('biometric-unlock-btn').classList.remove('hidden');
+                        document.getElementById('biometric-unlock-section').classList.remove('hidden');
                         
                         // Auto-trigger biometric only if hardware is available and enrolled
                         if (window.Capacitor && window.Capacitor.isNativePlatform()) {
@@ -263,8 +263,8 @@ const App = {
                 
                 // Try biometric if enabled
                 if (window.DB.security.biometricEnabled) {
-                    const bioBtn = document.getElementById('biometric-unlock-btn');
-                    if (bioBtn) bioBtn.classList.remove('hidden');
+                    const bioSection = document.getElementById('biometric-unlock-section');
+                    if (bioSection) bioSection.classList.remove('hidden');
                     
                     setTimeout(async () => {
                         try {

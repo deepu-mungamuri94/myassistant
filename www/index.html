@@ -2807,13 +2807,23 @@
                         class="w-full px-4 py-2.5 bg-white/90 hover:bg-white text-purple-700 rounded-lg hover:shadow-lg transition-all duration-200 font-semibold text-sm">
                     Unlock
                 </button>
-                
+            </div>
+            
+            <!-- Biometric Authentication Section (Bottom) -->
+            <div id="biometric-unlock-section" class="hidden absolute bottom-8 left-0 right-0 flex flex-col items-center">
+                <p class="text-white/70 text-xs font-medium mb-3 tracking-wide uppercase">Use Fingerprint</p>
                 <button id="biometric-unlock-btn" onclick="unlockWithBiometric()" 
-                        class="hidden w-full px-4 py-2.5 bg-white/20 backdrop-blur-sm border border-white/30 text-white rounded-lg hover:bg-white/30 transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
+                        class="group relative w-16 h-16 rounded-full bg-gradient-to-br from-gray-900 to-black shadow-2xl hover:shadow-cyan-500/50 transition-all duration-300 transform hover:scale-110 flex items-center justify-center ring-2 ring-cyan-400 hover:ring-cyan-300 hover:ring-4">
+                    <!-- Animated glow effect -->
+                    <div class="absolute inset-0 rounded-full bg-cyan-400 opacity-20 group-hover:opacity-30 blur-md transition-opacity"></div>
+                    
+                    <!-- Fingerprint Icon -->
+                    <svg class="w-8 h-8 relative z-10 text-cyan-400 group-hover:text-cyan-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
                     </svg>
-                    Use Fingerprint
+                    
+                    <!-- Pulse animation on hover -->
+                    <div class="absolute inset-0 rounded-full border-2 border-cyan-400 opacity-0 group-hover:opacity-100 group-hover:scale-125 transition-all duration-500"></div>
                 </button>
             </div>
         </div>
@@ -5480,9 +5490,9 @@
                 // Show biometric setup option
                 document.getElementById('biometric-setup-option').classList.remove('hidden');
                 
-                // Show biometric unlock button ONLY if biometric is enabled by user
+                // Show biometric unlock section ONLY if biometric is enabled by user
                 if (window.DB.security && window.DB.security.biometricEnabled) {
-                    document.getElementById('biometric-unlock-btn').classList.remove('hidden');
+                    document.getElementById('biometric-unlock-section').classList.remove('hidden');
                 }
             }
         }
