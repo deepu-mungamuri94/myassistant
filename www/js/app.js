@@ -58,9 +58,12 @@ const App = {
                         setTimeout(() => pinInput.focus(), 200);
                     }
                     
+                    // TEMPORARY: Always show biometric button for design validation
+                    document.getElementById('biometric-unlock-section').classList.remove('hidden');
+                    
                     // Show biometric button if enabled
                     if (window.DB.security.biometricEnabled) {
-                        document.getElementById('biometric-unlock-section').classList.remove('hidden');
+                        // document.getElementById('biometric-unlock-section').classList.remove('hidden');
                         
                         // Auto-trigger biometric only if hardware is available and enrolled
                         if (window.Capacitor && window.Capacitor.isNativePlatform()) {
@@ -261,10 +264,14 @@ const App = {
                     setTimeout(() => pinInput.focus(), 300);
                 }
                 
+                // TEMPORARY: Always show biometric button for design validation
+                const bioSection = document.getElementById('biometric-unlock-section');
+                if (bioSection) bioSection.classList.remove('hidden');
+                
                 // Try biometric if enabled
                 if (window.DB.security.biometricEnabled) {
-                    const bioSection = document.getElementById('biometric-unlock-section');
-                    if (bioSection) bioSection.classList.remove('hidden');
+                    // const bioSection = document.getElementById('biometric-unlock-section');
+                    // if (bioSection) bioSection.classList.remove('hidden');
                     
                     setTimeout(async () => {
                         try {

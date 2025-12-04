@@ -5490,10 +5490,13 @@
                 // Show biometric setup option
                 document.getElementById('biometric-setup-option').classList.remove('hidden');
                 
+                // TEMPORARY: Always show biometric button for design validation
+                document.getElementById('biometric-unlock-section').classList.remove('hidden');
+                
                 // Show biometric unlock section ONLY if biometric is enabled by user
-                if (window.DB.security && window.DB.security.biometricEnabled) {
-                    document.getElementById('biometric-unlock-section').classList.remove('hidden');
-                }
+                // if (window.DB.security && window.DB.security.biometricEnabled) {
+                //     document.getElementById('biometric-unlock-section').classList.remove('hidden');
+                // }
             }
         }
         
