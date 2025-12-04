@@ -643,14 +643,12 @@ const Expenses = {
                     const emiDay = firstDate.getDate();
                     
                     // Calculate which EMI payment number this month would be
-                    let monthsElapsed = (today.getFullYear() - firstDate.getFullYear()) * 12 
-                                      + (today.getMonth() - firstDate.getMonth());
+                    // This is based on months from first EMI date to current month
+                    const monthsElapsed = (today.getFullYear() - firstDate.getFullYear()) * 12 
+                                        + (today.getMonth() - firstDate.getMonth());
                     
-                    // If current date hasn't reached the EMI day this month, subtract 1
-                    if (today.getDate() < emiDay) {
-                        monthsElapsed--;
-                    }
-                    
+                    // EMI number is simply monthsElapsed + 1
+                    // (January = 1st EMI, February = 2nd EMI, etc.)
                     const emiNumber = monthsElapsed + 1;
                     
                     // Only if this EMI number is within total EMIs and not already completed
