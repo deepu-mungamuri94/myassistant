@@ -1127,7 +1127,7 @@ const Expenses = {
                                 <div class="flex justify-between items-start mb-1">
                                     <div class="flex-1 flex items-center gap-2 flex-wrap">
                                         <h4 class="font-semibold text-purple-800 text-sm">${Utils.escapeHtml(expense.title || expense.description)}</h4>
-                                        <span class="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded">${expense.isRecurring ? '🔄 ' : ''}${Utils.escapeHtml(this.formatCategoryDisplay(expense.category))}</span>
+                                        <span class="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded">${expense.isRecurring ? '🔁 ' : ''}${Utils.escapeHtml(this.formatCategoryDisplay(expense.category))}</span>
                                     </div>
                                     <div class="flex gap-1">
                                         <button onclick="openExpenseModal(${expense.id})" class="text-green-600 hover:text-green-800 p-0.5" title="Edit">
