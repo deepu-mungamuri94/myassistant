@@ -655,32 +655,32 @@ const RecurringExpenses = {
                 
                 return `
                     <div class="p-3 bg-white hover:bg-orange-50 transition-all ${!isLast ? 'border-b border-orange-100' : ''}">
+                        <!-- First Line: Name + Category | Actions -->
                         <div class="flex justify-between items-start mb-2">
-                            <!-- Left Side: Name and Amount -->
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h4 class="font-bold text-gray-800 text-sm">${Utils.escapeHtml(recurring.name)}</h4>
+                                ${recurring.category ? `<span class="text-xs bg-orange-200 text-orange-800 px-1.5 py-0.5 rounded">${Utils.escapeHtml(recurring.category)}</span>` : ''}
+                            </div>
+                            <div class="flex gap-2 ml-4">
+                                <button onclick="openRecurringExpenseModal(${recurring.id})" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </button>
+                                <button onclick="RecurringExpenses.deleteWithConfirm(${recurring.id})" class="text-red-600 hover:text-red-800 p-0.5" title="Delete">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Second Line: Description | Amount -->
+                        <div class="flex justify-between items-center">
                             <div class="flex-1">
-                                <div class="flex items-center gap-2 flex-wrap mb-0.5">
-                                    <h4 class="font-bold text-gray-800 text-sm">${Utils.escapeHtml(recurring.name)}</h4>
-                                    ${recurring.category ? `<span class="text-xs bg-orange-200 text-orange-800 px-1.5 py-0.5 rounded">${Utils.escapeHtml(recurring.category)}</span>` : ''}
-                                </div>
-                                ${recurring.description ? `<p class="text-xs text-gray-600 mt-0.5">${Utils.escapeHtml(recurring.description)}</p>` : '<p class="text-xs text-gray-400 mt-0.5 italic">No description</p>'}
+                                ${recurring.description ? `<p class="text-xs text-gray-600">${Utils.escapeHtml(recurring.description)}</p>` : '<p class="text-xs text-gray-400 italic">No description</p>'}
                             </div>
-                            
-                            <!-- Right Side: Actions and Amount -->
-                            <div class="ml-4 flex items-start gap-3">
-                                <p class="text-base font-bold text-orange-700">₹${Utils.formatIndianNumber(recurring.amount)}</p>
-                                <div class="flex gap-2">
-                                    <button onclick="openRecurringExpenseModal(${recurring.id})" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                        </svg>
-                                    </button>
-                                    <button onclick="RecurringExpenses.deleteWithConfirm(${recurring.id})" class="text-red-600 hover:text-red-800 p-0.5" title="Delete">
-                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
+                            <p class="text-base font-bold text-orange-700 ml-4">₹${Utils.formatIndianNumber(recurring.amount)}</p>
                         </div>
                         
                         <!-- Frequency and End Date on same line -->
