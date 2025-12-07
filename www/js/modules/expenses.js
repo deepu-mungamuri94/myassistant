@@ -484,30 +484,35 @@ const Expenses = {
     
     /**
      * Manually add a recurring expense to expenses
+     * @param {string} scheduledDate - The original scheduled date (for tracking purposes)
      */
-    addRecurringExpense(title, amount, category, date, description, recurringId = null) {
+    addRecurringExpense(title, amount, category, scheduledDate, description, recurringId = null) {
+        // Use today's date for the actual expense (since it's being added manually)
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        
         // Remove from dismissed list if it was dismissed
         if (window.DB.dismissedRecurringExpenses) {
             window.DB.dismissedRecurringExpenses = window.DB.dismissedRecurringExpenses.filter(d => {
                 // Check by recurringId first (handles name changes)
                 if (recurringId && d.recurringId && String(d.recurringId) === String(recurringId)) {
-                    return d.date !== date; // Remove if same date
+                    return d.date !== scheduledDate; // Remove if same scheduled date
                 }
                 // Fallback to title/date/amount matching
-                return !(d.title === title && d.date === date && Math.abs(d.amount - amount) < 0.01);
+                return !(d.title === title && d.date === scheduledDate && Math.abs(d.amount - amount) < 0.01);
             });
         }
         
-        // Add to expenses with recurring ID for tracking
-        const expense = this.add(title, amount, category, date, description, null);
+        // Add to expenses with TODAY'S date (manual addition)
+        const expense = this.add(title, amount, category, todayStr, description, null);
         
-        // If this is from a recurring expense, mark the month as added to prevent duplicates
+        // If this is from a recurring expense, mark the SCHEDULED month as added to prevent duplicates
         if (recurringId && window.RecurringExpenses) {
             const recurring = window.DB.recurringExpenses.find(r => String(r.id) === String(recurringId));
             if (recurring) {
-                // Extract year-month from the date
-                const expenseDate = new Date(date);
-                const monthKey = `${expenseDate.getFullYear()}-${String(expenseDate.getMonth() + 1).padStart(2, '0')}`;
+                // Extract year-month from the SCHEDULED date (not today's date)
+                const scheduledDateObj = new Date(scheduledDate);
+                const monthKey = `${scheduledDateObj.getFullYear()}-${String(scheduledDateObj.getMonth() + 1).padStart(2, '0')}`;
                 
                 // Mark this month as added if not already
                 if (!recurring.addedToExpenses) {
@@ -516,12 +521,13 @@ const Expenses = {
                 if (!recurring.addedToExpenses.includes(monthKey)) {
                     recurring.addedToExpenses.push(monthKey);
                     window.Storage.save();
-                    console.log(`Marked recurring expense "${recurring.name}" as added for ${monthKey}`);
+                    console.log(`Marked recurring expense "${recurring.name}" as added for ${monthKey} (manually added on ${todayStr})`);
                 }
                 
                 // Store recurring ID in the expense for future reference
                 if (expense) {
                     expense.recurringId = recurringId;
+                    expense.isRecurring = true;
                 }
             }
         }
