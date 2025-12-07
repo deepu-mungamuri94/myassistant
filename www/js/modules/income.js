@@ -1196,9 +1196,6 @@ const Income = {
         document.getElementById('income-insurance-months').value = data.insuranceMonths ? data.insuranceMonths.length : '';
         document.getElementById('income-leave-days').value = data.leaveDays || '';
         
-        // Auto-calculate basic
-        this.updateBasicPreview();
-        
         // Setup insurance fields
         this.toggleInsuranceFields();
         if (data.hasInsurance) {
@@ -1228,16 +1225,6 @@ const Income = {
     /**
      * Update basic pay preview
      */
-    updateBasicPreview() {
-        const ctcValue = document.getElementById('income-ctc').value;
-        const ctc = ctcValue ? parseFloat(ctcValue.replace(/,/g, '')) : 0;
-        const basic = this.calculateBasic(ctc);
-        const preview = document.getElementById('basic-preview');
-        if (preview) {
-            preview.textContent = `₹${Utils.formatIndianNumber(basic)}`;
-        }
-    },
-    
     /**
      * Save income form
      */
