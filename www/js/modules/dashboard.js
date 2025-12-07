@@ -503,7 +503,7 @@ const Dashboard = {
                             callback: function(value) {
                                 return '₹' + (value >= 100000 ? (value/100000).toFixed(1) + 'L' : (value >= 1000 ? (value/1000).toFixed(0) + 'k' : value));
                             },
-                            stepSize: 25000,
+                            stepSize: 50000,
                             font: {
                                 size: 11
                             }
