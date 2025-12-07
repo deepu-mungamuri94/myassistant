@@ -825,8 +825,8 @@ const Income = {
             const isCurrentYear = parseInt(year) === currentYear;
             
             html += `
-                <details ${isCurrentYear ? 'open' : ''} class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 overflow-hidden">
-                    <summary class="cursor-pointer p-4 hover:bg-green-100 transition-colors select-none">
+                <details ${isCurrentYear ? 'open' : ''} class="salary-year-group bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 overflow-hidden">
+                    <summary class="cursor-pointer p-4 hover:bg-green-100 transition-colors select-none list-none">
                         <div class="flex justify-between items-center">
                             <div class="flex items-center gap-3">
                                 <span class="text-2xl">📅</span>
@@ -835,9 +835,14 @@ const Income = {
                                     <p class="text-xs text-green-600">${yearSalaries.length} month${yearSalaries.length !== 1 ? 's' : ''}</p>
                                 </div>
                             </div>
-                            <div class="text-right">
-                                <p class="font-bold text-green-700 text-lg">₹${Utils.formatIndianNumber(Math.round(yearTotal))}</p>
-                                <p class="text-xs text-green-600">Total</p>
+                            <div class="flex items-center gap-3">
+                                <div class="text-right">
+                                    <p class="font-bold text-green-700 text-lg">₹${Utils.formatIndianNumber(Math.round(yearTotal))}</p>
+                                    <p class="text-xs text-green-600">Total</p>
+                                </div>
+                                <svg class="w-5 h-5 text-green-700 transition-transform duration-200 chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
                             </div>
                         </div>
                     </summary>
