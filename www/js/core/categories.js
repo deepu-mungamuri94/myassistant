@@ -16,14 +16,14 @@ const ExpenseCategories = {
             id: 'food-dining',
             name: 'Food & Dining',
             icon: '🍽️',
-            description: 'Restaurant dining, Swiggy/Zomato orders, snacks, drinks',
+            description: 'Restaurant dining, food delivery, snacks, drinks',
             color: 'from-orange-500 to-red-600'
         },
         {
             id: 'shopping',
             name: 'Shopping',
             icon: '🛍️',
-            description: 'Clothes shopping, general shopping items',
+            description: 'Clothes, accessories, footwear, general shopping',
             color: 'from-pink-500 to-rose-600'
         },
         {
@@ -58,14 +58,14 @@ const ExpenseCategories = {
             id: 'bills-utilities',
             name: 'Bills & Utilities',
             icon: '💡',
-            description: 'Power, water, waste, mobile recharges, rent, maintenance, maid',
+            description: 'Electricity, water, gas, internet, phone, rent, maintenance',
             color: 'from-yellow-500 to-orange-600'
         },
         {
             id: 'subscriptions',
             name: 'Subscriptions',
             icon: '📱',
-            description: 'OTT services (Netflix, Amazon), digital subscriptions',
+            description: 'Streaming services, digital subscriptions, memberships',
             color: 'from-purple-500 to-indigo-600'
         },
         {
@@ -93,14 +93,14 @@ const ExpenseCategories = {
             id: 'education',
             name: 'Education',
             icon: '📚',
-            description: 'Kids education, tuition, books, school fees',
+            description: 'School fees, tuition, books, courses, educational materials',
             color: 'from-indigo-500 to-blue-600'
         },
         {
             id: 'personal-family',
             name: 'Personal & Family',
             icon: '👨‍👩‍👧‍👦',
-            description: 'Money to mother, pocket money, personal care',
+            description: 'Family support, gifts, personal care, grooming',
             color: 'from-rose-500 to-pink-600'
         },
         {
