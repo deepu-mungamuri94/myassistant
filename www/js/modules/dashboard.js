@@ -409,37 +409,81 @@ const Dashboard = {
         }
         
         this.incomeExpenseChartInstance = new Chart(ctx, {
-            type: 'bar',
+            type: 'line',
             data: {
                 labels: expensesData.map(d => d.label),
                 datasets: [
                     {
                         label: 'Income',
                         data: incomeData.map(d => d.income),
-                        backgroundColor: 'rgba(34, 197, 94, 0.85)',
+                        backgroundColor: 'rgba(34, 197, 94, 0.2)',
                         borderColor: 'rgba(34, 197, 94, 1)',
-                        borderWidth: 2
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        pointBackgroundColor: 'rgba(34, 197, 94, 1)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointHoverBackgroundColor: 'rgba(34, 197, 94, 1)',
+                        pointHoverBorderColor: '#fff',
+                        pointHoverBorderWidth: 3
                     },
                     {
                         label: 'Expenses',
                         data: expensesData.map(d => d.withoutLoans),
-                        backgroundColor: 'rgba(239, 68, 68, 0.85)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.2)',
                         borderColor: 'rgba(239, 68, 68, 1)',
-                        borderWidth: 2
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        pointBackgroundColor: 'rgba(239, 68, 68, 1)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointHoverBackgroundColor: 'rgba(239, 68, 68, 1)',
+                        pointHoverBorderColor: '#fff',
+                        pointHoverBorderWidth: 3
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
                 plugins: {
                     legend: {
-                        position: 'top'
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            padding: 15,
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            }
+                        }
                     },
                     datalabels: {
                         display: false
                     },
                     tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleFont: {
+                            size: 14,
+                            weight: 'bold'
+                        },
+                        bodyFont: {
+                            size: 13
+                        },
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: true,
                         callbacks: {
                             label: function(context) {
                                 const label = context.dataset.label || '';
@@ -455,6 +499,11 @@ const Dashboard = {
                     x: {
                         grid: {
                             display: false
+                        },
+                        ticks: {
+                            font: {
+                                size: 11
+                            }
                         }
                     },
                     y: {
@@ -463,11 +512,15 @@ const Dashboard = {
                             callback: function(value) {
                                 return '₹' + (value >= 100000 ? (value/100000).toFixed(1) + 'L' : (value >= 1000 ? (value/1000).toFixed(0) + 'k' : value));
                             },
-                            stepSize: 25000
+                            stepSize: 25000,
+                            font: {
+                                size: 11
+                            }
                         },
                         grid: {
                             display: true,
-                            color: 'rgba(0, 0, 0, 0.1)'
+                            color: 'rgba(0, 0, 0, 0.1)',
+                            drawBorder: false
                         }
                     }
                 }
