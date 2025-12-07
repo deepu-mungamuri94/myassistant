@@ -1653,6 +1653,58 @@
         </div>
     </div>
     
+    <!-- SALARY MODAL -->
+    <div id="salary-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Income.closeSalaryModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 id="salary-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Add Salary</h2>
+            
+            <input type="hidden" id="salary-modal-id">
+            
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Month *</label>
+                    <select id="salary-modal-month" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="">Select Month</option>
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Year *</label>
+                    <input type="number" id="salary-modal-year" placeholder="e.g., 2024" min="2000" max="2100" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Amount *</label>
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
+                    <input type="number" id="salary-modal-amount" placeholder="Net salary credited" step="0.01" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Enter the actual amount credited to your bank account</p>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button onclick="Income.saveSalaryModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                    Save
+                </button>
+                <button onclick="Income.closeSalaryModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <!-- LOAN MODAL -->
     <div id="loan-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeLoanModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">

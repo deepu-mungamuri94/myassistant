@@ -92,6 +92,91 @@ const Income = {
     },
     
     /**
+     * Add a salary record
+     */
+    addSalary(month, year, amount) {
+        if (!month || !year || !amount) {
+            throw new Error('Month, year, and amount are required');
+        }
+        
+        // Check if salary for this month/year already exists
+        const exists = window.DB.salaries.find(s => s.month === parseInt(month) && s.year === parseInt(year));
+        if (exists) {
+            throw new Error(`Salary for ${this.getMonthName(month)} ${year} already exists. Please edit the existing record.`);
+        }
+        
+        const salary = {
+            id: Utils.generateId(),
+            month: parseInt(month),
+            year: parseInt(year),
+            amount: parseFloat(amount),
+            createdAt: Utils.getCurrentTimestamp()
+        };
+        
+        window.DB.salaries.push(salary);
+        window.Storage.save();
+        
+        return salary;
+    },
+    
+    /**
+     * Update a salary record
+     */
+    updateSalary(id, month, year, amount) {
+        if (!month || !year || !amount) {
+            throw new Error('Month, year, and amount are required');
+        }
+        
+        const salary = window.DB.salaries.find(s => s.id === id);
+        if (!salary) {
+            throw new Error('Salary record not found');
+        }
+        
+        // Check if another salary for this month/year exists
+        const duplicate = window.DB.salaries.find(s => s.id !== id && s.month === parseInt(month) && s.year === parseInt(year));
+        if (duplicate) {
+            throw new Error(`Salary for ${this.getMonthName(month)} ${year} already exists.`);
+        }
+        
+        salary.month = parseInt(month);
+        salary.year = parseInt(year);
+        salary.amount = parseFloat(amount);
+        
+        window.Storage.save();
+        return salary;
+    },
+    
+    /**
+     * Delete a salary record
+     */
+    deleteSalary(id) {
+        window.DB.salaries = window.DB.salaries.filter(s => s.id !== id);
+        window.Storage.save();
+    },
+    
+    /**
+     * Get salary by id
+     */
+    getSalaryById(id) {
+        return window.DB.salaries.find(s => s.id === id);
+    },
+    
+    /**
+     * Get all salaries
+     */
+    getAllSalaries() {
+        return window.DB.salaries || [];
+    },
+    
+    /**
+     * Get month name
+     */
+    getMonthName(monthNum) {
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return monthNames[parseInt(monthNum) - 1] || '';
+    },
+    
+    /**
      * Save income data
      */
     save(data) {
@@ -557,9 +642,15 @@ const Income = {
         
         const totalEPF = aggregated.totalPFEmployee + aggregated.totalPFEmployer;
         
-        // Build payslips HTML
+        // Build HTML for all tabs
+        const salariesHTML = this.renderSalaryTab();
         const payslipsHTML = this.renderPayslipsTab(yearlyPayslips, bonus);
         const incomeTaxHTML = this.renderIncomeTaxTab(taxInfo, data);
+        
+        // Calculate actual salary total for the year
+        const currentYear = new Date().getFullYear();
+        const actualSalaryTotal = this.getYearSalaryTotal(currentYear);
+        const salaryCount = window.DB.salaries.filter(s => s.year === currentYear).length;
         
         container.innerHTML = `
             <div class="space-y-4">
@@ -572,8 +663,9 @@ const Income = {
                             <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(ctc)}</p>
                         </div>
                         <div>
-                            <p class="text-xs opacity-90">Income Credit</p>
-                            <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(aggregated.totalNetPay))}</p>
+                            <p class="text-xs opacity-90">Income Credit (${currentYear})</p>
+                            <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(actualSalaryTotal > 0 ? actualSalaryTotal : Math.round(aggregated.totalNetPay))}</p>
+                            <p class="text-[10px] opacity-75">${actualSalaryTotal > 0 ? `Actual (${salaryCount} months)` : 'Estimated'}</p>
                         </div>
                     </div>
                     <!-- Second Line: Tax, ESPP, EPF -->
@@ -593,14 +685,19 @@ const Income = {
                     </div>
                 </div>
                 
-                <!-- Tabs for Pay Slips and Income Tax -->
+                <!-- Tabs for Salary, Pay Slips, and Income Tax -->
                 <div class="bg-white rounded-xl border border-blue-200 overflow-hidden">
                     <!-- Tabs -->
                     <div class="border-b border-blue-200">
                         <div class="flex justify-evenly">
+                            <button onclick="Income.switchIncomeTab('salary')" 
+                                    id="income-tab-salary"
+                                    class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600">
+                                💵 Salary(${window.DB.salaries.length})
+                            </button>
                             <button onclick="Income.switchIncomeTab('payslips')" 
                                     id="income-tab-payslips"
-                                    class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600">
+                                    class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
                                 📄 Pay Slips(12)
                             </button>
                             <button onclick="Income.switchIncomeTab('tax')" 
@@ -612,8 +709,13 @@ const Income = {
                         </div>
                     </div>
                     
+                    <!-- Tab Content: Salary -->
+                    <div id="income-content-salary" class="p-4">
+                        ${salariesHTML}
+                    </div>
+                    
                     <!-- Tab Content: Pay Slips -->
-                    <div id="income-content-payslips" class="p-4">
+                    <div id="income-content-payslips" class="p-4 hidden">
                         ${payslipsHTML}
                     </div>
                     
@@ -627,33 +729,148 @@ const Income = {
     },
     
     /**
-     * Switch between Pay Slips and Income Tax tabs
+     * Switch between Salary, Pay Slips, and Income Tax tabs
      */
     switchIncomeTab(tab) {
+        const salaryBtn = document.getElementById('income-tab-salary');
         const payslipsBtn = document.getElementById('income-tab-payslips');
         const taxBtn = document.getElementById('income-tab-tax');
+        const salaryContent = document.getElementById('income-content-salary');
         const payslipsContent = document.getElementById('income-content-payslips');
         const taxContent = document.getElementById('income-content-tax');
         
-        if (tab === 'payslips') {
-            if (payslipsBtn) {
-                payslipsBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600';
-            }
-            if (taxBtn) {
-                taxBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
-            }
+        // Reset all tabs to inactive state
+        if (salaryBtn) salaryBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+        if (payslipsBtn) payslipsBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+        if (taxBtn) taxBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+        if (salaryContent) salaryContent.classList.add('hidden');
+        if (payslipsContent) payslipsContent.classList.add('hidden');
+        if (taxContent) taxContent.classList.add('hidden');
+        
+        // Activate selected tab
+        if (tab === 'salary') {
+            if (salaryBtn) salaryBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600';
+            if (salaryContent) salaryContent.classList.remove('hidden');
+        } else if (tab === 'payslips') {
+            if (payslipsBtn) payslipsBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600';
             if (payslipsContent) payslipsContent.classList.remove('hidden');
-            if (taxContent) taxContent.classList.add('hidden');
         } else if (tab === 'tax') {
-            if (payslipsBtn) {
-                payslipsBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
-            }
-            if (taxBtn) {
-                taxBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-orange-500 text-orange-600';
-            }
-            if (payslipsContent) payslipsContent.classList.add('hidden');
+            if (taxBtn) taxBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-orange-500 text-orange-600';
             if (taxContent) taxContent.classList.remove('hidden');
         }
+    },
+    
+    /**
+     * Get total salary for a specific year
+     */
+    getYearSalaryTotal(year) {
+        return window.DB.salaries
+            .filter(s => s.year === parseInt(year))
+            .reduce((sum, s) => sum + parseFloat(s.amount), 0);
+    },
+    
+    /**
+     * Render Salary Tab Content
+     */
+    renderSalaryTab() {
+        const salaries = this.getAllSalaries();
+        
+        if (salaries.length === 0) {
+            return `
+                <div class="text-center py-12">
+                    <div class="text-6xl mb-4">💰</div>
+                    <p class="text-gray-500 text-sm mb-4">No salary records yet</p>
+                    <button onclick="Income.openSalaryModal()" 
+                            class="px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all transform hover:scale-105 font-semibold">
+                        + Add Salary
+                    </button>
+                </div>
+            `;
+        }
+        
+        // Group by year
+        const byYear = {};
+        salaries.forEach(s => {
+            if (!byYear[s.year]) {
+                byYear[s.year] = [];
+            }
+            byYear[s.year].push(s);
+        });
+        
+        // Sort years descending
+        const years = Object.keys(byYear).sort((a, b) => b - a);
+        const currentYear = new Date().getFullYear();
+        
+        let html = `
+            <!-- Add Button -->
+            <div class="mb-4">
+                <button onclick="Income.openSalaryModal()" 
+                        class="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all font-semibold flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                    </svg>
+                    Add Salary
+                </button>
+            </div>
+            
+            <!-- Salary Records Grouped by Year -->
+            <div class="space-y-3">
+        `;
+        
+        years.forEach(year => {
+            const yearSalaries = byYear[year].sort((a, b) => a.month - b.month);
+            const yearTotal = yearSalaries.reduce((sum, s) => sum + s.amount, 0);
+            const isCurrentYear = parseInt(year) === currentYear;
+            
+            html += `
+                <details ${isCurrentYear ? 'open' : ''} class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 overflow-hidden">
+                    <summary class="cursor-pointer p-4 hover:bg-green-100 transition-colors select-none">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <span class="text-2xl">📅</span>
+                                <div>
+                                    <h4 class="font-bold text-green-800">${year}</h4>
+                                    <p class="text-xs text-green-600">${yearSalaries.length} month${yearSalaries.length !== 1 ? 's' : ''}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-bold text-green-700 text-lg">₹${Utils.formatIndianNumber(Math.round(yearTotal))}</p>
+                                <p class="text-xs text-green-600">Total</p>
+                            </div>
+                        </div>
+                    </summary>
+                    
+                    <div class="p-4 pt-2 grid grid-cols-3 gap-3">
+                        ${yearSalaries.map(salary => `
+                            <div class="bg-white p-3 rounded-lg border border-green-200 hover:shadow-md transition-all">
+                                <div class="flex justify-between items-start mb-2">
+                                    <p class="font-semibold text-green-700 text-xs">${this.getMonthName(salary.month)}</p>
+                                    <div class="flex gap-1">
+                                        <button onclick="Income.openSalaryModal(${salary.id})" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                            </svg>
+                                        </button>
+                                        <button onclick="Income.deleteSalaryWithConfirm(${salary.id})" class="text-red-600 hover:text-red-800 p-0.5" title="Delete">
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <p class="text-base font-bold text-gray-800">₹${Utils.formatIndianNumber(Math.round(salary.amount))}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </details>
+            `;
+        });
+        
+        html += `
+            </div>
+        `;
+        
+        return html;
     },
     
     /**
@@ -1545,6 +1762,83 @@ const Income = {
     getSelectedInsuranceMonths() {
         const checkboxes = document.querySelectorAll('input[name="insurance-month"]:checked');
         return Array.from(checkboxes).map(cb => parseInt(cb.value));
+    },
+    
+    /**
+     * Open salary modal for add/edit
+     */
+    openSalaryModal(id = null) {
+        const modal = document.getElementById('salary-modal');
+        if (!modal) return;
+        
+        // Clear fields
+        document.getElementById('salary-modal-id').value = '';
+        document.getElementById('salary-modal-month').value = '';
+        document.getElementById('salary-modal-year').value = new Date().getFullYear();
+        document.getElementById('salary-modal-amount').value = '';
+        document.getElementById('salary-modal-title').textContent = 'Add Salary';
+        
+        // If editing, populate with existing data
+        if (id) {
+            const salary = this.getSalaryById(id);
+            if (salary) {
+                document.getElementById('salary-modal-id').value = salary.id;
+                document.getElementById('salary-modal-month').value = salary.month;
+                document.getElementById('salary-modal-year').value = salary.year;
+                document.getElementById('salary-modal-amount').value = salary.amount;
+                document.getElementById('salary-modal-title').textContent = 'Edit Salary';
+            }
+        }
+        
+        modal.classList.remove('hidden');
+    },
+    
+    /**
+     * Close salary modal
+     */
+    closeSalaryModal() {
+        document.getElementById('salary-modal').classList.add('hidden');
+    },
+    
+    /**
+     * Save salary from modal
+     */
+    saveSalaryModal() {
+        const id = document.getElementById('salary-modal-id').value;
+        const month = document.getElementById('salary-modal-month').value;
+        const year = document.getElementById('salary-modal-year').value;
+        const amount = document.getElementById('salary-modal-amount').value;
+        
+        try {
+            if (id) {
+                this.updateSalary(id, month, year, amount);
+                Utils.showSuccess('Salary updated successfully!');
+            } else {
+                this.addSalary(month, year, amount);
+                Utils.showSuccess('Salary added successfully!');
+            }
+            
+            this.closeSalaryModal();
+            this.render();
+        } catch (error) {
+            Utils.showError(error.message);
+        }
+    },
+    
+    /**
+     * Delete salary with confirmation
+     */
+    deleteSalaryWithConfirm(id) {
+        const salary = this.getSalaryById(id);
+        if (!salary) return;
+        
+        const monthName = this.getMonthName(salary.month);
+        
+        if (confirm(`Delete salary for ${monthName} ${salary.year}?\n\nAmount: ₹${Utils.formatIndianNumber(salary.amount)}\n\nThis action cannot be undone.`)) {
+            this.deleteSalary(id);
+            Utils.showSuccess('Salary deleted');
+            this.render();
+        }
     }
 };
 

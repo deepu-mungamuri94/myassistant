@@ -238,16 +238,19 @@ const Dashboard = {
     
     /**
      * Get income data for last N months or custom range
+     * Uses actual salary data if available, fallback to estimated payslips
      */
     getIncomeData(monthsCount = 6) {
         const monthsData = [];
         
         const income = window.DB.income;
+        const salaries = window.DB.salaries || [];
+        
         if (!income || !income.ctc) {
             return [];
         }
         
-        // Generate payslips for all months
+        // Generate payslips for all months (fallback)
         const { ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent } = income;
         const yearlyPayslips = window.Income.generateYearlyPayslips(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent);
         
@@ -264,13 +267,21 @@ const Dashboard = {
                 const monthName = date.toLocaleDateString('en-US', { month: 'long' });
                 const shortMonth = date.toLocaleDateString('en-US', { month: 'short' });
                 
-                // Find payslip for this month
-                const payslip = yearlyPayslips.find(p => p.month === monthName);
-                const netPay = payslip ? payslip.totalNetPay : 0;
+                // Try to find actual salary first
+                const actualSalary = salaries.find(s => s.year === currentYear && s.month === currentMonth);
+                
+                let incomeAmount;
+                if (actualSalary) {
+                    incomeAmount = actualSalary.amount;
+                } else {
+                    // Fallback to estimated payslip
+                    const payslip = yearlyPayslips.find(p => p.month === monthName);
+                    incomeAmount = payslip ? payslip.totalNetPay : 0;
+                }
                 
                 monthsData.push({
                     label: shortMonth,
-                    income: netPay
+                    income: incomeAmount
                 });
                 
                 // Move to next month
@@ -288,16 +299,26 @@ const Dashboard = {
         const now = new Date();
         for (let i = monthsCount - 1; i >= 0; i--) {
             const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
             const monthName = date.toLocaleDateString('en-US', { month: 'long' });
             const shortMonth = date.toLocaleDateString('en-US', { month: 'short' });
             
-            // Find payslip for this month
-            const payslip = yearlyPayslips.find(p => p.month === monthName);
-            const netPay = payslip ? payslip.totalNetPay : 0;
+            // Try to find actual salary first
+            const actualSalary = salaries.find(s => s.year === year && s.month === month);
+            
+            let incomeAmount;
+            if (actualSalary) {
+                incomeAmount = actualSalary.amount;
+            } else {
+                // Fallback to estimated payslip
+                const payslip = yearlyPayslips.find(p => p.month === monthName);
+                incomeAmount = payslip ? payslip.totalNetPay : 0;
+            }
             
             monthsData.push({
                 label: shortMonth,
-                income: netPay
+                income: incomeAmount
             });
         }
         
