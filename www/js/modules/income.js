@@ -87,7 +87,6 @@ const Income = {
         if (window.DB.income.insuranceMonths === undefined) window.DB.income.insuranceMonths = [];
         // Ensure leave encashment fields exist
         if (window.DB.income.leaveDays === undefined) window.DB.income.leaveDays = 0;
-        if (window.DB.income.leaveAllowancesOverride === undefined) window.DB.income.leaveAllowancesOverride = null;
         
         return window.DB.income;
     },
@@ -107,8 +106,7 @@ const Income = {
             hasInsurance: data.hasInsurance || false,
             insuranceTotal: parseFloat(data.insuranceTotal) || 0,
             insuranceMonths: data.insuranceMonths || [],
-            leaveDays: parseFloat(data.leaveDays) || 0,
-            leaveAllowancesOverride: data.leaveAllowancesOverride ? parseFloat(data.leaveAllowancesOverride) : null
+            leaveDays: parseFloat(data.leaveDays) || 0
         };
         window.Storage.save();
         this.render();
@@ -338,30 +336,18 @@ const Income = {
     
     /**
      * Calculate leave encashment amount (gross amount before deductions)
-     * Formula: Days × (Basic + HRA + Allowances) / 27
+     * Formula: ((Gross earnings × 12) / 365) × encashment days
      * This is added to gross income, then tax and ESPP are applied normally
      */
     calculateLeaveEncashment(ctc, days) {
-        const data = this.getData();
-        const basic = this.calculateBasic(ctc);
-        const hra = basic * 0.5; // 50% of basic
+        // Monthly gross earnings
+        const monthlyGross = ctc / 12;
         
-        // Use override if provided, otherwise use calculated allowances
-        let allowances;
-        if (data.leaveAllowancesOverride && data.leaveAllowancesOverride > 0) {
-            allowances = data.leaveAllowancesOverride;
-        } else {
-            // Default: remaining amount from monthly payslip
-            const monthlyBasic = basic / 12;
-            const monthlyHra = hra / 12;
-            allowances = (ctc / 12) - monthlyBasic - monthlyHra;
-        }
+        // Daily rate = (Monthly Gross × 12) / 365
+        const dailyRate = (monthlyGross * 12) / 365;
         
-        // Use monthly values for calculation
-        const monthlyBasic = basic / 12;
-        const monthlyHra = hra / 12;
-        const dailyRate = (monthlyBasic + monthlyHra + allowances) / 27;
-        const grossLeaveAmount = days * dailyRate;
+        // Leave encashment = Daily rate × encashment days
+        const grossLeaveAmount = dailyRate * days;
         
         return Math.round(grossLeaveAmount);
     },
@@ -934,7 +920,6 @@ const Income = {
         document.getElementById('income-insurance-total').value = formatValue(data.insuranceTotal);
         document.getElementById('income-insurance-months').value = data.insuranceMonths ? data.insuranceMonths.length : '';
         document.getElementById('income-leave-days').value = data.leaveDays || '';
-        document.getElementById('income-leave-allowances-override').value = formatValue(data.leaveAllowancesOverride);
         
         // Auto-calculate basic
         this.updateBasicPreview();
@@ -997,8 +982,7 @@ const Income = {
             hasInsurance: document.getElementById('income-has-insurance').checked,
             insuranceTotal: getNumeric('income-insurance-total'),
             insuranceMonths: this.getSelectedInsuranceMonths(),
-            leaveDays: parseFloat(document.getElementById('income-leave-days').value) || 0,
-            leaveAllowancesOverride: document.getElementById('income-leave-allowances-override').value ? getNumeric('income-leave-allowances-override') : null
+            leaveDays: parseFloat(document.getElementById('income-leave-days').value) || 0
         };
         
         if (!data.ctc || data.ctc <= 0) {
