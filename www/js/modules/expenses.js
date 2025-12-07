@@ -277,7 +277,9 @@ const Expenses = {
      */
     formatCategoryDisplay(category) {
         if (category === 'emi') return 'EMI';
-        if (category === 'recurring') return 'Recurring';
+        // Don't show "Recurring" as a category - it should show the actual category
+        // Legacy expenses with category='recurring' should be migrated
+        if (category === 'recurring') return 'Other';
         return category;
     },
     
@@ -1392,6 +1394,53 @@ if (typeof window !== 'undefined') {
                 console.error('EMI migration error:', error);
             }
         }, 500);
+    },
+    
+    /**
+     * Migrate expenses with category='recurring' to use actual categories from their recurring templates
+     */
+    migrateRecurringCategories() {
+        let migrated = 0;
+        let noTemplate = 0;
+        
+        window.DB.expenses.forEach(expense => {
+            // Find expenses with category='recurring' or isRecurring flag but no proper category
+            if ((expense.category === 'recurring' || expense.isRecurring) && expense.recurringId) {
+                // Find the recurring template
+                const recurring = window.DB.recurringExpenses.find(r => 
+                    String(r.id) === String(expense.recurringId)
+                );
+                
+                if (recurring && recurring.category && recurring.category !== 'recurring') {
+                    // Update expense to use the recurring template's category
+                    expense.category = recurring.category;
+                    expense.isRecurring = true; // Ensure flag is set
+                    migrated++;
+                } else if (!recurring) {
+                    // Recurring template was deleted, set to 'Other'
+                    if (expense.category === 'recurring') {
+                        expense.category = 'Other';
+                        expense.isRecurring = true;
+                        noTemplate++;
+                    }
+                }
+            } else if (expense.category === 'recurring' && !expense.recurringId) {
+                // Legacy expense without recurringId, set to 'Other'
+                expense.category = 'Other';
+                expense.isRecurring = true;
+                noTemplate++;
+            }
+        });
+        
+        if (migrated > 0 || noTemplate > 0) {
+            window.Storage.save();
+            console.log(`✅ Migrated ${migrated} recurring expense(s) to use template categories`);
+            if (noTemplate > 0) {
+                console.log(`⚠️  Set ${noTemplate} orphaned recurring expense(s) to 'Other' category`);
+            }
+        }
+        
+        return migrated + noTemplate;
     }
 }
 

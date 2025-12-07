@@ -90,11 +90,15 @@ const RecurringExpenses = {
      */
     bulkUpdateExpenseCategories(recurringId, newCategory) {
         const recurringIdStr = String(recurringId);
+        const recurring = this.getById(recurringId);
         let updatedCount = 0;
+        
+        console.log(`🔄 Bulk updating categories for recurring "${recurring ? recurring.name : 'Unknown'}" (ID: ${recurringIdStr}) to "${newCategory}"`);
         
         // Find all expenses with this recurringId and update their category
         window.DB.expenses.forEach(expense => {
             if (expense.recurringId && String(expense.recurringId) === recurringIdStr) {
+                console.log(`  ↳ Updating expense: ${expense.title} (${expense.date}) - Old: ${expense.category}, New: ${newCategory}`);
                 expense.category = newCategory;
                 updatedCount++;
             }
@@ -102,7 +106,9 @@ const RecurringExpenses = {
         
         if (updatedCount > 0) {
             window.Storage.save();
-            console.log(`✅ Updated category for ${updatedCount} related expenses`);
+            console.log(`✅ Updated category for ${updatedCount} related expense(s) from "${recurring ? recurring.name : 'Unknown'}"`);
+        } else {
+            console.log(`ℹ️  No expenses found with recurringId: ${recurringIdStr}`);
         }
         
         return updatedCount;

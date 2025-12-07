@@ -20,6 +20,11 @@ const App = {
                 window.RecurringExpenses.migrateCategories();
             }
             
+            // Migrate recurring expenses in Expenses module to use actual categories
+            if (window.Expenses && window.Expenses.migrateRecurringCategories) {
+                window.Expenses.migrateRecurringCategories();
+            }
+            
             // Check security status FIRST
             const isSecuritySetup = window.Security && window.Security.isSetup();
             
