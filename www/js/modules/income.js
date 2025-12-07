@@ -692,19 +692,21 @@ const Income = {
                         <div class="flex justify-evenly">
                             <button onclick="Income.switchIncomeTab('salary')" 
                                     id="income-tab-salary"
-                                    class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600">
-                                💵 Salary(${window.DB.salaries.length})
+                                    class="flex-1 px-2 py-2.5 text-xs font-semibold transition-colors border-b-2 border-green-500 text-green-600">
+                                <div>💵 Salary</div>
+                                <div class="text-[10px] font-normal mt-0.5">${window.DB.salaries.length} record${window.DB.salaries.length !== 1 ? 's' : ''}</div>
                             </button>
                             <button onclick="Income.switchIncomeTab('payslips')" 
                                     id="income-tab-payslips"
-                                    class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-                                📄 Pay Slips(12)
+                                    class="flex-1 px-2 py-2.5 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                                <div>📄 Payslips</div>
+                                <div class="text-[10px] font-normal mt-0.5">12 months</div>
                             </button>
                             <button onclick="Income.switchIncomeTab('tax')" 
                                     id="income-tab-tax"
-                                    class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-                                <div>💰 Income Tax</div>
-                                <div class="text-xs font-normal mt-0.5">${taxInfo.taxPercent.toFixed(2)}% of CTC</div>
+                                    class="flex-1 px-2 py-2.5 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                                <div>💰 Tax</div>
+                                <div class="text-[10px] font-normal mt-0.5">${taxInfo.taxPercent.toFixed(1)}% CTC</div>
                             </button>
                         </div>
                     </div>
@@ -740,22 +742,22 @@ const Income = {
         const taxContent = document.getElementById('income-content-tax');
         
         // Reset all tabs to inactive state
-        if (salaryBtn) salaryBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
-        if (payslipsBtn) payslipsBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
-        if (taxBtn) taxBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+        if (salaryBtn) salaryBtn.className = 'flex-1 px-2 py-2.5 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+        if (payslipsBtn) payslipsBtn.className = 'flex-1 px-2 py-2.5 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+        if (taxBtn) taxBtn.className = 'flex-1 px-2 py-2.5 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
         if (salaryContent) salaryContent.classList.add('hidden');
         if (payslipsContent) payslipsContent.classList.add('hidden');
         if (taxContent) taxContent.classList.add('hidden');
         
         // Activate selected tab
         if (tab === 'salary') {
-            if (salaryBtn) salaryBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600';
+            if (salaryBtn) salaryBtn.className = 'flex-1 px-2 py-2.5 text-xs font-semibold transition-colors border-b-2 border-green-500 text-green-600';
             if (salaryContent) salaryContent.classList.remove('hidden');
         } else if (tab === 'payslips') {
-            if (payslipsBtn) payslipsBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600';
+            if (payslipsBtn) payslipsBtn.className = 'flex-1 px-2 py-2.5 text-xs font-semibold transition-colors border-b-2 border-blue-500 text-blue-600';
             if (payslipsContent) payslipsContent.classList.remove('hidden');
         } else if (tab === 'tax') {
-            if (taxBtn) taxBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-orange-500 text-orange-600';
+            if (taxBtn) taxBtn.className = 'flex-1 px-2 py-2.5 text-xs font-semibold transition-colors border-b-2 border-orange-500 text-orange-600';
             if (taxContent) taxContent.classList.remove('hidden');
         }
     },
