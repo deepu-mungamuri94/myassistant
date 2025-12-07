@@ -833,7 +833,6 @@ const Income = {
                                 <svg class="w-5 h-5 text-green-700 transition-transform duration-200 chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                 </svg>
-                                <span class="text-2xl">📅</span>
                                 <div>
                                     <h4 class="font-bold text-green-800">${year}</h4>
                                     <p class="text-xs text-green-600">${yearSalaries.length} month${yearSalaries.length !== 1 ? 's' : ''}</p>
