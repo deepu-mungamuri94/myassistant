@@ -15,6 +15,11 @@ const App = {
             // Load data from storage
             window.Storage.load();
             
+            // Run migrations for backward compatibility
+            if (window.RecurringExpenses && window.RecurringExpenses.migrateCategories) {
+                window.RecurringExpenses.migrateCategories();
+            }
+            
             // Check security status FIRST
             const isSecuritySetup = window.Security && window.Security.isSetup();
             

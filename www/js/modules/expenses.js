@@ -266,8 +266,8 @@ const Expenses = {
         if (expense.category === 'emi' && expense.title && 
             (expense.title.startsWith('Card EMI:') || expense.title.startsWith('EMI:'))) return true;
         
-        // Custom recurring expenses (category is 'recurring')
-        if (expense.category === 'recurring') return true;
+        // Custom recurring expenses (legacy: category is 'recurring', new: isRecurring flag)
+        if (expense.category === 'recurring' || expense.isRecurring) return true;
         
         return false;
     },
@@ -328,7 +328,7 @@ const Expenses = {
         }
         
         // Custom recurring expense - navigate to recurring page
-        if (expense.category === 'recurring') {
+        if (expense.category === 'recurring' || expense.isRecurring) {
             // Check if the recurring expense still exists (by ID if available, otherwise by name)
             let recurringExists = false;
             
@@ -1120,6 +1120,7 @@ const Expenses = {
                                     <div class="flex-1 flex items-center gap-2 flex-wrap">
                                         <h4 class="font-semibold text-purple-800 text-sm">${Utils.escapeHtml(expense.title || expense.description)}</h4>
                                         <span class="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded">${Utils.escapeHtml(this.formatCategoryDisplay(expense.category))}</span>
+                                        ${expense.isRecurring ? '<span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">🔄 Recurring</span>' : ''}
                                     </div>
                                     <div class="flex gap-1">
                                         <button onclick="openExpenseModal(${expense.id})" class="text-green-600 hover:text-green-800 p-0.5" title="Edit">

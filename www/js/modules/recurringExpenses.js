@@ -7,6 +7,7 @@ const RecurringExpenses = {
     /**
      * Add a new recurring expense
      * @param {string} name - Name of the recurring expense
+     * @param {string} category - Category of the expense
      * @param {number} amount - Amount
      * @param {string} frequency - 'monthly', 'yearly', 'custom'
      * @param {number} day - Day of month (1-31)
@@ -14,14 +15,15 @@ const RecurringExpenses = {
      * @param {string} description - Optional description
      * @param {string} endDate - Optional end date (YYYY-MM-DD), null for indefinite
      */
-    add(name, amount, frequency, day, months = [], description = '', endDate = null) {
-        if (!name || !amount || !frequency || !day) {
+    add(name, category, amount, frequency, day, months = [], description = '', endDate = null) {
+        if (!name || !category || !amount || !frequency || !day) {
             throw new Error('Please fill in all required fields');
         }
         
         const recurring = {
             id: Utils.generateId(),
             name,
+            category,
             amount: parseFloat(amount),
             frequency, // 'monthly', 'yearly', 'custom'
             day: parseInt(day),
@@ -42,17 +44,20 @@ const RecurringExpenses = {
     /**
      * Update a recurring expense
      */
-    update(id, name, amount, frequency, day, months, description, endDate = null) {
+    update(id, name, category, amount, frequency, day, months, description, endDate = null) {
         const recurring = this.getById(id);
         if (!recurring) {
             throw new Error('Recurring expense not found');
         }
         
-        if (!name || !amount || !frequency || !day) {
+        if (!name || !category || !amount || !frequency || !day) {
             throw new Error('Please fill in all required fields');
         }
         
+        const oldCategory = recurring.category;
+        
         recurring.name = name;
+        recurring.category = category;
         recurring.amount = parseFloat(amount);
         recurring.frequency = frequency;
         recurring.day = parseInt(day);
@@ -60,6 +65,11 @@ const RecurringExpenses = {
         recurring.description = description;
         recurring.endDate = endDate || null;
         // Keep isActive unchanged during manual updates
+        
+        // If category changed, update all related expenses
+        if (oldCategory !== category && recurring.addedToExpenses && recurring.addedToExpenses.length > 0) {
+            this.bulkUpdateExpenseCategories(id, category);
+        }
         
         window.Storage.save();
         return recurring;
@@ -71,6 +81,31 @@ const RecurringExpenses = {
     delete(id) {
         window.DB.recurringExpenses = window.DB.recurringExpenses.filter(r => r.id !== id);
         window.Storage.save();
+    },
+
+    /**
+     * Bulk update categories for all expenses related to a recurring expense
+     * @param {number} recurringId - The recurring expense ID
+     * @param {string} newCategory - The new category to apply
+     */
+    bulkUpdateExpenseCategories(recurringId, newCategory) {
+        const recurringIdStr = String(recurringId);
+        let updatedCount = 0;
+        
+        // Find all expenses with this recurringId and update their category
+        window.DB.expenses.forEach(expense => {
+            if (expense.recurringId && String(expense.recurringId) === recurringIdStr) {
+                expense.category = newCategory;
+                updatedCount++;
+            }
+        });
+        
+        if (updatedCount > 0) {
+            window.Storage.save();
+            console.log(`✅ Updated category for ${updatedCount} related expenses`);
+        }
+        
+        return updatedCount;
     },
 
     /**
@@ -201,6 +236,28 @@ const RecurringExpenses = {
     },
 
     /**
+     * Migration: Ensure all recurring expenses have a category field
+     * Call this on app initialization
+     */
+    migrateCategories() {
+        let migrated = 0;
+        
+        this.getAll().forEach(recurring => {
+            if (!recurring.category) {
+                recurring.category = 'Other'; // Default category for existing data
+                migrated++;
+            }
+        });
+        
+        if (migrated > 0) {
+            window.Storage.save();
+            console.log(`✅ Migrated ${migrated} recurring expense(s) to have default category`);
+        }
+        
+        return migrated;
+    },
+
+    /**
      * Auto-add recurring expenses to expenses for due dates
      */
     autoAddToExpenses() {
@@ -304,18 +361,22 @@ const RecurringExpenses = {
                     if (!existingExpense) {
                         // Add as expense
                         try {
+                            // Use category from recurring, fallback to 'Other' if not set
+                            const category = recurring.category || 'Other';
+                            
                             const expense = window.Expenses.add(
                                 recurring.name,
                                 recurring.amount,
-                                'recurring',
+                                category,
                                 dueDateStr,
                                 recurring.description || 'Auto-added recurring expense',
                                 null
                             );
                             
-                            // Store recurring ID in the expense for tracking
+                            // Store recurring ID and isRecurring flag in the expense for tracking
                             if (expense) {
                                 expense.recurringId = recurring.id;
+                                expense.isRecurring = true;
                             }
                             
                             recurring.addedToExpenses.push(monthKey);

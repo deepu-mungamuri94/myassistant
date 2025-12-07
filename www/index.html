@@ -45,6 +45,9 @@
         window.Capacitor = { ...Capacitor, Plugins: { ...existingPlugins, StatusBar, CapacitorHttp, App } };
         console.log('🔌 Capacitor initialized with plugins:', Object.keys(window.Capacitor.Plugins));
     </script>
+    
+    <!-- Categories Module -->
+    <script src="js/core/categories.js"></script>
 </head>
 <body class="flex flex-col items-center overflow-x-hidden" style="background-color: #F5FEFD; max-width: 100vw;">
     
@@ -1140,21 +1143,23 @@
             </div>
             
             <div class="mb-3">
-                <select id="expense-modal-category" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" onchange="clearFieldError('expense-modal-category')">
-                    <option value="">Select Category *</option>
-                    <option value="Food & Dining">Food & Dining</option>
-                    <option value="Shopping">Shopping</option>
-                    <option value="Transportation">Transportation</option>
-                    <option value="Entertainment">Entertainment</option>
-                    <option value="Bills & Utilities">Bills & Utilities</option>
-                    <option value="Healthcare">Healthcare</option>
-                    <option value="Travel">Travel</option>
-                    <option value="Education">Education</option>
-                    <option value="Groceries">Groceries</option>
-                    <option value="emi">EMI</option>
-                    <option value="recurring">Recurring</option>
-                    <option value="Other">Other</option>
-                </select>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                <button type="button" id="expense-category-btn" 
+                        onclick="openCategoryModal(document.getElementById('expense-modal-category-value').value, function(categoryName) { 
+                            document.getElementById('expense-modal-category-value').value = categoryName;
+                            clearFieldError('expense-modal-category');
+                            const cat = window.ExpenseCategories.getByName(categoryName);
+                            if (cat) {
+                                document.getElementById('expense-category-btn').innerHTML = '<span class=\'text-2xl mr-2\'>' + cat.icon + '</span><span class=\'font-semibold\'>' + cat.name + '</span>';
+                            }
+                        })"
+                        class="w-full p-3 border-2 border-gray-300 rounded-lg hover:border-purple-400 transition-all text-left flex items-center justify-between">
+                    <span class="text-gray-500">Select Category</span>
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </button>
+                <input type="hidden" id="expense-modal-category-value" />
                 <div id="expense-modal-category-error" class="text-red-600 text-xs mt-1 hidden"></div>
             </div>
             
@@ -1523,6 +1528,27 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
                 <input type="text" id="recurring-modal-name" placeholder="e.g., LIC Premium, Car Insurance" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" oninput="clearFieldError('recurring-modal-name')">
                 <div id="recurring-modal-name-error" class="text-red-600 text-xs mt-1 hidden"></div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                <button type="button" id="recurring-category-btn" 
+                        onclick="openCategoryModal(document.getElementById('recurring-modal-category-value').value, function(categoryName) { 
+                            document.getElementById('recurring-modal-category-value').value = categoryName;
+                            clearFieldError('recurring-modal-category');
+                            const cat = window.ExpenseCategories.getByName(categoryName);
+                            if (cat) {
+                                document.getElementById('recurring-category-btn').innerHTML = '<span class=\'text-2xl mr-2\'>' + cat.icon + '</span><span class=\'font-semibold\'>' + cat.name + '</span>';
+                            }
+                        })"
+                        class="w-full p-3 border-2 border-gray-300 rounded-lg hover:border-orange-400 transition-all text-left flex items-center justify-between">
+                    <span class="text-gray-500">Select Category</span>
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </button>
+                <input type="hidden" id="recurring-modal-category-value" />
+                <div id="recurring-modal-category-error" class="text-red-600 text-xs mt-1 hidden"></div>
             </div>
             
             <div class="mb-3">
@@ -3042,6 +3068,51 @@
             </div>
         </div>
     </div>
+    
+    <!-- CATEGORY SELECTION MODAL -->
+    <div id="category-selection-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-[15000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <!-- Header -->
+            <div class="p-6 border-b">
+                <h2 class="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    Select Category
+                </h2>
+                <p class="text-sm text-gray-600 mt-1">Choose a category for your expense</p>
+            </div>
+            
+            <!-- Category Grid -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <div id="category-grid" class="grid grid-cols-3 gap-4">
+                    <!-- Categories will be populated dynamically -->
+                </div>
+            </div>
+            
+            <!-- Selected Category Info (Fixed Bottom) -->
+            <div id="selected-category-info" class="hidden border-t bg-gray-50 p-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold text-gray-700">
+                            <span id="selected-category-icon" class="text-lg mr-2"></span>
+                            <span id="selected-category-name"></span>
+                        </p>
+                        <p id="selected-category-description" class="text-xs text-gray-600 mt-1"></p>
+                    </div>
+                    <button onclick="confirmCategorySelection()" 
+                            class="ml-4 px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-semibold">
+                        Confirm
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Cancel Button -->
+            <div class="p-4 border-t">
+                <button onclick="closeCategoryModal()" 
+                        class="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-200 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
 
     
     <!-- TIP MODAL -->
@@ -3784,6 +3855,104 @@
         // Make it globally accessible
         window.switchIncomeExpenseTab = switchIncomeExpenseTab;
         
+        // ============================================
+        // CATEGORY SELECTION FUNCTIONS
+        // ============================================
+        
+        let selectedCategoryId = null;
+        let categorySelectionCallback = null;
+        
+        /**
+         * Open category selection modal
+         * @param {string} currentCategory - Currently selected category (optional)
+         * @param {function} callback - Callback function when category is selected
+         */
+        window.openCategoryModal = function(currentCategory = null, callback) {
+            categorySelectionCallback = callback;
+            selectedCategoryId = null;
+            
+            const modal = document.getElementById('category-selection-modal');
+            const grid = document.getElementById('category-grid');
+            
+            if (!window.ExpenseCategories) {
+                console.error('ExpenseCategories not loaded!');
+                return;
+            }
+            
+            // Populate category cards
+            const categories = window.ExpenseCategories.getAll();
+            grid.innerHTML = categories.map(cat => `
+                <div onclick="selectCategory('${cat.id}')" 
+                     class="category-card cursor-pointer p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg transform hover:scale-105 ${currentCategory === cat.name ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-300' : 'border-gray-200 hover:border-purple-300'}"
+                     data-category-id="${cat.id}">
+                    <div class="text-center">
+                        <div class="text-4xl mb-2">${cat.icon}</div>
+                        <p class="font-semibold text-sm text-gray-800">${cat.name}</p>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Hide selected info initially
+            document.getElementById('selected-category-info').classList.add('hidden');
+            
+            modal.classList.remove('hidden');
+        }
+        
+        /**
+         * Select a category
+         */
+        window.selectCategory = function(categoryId) {
+            selectedCategoryId = categoryId;
+            const category = window.ExpenseCategories.getById(categoryId);
+            
+            if (!category) return;
+            
+            // Remove selected state from all cards
+            document.querySelectorAll('.category-card').forEach(card => {
+                card.classList.remove('border-purple-500', 'bg-purple-50', 'ring-2', 'ring-purple-300');
+                card.classList.add('border-gray-200');
+            });
+            
+            // Add selected state to clicked card
+            const selectedCard = document.querySelector(`[data-category-id="${categoryId}"]`);
+            if (selectedCard) {
+                selectedCard.classList.remove('border-gray-200');
+                selectedCard.classList.add('border-purple-500', 'bg-purple-50', 'ring-2', 'ring-purple-300');
+            }
+            
+            // Show selected category info at bottom
+            const infoDiv = document.getElementById('selected-category-info');
+            document.getElementById('selected-category-icon').textContent = category.icon;
+            document.getElementById('selected-category-name').textContent = category.name;
+            document.getElementById('selected-category-description').textContent = category.description;
+            infoDiv.classList.remove('hidden');
+        }
+        
+        /**
+         * Confirm category selection
+         */
+        window.confirmCategorySelection = function() {
+            if (selectedCategoryId && categorySelectionCallback) {
+                const category = window.ExpenseCategories.getById(selectedCategoryId);
+                categorySelectionCallback(category.name);
+            }
+            closeCategoryModal();
+        }
+        
+        /**
+         * Close category modal
+         */
+        window.closeCategoryModal = function() {
+            document.getElementById('category-selection-modal').classList.add('hidden');
+            document.getElementById('selected-category-info').classList.add('hidden');
+            selectedCategoryId = null;
+            categorySelectionCallback = null;
+        }
+        
+        // ============================================
+        // EXPENSE MODAL FUNCTIONS
+        // ============================================
+        
         // Expense modal functions
         window.openExpenseModal = function(id = null) {
             // Set default date to today
@@ -3794,7 +3963,8 @@
             document.getElementById('expense-modal-title').value = '';
             document.getElementById('expense-modal-description').value = '';
             document.getElementById('expense-modal-amount').value = '';
-            document.getElementById('expense-modal-category').value = '';
+            document.getElementById('expense-modal-category-value').value = '';
+            document.getElementById('expense-category-btn').innerHTML = '<span class="text-gray-500">Select Category</span>';
             document.getElementById('expense-modal-date').value = today;
             document.getElementById('expense-modal-title-header').textContent = 'Add Expense';
             document.getElementById('expense-modal-save-btn').textContent = 'Add';
@@ -3807,8 +3977,15 @@
                     document.getElementById('expense-modal-title').value = expense.title || expense.description || '';
                     document.getElementById('expense-modal-description').value = expense.description || '';
                     document.getElementById('expense-modal-amount').value = expense.amount || '';
-                    document.getElementById('expense-modal-category').value = expense.category || '';
                     document.getElementById('expense-modal-date').value = expense.date || today;
+                    
+                    // Populate category button if category exists
+                    if (expense.category) {
+                        document.getElementById('expense-modal-category-value').value = expense.category;
+                        const cat = window.ExpenseCategories.getCategoryOrDefault(expense.category);
+                        document.getElementById('expense-category-btn').innerHTML = '<span class=\'text-2xl mr-2\'>' + cat.icon + '</span><span class=\'font-semibold\'>' + cat.name + '</span>';
+                    }
+                    
                     document.getElementById('expense-modal-title-header').textContent = 'Edit Expense';
                     document.getElementById('expense-modal-save-btn').textContent = 'Update';
                 }
@@ -3882,7 +4059,9 @@
         window.selectExpenseSuggestion = function(suggestion) {
             document.getElementById('expense-modal-title').value = suggestion.title;
             if (suggestion.category) {
-                document.getElementById('expense-modal-category').value = suggestion.category;
+                document.getElementById('expense-modal-category-value').value = suggestion.category;
+                const cat = window.ExpenseCategories.getCategoryOrDefault(suggestion.category);
+                document.getElementById('expense-category-btn').innerHTML = '<span class=\'text-2xl mr-2\'>' + cat.icon + '</span><span class=\'font-semibold\'>' + cat.name + '</span>';
             }
             if (suggestion.amount) {
                 document.getElementById('expense-modal-amount').value = suggestion.amount;
@@ -3920,7 +4099,7 @@
             const id = document.getElementById('expense-modal-id').value;
             const title = document.getElementById('expense-modal-title').value.trim();
             const amount = document.getElementById('expense-modal-amount').value.trim();
-            const category = document.getElementById('expense-modal-category').value;
+            const category = document.getElementById('expense-modal-category-value').value;
             const date = document.getElementById('expense-modal-date').value;
             const description = document.getElementById('expense-modal-description').value.trim();
             
@@ -4077,6 +4256,8 @@
             // Clear fields
             document.getElementById('recurring-modal-id').value = '';
             document.getElementById('recurring-modal-name').value = '';
+            document.getElementById('recurring-modal-category-value').value = '';
+            document.getElementById('recurring-category-btn').innerHTML = '<span class="text-gray-500">Select Category</span>';
             document.getElementById('recurring-modal-amount').value = '';
             document.getElementById('recurring-modal-frequency').value = '';
             document.getElementById('recurring-modal-day').value = '';
@@ -4103,6 +4284,13 @@
                     document.getElementById('recurring-modal-day').value = recurring.day;
                     document.getElementById('recurring-modal-description').value = recurring.description || '';
                     document.getElementById('recurring-modal-title').textContent = 'Edit Recurring Payment';
+                    
+                    // Populate category button if category exists
+                    if (recurring.category) {
+                        document.getElementById('recurring-modal-category-value').value = recurring.category;
+                        const cat = window.ExpenseCategories.getCategoryOrDefault(recurring.category);
+                        document.getElementById('recurring-category-btn').innerHTML = '<span class=\'text-2xl mr-2\'>' + cat.icon + '</span><span class=\'font-semibold\'>' + cat.name + '</span>';
+                    }
                     
                     // Handle end date
                     if (recurring.endDate) {
@@ -4207,6 +4395,7 @@
             
             const id = document.getElementById('recurring-modal-id').value;
             const name = document.getElementById('recurring-modal-name').value.trim();
+            const category = document.getElementById('recurring-modal-category-value').value;
             const amount = document.getElementById('recurring-modal-amount').value.trim();
             const frequency = document.getElementById('recurring-modal-frequency').value;
             const day = document.getElementById('recurring-modal-day').value.trim();
@@ -4218,6 +4407,12 @@
             // Validate name
             if (!name) {
                 showFieldError('recurring-modal-name', 'Name is required');
+                hasErrors = true;
+            }
+            
+            // Validate category
+            if (!category) {
+                showFieldError('recurring-modal-category', 'Category is required');
                 hasErrors = true;
             }
             
@@ -4284,11 +4479,11 @@
             try {
                 if (id) {
                     // Update existing
-                    window.RecurringExpenses.update(id, name, amount, frequency, day, months, description, endDate);
+                    window.RecurringExpenses.update(id, name, category, amount, frequency, day, months, description, endDate);
                     Utils.showSuccess('Recurring expense updated!');
                 } else {
                     // Add new
-                    window.RecurringExpenses.add(name, amount, frequency, day, months, description, endDate);
+                    window.RecurringExpenses.add(name, category, amount, frequency, day, months, description, endDate);
                     Utils.showSuccess('Recurring expense added!');
                 }
                 
