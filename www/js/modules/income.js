@@ -147,6 +147,51 @@ const Income = {
     },
     
     /**
+     * Common helper functions for salary calculations
+     * These avoid duplication across methods
+     */
+    
+    /**
+     * Get monthly basic salary
+     */
+    getMonthlyBasic(ctc) {
+        return this.calculateBasic(ctc) / 12;
+    },
+    
+    /**
+     * Get monthly HRA (50% of monthly basic)
+     */
+    getMonthlyHRA(ctc) {
+        return this.getMonthlyBasic(ctc) / 2;
+    },
+    
+    /**
+     * Get monthly employer PF contribution
+     */
+    getMonthlyEmployerPF(ctc, pfPercent = 12) {
+        const basic = this.calculateBasic(ctc);
+        return (basic * pfPercent) / 100 / 12;
+    },
+    
+    /**
+     * Get monthly employee PF contribution
+     */
+    getMonthlyEmployeePF(ctc, pfPercent = 12) {
+        const basic = this.calculateBasic(ctc);
+        return (basic * pfPercent) / 100 / 12;
+    },
+    
+    /**
+     * Get monthly gross earnings (CTC per month - Employer PF)
+     * This is the actual gross salary shown in payslips
+     */
+    getMonthlyGrossEarnings(ctc, pfPercent = 12) {
+        const ctcPerMonth = ctc / 12;
+        const pfEmployer = this.getMonthlyEmployerPF(ctc, pfPercent);
+        return ctcPerMonth - pfEmployer;
+    },
+    
+    /**
      * Calculate Income Tax based on configured slabs
      */
     calculateIncomeTax(ctc) {
@@ -256,13 +301,12 @@ const Income = {
      * For base calculation, we use average ESPP from both cycles
      */
     calculatePayslip(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent) {
-        const basic = this.calculateBasic(ctc);
-        const basicPay = basic / 12;
-        const hra = basicPay / 2;
-        const ctcPerMonth = ctc / 12;
-        const pfEmployer = (basic * pfPercent) / 100 / 12;
-        const pfEmployee = (basic * pfPercent) / 100 / 12;
-        const grossEarnings = ctcPerMonth - pfEmployer;
+        // Use common helper functions to avoid duplication
+        const basicPay = this.getMonthlyBasic(ctc);
+        const hra = this.getMonthlyHRA(ctc);
+        const pfEmployer = this.getMonthlyEmployerPF(ctc, pfPercent);
+        const pfEmployee = this.getMonthlyEmployeePF(ctc, pfPercent);
+        const grossEarnings = this.getMonthlyGrossEarnings(ctc, pfPercent);
         const allowances = grossEarnings - basicPay - hra;
         
         // Use average ESPP for base calculation
@@ -344,11 +388,8 @@ const Income = {
         const data = this.getData();
         const pfPercent = data.pfPercent || 12;
         
-        // Calculate monthly gross earnings (same as payslip calculation)
-        const ctcPerMonth = ctc / 12;
-        const basic = this.calculateBasic(ctc);
-        const pfEmployer = (basic * pfPercent) / 100 / 12;
-        const monthlyGross = ctcPerMonth - pfEmployer;
+        // Use common helper function for monthly gross
+        const monthlyGross = this.getMonthlyGrossEarnings(ctc, pfPercent);
         
         // Daily rate = (Monthly Gross × 12) / 365
         const dailyRate = (monthlyGross * 12) / 365;
