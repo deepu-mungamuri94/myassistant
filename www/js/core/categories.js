@@ -118,6 +118,13 @@ const ExpenseCategories = {
             color: 'from-lime-500 to-green-600'
         },
         {
+            id: 'emi',
+            name: 'EMI',
+            icon: '💳',
+            description: 'Credit card EMIs, bank loan EMIs, installment payments',
+            color: 'from-blue-500 to-cyan-600'
+        },
+        {
             id: 'other',
             name: 'Other',
             icon: '📦',
