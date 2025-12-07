@@ -337,11 +337,18 @@ const Income = {
     /**
      * Calculate leave encashment amount (gross amount before deductions)
      * Formula: ((Gross earnings × 12) / 365) × encashment days
+     * Gross earnings = CTC per month - Employer PF
      * This is added to gross income, then tax and ESPP are applied normally
      */
     calculateLeaveEncashment(ctc, days) {
-        // Monthly gross earnings
-        const monthlyGross = ctc / 12;
+        const data = this.getData();
+        const pfPercent = data.pfPercent || 12;
+        
+        // Calculate monthly gross earnings (same as payslip calculation)
+        const ctcPerMonth = ctc / 12;
+        const basic = this.calculateBasic(ctc);
+        const pfEmployer = (basic * pfPercent) / 100 / 12;
+        const monthlyGross = ctcPerMonth - pfEmployer;
         
         // Daily rate = (Monthly Gross × 12) / 365
         const dailyRate = (monthlyGross * 12) / 365;
