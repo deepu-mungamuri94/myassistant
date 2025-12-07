@@ -1266,6 +1266,63 @@ const Expenses = {
             if (upcomingContent) upcomingContent.classList.add('hidden');
             if (completedContent) completedContent.classList.remove('hidden');
         }
+    },
+    
+    /**
+     * Migrate expenses with category='recurring' to use actual categories from their recurring templates
+     */
+    migrateRecurringCategories() {
+        let migrated = 0;
+        let noTemplate = 0;
+        
+        window.DB.expenses.forEach(expense => {
+            // Only migrate expenses that have category='recurring'
+            // Don't touch expenses that already have proper categories
+            if (expense.category === 'recurring') {
+                if (expense.recurringId) {
+                    // Find the recurring template
+                    const recurring = window.DB.recurringExpenses.find(r => 
+                        String(r.id) === String(expense.recurringId)
+                    );
+                    
+                    if (recurring && recurring.category) {
+                        // Update expense to use the recurring template's category
+                        expense.category = recurring.category;
+                        expense.isRecurring = true; // Ensure flag is set
+                        migrated++;
+                        console.log(`  ↳ Migrated: ${expense.title} (${expense.date}) -> ${recurring.category}`);
+                    } else if (!recurring) {
+                        // Recurring template was deleted, set to 'Other'
+                        expense.category = 'Other';
+                        expense.isRecurring = true;
+                        noTemplate++;
+                        console.log(`  ↳ Orphaned: ${expense.title} (${expense.date}) -> Other`);
+                    } else {
+                        // Recurring template exists but has no category (shouldn't happen after migration)
+                        expense.category = 'Other';
+                        expense.isRecurring = true;
+                        noTemplate++;
+                        console.log(`  ↳ No category: ${expense.title} (${expense.date}) -> Other`);
+                    }
+                } else {
+                    // Legacy expense without recurringId, set to 'Other'
+                    expense.category = 'Other';
+                    expense.isRecurring = true;
+                    noTemplate++;
+                    console.log(`  ↳ Legacy: ${expense.title} (${expense.date}) -> Other`);
+                }
+            }
+        });
+        
+        if (migrated > 0 || noTemplate > 0) {
+            window.Storage.save();
+            console.log(`✅ Migrated ${migrated} recurring expense(s) to use template categories`);
+            if (noTemplate > 0) {
+                console.log(`⚠️  Set ${noTemplate} orphaned recurring expense(s) to 'Other' category`);
+            }
+        }
+        
+        return migrated + noTemplate;
     }
 };
 
@@ -1394,63 +1451,6 @@ if (typeof window !== 'undefined') {
                 console.error('EMI migration error:', error);
             }
         }, 500);
-    },
-    
-    /**
-     * Migrate expenses with category='recurring' to use actual categories from their recurring templates
-     */
-    migrateRecurringCategories() {
-        let migrated = 0;
-        let noTemplate = 0;
-        
-        window.DB.expenses.forEach(expense => {
-            // Only migrate expenses that have category='recurring'
-            // Don't touch expenses that already have proper categories
-            if (expense.category === 'recurring') {
-                if (expense.recurringId) {
-                    // Find the recurring template
-                    const recurring = window.DB.recurringExpenses.find(r => 
-                        String(r.id) === String(expense.recurringId)
-                    );
-                    
-                    if (recurring && recurring.category) {
-                        // Update expense to use the recurring template's category
-                        expense.category = recurring.category;
-                        expense.isRecurring = true; // Ensure flag is set
-                        migrated++;
-                        console.log(`  ↳ Migrated: ${expense.title} (${expense.date}) -> ${recurring.category}`);
-                    } else if (!recurring) {
-                        // Recurring template was deleted, set to 'Other'
-                        expense.category = 'Other';
-                        expense.isRecurring = true;
-                        noTemplate++;
-                        console.log(`  ↳ Orphaned: ${expense.title} (${expense.date}) -> Other`);
-                    } else {
-                        // Recurring template exists but has no category (shouldn't happen after migration)
-                        expense.category = 'Other';
-                        expense.isRecurring = true;
-                        noTemplate++;
-                        console.log(`  ↳ No category: ${expense.title} (${expense.date}) -> Other`);
-                    }
-                } else {
-                    // Legacy expense without recurringId, set to 'Other'
-                    expense.category = 'Other';
-                    expense.isRecurring = true;
-                    noTemplate++;
-                    console.log(`  ↳ Legacy: ${expense.title} (${expense.date}) -> Other`);
-                }
-            }
-        });
-        
-        if (migrated > 0 || noTemplate > 0) {
-            window.Storage.save();
-            console.log(`✅ Migrated ${migrated} recurring expense(s) to use template categories`);
-            if (noTemplate > 0) {
-                console.log(`⚠️  Set ${noTemplate} orphaned recurring expense(s) to 'Other' category`);
-            }
-        }
-        
-        return migrated + noTemplate;
     }
 }
 
