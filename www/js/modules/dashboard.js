@@ -423,7 +423,7 @@ const Dashboard = {
                     },
                     {
                         label: 'Expenses',
-                        data: expensesData.map(d => d.withoutLoans),
+                        data: expensesData.map(d => d.withLoans),
                         backgroundColor: 'rgba(239, 68, 68, 0.2)',
                         borderColor: 'rgba(239, 68, 68, 1)',
                         borderWidth: 3,
