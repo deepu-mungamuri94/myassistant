@@ -482,7 +482,10 @@ const RecurringExpenses = {
             <div class="p-4 bg-white rounded-xl border-2 border-orange-300 shadow-xl">
                 <!-- Name and Description -->
                 <div class="mb-3">
-                    <h4 class="font-bold text-gray-800 text-sm mb-1">${Utils.escapeHtml(recurring.name)}</h4>
+                    <div class="flex items-center gap-2 flex-wrap mb-1">
+                        <h4 class="font-bold text-gray-800 text-sm">${Utils.escapeHtml(recurring.name)}</h4>
+                        ${recurring.category ? `<span class="text-xs bg-orange-200 text-orange-800 px-2 py-0.5 rounded font-semibold">${Utils.escapeHtml(recurring.category)}</span>` : '<span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">No Category</span>'}
+                    </div>
                     ${recurring.description ? `<p class="text-xs text-gray-600">${Utils.escapeHtml(recurring.description)}</p>` : '<p class="text-xs text-gray-400 italic">No description</p>'}
                 </div>
                 
