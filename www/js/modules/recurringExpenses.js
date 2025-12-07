@@ -655,7 +655,10 @@ const RecurringExpenses = {
                         <div class="flex justify-between items-start mb-2">
                             <!-- Left Side: Name and Amount -->
                             <div class="flex-1">
-                                <h4 class="font-bold text-gray-800 text-sm">${Utils.escapeHtml(recurring.name)}</h4>
+                                <div class="flex items-center gap-2 flex-wrap mb-0.5">
+                                    <h4 class="font-bold text-gray-800 text-sm">${Utils.escapeHtml(recurring.name)}</h4>
+                                    ${recurring.category ? `<span class="text-xs bg-orange-200 text-orange-800 px-1.5 py-0.5 rounded">${Utils.escapeHtml(recurring.category)}</span>` : ''}
+                                </div>
                                 ${recurring.description ? `<p class="text-xs text-gray-600 mt-0.5">${Utils.escapeHtml(recurring.description)}</p>` : '<p class="text-xs text-gray-400 mt-0.5 italic">No description</p>'}
                             </div>
                             
@@ -719,7 +722,10 @@ const RecurringExpenses = {
                                 <div class="p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-300 opacity-75">
                                     <div class="flex justify-between items-start mb-2">
                                         <div class="flex-1">
-                                            <h4 class="font-semibold text-gray-700 text-sm">${Utils.escapeHtml(recurring.name)} <span class="text-xs text-gray-500">(Ended)</span></h4>
+                                            <div class="flex items-center gap-2 flex-wrap mb-0.5">
+                                                <h4 class="font-semibold text-gray-700 text-sm">${Utils.escapeHtml(recurring.name)} <span class="text-xs text-gray-500">(Ended)</span></h4>
+                                                ${recurring.category ? `<span class="text-xs bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded">${Utils.escapeHtml(recurring.category)}</span>` : ''}
+                                            </div>
                                             ${recurring.description ? `<p class="text-xs text-gray-500 mt-0.5">${Utils.escapeHtml(recurring.description)}</p>` : ''}
                                         </div>
                                         <div class="ml-4 flex items-start gap-3">
