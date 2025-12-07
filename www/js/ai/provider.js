@@ -365,15 +365,15 @@ Use Indian Rupee (₹) for all amounts.`;
                         investments: investments.map(inv => {
                             const calculatedAmount = calculateAmount(inv);
                             return {
-                                name: inv.name,
-                                type: inv.type,
-                                goal: inv.goal,
+                            name: inv.name,
+                            type: inv.type,
+                            goal: inv.goal,
                                 amount: calculatedAmount,
-                                price: inv.price,
-                                currency: inv.currency,
-                                quantity: inv.quantity,
-                                createdAt: inv.createdAt,
-                                lastUpdated: inv.lastUpdated
+                            price: inv.price,
+                            currency: inv.currency,
+                            quantity: inv.quantity,
+                            createdAt: inv.createdAt,
+                            lastUpdated: inv.lastUpdated
                             };
                         }),
                         total: investments.reduce((sum, inv) => sum + calculateAmount(inv), 0),

@@ -895,7 +895,9 @@ const Expenses = {
                 <details class="mb-3 bg-white rounded-xl border border-orange-300 overflow-hidden">
                     <summary class="cursor-pointer px-4 py-3 hover:bg-orange-50 transition-colors flex justify-between items-center">
                         <div class="flex items-center gap-2">
-                            <span class="text-orange-600">🔁</span>
+                            <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
                             <span class="font-semibold text-orange-900 text-sm">Recurring expenses / Loans (${totalRecurring})</span>
                         </div>
                         <span class="font-bold text-orange-800 text-sm">${Utils.formatCurrency(recurringTotal)}</span>
