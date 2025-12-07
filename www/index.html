@@ -1150,12 +1150,12 @@
                             clearFieldError('expense-modal-category');
                             const cat = window.ExpenseCategories.getByName(categoryName);
                             if (cat) {
-                                document.getElementById('expense-category-btn').innerHTML = '<span class=\'text-2xl mr-2\'>' + cat.icon + '</span><span class=\'font-semibold\'>' + cat.name + '</span>';
+                                document.getElementById('expense-category-btn').innerHTML = '<div class=\'flex items-center flex-1\'><span class=\'text-xl mr-2\'>' + cat.icon + '</span><span class=\'font-semibold text-sm\'>' + cat.name + '</span></div><svg class=\'w-5 h-5 text-gray-400 flex-shrink-0\' fill=\'none\' stroke=\'currentColor\' viewBox=\'0 0 24 24\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M9 5l7 7-7 7\'/></svg>';
                             }
                         })"
                         class="w-full p-3 border-2 border-gray-300 rounded-lg hover:border-purple-400 transition-all text-left flex items-center justify-between">
                     <span class="text-gray-500">Select Category</span>
-                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                     </svg>
                 </button>
@@ -1538,12 +1538,12 @@
                             clearFieldError('recurring-modal-category');
                             const cat = window.ExpenseCategories.getByName(categoryName);
                             if (cat) {
-                                document.getElementById('recurring-category-btn').innerHTML = '<span class=\'text-2xl mr-2\'>' + cat.icon + '</span><span class=\'font-semibold\'>' + cat.name + '</span>';
+                                document.getElementById('recurring-category-btn').innerHTML = '<div class=\'flex items-center flex-1\'><span class=\'text-xl mr-2\'>' + cat.icon + '</span><span class=\'font-semibold text-sm\'>' + cat.name + '</span></div><svg class=\'w-5 h-5 text-gray-400 flex-shrink-0\' fill=\'none\' stroke=\'currentColor\' viewBox=\'0 0 24 24\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M9 5l7 7-7 7\'/></svg>';
                             }
                         })"
                         class="w-full p-3 border-2 border-gray-300 rounded-lg hover:border-orange-400 transition-all text-left flex items-center justify-between">
                     <span class="text-gray-500">Select Category</span>
-                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                     </svg>
                 </button>
@@ -3884,11 +3884,11 @@
             grid.innerHTML = categories.map(cat => `
                 <div onclick="selectCategory('${cat.id}')" 
                      ondblclick="selectCategory('${cat.id}'); confirmCategorySelection();"
-                     class="category-card cursor-pointer p-3 rounded-xl border-2 transition-all duration-200 hover:shadow-lg transform hover:scale-105 ${currentCategory === cat.name ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-300' : 'border-gray-200 hover:border-purple-300'}"
+                     class="category-card cursor-pointer p-2.5 rounded-xl border-2 transition-all duration-200 hover:shadow-lg transform hover:scale-105 ${currentCategory === cat.name ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-300' : 'border-gray-200 hover:border-purple-300'}"
                      data-category-id="${cat.id}">
                     <div class="text-center">
-                        <div class="text-3xl mb-1.5">${cat.icon}</div>
-                        <p class="font-semibold text-xs text-gray-800 break-words leading-tight">${cat.name}</p>
+                        <div class="text-2xl mb-1">${cat.icon}</div>
+                        <p class="font-medium text-[10px] text-gray-800 break-words leading-tight">${cat.name}</p>
                     </div>
                 </div>
             `).join('');
@@ -3965,7 +3965,7 @@
             document.getElementById('expense-modal-description').value = '';
             document.getElementById('expense-modal-amount').value = '';
             document.getElementById('expense-modal-category-value').value = '';
-            document.getElementById('expense-category-btn').innerHTML = '<span class="text-gray-500">Select Category</span>';
+            document.getElementById('expense-category-btn').innerHTML = '<span class="text-gray-500">Select Category</span><svg class=\'w-5 h-5 text-gray-400 flex-shrink-0\' fill=\'none\' stroke=\'currentColor\' viewBox=\'0 0 24 24\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M9 5l7 7-7 7\'/></svg>';
             document.getElementById('expense-modal-date').value = today;
             document.getElementById('expense-modal-title-header').textContent = 'Add Expense';
             document.getElementById('expense-modal-save-btn').textContent = 'Add';
@@ -3984,7 +3984,7 @@
                     if (expense.category) {
                         document.getElementById('expense-modal-category-value').value = expense.category;
                         const cat = window.ExpenseCategories.getCategoryOrDefault(expense.category);
-                        document.getElementById('expense-category-btn').innerHTML = '<span class=\'text-2xl mr-2\'>' + cat.icon + '</span><span class=\'font-semibold\'>' + cat.name + '</span>';
+                        document.getElementById('expense-category-btn').innerHTML = '<div class=\'flex items-center flex-1\'><span class=\'text-xl mr-2\'>' + cat.icon + '</span><span class=\'font-semibold text-sm\'>' + cat.name + '</span></div><svg class=\'w-5 h-5 text-gray-400 flex-shrink-0\' fill=\'none\' stroke=\'currentColor\' viewBox=\'0 0 24 24\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M9 5l7 7-7 7\'/></svg>';
                     }
                     
                     document.getElementById('expense-modal-title-header').textContent = 'Edit Expense';
@@ -4062,7 +4062,7 @@
             if (suggestion.category) {
                 document.getElementById('expense-modal-category-value').value = suggestion.category;
                 const cat = window.ExpenseCategories.getCategoryOrDefault(suggestion.category);
-                document.getElementById('expense-category-btn').innerHTML = '<span class=\'text-2xl mr-2\'>' + cat.icon + '</span><span class=\'font-semibold\'>' + cat.name + '</span>';
+                document.getElementById('expense-category-btn').innerHTML = '<div class=\'flex items-center flex-1\'><span class=\'text-xl mr-2\'>' + cat.icon + '</span><span class=\'font-semibold text-sm\'>' + cat.name + '</span></div><svg class=\'w-5 h-5 text-gray-400 flex-shrink-0\' fill=\'none\' stroke=\'currentColor\' viewBox=\'0 0 24 24\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M9 5l7 7-7 7\'/></svg>';
             }
             if (suggestion.amount) {
                 document.getElementById('expense-modal-amount').value = suggestion.amount;
@@ -4258,7 +4258,7 @@
             document.getElementById('recurring-modal-id').value = '';
             document.getElementById('recurring-modal-name').value = '';
             document.getElementById('recurring-modal-category-value').value = '';
-            document.getElementById('recurring-category-btn').innerHTML = '<span class="text-gray-500">Select Category</span>';
+            document.getElementById('recurring-category-btn').innerHTML = '<span class="text-gray-500">Select Category</span><svg class=\'w-5 h-5 text-gray-400 flex-shrink-0\' fill=\'none\' stroke=\'currentColor\' viewBox=\'0 0 24 24\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M9 5l7 7-7 7\'/></svg>';
             document.getElementById('recurring-modal-amount').value = '';
             document.getElementById('recurring-modal-frequency').value = '';
             document.getElementById('recurring-modal-day').value = '';
@@ -4290,7 +4290,7 @@
                     if (recurring.category) {
                         document.getElementById('recurring-modal-category-value').value = recurring.category;
                         const cat = window.ExpenseCategories.getCategoryOrDefault(recurring.category);
-                        document.getElementById('recurring-category-btn').innerHTML = '<span class=\'text-2xl mr-2\'>' + cat.icon + '</span><span class=\'font-semibold\'>' + cat.name + '</span>';
+                        document.getElementById('recurring-category-btn').innerHTML = '<div class=\'flex items-center flex-1\'><span class=\'text-xl mr-2\'>' + cat.icon + '</span><span class=\'font-semibold text-sm\'>' + cat.name + '</span></div><svg class=\'w-5 h-5 text-gray-400 flex-shrink-0\' fill=\'none\' stroke=\'currentColor\' viewBox=\'0 0 24 24\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M9 5l7 7-7 7\'/></svg>';
                     }
                     
                     // Handle end date
