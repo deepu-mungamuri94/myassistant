@@ -424,10 +424,11 @@ const Income = {
      * Calculate bonus details
      * September (mid-year) uses Cycle 2, April (year-end) uses Cycle 1
      */
-    calculateBonus(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent) {
+    calculateBonus(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent, midYearMultiplier = 1.0, yearEndMultiplier = 1.0) {
         const totalBonusBeforeTax = (ctc * bonusPercent) / 100;
-        const midYearBeforeTax = totalBonusBeforeTax * 0.25;
-        const yearEndBeforeTax = totalBonusBeforeTax * 0.75;
+        // Apply multipliers to the base split (25% mid-year, 75% year-end)
+        const midYearBeforeTax = (totalBonusBeforeTax * 0.25) * midYearMultiplier;
+        const yearEndBeforeTax = (totalBonusBeforeTax * 0.75) * yearEndMultiplier;
         
         const basic = this.calculateBasic(ctc);
         const taxInfo = this.calculateIncomeTax(ctc);
@@ -496,7 +497,7 @@ const Income = {
         
         const data = this.getData();
         const basePayslip = this.calculatePayslip(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent);
-        const bonus = this.calculateBonus(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent);
+        const bonus = this.calculateBonus(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent, data.bonusMidYearMultiplier || 1.0, data.bonusYearEndMultiplier || 1.0);
         
         // Calculate leave encashment for January
         const leaveDays = data.leaveDays || 0;
@@ -628,7 +629,7 @@ const Income = {
         const basic = this.calculateBasic(ctc);
         const taxInfo = this.calculateIncomeTax(ctc);
         const payslip = this.calculatePayslip(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent);
-        const bonus = this.calculateBonus(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent);
+        const bonus = this.calculateBonus(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent, data.bonusMidYearMultiplier || 1.0, data.bonusYearEndMultiplier || 1.0);
         const yearlyPayslips = this.generateYearlyPayslips(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent);
         
         // Aggregate totals from all 12 months
@@ -1185,6 +1186,8 @@ const Income = {
         
         document.getElementById('income-ctc').value = formatValue(data.ctc);
         document.getElementById('income-bonus-percent').value = data.bonusPercent || '';
+        document.getElementById('income-bonus-midyear').value = data.bonusMidYearMultiplier || 1.0;
+        document.getElementById('income-bonus-yearend').value = data.bonusYearEndMultiplier || 1.0;
         document.getElementById('income-espp-cycle1').value = data.esppPercentCycle1 || '';
         document.getElementById('income-espp-cycle2').value = data.esppPercentCycle2 || '';
         document.getElementById('income-pf-percent').value = data.pfPercent || 12;
@@ -1248,6 +1251,8 @@ const Income = {
         const data = {
             ctc: getNumeric('income-ctc'),
             bonusPercent: document.getElementById('income-bonus-percent').value,
+            bonusMidYearMultiplier: parseFloat(document.getElementById('income-bonus-midyear').value) || 1.0,
+            bonusYearEndMultiplier: parseFloat(document.getElementById('income-bonus-yearend').value) || 1.0,
             esppPercentCycle1: document.getElementById('income-espp-cycle1').value,
             esppPercentCycle2: document.getElementById('income-espp-cycle2').value,
             pfPercent: document.getElementById('income-pf-percent').value,
