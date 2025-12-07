@@ -1773,10 +1773,11 @@ const Income = {
         const modal = document.getElementById('salary-modal');
         if (!modal) return;
         
-        // Clear fields
+        // Clear fields and set defaults
+        const now = new Date();
         document.getElementById('salary-modal-id').value = '';
-        document.getElementById('salary-modal-month').value = '';
-        document.getElementById('salary-modal-year').value = new Date().getFullYear();
+        document.getElementById('salary-modal-month').value = now.getMonth() + 1; // Current month (1-12)
+        document.getElementById('salary-modal-year').value = now.getFullYear();
         document.getElementById('salary-modal-amount').value = '';
         document.getElementById('salary-modal-title').textContent = 'Add Salary';
         
