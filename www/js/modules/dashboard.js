@@ -180,26 +180,17 @@ const Dashboard = {
                     return expDate.getFullYear() === currentYear && expDate.getMonth() + 1 === currentMonth;
                 });
                 
-                const total = monthExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+                const totalWithLoans = monthExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
                 
-                // Get loans EMI for this month
-                const loans = window.DB.loans || [];
-                const monthLoans = loans.filter(loan => {
-                    if (loan.status !== 'active') return false;
-                    const firstEmiDate = new Date(loan.firstEmiDate);
-                    const loanMonth = new Date(currentYear, currentMonth - 1, 1);
-                    return firstEmiDate <= loanMonth;
-                });
-                
-                const totalLoansEmi = monthLoans.reduce((sum, loan) => {
-                    const emi = parseFloat(loan.emi) || 0;
-                    return sum + emi;
-                }, 0);
+                // Filter out Loan EMI expenses to get withoutLoans total
+                const totalWithoutLoans = monthExpenses
+                    .filter(exp => exp.category !== 'Loan EMI')
+                    .reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
                 
                 monthsData.push({
                     label: monthName,
-                    expenses: total,
-                    withLoans: total + totalLoansEmi
+                    withoutLoans: totalWithoutLoans,
+                    withLoans: totalWithLoans
                 });
                 
                 // Move to next month
