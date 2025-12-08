@@ -3854,8 +3854,8 @@
             const earliest = new Date(Math.min(...dates));
             const latest = new Date(Math.max(...dates));
             
-            document.getElementById('expense-start-date').value = earliest.toISOString().split('T')[0];
-            document.getElementById('expense-end-date').value = latest.toISOString().split('T')[0];
+            document.getElementById('expense-start-date').value = Utils.formatLocalDate(earliest);
+            document.getElementById('expense-end-date').value = Utils.formatLocalDate(latest);
             updateExpenseFilters();
         }
         
@@ -3895,8 +3895,8 @@
                 const sixMonthsAgo = new Date();
                 sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
                 
-                document.getElementById('investment-filter-start-date').value = sixMonthsAgo.toISOString().split('T')[0];
-                document.getElementById('investment-filter-end-date').value = today.toISOString().split('T')[0];
+                document.getElementById('investment-filter-start-date').value = Utils.formatLocalDate(sixMonthsAgo);
+                document.getElementById('investment-filter-end-date').value = Utils.formatLocalDate(today);
             } else {
                 customFields.classList.add('hidden');
             }
@@ -4141,8 +4141,8 @@
         
         // Expense modal functions
         window.openExpenseModal = function(id = null) {
-            // Set default date to today
-            const today = new Date().toISOString().split('T')[0];
+            // Set default date to today (local timezone)
+            const today = Utils.formatLocalDate(new Date());
             
             // Clear fields first
             document.getElementById('expense-modal-id').value = '';
@@ -5106,7 +5106,7 @@
             document.getElementById('investment-mode-current').checked = true;
             document.getElementById('investment-mode-current').disabled = false;
             document.getElementById('investment-mode-existing').disabled = false;
-            document.getElementById('investment-modal-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('investment-modal-date').value = Utils.formatLocalDate(new Date());
             toggleInvestmentMode();
             toggleInvestmentFields();
         }
