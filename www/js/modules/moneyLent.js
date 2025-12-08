@@ -360,9 +360,9 @@ const MoneyLent = {
         }
         
         const returnPayment = record.returns[returnIndex];
-        const returnDate = new Date(returnPayment.returnDate + '-01');
+        const returnDate = new Date(returnPayment.returnDate);
         const confirmed = await Utils.confirm(
-            `Delete return payment of ₹${Utils.formatIndianNumber(returnPayment.amountReturned)} from ${returnDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}?`,
+            `Delete return payment of ₹${Utils.formatIndianNumber(returnPayment.amountReturned)} from ${returnDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}?`,
             'Delete Return Payment'
         );
         
@@ -422,12 +422,12 @@ const MoneyLent = {
                             <div class="space-y-2">
                                 <p class="text-xs font-semibold text-gray-700 mb-2">Payment History</p>
                                 ${record.returns.map((ret, idx) => {
-                                    const returnDate = new Date(ret.returnDate + '-01');
+                                    const returnDate = new Date(ret.returnDate);
                                     return `
                                     <div class="flex justify-between items-center bg-green-50 p-3 rounded-lg border border-green-200">
                                         <div>
                                             <p class="text-xs font-semibold text-gray-800">₹${Utils.formatIndianNumber(ret.amountReturned)}</p>
-                                            <p class="text-[10px] text-gray-500">${returnDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}</p>
+                                            <p class="text-[10px] text-gray-500">${returnDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
                                         </div>
                                         <button onclick="MoneyLent.deleteReturnFromModal(${record.id}, ${idx})" class="text-red-600 hover:text-red-800 p-1" title="Delete">
                                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">

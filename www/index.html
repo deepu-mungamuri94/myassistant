@@ -1900,8 +1900,8 @@
             </div>
             
             <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Return Month *</label>
-                <input type="month" id="record-return-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Return Date *</label>
+                <input type="date" id="record-return-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
             
             <div class="mb-3">
@@ -4878,7 +4878,6 @@
             document.getElementById('money-lent-modal-id').value = '';
             document.getElementById('money-lent-modal-person').value = '';
             document.getElementById('money-lent-modal-amount').value = '';
-            document.getElementById('money-lent-modal-date-given').value = '';
             document.getElementById('money-lent-modal-purpose').value = '';
             document.getElementById('money-lent-modal-expected-date').value = '';
             document.getElementById('money-lent-modal-notes').value = '';
@@ -4894,6 +4893,11 @@
                     document.getElementById('money-lent-modal-expected-date').value = record.expectedReturnDate;
                     document.getElementById('money-lent-modal-notes').value = record.notes || '';
                 }
+            } else {
+                // Set default date to today for new records
+                const today = new Date();
+                const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+                document.getElementById('money-lent-modal-date-given').value = todayStr;
             }
             
             document.getElementById('money-lent-modal').classList.remove('hidden');
@@ -4959,10 +4963,10 @@
             const outstanding = window.MoneyLent.calculateOutstanding(record);
             
             const today = new Date();
-            const currentMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+            const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
             
             document.getElementById('record-return-record-id').value = recordId;
-            document.getElementById('record-return-date').value = currentMonth;
+            document.getElementById('record-return-date').value = todayStr;
             document.getElementById('record-return-amount').value = '';
             document.getElementById('record-return-amount').max = outstanding;
             
