@@ -665,8 +665,8 @@ const Income = {
                         </div>
                         <div>
                             <p class="text-xs opacity-90">Income Credit (${currentYear})</p>
-                            <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(actualSalaryTotal > 0 ? actualSalaryTotal : Math.round(aggregated.totalNetPay))}</p>
-                            <p class="text-[10px] opacity-75">${actualSalaryTotal > 0 ? `Actual (${salaryCount} months)` : 'Estimated'}</p>
+                            <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(aggregated.totalNetPay))}</p>
+                            <p class="text-[10px] opacity-75">All Payslips</p>
                         </div>
                     </div>
                     <!-- Second Line: Tax, ESPP, EPF -->
@@ -748,7 +748,7 @@ const Income = {
         if (taxBtn) taxBtn.className = 'flex-1 px-2 py-2.5 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
         if (salaryContent) salaryContent.classList.add('hidden');
         if (payslipsContent) payslipsContent.classList.add('hidden');
-        if (taxContent) taxContent.classList.add('hidden');
+            if (taxContent) taxContent.classList.add('hidden');
         
         // Activate selected tab
         if (tab === 'salary') {
@@ -789,7 +789,7 @@ const Income = {
                     </button>
                 </div>
             `;
-        }
+            }
         
         // Group by year
         const byYear = {};

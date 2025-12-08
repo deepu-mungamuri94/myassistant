@@ -653,7 +653,7 @@ const Expenses = {
                     // Calculate which EMI payment number this month would be
                     // This is based on months from first EMI date to current month
                     const monthsElapsed = (today.getFullYear() - firstDate.getFullYear()) * 12 
-                                        + (today.getMonth() - firstDate.getMonth());
+                                      + (today.getMonth() - firstDate.getMonth());
                     
                     // EMI number is simply monthsElapsed + 1
                     // (January = 1st EMI, February = 2nd EMI, etc.)
