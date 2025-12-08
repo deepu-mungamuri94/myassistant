@@ -8,6 +8,7 @@ const Loans = {
     viewModalExpanded: false, // Track expansion in view modal
     currentTab: 'active', // Track current active tab (active/closed)
     mainTab: 'borrowed', // Track main tab (borrowed/lentout)
+    lentOutTab: 'active', // Track lent out sub-tab (active/closed)
     
     /**
      * Show loan details in a view-only modal
@@ -148,6 +149,48 @@ const Loans = {
             // Activate active tab
             if (activeTab) {
                 activeTab.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600 flex items-center justify-center gap-2';
+            }
+            if (closedTab) {
+                closedTab.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center justify-center gap-2';
+            }
+            
+            // Show active content
+            if (activeContent) activeContent.classList.remove('hidden');
+            if (closedContent) closedContent.classList.add('hidden');
+        } else if (tab === 'closed') {
+            // Activate closed tab
+            if (activeTab) {
+                activeTab.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center justify-center gap-2';
+            }
+            if (closedTab) {
+                closedTab.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-green-500 text-green-600 flex items-center justify-center gap-2';
+            }
+            
+            // Show closed content
+            if (activeContent) activeContent.classList.add('hidden');
+            if (closedContent) closedContent.classList.remove('hidden');
+        }
+    },
+    
+    /**
+     * Switch between Active and Closed tabs in lent out section
+     */
+    switchLentOutTab(tab) {
+        // Store current lent out tab
+        this.lentOutTab = tab;
+        
+        // Tab buttons
+        const activeTab = document.getElementById('lentout-tab-active');
+        const closedTab = document.getElementById('lentout-tab-closed');
+        
+        // Tab contents
+        const activeContent = document.getElementById('lentout-content-active');
+        const closedContent = document.getElementById('lentout-content-closed');
+        
+        if (tab === 'active') {
+            // Activate active tab
+            if (activeTab) {
+                activeTab.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-teal-500 text-teal-600 flex items-center justify-center gap-2';
             }
             if (closedTab) {
                 closedTab.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center justify-center gap-2';
@@ -509,38 +552,100 @@ const Loans = {
             }
         }
         
-        // Build lent out tab content with summary
-        let lentOutSummary = '';
-        if (window.MoneyLent && moneyLentTotals.count > 0) {
-            lentOutSummary = `
-                <div class="mb-4 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl p-4 shadow-lg">
-                    <div class="grid grid-cols-2 gap-4 mb-3">
-                        <div>
-                            <p class="text-xs opacity-90">Total Lent Out</p>
-                            <p class="text-base font-bold">₹${Utils.formatIndianNumber(moneyLentTotals.totalLent)}</p>
+        // Build lent out tab content with summary and tabs
+        let lentOutContent = '';
+        if (window.MoneyLent) {
+            // Calculate active and closed counts
+            const lentOutRecords = window.MoneyLent.getAll();
+            const activeRecords = lentOutRecords.filter(r => {
+                const status = window.MoneyLent.getStatus(r);
+                return status === 'Pending' || status === 'Partially Returned';
+            });
+            const closedRecords = lentOutRecords.filter(r => {
+                const status = window.MoneyLent.getStatus(r);
+                return status === 'Fully Returned';
+            });
+            
+            // Build lent out summary
+            let lentOutSummary = '';
+            if (moneyLentTotals.count > 0) {
+                lentOutSummary = `
+                    <div class="mb-4 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl p-4 shadow-lg">
+                        <div class="grid grid-cols-2 gap-4 mb-3">
+                            <div>
+                                <p class="text-xs opacity-90">Total Lent Out</p>
+                                <p class="text-base font-bold">₹${Utils.formatIndianNumber(moneyLentTotals.totalLent)}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs opacity-90">Outstanding</p>
+                                <p class="text-base font-bold">₹${Utils.formatIndianNumber(moneyLentTotals.totalOutstanding)}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-xs opacity-90">Outstanding</p>
-                            <p class="text-base font-bold">₹${Utils.formatIndianNumber(moneyLentTotals.totalOutstanding)}</p>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-xs opacity-90">Total Returned</p>
+                                <p class="text-sm font-bold text-green-200">₹${Utils.formatIndianNumber(Math.round(moneyLentTotals.totalReturned))}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs opacity-90">Records</p>
+                                <p class="text-sm font-bold">${moneyLentTotals.count}</p>
+                            </div>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <p class="text-xs opacity-90">Total Returned</p>
-                            <p class="text-sm font-bold text-green-200">₹${Utils.formatIndianNumber(Math.round(moneyLentTotals.totalReturned))}</p>
+                `;
+            }
+            
+            // Build tabbed content for Lent Out
+            if (lentOutRecords.length > 0) {
+                lentOutContent = `
+                    ${lentOutSummary}
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                        <!-- Active/Closed Tabs for Lent Out -->
+                        <div class="flex border-b border-gray-200">
+                            <button id="lentout-tab-active" 
+                                    onclick="Loans.switchLentOutTab('active')"
+                                    class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-teal-500 text-teal-600 flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                Active (${activeRecords.length})
+                            </button>
+                            <button id="lentout-tab-closed" 
+                                    onclick="Loans.switchLentOutTab('closed')"
+                                    class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                Closed (${closedRecords.length})
+                            </button>
                         </div>
-                        <div>
-                            <p class="text-xs opacity-90">Records</p>
-                            <p class="text-sm font-bold">${moneyLentTotals.count}</p>
+                        
+                        <!-- Tab Content: Active Lent Out -->
+                        <div id="lentout-content-active" class="p-3">
+                            ${window.MoneyLent.renderList('active')}
                         </div>
+                        
+                        <!-- Tab Content: Closed Lent Out -->
+                        ${closedRecords.length > 0 ? `
+                            <div id="lentout-content-closed" class="p-3 hidden">
+                                ${window.MoneyLent.renderList('closed')}
+                            </div>
+                        ` : ''}
                     </div>
-                </div>
-            `;
+                `;
+            } else {
+                lentOutContent = `
+                    ${lentOutSummary}
+                    <div class="text-center py-12">
+                        <div class="text-6xl mb-4">🤝</div>
+                        <p class="text-gray-500 text-sm">No lent out records yet</p>
+                        <p class="text-gray-400 text-xs mt-2">Use the + button below to add your first record</p>
+                    </div>
+                `;
+            }
+        } else {
+            lentOutContent = '<p class="text-gray-500 text-center py-8">Money Lent module not loaded</p>';
         }
-        
-        const lentOutContent = window.MoneyLent ? 
-            lentOutSummary + window.MoneyLent.renderList() : 
-            '<p class="text-gray-500 text-center py-8">Money Lent module not loaded</p>';
         
         // Build main HTML - content only (tabs are fixed at bottom)
         const html = `
@@ -568,6 +673,13 @@ const Loans = {
         if (this.mainTab === 'borrowed' && this.currentTab === 'closed') {
             setTimeout(() => {
                 this.switchLoansTab('closed');
+            }, 0);
+        }
+        
+        // Restore the lent out sub-tab state after re-rendering
+        if (this.mainTab === 'lentout' && this.lentOutTab === 'closed') {
+            setTimeout(() => {
+                this.switchLentOutTab('closed');
             }, 0);
         }
     },

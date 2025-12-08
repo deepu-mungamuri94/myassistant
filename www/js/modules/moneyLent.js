@@ -201,63 +201,43 @@ const MoneyLent = {
     },
     
     /**
-     * Render money lent list
+     * Render money lent list with Active/Closed tabs
      */
-    renderList() {
+    renderList(tabFilter = 'active') {
         const records = this.getAll();
         
         // Sort by date given (oldest first)
         records.sort((a, b) => new Date(a.dateGiven) - new Date(b.dateGiven));
-        
-        if (records.length === 0) {
-            return `
-                <div class="text-center py-12">
-                    <div class="text-6xl mb-4">🤝</div>
-                    <p class="text-gray-500 text-sm">No lent out records yet</p>
-                    <p class="text-gray-400 text-xs mt-2">Use the + button below to add your first record</p>
-                </div>
-            `;
-        }
         
         // Separate by status
         const pending = records.filter(r => this.getStatus(r) === 'Pending');
         const partial = records.filter(r => this.getStatus(r) === 'Partially Returned');
         const completed = records.filter(r => this.getStatus(r) === 'Fully Returned');
         
+        // Filter based on tab
+        const activeRecords = [...pending, ...partial];
+        const closedRecords = completed;
+        const displayRecords = tabFilter === 'active' ? activeRecords : closedRecords;
+        
+        if (displayRecords.length === 0) {
+            return `
+                <div class="text-center py-12">
+                    <div class="text-6xl mb-4">${tabFilter === 'active' ? '🤝' : '✅'}</div>
+                    <p class="text-gray-500 text-sm">No ${tabFilter === 'active' ? 'active' : 'closed'} lent out records</p>
+                    ${tabFilter === 'active' ? '<p class="text-gray-400 text-xs mt-2">Use the + button below to add your first record</p>' : ''}
+                </div>
+            `;
+        }
+        
         let html = `
             <!-- Records List -->
             <div class="space-y-3">
         `;
         
-        // Render pending and partial returns first
-        [...pending, ...partial].forEach(record => {
+        // Render records
+        displayRecords.forEach(record => {
             html += this.renderRecordCard(record);
         });
-        
-        // Render completed in a collapsible section if any exist
-        if (completed.length > 0) {
-            html += `
-                <details class="bg-green-50 rounded-xl border-2 border-green-200 overflow-hidden">
-                    <summary class="cursor-pointer p-4 hover:bg-green-100 transition-colors select-none list-none">
-                        <div class="flex justify-between items-center">
-                            <div class="flex items-center gap-3">
-                                <svg class="w-5 h-5 text-green-700 transition-transform duration-200 chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                </svg>
-                                <div>
-                                    <h4 class="font-bold text-green-800">Fully Returned</h4>
-                                    <p class="text-xs text-green-600">${completed.length} record${completed.length !== 1 ? 's' : ''}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </summary>
-                    
-                    <div class="p-4 pt-2 space-y-3">
-                        ${completed.map(record => this.renderRecordCard(record)).join('')}
-                    </div>
-                </details>
-            `;
-        }
         
         html += `</div>`;
         
@@ -306,9 +286,16 @@ const MoneyLent = {
                     </div>
                     <div class="flex gap-1">
                         ${outstanding > 0 ? `
-                            <button onclick="openRecordReturnModal(${record.id})" class="text-green-600 hover:text-green-800 p-0.5" title="Record Return">
+                            <button onclick="openRecordReturnModal(${record.id})" class="text-green-600 hover:text-green-800 p-0.5" title="Record Payment">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </button>
+                        ` : ''}
+                        ${record.returns && record.returns.length > 0 ? `
+                            <button onclick="MoneyLent.showReturnsHistoryModal(${record.id})" class="text-teal-600 hover:text-teal-800 p-0.5" title="Returns History">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
                                 </svg>
                             </button>
                         ` : ''}
@@ -345,18 +332,19 @@ const MoneyLent = {
                     </div>
                 </div>
                 
-                <!-- Dates -->
-                <div class="flex justify-between text-[11px] text-gray-500 mb-2">
-                    <span>📅 ${dateGiven.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                    ${expectedDate ? `<span>🗓️ ${expectedDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}</span>` : ''}
+                <!-- Dates: Given (left) and Expected (right) -->
+                <div class="flex justify-between text-[11px] text-gray-500">
+                    <div>
+                        <span class="text-[10px] block text-gray-400">Given:</span>
+                        <span class="font-medium">${dateGiven.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                    </div>
+                    ${expectedDate ? `
+                        <div class="text-right">
+                            <span class="text-[10px] block text-gray-400">Expected:</span>
+                            <span class="font-medium">${expectedDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}</span>
+                        </div>
+                    ` : ''}
                 </div>
-                
-                <!-- Returns History Button -->
-                ${record.returns && record.returns.length > 0 ? `
-                    <button onclick="MoneyLent.showReturnsHistoryModal(${record.id})" class="w-full text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-lg py-2 transition-all">
-                        💰 Returns History (${record.returns.length}) →
-                    </button>
-                ` : ''}
             </div>
         `;
     },
