@@ -99,10 +99,15 @@ const Loans = {
     switchMainTab(tab) {
         this.mainTab = tab;
         
+        // Update inline tabs (if they exist)
         const borrowedBtn = document.getElementById('main-tab-borrowed');
         const lentoutBtn = document.getElementById('main-tab-lentout');
         const borrowedContent = document.getElementById('main-content-borrowed');
         const lentoutContent = document.getElementById('main-content-lentout');
+        
+        // Update bottom tabs
+        const borrowedBottomBtn = document.getElementById('loans-bottom-tab-borrowed');
+        const lentoutBottomBtn = document.getElementById('loans-bottom-tab-lentout');
         
         // Reset all tabs to inactive state
         if (borrowedBtn) borrowedBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
@@ -114,9 +119,13 @@ const Loans = {
         if (tab === 'borrowed') {
             if (borrowedBtn) borrowedBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600';
             if (borrowedContent) borrowedContent.classList.remove('hidden');
+            if (borrowedBottomBtn) borrowedBottomBtn.className = 'flex-1 py-3 px-3 rounded-lg transition-all font-medium text-sm bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md';
+            if (lentoutBottomBtn) lentoutBottomBtn.className = 'flex-1 py-3 px-3 rounded-lg transition-all font-medium text-sm bg-gray-200 text-gray-700 hover:bg-gray-300';
         } else if (tab === 'lentout') {
             if (lentoutBtn) lentoutBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-teal-500 text-teal-600';
             if (lentoutContent) lentoutContent.classList.remove('hidden');
+            if (borrowedBottomBtn) borrowedBottomBtn.className = 'flex-1 py-3 px-3 rounded-lg transition-all font-medium text-sm bg-gray-200 text-gray-700 hover:bg-gray-300';
+            if (lentoutBottomBtn) lentoutBottomBtn.className = 'flex-1 py-3 px-3 rounded-lg transition-all font-medium text-sm bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-md';
         }
     },
     
@@ -533,34 +542,16 @@ const Loans = {
             lentOutSummary + window.MoneyLent.renderList() : 
             '<p class="text-gray-500 text-center py-8">Money Lent module not loaded</p>';
         
-        // Build main HTML with tabs
+        // Build main HTML - content only (tabs are fixed at bottom)
         const html = `
-            <!-- Main Tabs: Borrowed vs Lent Out -->
-            <div class="mb-4 bg-white rounded-xl border-2 border-gray-200 overflow-hidden">
-                <div class="border-b border-gray-200">
-                    <div class="flex">
-                        <button onclick="Loans.switchMainTab('borrowed')" 
-                                id="main-tab-borrowed"
-                                class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600">
-                            💳 Money Borrowed (${loans.length})
-                        </button>
-                        <button onclick="Loans.switchMainTab('lentout')" 
-                                id="main-tab-lentout"
-                                class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-                            🤝 Money Lent Out (${moneyLentTotals.count})
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Borrowed Content -->
-                <div id="main-content-borrowed" class="p-4">
-                    ${borrowedContent}
-                </div>
-                
-                <!-- Lent Out Content -->
-                <div id="main-content-lentout" class="p-4 hidden">
-                    ${lentOutContent}
-                </div>
+            <!-- Borrowed Content -->
+            <div id="main-content-borrowed">
+                ${borrowedContent}
+            </div>
+            
+            <!-- Lent Out Content -->
+            <div id="main-content-lentout" class="hidden">
+                ${lentOutContent}
             </div>
         `;
         

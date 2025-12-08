@@ -610,17 +610,27 @@
         
         <!-- LOANS VIEW -->
         <div id="loans-view" class="hidden">
-            <div class="p-5 pb-6">
-                <!-- Floating + Button (Top Right) - Orange Color -->
-                <button onclick="openLoanModal()" class="fixed right-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Loan">
-                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
-                    </svg>
-                </button>
-                
+            <div class="p-5 pb-24">
                 <!-- Loans List -->
                 <div id="loans-list" class="space-y-3">
                     <!-- Loans will be listed here -->
+                </div>
+            </div>
+            
+            <!-- Fixed Bottom Tabs -->
+            <div class="fixed bottom-0 left-0 right-0 border-t border-gray-300 p-3" style="z-index: 9999; background-color: #F5FEFD;">
+                <div class="flex gap-2 items-center" style="max-width: 100%; overflow: hidden;">
+                    <button id="loans-bottom-tab-borrowed" onclick="Loans.switchMainTab('borrowed')" class="flex-1 py-3 px-3 rounded-lg transition-all font-medium text-sm bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md" style="flex-shrink: 0;">
+                        💳 Loans
+                    </button>
+                    <button id="loans-bottom-tab-lentout" onclick="Loans.switchMainTab('lentout')" class="flex-1 py-3 px-3 rounded-lg transition-all font-medium text-sm bg-gray-200 text-gray-700 hover:bg-gray-300" style="flex-shrink: 0;">
+                        🤝 Lents/Advances
+                    </button>
+                    <button id="loans-add-button" onclick="openLoanOrLentModal()" class="py-3 px-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg hover:shadow-lg transition-all font-medium text-sm flex items-center" style="flex-shrink: 0;" title="Add">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
         </div>
@@ -1820,7 +1830,7 @@
     <!-- MONEY LENT MODAL -->
     <div id="money-lent-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeMoneyLentModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <h2 id="money-lent-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">Add Money Lent</h2>
+            <h2 id="money-lent-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">Add Lent/Advance</h2>
             
             <input type="hidden" id="money-lent-modal-id">
             
@@ -4853,9 +4863,18 @@
             }
         }
         
+        // Context-aware add button for Loans page
+        window.openLoanOrLentModal = function() {
+            if (window.Loans && window.Loans.mainTab === 'lentout') {
+                openMoneyLentModal();
+            } else {
+                openLoanModal();
+            }
+        }
+        
         // Money Lent Modal Functions
         window.openMoneyLentModal = function(id = null) {
-            document.getElementById('money-lent-modal-title').textContent = id ? 'Edit Money Lent' : 'Add Money Lent';
+            document.getElementById('money-lent-modal-title').textContent = id ? 'Edit Lent/Advance' : 'Add Lent/Advance';
             document.getElementById('money-lent-modal-id').value = '';
             document.getElementById('money-lent-modal-person').value = '';
             document.getElementById('money-lent-modal-amount').value = '';
@@ -4916,10 +4935,10 @@
             try {
                 if (id) {
                     window.MoneyLent.update(id, personName, amount, dateGiven, purpose, expectedReturnDate, notes);
-                    Utils.showSuccess('Record updated!');
+                    Utils.showSuccess('Lent/Advance updated!');
                 } else {
                     window.MoneyLent.add(personName, amount, dateGiven, purpose, expectedReturnDate, notes);
-                    Utils.showSuccess('Money lent record added!');
+                    Utils.showSuccess('Lent/Advance added!');
                 }
                 
                 window.Loans.render();
