@@ -428,36 +428,34 @@ const Dashboard = {
                     {
                         label: 'Income',
                         data: incomeData.map(d => d.income),
-                        backgroundColor: 'rgba(34, 197, 94, 0.2)',
                         borderColor: 'rgba(34, 197, 94, 1)',
-                        borderWidth: 3,
-                        fill: true,
+                        borderWidth: 2,
+                        fill: false,
                         tension: 0.4,
-                        pointRadius: 6,
-                        pointHoverRadius: 8,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
                         pointBackgroundColor: 'rgba(34, 197, 94, 1)',
                         pointBorderColor: '#fff',
-                        pointBorderWidth: 2,
+                        pointBorderWidth: 1.5,
                         pointHoverBackgroundColor: 'rgba(34, 197, 94, 1)',
                         pointHoverBorderColor: '#fff',
-                        pointHoverBorderWidth: 3
+                        pointHoverBorderWidth: 2
                     },
                     {
                         label: 'Expenses',
                         data: expensesData.map(d => d.withLoans),
-                        backgroundColor: 'rgba(239, 68, 68, 0.2)',
                         borderColor: 'rgba(239, 68, 68, 1)',
-                        borderWidth: 3,
-                        fill: true,
+                        borderWidth: 2,
+                        fill: false,
                         tension: 0.4,
-                        pointRadius: 6,
-                        pointHoverRadius: 8,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
                         pointBackgroundColor: 'rgba(239, 68, 68, 1)',
                         pointBorderColor: '#fff',
-                        pointBorderWidth: 2,
+                        pointBorderWidth: 1.5,
                         pointHoverBackgroundColor: 'rgba(239, 68, 68, 1)',
                         pointHoverBorderColor: '#fff',
-                        pointHoverBorderWidth: 3
+                        pointHoverBorderWidth: 2
                     }
                 ]
             },
@@ -477,7 +475,7 @@ const Dashboard = {
                             padding: 15,
                             font: {
                                 size: 12,
-                                weight: 'bold'
+                                weight: 'normal'
                             }
                         }
                     },
@@ -487,11 +485,12 @@ const Dashboard = {
                     tooltip: {
                         backgroundColor: 'rgba(0, 0, 0, 0.8)',
                         titleFont: {
-                            size: 14,
-                            weight: 'bold'
+                            size: 13,
+                            weight: 'normal'
                         },
                         bodyFont: {
-                            size: 13
+                            size: 12,
+                            weight: 'normal'
                         },
                         padding: 12,
                         cornerRadius: 8,
