@@ -402,7 +402,7 @@ const MoneyLent = {
         const outstanding = this.calculateOutstanding(record);
         
         let modalHtml = `
-            <div id="returns-history-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-[1001] flex items-center justify-center p-4" onclick="if(event.target===this) MoneyLent.closeReturnsHistoryModal()">
+            <div id="returns-history-modal" class="fixed inset-0 bg-black bg-opacity-80 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) MoneyLent.closeReturnsHistoryModal()">
                 <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
                     <div class="sticky top-0 bg-gradient-to-r from-teal-600 to-cyan-600 px-6 py-4 flex justify-between items-center rounded-t-2xl">
                         <h2 class="text-xl font-bold text-white">Returns History</h2>
