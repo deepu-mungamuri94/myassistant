@@ -213,11 +213,8 @@ const MoneyLent = {
             return `
                 <div class="text-center py-12">
                     <div class="text-6xl mb-4">🤝</div>
-                    <p class="text-gray-500 text-sm mb-4">No money lent records yet</p>
-                    <button onclick="openMoneyLentModal()" 
-                            class="px-6 py-2 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg hover:shadow-lg transition-all transform hover:scale-105 font-semibold">
-                        + Add Record
-                    </button>
+                    <p class="text-gray-500 text-sm">No lent out records yet</p>
+                    <p class="text-gray-400 text-xs mt-2">Use the + button below to add your first record</p>
                 </div>
             `;
         }
@@ -228,17 +225,6 @@ const MoneyLent = {
         const completed = records.filter(r => this.getStatus(r) === 'Fully Returned');
         
         let html = `
-            <!-- Add Button -->
-            <div class="mb-4">
-                <button onclick="openMoneyLentModal()" 
-                        class="w-full px-4 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg hover:shadow-lg transition-all font-semibold flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
-                    </svg>
-                    Add Money Lent
-                </button>
-            </div>
-            
             <!-- Records List -->
             <div class="space-y-3">
         `;
