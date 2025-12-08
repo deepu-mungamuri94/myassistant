@@ -88,10 +88,11 @@ const Dashboard = {
                         </button>
                     </div>
                 </div>
-                <div class="flex justify-center max-w-full" style="height: 180px;">
-                    <div style="width: 85%; max-width: 500px;">
+                <div class="flex items-center justify-center max-w-full" style="height: 180px; gap: 16px;">
+                    <div style="flex: 0 0 200px; max-width: 200px;">
                         <canvas id="category-chart"></canvas>
                     </div>
+                    <div id="category-chart-legend" style="flex: 1; overflow-y: auto; max-height: 180px;"></div>
                 </div>
             </div>
             
@@ -657,10 +658,32 @@ const Dashboard = {
             categoryMap[category] = (categoryMap[category] || 0) + rec.amount;
         });
         
-        // Convert to array and sort by amount
+        // Convert to array, format category names properly, and sort by amount
         return Object.entries(categoryMap)
-            .map(([category, amount]) => ({ category, amount }))
+            .map(([category, amount]) => ({ 
+                category: this.formatCategoryName(category), 
+                amount 
+            }))
             .sort((a, b) => b.amount - a.amount);
+    },
+    
+    /**
+     * Format category name for display (capitalize first letter, handle special cases)
+     */
+    formatCategoryName(category) {
+        if (!category) return 'Uncategorized';
+        
+        // Special cases
+        if (category.toLowerCase() === 'emi') return 'EMI';
+        
+        // Use ExpenseCategories if available
+        if (window.ExpenseCategories) {
+            const cat = window.ExpenseCategories.getByName(category);
+            if (cat) return cat.name;
+        }
+        
+        // Capitalize first letter as fallback
+        return category.charAt(0).toUpperCase() + category.slice(1);
     },
     
     /**
@@ -726,32 +749,7 @@ const Dashboard = {
                 },
                 plugins: {
                     legend: {
-                        display: true,
-                        position: 'right',
-                        align: 'center',
-                        labels: {
-                            boxWidth: 12,
-                            padding: 8,
-                            font: {
-                                size: 10
-                            },
-                            usePointStyle: true,
-                            pointStyle: 'circle',
-                            generateLabels: function(chart) {
-                                const data = chart.data;
-                                const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                return data.labels.map((label, i) => {
-                                    const value = data.datasets[0].data[i];
-                                    const percentage = ((value / total) * 100).toFixed(1);
-                                    return {
-                                        text: label + ' (' + percentage + '%)',
-                                        fillStyle: data.datasets[0].backgroundColor[i],
-                                        hidden: false,
-                                        index: i
-                                    };
-                                });
-                            }
-                        }
+                        display: false  // Using custom HTML legend instead
                     },
                     datalabels: {
                         formatter: function(value, context) {
@@ -781,6 +779,35 @@ const Dashboard = {
                 }
             }
         });
+        
+        // Generate HTML legend with gray percentages
+        this.generateCategoryLegend(data, colors);
+    },
+    
+    /**
+     * Generate HTML legend for category chart with gray percentages
+     */
+    generateCategoryLegend(data, colors) {
+        const legendContainer = document.getElementById('category-chart-legend');
+        if (!legendContainer) return;
+        
+        const total = data.reduce((sum, d) => sum + d.amount, 0);
+        
+        let html = '<div style="display: flex; flex-direction: column; gap: 6px;">';
+        data.forEach((item, i) => {
+            const percentage = ((item.amount / total) * 100).toFixed(1);
+            const color = colors[i % colors.length];
+            html += `
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 10px;">
+                    <div style="width: 10px; height: 10px; border-radius: 50%; background-color: ${color}; flex-shrink: 0;"></div>
+                    <span style="color: #374151; font-weight: 500;">${item.category}</span>
+                    <span style="color: #9ca3af; font-weight: normal;">(${percentage}%)</span>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        legendContainer.innerHTML = html;
     },
     
     /**
