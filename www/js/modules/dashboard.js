@@ -88,8 +88,8 @@ const Dashboard = {
                         </button>
                     </div>
                 </div>
-                <div class="flex justify-center max-w-full" style="height: 210px;">
-                    <div style="width: 70%; max-width: 500px;">
+                <div class="flex justify-center max-w-full" style="height: 180px;">
+                    <div style="width: 85%; max-width: 500px;">
                         <canvas id="category-chart"></canvas>
                     </div>
                 </div>
@@ -736,7 +736,21 @@ const Dashboard = {
                                 size: 10
                             },
                             usePointStyle: true,
-                            pointStyle: 'circle'
+                            pointStyle: 'circle',
+                            generateLabels: function(chart) {
+                                const data = chart.data;
+                                const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                return data.labels.map((label, i) => {
+                                    const value = data.datasets[0].data[i];
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return {
+                                        text: label + ' (' + percentage + '%)',
+                                        fillStyle: data.datasets[0].backgroundColor[i],
+                                        hidden: false,
+                                        index: i
+                                    };
+                                });
+                            }
                         }
                     },
                     datalabels: {
