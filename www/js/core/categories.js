@@ -104,10 +104,10 @@ const ExpenseCategories = {
             color: 'from-rose-500 to-pink-600'
         },
         {
-            id: 'lending',
-            name: 'Lending',
-            icon: '💸',
-            description: 'Money lent or given to others as help',
+            id: 'gifts',
+            name: 'Gifts',
+            icon: '🎁',
+            description: 'Money gifted to family/relatives (non-returnable)',
             color: 'from-amber-500 to-yellow-600'
         },
         {

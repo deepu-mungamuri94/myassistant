@@ -666,7 +666,6 @@ const Income = {
                         <div>
                             <p class="text-xs opacity-90">Income Credit (${currentYear})</p>
                             <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(aggregated.totalNetPay))}</p>
-                            <p class="text-[10px] opacity-75">All Payslips</p>
                         </div>
                     </div>
                     <!-- Second Line: Tax, ESPP, EPF -->

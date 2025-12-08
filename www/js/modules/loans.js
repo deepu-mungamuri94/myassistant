@@ -7,6 +7,7 @@ const Loans = {
     expandedLoans: new Set(), // Track which loans are expanded
     viewModalExpanded: false, // Track expansion in view modal
     currentTab: 'active', // Track current active tab (active/closed)
+    mainTab: 'borrowed', // Track main tab (borrowed/lentout)
     
     /**
      * Show loan details in a view-only modal
@@ -90,6 +91,33 @@ const Loans = {
             this.expandedLoans.add(loanId);
         }
         this.render();
+    },
+    
+    /**
+     * Switch between Borrowed and Lent Out main tabs
+     */
+    switchMainTab(tab) {
+        this.mainTab = tab;
+        
+        const borrowedBtn = document.getElementById('main-tab-borrowed');
+        const lentoutBtn = document.getElementById('main-tab-lentout');
+        const borrowedContent = document.getElementById('main-content-borrowed');
+        const lentoutContent = document.getElementById('main-content-lentout');
+        
+        // Reset all tabs to inactive state
+        if (borrowedBtn) borrowedBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+        if (lentoutBtn) lentoutBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+        if (borrowedContent) borrowedContent.classList.add('hidden');
+        if (lentoutContent) lentoutContent.classList.add('hidden');
+        
+        // Activate selected tab
+        if (tab === 'borrowed') {
+            if (borrowedBtn) borrowedBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600';
+            if (borrowedContent) borrowedContent.classList.remove('hidden');
+        } else if (tab === 'lentout') {
+            if (lentoutBtn) lentoutBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-teal-500 text-teal-600';
+            if (lentoutContent) lentoutContent.classList.remove('hidden');
+        }
     },
     
     /**
@@ -345,136 +373,201 @@ const Loans = {
         if (!list) return;
         
         const loans = this.getAll();
+        const moneyLentTotals = window.MoneyLent ? window.MoneyLent.calculateTotals() : { totalLent: 0, totalReturned: 0, totalOutstanding: 0, count: 0 };
+        
+        // Build borrowed tab content
+        let borrowedContent = '';
         
         if (loans.length === 0) {
-            list.innerHTML = '<p class="text-gray-500 text-center py-8">No loans yet. Add your first one above!</p>';
-            return;
+            borrowedContent = '<p class="text-gray-500 text-center py-8">No loans yet. Add your first one above!</p>';
+        } else {
+            // Separate active and closed loans and calculate totals
+            const activeLoans = [];
+            const closedLoans = [];
+            let totalRemainingAmount = 0; // Total future payment (EMI × pending count)
+            let totalAmountTaken = 0;
+            let totalInterestPaidSoFar = 0;
+            let latestClosureDate = null;
+            
+            loans.forEach(loan => {
+                const remaining = this.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
+                const emi = this.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
+                totalAmountTaken += parseFloat(loan.amount);
+                
+                if (remaining.emisRemaining === 0) {
+                    closedLoans.push(loan);
+                    // Calculate total interest paid for closed loans
+                    const totalPaid = emi * loan.tenure;
+                    const interestPaid = totalPaid - parseFloat(loan.amount);
+                    totalInterestPaidSoFar += interestPaid;
+                } else {
+                    activeLoans.push(loan);
+                    // Use total remaining payment (EMI × pending EMIs)
+                    totalRemainingAmount += remaining.totalRemainingPayment;
+                    
+                    // Calculate interest paid so far for active loans
+                    const principalPaid = parseFloat(loan.amount) - remaining.remainingBalance;
+                    const totalPaidSoFar = emi * remaining.emisPaid;
+                    const interestPaidSoFar = totalPaidSoFar - principalPaid;
+                    totalInterestPaidSoFar += interestPaidSoFar;
+                    
+                    // Find the latest closure date among active loans
+                    const closureDate = this.calculateClosureDate(loan.firstEmiDate, loan.tenure);
+                    if (!latestClosureDate || closureDate > latestClosureDate) {
+                        latestClosureDate = closureDate;
+                    }
+                }
+            });
+            
+            // Sort loans by first EMI date (earliest first)
+            activeLoans.sort((a, b) => new Date(a.firstEmiDate) - new Date(b.firstEmiDate));
+            closedLoans.sort((a, b) => new Date(a.firstEmiDate) - new Date(b.firstEmiDate));
+            
+            // Render summary for borrowed
+            borrowedContent += `
+                <div class="mb-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl p-4 shadow-lg">
+                    <div class="grid grid-cols-2 gap-4 mb-3">
+                        <div>
+                            <p class="text-xs opacity-90">Total Borrowed</p>
+                            <p class="text-base font-bold">₹${Utils.formatIndianNumber(totalAmountTaken)}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs opacity-90">Remaining to Pay</p>
+                            <p class="text-base font-bold">₹${Utils.formatIndianNumber(totalRemainingAmount)}</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs opacity-90">Interest Paid So Far</p>
+                            <p class="text-sm font-bold text-yellow-200">₹${Utils.formatIndianNumber(Math.round(totalInterestPaidSoFar))}</p>
+                        </div>
+                        ${latestClosureDate ? `
+                            <div>
+                                <p class="text-xs opacity-90">Last EMI Date</p>
+                                <p class="text-sm font-bold">${latestClosureDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                            </div>
+                        ` : '<div></div>'}
+                    </div>
+                </div>
+            `;
+            
+            // Render tabs for Active and Closed loans
+            if (activeLoans.length > 0 || closedLoans.length > 0) {
+                borrowedContent += `
+                    <div class="bg-white rounded-xl border-2 border-blue-200 overflow-hidden">
+                        <!-- Tabs -->
+                        <div class="border-b border-blue-200">
+                            <div class="flex justify-evenly">
+                                ${activeLoans.length > 0 ? `
+                                    <button onclick="Loans.switchLoansTab('active')" 
+                                            id="loans-tab-active"
+                                            class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600 flex items-center justify-center gap-2">
+                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"/>
+                                        </svg>
+                                        Active (${activeLoans.length})
+                                    </button>
+                                ` : ''}
+                                ${closedLoans.length > 0 ? `
+                                    <button onclick="Loans.switchLoansTab('closed')" 
+                                            id="loans-tab-closed"
+                                            class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center justify-center gap-2">
+                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                        </svg>
+                                        Closed (${closedLoans.length})
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                        
+                        <!-- Tab Content: Active Loans -->
+                        ${activeLoans.length > 0 ? `
+                            <div id="loans-content-active" class="p-3 space-y-3">
+                                ${activeLoans.map(loan => this.renderLoanCard(loan, false)).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        <!-- Tab Content: Closed Loans -->
+                        ${closedLoans.length > 0 ? `
+                            <div id="loans-content-closed" class="p-3 space-y-3 hidden">
+                                ${closedLoans.map(loan => this.renderLoanCard(loan, true)).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
         }
         
-        // Separate active and closed loans and calculate totals
-        const activeLoans = [];
-        const closedLoans = [];
-        let totalRemainingAmount = 0; // Total future payment (EMI × pending count)
-        let totalAmountTaken = 0;
-        let totalInterestPaidSoFar = 0;
-        let latestClosureDate = null;
-        
-        loans.forEach(loan => {
-            const remaining = this.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
-            const emi = this.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
-            totalAmountTaken += parseFloat(loan.amount);
-            
-            if (remaining.emisRemaining === 0) {
-                closedLoans.push(loan);
-                // Calculate total interest paid for closed loans
-                const totalPaid = emi * loan.tenure;
-                const interestPaid = totalPaid - parseFloat(loan.amount);
-                totalInterestPaidSoFar += interestPaid;
-            } else {
-                activeLoans.push(loan);
-                // Use total remaining payment (EMI × pending EMIs)
-                totalRemainingAmount += remaining.totalRemainingPayment;
-                
-                // Calculate interest paid so far for active loans
-                const principalPaid = parseFloat(loan.amount) - remaining.remainingBalance;
-                const totalPaidSoFar = emi * remaining.emisPaid;
-                const interestPaidSoFar = totalPaidSoFar - principalPaid;
-                totalInterestPaidSoFar += interestPaidSoFar;
-                
-                // Find the latest closure date among active loans
-                const closureDate = this.calculateClosureDate(loan.firstEmiDate, loan.tenure);
-                if (!latestClosureDate || closureDate > latestClosureDate) {
-                    latestClosureDate = closureDate;
-                }
-            }
-        });
-        
-        // Sort loans by first EMI date (earliest first)
-        activeLoans.sort((a, b) => new Date(a.firstEmiDate) - new Date(b.firstEmiDate));
-        closedLoans.sort((a, b) => new Date(a.firstEmiDate) - new Date(b.firstEmiDate));
-        
-        let html = '';
-        
-        // Render summary
-        html += `
-            <div class="mb-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl p-4 shadow-lg">
+        // Build lent out tab content
+        const lentOutContent = window.MoneyLent ? `
+            <div class="mb-4 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl p-4 shadow-lg">
                 <div class="grid grid-cols-2 gap-4 mb-3">
                     <div>
-                        <p class="text-xs opacity-90">Total Borrowed</p>
-                        <p class="text-base font-bold">₹${Utils.formatIndianNumber(totalAmountTaken)}</p>
+                        <p class="text-xs opacity-90">Total Lent Out</p>
+                        <p class="text-base font-bold">₹${Utils.formatIndianNumber(moneyLentTotals.totalLent)}</p>
                     </div>
                     <div>
-                        <p class="text-xs opacity-90">Remaining to Pay</p>
-                        <p class="text-base font-bold">₹${Utils.formatIndianNumber(totalRemainingAmount)}</p>
+                        <p class="text-xs opacity-90">Outstanding</p>
+                        <p class="text-base font-bold">₹${Utils.formatIndianNumber(moneyLentTotals.totalOutstanding)}</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <p class="text-xs opacity-90">Interest Paid So Far</p>
-                        <p class="text-sm font-bold text-yellow-200">₹${Utils.formatIndianNumber(Math.round(totalInterestPaidSoFar))}</p>
+                        <p class="text-xs opacity-90">Total Returned</p>
+                        <p class="text-sm font-bold text-green-200">₹${Utils.formatIndianNumber(Math.round(moneyLentTotals.totalReturned))}</p>
                     </div>
-                    ${latestClosureDate ? `
-                        <div>
-                            <p class="text-xs opacity-90">Last EMI Date</p>
-                            <p class="text-sm font-bold">${latestClosureDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
-                        </div>
-                    ` : '<div></div>'}
+                    <div>
+                        <p class="text-xs opacity-90">Records</p>
+                        <p class="text-sm font-bold">${moneyLentTotals.count}</p>
+                    </div>
+                </div>
+            </div>
+            ${window.MoneyLent.renderList()}
+        ` : '<p class="text-gray-500 text-center py-8">Money Lent module not loaded</p>';
+        
+        // Build main HTML with tabs
+        const html = `
+            <!-- Main Tabs: Borrowed vs Lent Out -->
+            <div class="mb-4 bg-white rounded-xl border-2 border-gray-200 overflow-hidden">
+                <div class="border-b border-gray-200">
+                    <div class="flex">
+                        <button onclick="Loans.switchMainTab('borrowed')" 
+                                id="main-tab-borrowed"
+                                class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600">
+                            💳 Money Borrowed (${loans.length})
+                        </button>
+                        <button onclick="Loans.switchMainTab('lentout')" 
+                                id="main-tab-lentout"
+                                class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                            🤝 Money Lent Out (${moneyLentTotals.count})
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Borrowed Content -->
+                <div id="main-content-borrowed" class="p-4">
+                    ${borrowedContent}
+                </div>
+                
+                <!-- Lent Out Content -->
+                <div id="main-content-lentout" class="p-4 hidden">
+                    ${lentOutContent}
                 </div>
             </div>
         `;
         
-        // Render tabs for Active and Closed loans
-        if (activeLoans.length > 0 || closedLoans.length > 0) {
-            html += `
-                <div class="bg-white rounded-xl border-2 border-blue-200 overflow-hidden">
-                    <!-- Tabs -->
-                    <div class="border-b border-blue-200">
-                        <div class="flex justify-evenly">
-                            ${activeLoans.length > 0 ? `
-                                <button onclick="Loans.switchLoansTab('active')" 
-                                        id="loans-tab-active"
-                                        class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600 flex items-center justify-center gap-2">
-                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"/>
-                                    </svg>
-                                    Active (${activeLoans.length})
-                                </button>
-                            ` : ''}
-                            ${closedLoans.length > 0 ? `
-                                <button onclick="Loans.switchLoansTab('closed')" 
-                                        id="loans-tab-closed"
-                                        class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center justify-center gap-2">
-                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                    </svg>
-                                    Closed (${closedLoans.length})
-                                </button>
-                            ` : ''}
-                        </div>
-                    </div>
-                    
-                    <!-- Tab Content: Active Loans -->
-                    ${activeLoans.length > 0 ? `
-                        <div id="loans-content-active" class="p-3 space-y-3">
-                            ${activeLoans.map(loan => this.renderLoanCard(loan, false)).join('')}
-                        </div>
-                    ` : ''}
-                    
-                    <!-- Tab Content: Closed Loans -->
-                    ${closedLoans.length > 0 ? `
-                        <div id="loans-content-closed" class="p-3 space-y-3 hidden">
-                            ${closedLoans.map(loan => this.renderLoanCard(loan, true)).join('')}
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }
-        
         list.innerHTML = html;
         
-        // Restore the current tab state after re-rendering
-        if (this.currentTab === 'closed') {
-            // Use setTimeout to ensure DOM is ready
+        // Restore the main tab state
+        if (this.mainTab === 'lentout') {
+            setTimeout(() => {
+                this.switchMainTab('lentout');
+            }, 0);
+        }
+        
+        // Restore the current sub-tab state after re-rendering (for borrowed tab)
+        if (this.mainTab === 'borrowed' && this.currentTab === 'closed') {
             setTimeout(() => {
                 this.switchLoansTab('closed');
             }, 0);

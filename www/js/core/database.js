@@ -12,6 +12,7 @@ const DB = {
     sharePrices: [], // Share price tracking (name, price, currency, active, lastUpdated)
     recurringExpenses: [], // Custom recurring expenses (LIC, insurance, etc.)
     loans: [], // Loan tracking
+    moneyLent: [], // Money lent to others tracking
     income: null, // Income and payslip data
     salaries: [], // Actual salary tracking (month, year, amount) - factual bank credits
     dismissedRecurringExpenses: [], // Track dismissed auto-recurring expenses

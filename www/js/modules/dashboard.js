@@ -118,6 +118,9 @@ const Dashboard = {
                 </div>
             </div>
             ` : ''}
+            
+            <!-- Money Lent Out Summary -->
+            ${this.renderMoneyLentSummary()}
         `;
         
         // Initialize charts after a short delay to ensure DOM is ready
@@ -1352,6 +1355,72 @@ const Dashboard = {
                         </div>
                     </div>
                 </div>
+            </div>
+        `;
+    },
+    
+    /**
+     * Render Money Lent Out summary
+     */
+    renderMoneyLentSummary() {
+        if (!window.MoneyLent) return '';
+        
+        const totals = window.MoneyLent.calculateTotals();
+        
+        if (totals.count === 0) return '';
+        
+        const records = window.MoneyLent.getAll();
+        const pendingRecords = records.filter(r => window.MoneyLent.getStatus(r) !== 'Fully Returned');
+        
+        return `
+            <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-semibold text-gray-700">Money Lent Out</h3>
+                    <button onclick="Navigation.navigateTo('loans'); setTimeout(() => Loans.switchMainTab('lentout'), 100)" class="text-xs text-teal-600 hover:text-teal-800 font-semibold">
+                        View All →
+                    </button>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg p-3 text-white shadow-lg">
+                        <div class="text-xs opacity-90 mb-1">Total Lent</div>
+                        <div class="text-xl font-bold">₹${Utils.formatIndianNumber(Math.round(totals.totalLent))}</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-orange-500 to-red-600 rounded-lg p-3 text-white shadow-lg">
+                        <div class="text-xs opacity-90 mb-1">Outstanding</div>
+                        <div class="text-xl font-bold">₹${Utils.formatIndianNumber(Math.round(totals.totalOutstanding))}</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg p-3 text-white shadow-lg">
+                        <div class="text-xs opacity-90 mb-1">Returned</div>
+                        <div class="text-xl font-bold">₹${Utils.formatIndianNumber(Math.round(totals.totalReturned))}</div>
+                    </div>
+                </div>
+                ${pendingRecords.length > 0 ? `
+                    <div class="mt-3 space-y-2">
+                        <p class="text-xs font-semibold text-gray-600">Pending Returns (${pendingRecords.length})</p>
+                        ${pendingRecords.slice(0, 3).map(record => {
+                            const outstanding = window.MoneyLent.calculateOutstanding(record);
+                            const expectedDate = new Date(record.expectedReturnDate);
+                            const isOverdue = expectedDate < new Date();
+                            return `
+                                <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                                    <div class="flex-1">
+                                        <p class="text-xs font-semibold text-gray-800">${Utils.escapeHtml(record.personName)}</p>
+                                        <p class="text-[10px] text-gray-500">${Utils.escapeHtml(record.purpose)}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-xs font-bold text-red-700">₹${Utils.formatIndianNumber(outstanding)}</p>
+                                        ${isOverdue ? '<p class="text-[9px] text-red-600">⏰ Overdue</p>' : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                        ${pendingRecords.length > 3 ? `
+                            <button onclick="Navigation.navigateTo('loans'); setTimeout(() => Loans.switchMainTab('lentout'), 100)" class="w-full text-xs text-teal-600 hover:text-teal-800 font-semibold py-1">
+                                +${pendingRecords.length - 3} more
+                            </button>
+                        ` : ''}
+                    </div>
+                ` : ''}
             </div>
         `;
     }
