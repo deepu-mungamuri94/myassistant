@@ -377,6 +377,7 @@ const Loans = {
         
         // Build borrowed tab content
         let borrowedContent = '';
+        let borrowedSummary = '';
         
         if (loans.length === 0) {
             borrowedContent = '<p class="text-gray-500 text-center py-8">No loans yet. Add your first one above!</p>';
@@ -424,7 +425,7 @@ const Loans = {
             closedLoans.sort((a, b) => new Date(a.firstEmiDate) - new Date(b.firstEmiDate));
             
             // Render summary for borrowed
-            borrowedContent += `
+            borrowedSummary = `
                 <div class="mb-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl p-4 shadow-lg">
                     <div class="grid grid-cols-2 gap-4 mb-3">
                         <div>
@@ -453,7 +454,7 @@ const Loans = {
             
             // Render tabs for Active and Closed loans
             if (activeLoans.length > 0 || closedLoans.length > 0) {
-                borrowedContent += `
+                borrowedContent = borrowedSummary + `
                     <div class="bg-white rounded-xl border-2 border-blue-200 overflow-hidden">
                         <!-- Tabs -->
                         <div class="border-b border-blue-200">
@@ -499,32 +500,38 @@ const Loans = {
             }
         }
         
-        // Build lent out tab content
-        const lentOutContent = window.MoneyLent ? `
-            <div class="mb-4 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl p-4 shadow-lg">
-                <div class="grid grid-cols-2 gap-4 mb-3">
-                    <div>
-                        <p class="text-xs opacity-90">Total Lent Out</p>
-                        <p class="text-base font-bold">₹${Utils.formatIndianNumber(moneyLentTotals.totalLent)}</p>
+        // Build lent out tab content with summary
+        let lentOutSummary = '';
+        if (window.MoneyLent && moneyLentTotals.count > 0) {
+            lentOutSummary = `
+                <div class="mb-4 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl p-4 shadow-lg">
+                    <div class="grid grid-cols-2 gap-4 mb-3">
+                        <div>
+                            <p class="text-xs opacity-90">Total Lent Out</p>
+                            <p class="text-base font-bold">₹${Utils.formatIndianNumber(moneyLentTotals.totalLent)}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs opacity-90">Outstanding</p>
+                            <p class="text-base font-bold">₹${Utils.formatIndianNumber(moneyLentTotals.totalOutstanding)}</p>
+                        </div>
                     </div>
-                    <div>
-                        <p class="text-xs opacity-90">Outstanding</p>
-                        <p class="text-base font-bold">₹${Utils.formatIndianNumber(moneyLentTotals.totalOutstanding)}</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs opacity-90">Total Returned</p>
+                            <p class="text-sm font-bold text-green-200">₹${Utils.formatIndianNumber(Math.round(moneyLentTotals.totalReturned))}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs opacity-90">Records</p>
+                            <p class="text-sm font-bold">${moneyLentTotals.count}</p>
+                        </div>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <p class="text-xs opacity-90">Total Returned</p>
-                        <p class="text-sm font-bold text-green-200">₹${Utils.formatIndianNumber(Math.round(moneyLentTotals.totalReturned))}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs opacity-90">Records</p>
-                        <p class="text-sm font-bold">${moneyLentTotals.count}</p>
-                    </div>
-                </div>
-            </div>
-            ${window.MoneyLent.renderList()}
-        ` : '<p class="text-gray-500 text-center py-8">Money Lent module not loaded</p>';
+            `;
+        }
+        
+        const lentOutContent = window.MoneyLent ? 
+            lentOutSummary + window.MoneyLent.renderList() : 
+            '<p class="text-gray-500 text-center py-8">Money Lent module not loaded</p>';
         
         // Build main HTML with tabs
         const html = `

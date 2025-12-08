@@ -1848,8 +1848,8 @@
             </div>
             
             <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Expected Return Date *</label>
-                <input type="date" id="money-lent-modal-expected-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Expected Return Month (Optional)</label>
+                <input type="month" id="money-lent-modal-expected-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
             </div>
             
             <div class="mb-3">
@@ -1890,8 +1890,8 @@
             </div>
             
             <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Return Date *</label>
-                <input type="date" id="record-return-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Return Month *</label>
+                <input type="month" id="record-return-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
             
             <div class="mb-3">
@@ -4913,11 +4913,6 @@
                 return;
             }
             
-            if (!expectedReturnDate) {
-                Utils.showError('Expected return date is required');
-                return;
-            }
-            
             try {
                 if (id) {
                     window.MoneyLent.update(id, personName, amount, dateGiven, purpose, expectedReturnDate, notes);
@@ -4944,8 +4939,11 @@
             
             const outstanding = window.MoneyLent.calculateOutstanding(record);
             
+            const today = new Date();
+            const currentMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+            
             document.getElementById('record-return-record-id').value = recordId;
-            document.getElementById('record-return-date').value = Utils.formatLocalDate(new Date());
+            document.getElementById('record-return-date').value = currentMonth;
             document.getElementById('record-return-amount').value = '';
             document.getElementById('record-return-amount').max = outstanding;
             

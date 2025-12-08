@@ -8,8 +8,8 @@ const MoneyLent = {
     /**
      * Add a new money lent record
      */
-    add(personName, amount, dateGiven, purpose, expectedReturnDate, notes = '') {
-        if (!personName || !amount || !dateGiven || !purpose || !expectedReturnDate) {
+    add(personName, amount, dateGiven, purpose, expectedReturnDate = '', notes = '') {
+        if (!personName || !amount || !dateGiven || !purpose) {
             throw new Error('All required fields must be filled');
         }
         
@@ -34,7 +34,7 @@ const MoneyLent = {
     /**
      * Update a money lent record
      */
-    update(id, personName, amount, dateGiven, purpose, expectedReturnDate, notes = '') {
+    update(id, personName, amount, dateGiven, purpose, expectedReturnDate = '', notes = '') {
         const record = this.getById(id);
         if (!record) throw new Error('Record not found');
         
@@ -42,7 +42,7 @@ const MoneyLent = {
         record.amount = parseFloat(amount);
         record.dateGiven = dateGiven;
         record.purpose = purpose.trim();
-        record.expectedReturnDate = expectedReturnDate;
+        record.expectedReturnDate = expectedReturnDate || '';
         record.notes = notes ? notes.trim() : '';
         record.lastUpdated = Utils.getCurrentTimestamp();
         
@@ -305,9 +305,9 @@ const MoneyLent = {
         }
         
         const dateGiven = new Date(record.dateGiven);
-        const expectedDate = new Date(record.expectedReturnDate);
+        const expectedDate = record.expectedReturnDate ? new Date(record.expectedReturnDate + '-01') : null;
         const today = new Date();
-        const isOverdue = status !== 'Fully Returned' && expectedDate < today;
+        const isOverdue = status !== 'Fully Returned' && expectedDate && expectedDate < today;
         
         return `
             <div class="bg-gradient-to-br ${bgColor} rounded-xl border-2 ${borderColor} hover:shadow-lg transition-all p-4">
@@ -341,7 +341,7 @@ const MoneyLent = {
                 <!-- Dates -->
                 <div class="flex justify-between text-xs text-gray-600 mb-3">
                     <span>📅 Given: ${dateGiven.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                    <span>🗓️ Expected: ${expectedDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                    <span>🗓️ Expected: ${expectedDate ? expectedDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' }) : 'Not specified'}</span>
                 </div>
                 
                 <!-- Returns History -->
@@ -351,16 +351,19 @@ const MoneyLent = {
                             💰 Returns History (${record.returns.length})
                         </summary>
                         <div class="p-2 space-y-1">
-                            ${record.returns.map((ret, idx) => `
+                            ${record.returns.map((ret, idx) => {
+                                const returnDate = new Date(ret.returnDate + '-01');
+                                return `
                                 <div class="flex justify-between items-center text-xs bg-green-50 p-2 rounded">
-                                    <span class="text-gray-700">${new Date(ret.returnDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}: ₹${Utils.formatIndianNumber(ret.amountReturned)}</span>
+                                    <span class="text-gray-700">${returnDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}: ₹${Utils.formatIndianNumber(ret.amountReturned)}</span>
                                     <button onclick="MoneyLent.deleteReturnWithConfirm(${record.id}, ${idx})" class="text-red-600 hover:text-red-800 px-1" title="Delete">
                                         <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                         </svg>
                                     </button>
                                 </div>
-                            `).join('')}
+                            `;
+                            }).join('')}
                         </div>
                     </details>
                 ` : ''}
@@ -394,8 +397,9 @@ const MoneyLent = {
         }
         
         const returnPayment = record.returns[returnIndex];
+        const returnDate = new Date(returnPayment.returnDate + '-01');
         const confirmed = await Utils.confirm(
-            `Delete return payment of ₹${Utils.formatIndianNumber(returnPayment.amountReturned)} dated ${new Date(returnPayment.returnDate).toLocaleDateString('en-IN')}?`,
+            `Delete return payment of ₹${Utils.formatIndianNumber(returnPayment.amountReturned)} from ${returnDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}?`,
             'Delete Return Payment'
         );
         
