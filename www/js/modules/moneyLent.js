@@ -296,78 +296,67 @@ const MoneyLent = {
         const isOverdue = status !== 'Fully Returned' && expectedDate && expectedDate < today;
         
         return `
-            <div class="bg-gradient-to-br ${bgColor} rounded-xl border-2 ${borderColor} hover:shadow-lg transition-all p-4">
-                <!-- Header -->
-                <div class="flex justify-between items-start mb-3">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-1">
-                            <h4 class="font-bold text-gray-900 text-base">👤 ${Utils.escapeHtml(record.personName)}</h4>
-                            <span class="px-2 py-0.5 ${statusBg} ${statusColor} rounded-full text-xs font-semibold">${status}</span>
-                            ${isOverdue ? '<span class="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-semibold">⏰ Overdue</span>' : ''}
-                        </div>
-                        <p class="text-xs text-gray-600 mb-1">
-                            <strong>Purpose:</strong> ${Utils.escapeHtml(record.purpose)}
-                        </p>
-                        ${record.notes ? `<p class="text-xs text-gray-500 italic">${Utils.escapeHtml(record.notes)}</p>` : ''}
+            <div class="bg-gradient-to-br ${bgColor} rounded-xl border-2 ${borderColor} hover:shadow-md transition-all p-3">
+                <!-- First Line: Person Name (left) and Action Icons (right) -->
+                <div class="flex justify-between items-start mb-2">
+                    <div class="flex items-center gap-2">
+                        <h4 class="font-bold text-gray-900 text-sm">👤 ${Utils.escapeHtml(record.personName)}</h4>
+                        <span class="px-2 py-0.5 ${statusBg} ${statusColor} rounded-full text-[10px] font-semibold">${status}</span>
+                        ${isOverdue ? '<span class="px-1.5 py-0.5 bg-red-100 text-red-700 rounded-full text-[9px] font-semibold">⏰</span>' : ''}
+                    </div>
+                    <div class="flex gap-1">
+                        ${outstanding > 0 ? `
+                            <button onclick="openRecordReturnModal(${record.id})" class="text-green-600 hover:text-green-800 p-0.5" title="Record Return">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </button>
+                        ` : ''}
+                        <button onclick="openMoneyLentModal(${record.id})" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                        </button>
+                        <button onclick="MoneyLent.delete(${record.id})" class="text-red-600 hover:text-red-800 p-0.5" title="Delete">
+                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
                 
-                <!-- Amount Info -->
-                <div class="grid grid-cols-2 gap-3 mb-3">
-                    <div class="bg-white bg-opacity-60 p-2 rounded-lg">
-                        <p class="text-xs text-gray-600">Amount Lent</p>
-                        <p class="font-bold text-gray-900">₹${Utils.formatIndianNumber(record.amount)}</p>
+                <!-- Second Line: Purpose and Notes -->
+                <div class="mb-2">
+                    <p class="text-xs text-gray-600">
+                        <strong>Purpose:</strong> ${Utils.escapeHtml(record.purpose)}
+                    </p>
+                    ${record.notes ? `<p class="text-xs text-gray-500 italic mt-0.5">${Utils.escapeHtml(record.notes)}</p>` : ''}
+                </div>
+                
+                <!-- Third Line: Amount Lent (left) and Outstanding (right) -->
+                <div class="flex justify-between items-center mb-2">
+                    <div>
+                        <p class="text-[10px] text-gray-500">Amount Lent</p>
+                        <p class="font-bold text-gray-900 text-sm">₹${Utils.formatIndianNumber(record.amount)}</p>
                     </div>
-                    <div class="bg-white bg-opacity-60 p-2 rounded-lg">
-                        <p class="text-xs text-gray-600">Outstanding</p>
-                        <p class="font-bold ${outstanding > 0 ? 'text-red-700' : 'text-green-700'}">₹${Utils.formatIndianNumber(outstanding)}</p>
+                    <div class="text-right">
+                        <p class="text-[10px] text-gray-500">Outstanding</p>
+                        <p class="font-bold ${outstanding > 0 ? 'text-red-700' : 'text-green-700'} text-base">₹${Utils.formatIndianNumber(outstanding)}</p>
                     </div>
                 </div>
                 
                 <!-- Dates -->
-                <div class="flex justify-between text-xs text-gray-600 mb-3">
-                    <span>📅 Given: ${dateGiven.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                    <span>🗓️ Expected: ${expectedDate ? expectedDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' }) : 'Not specified'}</span>
+                <div class="flex justify-between text-[11px] text-gray-500 mb-2">
+                    <span>📅 ${dateGiven.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                    ${expectedDate ? `<span>🗓️ ${expectedDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}</span>` : ''}
                 </div>
                 
-                <!-- Returns History -->
+                <!-- Returns History Button -->
                 ${record.returns && record.returns.length > 0 ? `
-                    <details class="mb-3 bg-white bg-opacity-40 rounded-lg">
-                        <summary class="cursor-pointer p-2 text-xs font-semibold text-gray-700 hover:bg-white hover:bg-opacity-60 rounded-lg transition-all">
-                            💰 Returns History (${record.returns.length})
-                        </summary>
-                        <div class="p-2 space-y-1">
-                            ${record.returns.map((ret, idx) => {
-                                const returnDate = new Date(ret.returnDate + '-01');
-                                return `
-                                <div class="flex justify-between items-center text-xs bg-green-50 p-2 rounded">
-                                    <span class="text-gray-700">${returnDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}: ₹${Utils.formatIndianNumber(ret.amountReturned)}</span>
-                                    <button onclick="MoneyLent.deleteReturnWithConfirm(${record.id}, ${idx})" class="text-red-600 hover:text-red-800 px-1" title="Delete">
-                                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                        </svg>
-                                    </button>
-                                </div>
-                            `;
-                            }).join('')}
-                        </div>
-                    </details>
+                    <button onclick="MoneyLent.showReturnsHistoryModal(${record.id})" class="w-full text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-lg py-2 transition-all">
+                        💰 Returns History (${record.returns.length}) →
+                    </button>
                 ` : ''}
-                
-                <!-- Action Buttons -->
-                <div class="flex gap-2">
-                    ${outstanding > 0 ? `
-                        <button onclick="openRecordReturnModal(${record.id})" class="flex-1 px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-all font-semibold text-sm">
-                            💵 Record Return
-                        </button>
-                    ` : ''}
-                    <button onclick="openMoneyLentModal(${record.id})" class="flex-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all font-semibold text-sm">
-                        ✏️ Edit
-                    </button>
-                    <button onclick="MoneyLent.delete(${record.id})" class="flex-1 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-all font-semibold text-sm">
-                        🗑️ Delete
-                    </button>
-                </div>
             </div>
         `;
     },
@@ -397,6 +386,110 @@ const MoneyLent = {
                 window.Loans.render();
             }
         }
+    },
+    
+    /**
+     * Show returns history modal
+     */
+    showReturnsHistoryModal(recordId) {
+        const record = this.getById(recordId);
+        if (!record) {
+            Utils.showError('Record not found');
+            return;
+        }
+        
+        const totalReturned = this.calculateTotalReturned(record);
+        const outstanding = this.calculateOutstanding(record);
+        
+        let modalHtml = `
+            <div id="returns-history-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-[1001] flex items-center justify-center p-4" onclick="if(event.target===this) MoneyLent.closeReturnsHistoryModal()">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+                    <div class="sticky top-0 bg-gradient-to-r from-teal-600 to-cyan-600 px-6 py-4 flex justify-between items-center rounded-t-2xl">
+                        <h2 class="text-xl font-bold text-white">Returns History</h2>
+                        <button onclick="MoneyLent.closeReturnsHistoryModal()" class="text-white hover:text-gray-200 p-1">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <!-- Record Info -->
+                        <div class="mb-4 bg-gray-50 rounded-lg p-3">
+                            <p class="text-sm font-semibold text-gray-800 mb-1">👤 ${Utils.escapeHtml(record.personName)}</p>
+                            <p class="text-xs text-gray-600"><strong>Purpose:</strong> ${Utils.escapeHtml(record.purpose)}</p>
+                            <div class="flex justify-between mt-2 pt-2 border-t border-gray-200">
+                                <div>
+                                    <p class="text-[10px] text-gray-500">Amount Lent</p>
+                                    <p class="text-sm font-bold text-gray-900">₹${Utils.formatIndianNumber(record.amount)}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-[10px] text-gray-500">Outstanding</p>
+                                    <p class="text-sm font-bold ${outstanding > 0 ? 'text-red-700' : 'text-green-700'}">₹${Utils.formatIndianNumber(outstanding)}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Returns List -->
+                        ${record.returns && record.returns.length > 0 ? `
+                            <div class="space-y-2">
+                                <p class="text-xs font-semibold text-gray-700 mb-2">Payment History</p>
+                                ${record.returns.map((ret, idx) => {
+                                    const returnDate = new Date(ret.returnDate + '-01');
+                                    return `
+                                    <div class="flex justify-between items-center bg-green-50 p-3 rounded-lg border border-green-200">
+                                        <div>
+                                            <p class="text-xs font-semibold text-gray-800">₹${Utils.formatIndianNumber(ret.amountReturned)}</p>
+                                            <p class="text-[10px] text-gray-500">${returnDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })}</p>
+                                        </div>
+                                        <button onclick="MoneyLent.deleteReturnFromModal(${record.id}, ${idx})" class="text-red-600 hover:text-red-800 p-1" title="Delete">
+                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                `;
+                                }).join('')}
+                                <div class="pt-2 mt-2 border-t border-gray-200">
+                                    <div class="flex justify-between text-sm">
+                                        <span class="font-semibold text-gray-700">Total Returned:</span>
+                                        <span class="font-bold text-green-700">₹${Utils.formatIndianNumber(totalReturned)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : `
+                            <p class="text-center text-gray-500 text-sm py-4">No returns recorded yet</p>
+                        `}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if any
+        const existing = document.getElementById('returns-history-modal');
+        if (existing) existing.remove();
+        
+        // Add to body
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+    
+    /**
+     * Close returns history modal
+     */
+    closeReturnsHistoryModal() {
+        const modal = document.getElementById('returns-history-modal');
+        if (modal) modal.remove();
+    },
+    
+    /**
+     * Delete return from modal
+     */
+    async deleteReturnFromModal(recordId, returnIndex) {
+        await this.deleteReturnWithConfirm(recordId, returnIndex);
+        // Close and reopen modal to refresh
+        this.closeReturnsHistoryModal();
+        setTimeout(() => {
+            this.showReturnsHistoryModal(recordId);
+        }, 100);
     }
 };
 
