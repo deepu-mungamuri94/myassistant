@@ -650,12 +650,12 @@ const Loans = {
         // Build main HTML - content only (tabs are fixed at bottom)
         const html = `
             <!-- Borrowed Content -->
-            <div id="main-content-borrowed">
+            <div id="main-content-borrowed" class="space-y-0">
                 ${borrowedContent}
             </div>
             
             <!-- Lent Out Content -->
-            <div id="main-content-lentout" class="hidden">
+            <div id="main-content-lentout" class="hidden space-y-0">
                 ${lentOutContent}
             </div>
         `;
