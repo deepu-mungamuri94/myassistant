@@ -783,7 +783,7 @@ const Expenses = {
                 upcoming.push({
                     title: recurring.name,
                     amount: recurring.amount,
-                    category: 'recurring',
+                    category: recurring.category || 'Other', // Use actual category from template
                     date: recurring.dueDate,
                     description: recurring.description || 'Recurring expense',
                     suggestedCard: null,
@@ -797,7 +797,7 @@ const Expenses = {
                 completed.push({
                     title: recurring.name,
                     amount: recurring.amount,
-                    category: 'recurring',
+                    category: recurring.category || 'Other', // Use actual category from template
                     date: recurring.dueDate,
                     description: recurring.description || 'Recurring expense',
                     suggestedCard: null,
