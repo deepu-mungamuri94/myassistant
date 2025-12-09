@@ -179,14 +179,42 @@ const App = {
         // Global error handler
         window.onerror = function(msg, url, lineNo, columnNo, error) {
             console.error('Global error:', { msg, url, lineNo, columnNo, error });
-            window.Utils.showError('An error occurred. Check console for details.');
+            
+            // Show detailed error in UI for mobile debugging
+            const errorMessage = error ? error.message : msg;
+            const fileName = url ? url.split('/').pop() : 'Unknown';
+            const errorDetails = `
+Error: ${errorMessage}
+
+Location: ${fileName}:${lineNo}:${columnNo}
+
+Type: Global Error
+            `.trim();
+            
+            window.Utils.showError(errorDetails);
             return false;
         };
         
         // Unhandled promise rejection handler
         window.onunhandledrejection = function(event) {
             console.error('Unhandled promise rejection:', event.reason);
-            window.Utils.showError('An error occurred. Check console for details.');
+            
+            // Show detailed error in UI for mobile debugging
+            const errorMessage = event.reason ? 
+                (event.reason.message || event.reason.toString()) : 
+                'Unknown promise rejection';
+            
+            const errorDetails = `
+Error: ${errorMessage}
+
+Type: Unhandled Promise Rejection
+
+${event.reason && event.reason.stack ? 
+    'Stack: ' + event.reason.stack.split('\n').slice(0, 2).join('\n') : 
+    'No stack trace available'}
+            `.trim();
+            
+            window.Utils.showError(errorDetails);
         };
         
         // App lifecycle listeners (for native app)
