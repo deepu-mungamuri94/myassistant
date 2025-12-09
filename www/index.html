@@ -4310,6 +4310,14 @@
             if (!category) {
                 showFieldError('expense-modal-category', 'Category is required');
                 hasErrors = true;
+            } else {
+                // Verify category exists
+                const categoryObj = window.ExpenseCategories ? window.ExpenseCategories.getByName(category) : null;
+                if (!categoryObj) {
+                    console.error('Invalid category:', category);
+                    showFieldError('expense-modal-category', 'Invalid category. Please select again.');
+                    hasErrors = true;
+                }
             }
             
             // Validate date
@@ -4349,8 +4357,19 @@
                 Loading.hide();
             } catch (error) {
                 Loading.hide();
-                // Unexpected errors still show modal
-                Utils.showError(error.message);
+                // Log full error details to console for debugging
+                console.error('Error saving expense:', error);
+                console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack,
+                    title: title,
+                    amount: amount,
+                    category: category,
+                    date: date,
+                    description: description
+                });
+                // Show error to user
+                Utils.showError(error.message || 'Failed to save expense. Check console for details.');
             }
         }
         
