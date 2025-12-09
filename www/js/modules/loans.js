@@ -599,7 +599,7 @@ const Loans = {
             if (lentOutRecords.length > 0) {
                 lentOutContent = `
                     ${lentOutSummary}
-                    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="bg-white rounded-xl border-2 border-teal-200 overflow-hidden">
                         <!-- Active/Closed Tabs for Lent Out -->
                         <div class="flex border-b border-gray-200">
                             <button id="lentout-tab-active" 
