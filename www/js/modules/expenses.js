@@ -537,6 +537,37 @@ const Expenses = {
     },
     
     /**
+     * Add recurring expense by ID - helper function to avoid string escaping issues
+     * @param {string} recurringId - The recurring expense ID
+     * @param {string} scheduledDate - The scheduled date for this occurrence
+     */
+    addRecurringExpenseById(recurringId, scheduledDate) {
+        // Find the recurring expense from the getRecurringExpenses() data
+        const recurringData = this.getRecurringExpenses();
+        const allRecurring = [...recurringData.upcoming, ...recurringData.completed];
+        
+        // Find the expense by recurringId and date
+        const expense = allRecurring.find(exp => 
+            String(exp.recurringId) === String(recurringId) && exp.date === scheduledDate
+        );
+        
+        if (!expense) {
+            Utils.showError('Recurring expense not found');
+            return;
+        }
+        
+        // Call the original function with the proper data
+        this.addRecurringExpense(
+            expense.title,
+            expense.amount,
+            expense.category,
+            scheduledDate,
+            expense.description || '',
+            recurringId
+        );
+    },
+    
+    /**
      * Check if viewing a single month (for recurring expenses display)
      * Only returns true for "Current Month" filter (starts from 1st of month)
      */
@@ -972,7 +1003,7 @@ const Expenses = {
                                         <div class="flex items-center gap-2 ml-2">
                                             <span class="text-sm font-semibold text-blue-700">${Utils.formatCurrency(exp.amount)}</span>
                                             ${!existsInExpenses ? `
-                                                <button onclick="Expenses.addRecurringExpense('${Utils.escapeHtml(exp.title).replace(/'/g, "\\'")}', ${exp.amount}, '${exp.category}', '${exp.date}', '${Utils.escapeHtml(displayDescription || '').replace(/'/g, "\\'")}', '${exp.recurringId || ''}'); event.stopPropagation();" 
+                                                <button onclick="Expenses.addRecurringExpenseById('${exp.recurringId}', '${exp.date}'); event.stopPropagation();" 
                                                         class="px-2 py-0.5 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors flex items-center gap-1" 
                                                         title="Add to Expenses">
                                                     <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
