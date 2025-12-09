@@ -88,11 +88,11 @@ const Dashboard = {
                         </button>
                     </div>
                 </div>
-                <div class="flex items-center justify-center max-w-full" style="height: 180px; gap: 16px;">
-                    <div style="flex: 0 0 200px; max-width: 200px;">
+                <div class="flex items-center justify-center max-w-full" style="height: 144px; gap: 16px;">
+                    <div style="flex: 0 0 160px; max-width: 160px;">
                         <canvas id="category-chart"></canvas>
                     </div>
-                    <div id="category-chart-legend" style="flex: 1; overflow-y: auto; max-height: 180px;"></div>
+                    <div id="category-chart-legend" style="flex: 1; overflow-y: auto; max-height: 144px;"></div>
                 </div>
             </div>
             
