@@ -4368,8 +4368,22 @@
                     date: date,
                     description: description
                 });
-                // Show error to user
-                Utils.showError(error.message || 'Failed to save expense. Check console for details.');
+                
+                // Show detailed error to user in UI (for mobile debugging)
+                const errorDetails = `
+Error: ${error.message || 'Unknown error'}
+
+Details:
+• Title: ${title}
+• Amount: ₹${amount}
+• Category: ${category}
+• Date: ${date}
+• Description: ${description || '(none)'}
+
+Technical: ${error.stack ? error.stack.split('\n')[0] : 'No stack trace'}
+                `.trim();
+                
+                Utils.showError(errorDetails);
             }
         }
         
