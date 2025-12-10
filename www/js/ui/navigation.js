@@ -9,7 +9,7 @@ const Navigation = {
     /**
      * Navigate to a specific view
      */
-    async navigateTo(view) {
+    async navigateTo(view, tab = null) {
         // Close menu immediately to prevent it from blocking auth modals
         this.closeMenu();
         
@@ -38,17 +38,28 @@ const Navigation = {
             this.currentView = view;
             
             // Update header title
-            this.updateHeaderTitle(view);
+            this.updateHeaderTitle(view, tab);
             
             // Refresh view data
             this.refreshView(view);
+            
+            // Switch to specific tab if provided
+            if (tab) {
+                setTimeout(() => {
+                    if (view === 'cards' && window.Cards) {
+                        window.Cards.switchTab(tab);
+                    } else if (view === 'loans' && window.Loans) {
+                        window.Loans.switchMainTab(tab);
+                    }
+                }, 100);
+            }
         }
     },
 
     /**
      * Update header title based on current view
      */
-    updateHeaderTitle(view) {
+    updateHeaderTitle(view, tab = null) {
         const headerTitle = document.getElementById('header-page-title');
         const header = document.querySelector('header');
         if (!headerTitle || !header) return;
@@ -80,14 +91,16 @@ const Navigation = {
                 bgClass: 'bg-gradient-to-r from-orange-600 to-amber-600'
             },
             loans: {
-                icon: '<svg class="w-6 h-6 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>',
-                title: 'Loans & Lent Out',
-                bgClass: 'bg-gradient-to-r from-blue-600 to-indigo-600'
+                icon: tab === 'lentout' 
+                    ? '<svg class="w-6 h-6 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m3.236 1.236l1.414-1.414m0 0l2.121-2.121m-2.121 2.121L8.5 13.5m9.5 2V19a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2h2"/></svg>'
+                    : '<svg class="w-6 h-6 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>',
+                title: tab === 'lentout' ? 'Lent Out' : (tab === 'borrowed' ? 'Loans' : 'Loans'),
+                bgClass: tab === 'lentout' ? 'bg-gradient-to-r from-teal-600 to-cyan-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'
             },
             cards: {
                 icon: '<svg class="w-6 h-6 text-white mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/></svg>',
-                title: 'Cards Manager',
-                bgClass: 'bg-gradient-to-r from-slate-600 to-blue-600'
+                title: tab === 'credit' ? 'Credit Cards' : (tab === 'debit' ? 'Debit Cards' : 'Cards'),
+                bgClass: tab === 'credit' ? 'bg-gradient-to-r from-indigo-600 to-purple-600' : (tab === 'debit' ? 'bg-gradient-to-r from-slate-600 to-gray-600' : 'bg-gradient-to-r from-slate-600 to-blue-600')
             },
             investments: {
                 icon: '<svg class="w-6 h-6 text-white mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/></svg>',
@@ -108,10 +121,10 @@ const Navigation = {
             'bg-gradient-to-r',
             // All "from-" colors
             'from-blue-600', 'from-purple-600', 'from-green-600', 'from-orange-600',
-            'from-slate-600', 'from-yellow-600',
+            'from-slate-600', 'from-yellow-600', 'from-teal-600', 'from-indigo-600',
             // All "to-" colors
             'to-cyan-600', 'to-pink-600', 'to-emerald-600', 'to-amber-600',
-            'to-blue-600', 'to-indigo-600', 'to-orange-600'
+            'to-blue-600', 'to-indigo-600', 'to-orange-600', 'to-gray-600', 'to-purple-600'
         );
         
         // Add new gradient classes

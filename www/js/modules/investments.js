@@ -242,7 +242,7 @@ const Investments = {
             'EPF': 'bg-green-100 text-green-800',
             'FD': 'bg-orange-100 text-orange-800'
         };
-        const typeBadge = `<span class="px-2 py-0.5 ${typeColors[inv.type] || 'bg-gray-100 text-gray-800'} rounded text-xs font-medium ml-2">${inv.type}</span>`;
+        const typeBadge = ``; // Removed since items are already grouped by type
 
         if (inv.type === 'SHARES') {
             const sharePrice = sharePrices.find(sp => sp.name === inv.name && sp.active);
@@ -501,7 +501,7 @@ const Investments = {
             'EPF': 'bg-green-100 text-green-800',
             'FD': 'bg-orange-100 text-orange-800'
         };
-        const typeBadge = `<span class="px-2 py-0.5 ${typeColors[inv.type] || 'bg-gray-100 text-gray-800'} rounded text-xs font-medium ml-2">${inv.type}</span>`;
+        const typeBadge = ``; // Removed since items are already grouped by type
 
         if (inv.type === 'SHARES') {
             const currencySymbol = inv.currency === 'USD' ? '$' : '₹';
@@ -1948,14 +1948,8 @@ const Investments = {
         let detailsHTML = '';
         let amount = 0;
         
-        // Type badge
-        const typeBadgeClass = {
-            'SHARES': 'badge-type-shares',
-            'GOLD': 'badge-type-gold',
-            'EPF': 'badge-type-epf',
-            'FD': 'badge-type-fd'
-        };
-        const typeBadge = `<span class="${typeBadgeClass[investment.type] || 'badge-type-shares'}">${investment.type}</span>`;
+        // Type badge - Removed since items are already grouped by type
+        const typeBadge = ``;
         
         if (investment.type === 'SHARES') {
             // For monthly investments, use their own price; for portfolio, use latest share price

@@ -226,7 +226,7 @@
     
     <!-- SIDE MENU -->
     <div id="side-menu" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-[10000]" onclick="Navigation.closeMenu()">
-        <div class="bg-gradient-to-br from-white to-purple-50 w-72 h-full shadow-2xl overflow-y-auto" onclick="event.stopPropagation()" ontouchmove="event.stopPropagation()">
+        <div class="bg-gradient-to-br from-white to-purple-50 w-64 h-full shadow-2xl overflow-y-auto" onclick="event.stopPropagation()" ontouchmove="event.stopPropagation()">
             <div class="menu-header p-2.5 bg-gradient-to-r from-purple-600 to-pink-600">
                 <div class="flex items-center mb-0.5">
                     <svg class="w-8 h-8 flex-shrink-0 mr-1.5" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -306,31 +306,31 @@
                 </div>
             </div>
             
-            <nav class="p-3 space-y-2">
+            <nav class="p-3 space-y-0.5">
                 <!-- Dashboard -->
-                <button onclick="Navigation.navigateTo('dashboard'); Navigation.closeMenu();" class="group w-full flex items-center p-3 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-blue-500 hover:to-cyan-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
-                    <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
-                        <svg class="w-4 h-4 text-white group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button onclick="Navigation.navigateTo('dashboard'); Navigation.closeMenu();" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-blue-500 hover:to-cyan-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
+                        <svg class="w-3.5 h-3.5 text-white group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                         </svg>
                     </div>
                     <div class="flex-1">
                         <span class="font-bold text-sm">Dashboard</span>
-                        <p class="text-[11px] opacity-70 group-hover:opacity-90">Overview & insights</p>
+                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Overview & insights</p>
                     </div>
                 </button>
                 
                 <!-- AI Advisor -->
-                <button onclick="Navigation.navigateTo('chat'); Navigation.closeMenu();" class="group w-full flex items-center p-3 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
-                    <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-400 to-pink-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
-                        <svg class="w-4 h-4 text-white group-hover:text-purple-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                <button onclick="Navigation.navigateTo('chat'); Navigation.closeMenu();" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-purple-400 to-pink-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
+                        <svg class="w-3.5 h-3.5 text-white group-hover:text-purple-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"/>
                             <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z"/>
                         </svg>
                     </div>
                     <div class="flex-1">
                         <span class="font-bold text-sm">AI Advisor</span>
-                        <p class="text-[11px] opacity-70 group-hover:opacity-90">Smart recommendations</p>
+                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Smart recommendations</p>
                     </div>
                 </button>
                 
@@ -344,79 +344,106 @@
                 </div>
                 
                 <!-- Income -->
-                <button onclick="Navigation.navigateTo('income')" class="group w-full flex items-center p-3 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-green-500 hover:to-emerald-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
-                    <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-green-400 to-emerald-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
-                        <span class="text-xl font-bold text-white group-hover:text-green-500 transition-colors">₹</span>
+                <button onclick="Navigation.navigateTo('income')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-green-500 hover:to-emerald-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-green-400 to-emerald-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
+                        <span class="text-base font-bold text-white group-hover:text-green-500 transition-colors">₹</span>
                     </div>
                     <div class="flex-1">
                         <span class="font-bold text-sm">Income</span>
-                        <p class="text-[11px] opacity-70 group-hover:opacity-90">Salary & earnings</p>
+                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Salary/Earnings</p>
                     </div>
                 </button>
                 
                 <!-- Expenses -->
-                <button onclick="Navigation.navigateTo('expenses')" class="group w-full flex items-center p-3 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
-                    <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-400 to-pink-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
-                        <svg class="w-4 h-4 text-white group-hover:text-purple-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button onclick="Navigation.navigateTo('expenses')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-purple-400 to-pink-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
+                        <svg class="w-3.5 h-3.5 text-white group-hover:text-purple-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
                         </svg>
                     </div>
                     <div class="flex-1">
                         <span class="font-bold text-sm">Expenses</span>
-                        <p class="text-[11px] opacity-70 group-hover:opacity-90">Track spending</p>
+                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Track spending</p>
                     </div>
                 </button>
                 
                 <!-- Recurring Payments -->
-                <button onclick="Navigation.navigateTo('recurring')" class="group w-full flex items-center p-3 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-orange-500 hover:to-amber-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
-                    <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-400 to-amber-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
-                        <svg class="w-4 h-4 text-white group-hover:text-orange-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button onclick="Navigation.navigateTo('recurring')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-orange-500 hover:to-amber-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-orange-400 to-amber-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
+                        <svg class="w-3.5 h-3.5 text-white group-hover:text-orange-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                         </svg>
                     </div>
                     <div class="flex-1">
                         <span class="font-bold text-sm">Recurring Payments</span>
-                        <p class="text-[11px] opacity-70 group-hover:opacity-90">Auto expenses</p>
+                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Auto expenses</p>
                     </div>
                 </button>
                 
-                <!-- Loans & Lent Out -->
-                <button onclick="Navigation.navigateTo('loans')" class="group w-full flex items-center p-3 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-blue-500 hover:to-indigo-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
-                    <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
-                        <svg class="w-4 h-4 text-white group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <!-- Loans -->
+                <button onclick="Navigation.navigateTo('loans', 'borrowed')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-blue-500 hover:to-indigo-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
+                        <svg class="w-3.5 h-3.5 text-white group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
                         </svg>
                     </div>
                     <div class="flex-1">
-                        <span class="font-bold text-sm">Loans & Lent Out</span>
-                        <p class="text-[11px] opacity-70 group-hover:opacity-90">Track borrowings & lendings</p>
+                        <span class="font-bold text-sm">Loans</span>
+                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Borrowings</p>
                     </div>
                 </button>
                 
-                <!-- Cards Manager -->
-                <button onclick="Navigation.navigateTo('cards')" class="group w-full flex items-center p-3 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-slate-600 hover:to-blue-600 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
-                    <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-600 to-blue-600 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
-                        <svg class="w-4 h-4 text-white group-hover:text-slate-600 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                <!-- Lent Out -->
+                <button onclick="Navigation.navigateTo('loans', 'lentout')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-teal-500 hover:to-cyan-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
+                        <svg class="w-3.5 h-3.5 text-white group-hover:text-teal-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m3.236 1.236l1.414-1.414m0 0l2.121-2.121m-2.121 2.121L8.5 13.5m9.5 2V19a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2h2"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <span class="font-bold text-sm">Lent Out</span>
+                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Lendings</p>
+                    </div>
+                </button>
+                
+                <!-- Credit Cards -->
+                <button onclick="Navigation.navigateTo('cards', 'credit')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-indigo-500 hover:to-purple-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
+                        <svg class="w-3.5 h-3.5 text-white group-hover:text-indigo-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
                             <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/>
                         </svg>
                     </div>
                     <div class="flex-1">
-                        <span class="font-bold text-sm">Cards Manager</span>
-                        <p class="text-[11px] opacity-70 group-hover:opacity-90">Credit & debit cards</p>
+                        <span class="font-bold text-sm">Credit Cards</span>
+                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Credit cards</p>
+                    </div>
+                </button>
+                
+                <!-- Debit Cards -->
+                <button onclick="Navigation.navigateTo('cards', 'debit')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-slate-500 hover:to-gray-600 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-slate-400 to-gray-500 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
+                        <svg class="w-3.5 h-3.5 text-white group-hover:text-slate-600 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
+                            <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <span class="font-bold text-sm">Debit Cards</span>
+                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Debit cards</p>
                     </div>
                 </button>
                 
                 <!-- Investments -->
-                <button onclick="Navigation.navigateTo('investments')" class="group w-full flex items-center p-3 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-yellow-500 hover:to-orange-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
-                    <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
-                        <svg class="w-4 h-4 text-white group-hover:text-yellow-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                <button onclick="Navigation.navigateTo('investments')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-yellow-500 hover:to-orange-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
+                        <svg class="w-3.5 h-3.5 text-white group-hover:text-yellow-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/>
                         </svg>
                     </div>
                     <div class="flex-1">
                         <span class="font-bold text-sm">Investments</span>
-                        <p class="text-[11px] opacity-70 group-hover:opacity-90">Portfolio tracker</p>
+                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Portfolio tracker</p>
                     </div>
                 </button>
                 
@@ -430,15 +457,15 @@
                 </div>
                 
                 <!-- Credentials -->
-                <button onclick="Navigation.navigateTo('credentials')" class="group w-full flex items-center p-3 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-blue-500 hover:to-cyan-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
-                    <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
-                        <svg class="w-4 h-4 text-white group-hover:text-blue-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                <button onclick="Navigation.navigateTo('credentials')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-blue-500 hover:to-cyan-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
+                        <svg class="w-3.5 h-3.5 text-white group-hover:text-blue-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
                         </svg>
                     </div>
                     <div class="flex-1">
                         <span class="font-bold text-sm">Credentials</span>
-                        <p class="text-[11px] opacity-70 group-hover:opacity-90">Secure passwords</p>
+                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Secure passwords</p>
                     </div>
                 </button>
                 
@@ -611,26 +638,16 @@
         <!-- LOANS VIEW -->
         <div id="loans-view" class="hidden">
             <div class="p-5 pb-24">
+                <!-- Floating + Button (Bottom Right) - Will change color based on tab -->
+                <button id="loans-add-btn" onclick="openLoanOrLentModal()" class="fixed right-4 bottom-20 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Loan">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+                
                 <!-- Loans List -->
                 <div id="loans-list">
                     <!-- Loans will be listed here -->
-                </div>
-            </div>
-            
-            <!-- Fixed Bottom Tabs -->
-            <div class="fixed bottom-0 left-0 right-0 border-t border-gray-300 p-3" style="z-index: 9999; background-color: #F5FEFD;">
-                <div class="flex gap-2 items-center" style="max-width: 100%; overflow: hidden;">
-                    <button id="loans-bottom-tab-borrowed" onclick="Loans.switchMainTab('borrowed')" class="flex-1 py-3 px-3 rounded-lg transition-all font-medium text-sm bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md" style="flex-shrink: 0;">
-                        💳 Loans
-                    </button>
-                    <button id="loans-bottom-tab-lentout" onclick="Loans.switchMainTab('lentout')" class="flex-1 py-3 px-3 rounded-lg transition-all font-medium text-sm bg-gray-200 text-gray-700 hover:bg-gray-300" style="flex-shrink: 0;">
-                        🤝 Lent Out
-                    </button>
-                    <button id="loans-add-button" onclick="openLoanOrLentModal()" class="py-3 px-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg hover:shadow-lg transition-all font-medium text-sm flex items-center" style="flex-shrink: 0;" title="Add">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
-                        </svg>
-                    </button>
                 </div>
             </div>
         </div>
@@ -638,10 +655,12 @@
         <!-- CARDS VIEW -->
         <div id="cards-view" class="hidden">
             <div class="p-5 pb-24">
-                <!-- Search Box -->
-                <div class="mb-4">
-                    <input type="text" id="cards-search" placeholder="🔍 Search cards..." class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" oninput="searchCards()">
-                </div>
+                <!-- Floating + Button (Bottom Right) -->
+                <button onclick="openCardModal()" class="fixed right-4 bottom-20 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Card">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
                 
                 <!-- Cards List -->
                 <div id="cards-list" class="space-y-3">
@@ -649,21 +668,9 @@
                 </div>
             </div>
             
-            <!-- Fixed Bottom Bar -->
+            <!-- Fixed Bottom Bar (Search) -->
             <div class="fixed bottom-0 left-0 right-0 border-t border-gray-300 p-3" style="z-index: 9999; background-color: #F5FEFD;">
-                <div class="flex gap-2 items-center" style="max-width: 100%; overflow: hidden;">
-                    <button id="credit-tab" onclick="Cards.switchTab('credit')" class="flex-1 py-3 px-3 rounded-lg transition-all font-medium text-sm bg-gradient-to-r from-slate-600 to-blue-600 text-white shadow-md" style="flex-shrink: 0;">
-                        💳 Credit
-                    </button>
-                    <button id="debit-tab" onclick="Cards.switchTab('debit')" class="flex-1 py-3 px-3 rounded-lg transition-all font-medium text-sm bg-gray-200 text-gray-700 hover:bg-gray-300" style="flex-shrink: 0;">
-                        💸 Debit
-                    </button>
-                    <button onclick="openCardModal()" class="py-3 px-3 bg-gradient-to-r from-slate-600 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all font-medium text-sm flex items-center" style="flex-shrink: 0;">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
-                        </svg>
-                    </button>
-                </div>
+                <input type="text" id="cards-search" placeholder="🔍 Search cards..." class="w-full p-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" oninput="searchCards()">
             </div>
         </div>
         

@@ -106,9 +106,8 @@ const Loans = {
         const borrowedContent = document.getElementById('main-content-borrowed');
         const lentoutContent = document.getElementById('main-content-lentout');
         
-        // Update bottom tabs
-        const borrowedBottomBtn = document.getElementById('loans-bottom-tab-borrowed');
-        const lentoutBottomBtn = document.getElementById('loans-bottom-tab-lentout');
+        // Update floating button color
+        const addBtn = document.getElementById('loans-add-btn');
         
         // Reset all tabs to inactive state
         if (borrowedBtn) borrowedBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
@@ -120,13 +119,11 @@ const Loans = {
         if (tab === 'borrowed') {
             if (borrowedBtn) borrowedBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-blue-500 text-blue-600';
             if (borrowedContent) borrowedContent.classList.remove('hidden');
-            if (borrowedBottomBtn) borrowedBottomBtn.className = 'flex-1 py-3 px-3 rounded-lg transition-all font-medium text-sm bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md';
-            if (lentoutBottomBtn) lentoutBottomBtn.className = 'flex-1 py-3 px-3 rounded-lg transition-all font-medium text-sm bg-gray-200 text-gray-700 hover:bg-gray-300';
+            if (addBtn) addBtn.className = 'fixed right-4 bottom-20 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110';
         } else if (tab === 'lentout') {
             if (lentoutBtn) lentoutBtn.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-teal-500 text-teal-600';
             if (lentoutContent) lentoutContent.classList.remove('hidden');
-            if (borrowedBottomBtn) borrowedBottomBtn.className = 'flex-1 py-3 px-3 rounded-lg transition-all font-medium text-sm bg-gray-200 text-gray-700 hover:bg-gray-300';
-            if (lentoutBottomBtn) lentoutBottomBtn.className = 'flex-1 py-3 px-3 rounded-lg transition-all font-medium text-sm bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-md';
+            if (addBtn) addBtn.className = 'fixed right-4 bottom-20 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110';
         }
     },
     
