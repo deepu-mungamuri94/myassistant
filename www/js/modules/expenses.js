@@ -587,6 +587,45 @@ const Expenses = {
     },
     
     /**
+     * Check if we should show recurring expenses
+     * Show only for current period filters (Today, This Week, This Month)
+     * Hide for broad filters (All Time, This Year, Custom Range spanning multiple months)
+     */
+    shouldShowRecurringExpenses() {
+        if (!this.startDate || !this.endDate) return false;
+        
+        const start = new Date(this.startDate);
+        const end = new Date(this.endDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Calculate the span in days
+        const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        
+        // Hide if spanning more than 31 days (likely "This Year" or "All Time")
+        if (daysDiff > 31) {
+            return false;
+        }
+        
+        // Must be viewing current or future period (not historical)
+        if (end < today) {
+            return false;
+        }
+        
+        // Show for current month view (starts from 1st of the month)
+        if (this.isSingleMonth()) {
+            return true;
+        }
+        
+        // Also allow if it's a short period (≤7 days) that includes today
+        if (daysDiff <= 7 && start <= today && end >= today) {
+            return true; // This Week or Today
+        }
+        
+        return false;
+    },
+    
+    /**
      * Update the summary section with total, count, and date range
      */
     updateSummary(expenses) {
@@ -880,15 +919,15 @@ const Expenses = {
         // Update summary section
         this.updateSummary(filteredExpenses);
         
-        // Check if viewing a single month (for recurring expenses display)
-        const isSingleMonth = this.isSingleMonth();
+        // Check if we should show recurring expenses (only for current period filters)
+        const shouldShowRecurring = this.shouldShowRecurringExpenses();
         
-        // Get recurring expenses (upcoming and completed) - only for monthly view
+        // Get recurring expenses (upcoming and completed) - only for current period filters
         let upcomingRecurring = [];
         let completedRecurring = [];
         let totalRecurring = 0;
         
-        if (isSingleMonth) {
+        if (shouldShowRecurring) {
             const recurringData = this.getRecurringExpenses();
             upcomingRecurring = recurringData.upcoming;
             completedRecurring = recurringData.completed;
