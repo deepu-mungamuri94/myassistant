@@ -8,6 +8,78 @@ const Dashboard = {
     selectedMonthRange: null,
     // Store selected filter month for second line cards
     selectedFilterMonth: null,
+    // Store excluded categories (for category chart filtering)
+    excludedCategories: null,
+    
+    /**
+     * Initialize excluded categories from localStorage
+     */
+    initExcludedCategories() {
+        if (this.excludedCategories !== null) return; // Already initialized
+        
+        try {
+            const saved = localStorage.getItem('dashboard_excluded_categories');
+            if (saved) {
+                this.excludedCategories = new Set(JSON.parse(saved));
+                
+                // Safety check: ensure at least one category is visible
+                const allData = this.getCategoryData(true);
+                const visibleCount = allData.filter(item => !this.excludedCategories.has(item.category)).length;
+                
+                if (visibleCount === 0 && allData.length > 0) {
+                    // If all categories are excluded, reset to default
+                    console.warn('All categories were excluded. Resetting to defaults.');
+                    this.excludedCategories = new Set(['EMI', 'Personal & Family']);
+                    this.saveExcludedCategories();
+                }
+            } else {
+                // Default exclusions: EMI and Personal & Family
+                this.excludedCategories = new Set(['EMI', 'Personal & Family']);
+                this.saveExcludedCategories();
+            }
+        } catch (e) {
+            console.error('Error loading excluded categories:', e);
+            this.excludedCategories = new Set(['EMI', 'Personal & Family']);
+        }
+    },
+    
+    /**
+     * Save excluded categories to localStorage
+     */
+    saveExcludedCategories() {
+        try {
+            localStorage.setItem('dashboard_excluded_categories', JSON.stringify([...this.excludedCategories]));
+        } catch (e) {
+            console.error('Error saving excluded categories:', e);
+        }
+    },
+    
+    /**
+     * Toggle category exclusion
+     */
+    toggleCategoryExclusion(category) {
+        this.initExcludedCategories();
+        
+        if (this.excludedCategories.has(category)) {
+            // Always allow re-enabling
+            this.excludedCategories.delete(category);
+        } else {
+            // Check if this is the last visible category
+            const allData = this.getCategoryData(true);
+            const visibleCount = allData.filter(item => !this.excludedCategories.has(item.category)).length;
+            
+            if (visibleCount <= 1) {
+                // Don't allow excluding the last category
+                window.Toast.show('Cannot exclude the last category', 'error');
+                return;
+            }
+            
+            this.excludedCategories.add(category);
+        }
+        
+        this.saveExcludedCategories();
+        this.renderCategoryChart();
+    },
     
     /**
      * Render dashboard
@@ -15,6 +87,9 @@ const Dashboard = {
     render() {
         const container = document.getElementById('dashboard-content');
         if (!container) return;
+        
+        // Initialize excluded categories
+        this.initExcludedCategories();
         
         // Destroy all existing chart instances first
         this.destroyAllCharts();
@@ -626,7 +701,7 @@ const Dashboard = {
     /**
      * Get category-wise expenses for selected month
      */
-    getCategoryData() {
+    getCategoryData(includeExcluded = false) {
         const selector = document.getElementById('category-month-selector');
         if (!selector) return [];
         
@@ -658,12 +733,14 @@ const Dashboard = {
             categoryMap[category] = (categoryMap[category] || 0) + rec.amount;
         });
         
-        // Convert to array, format category names properly, and sort by amount
+        // Convert to array, format category names properly, filter excluded, and sort by amount
+        this.initExcludedCategories();
         return Object.entries(categoryMap)
             .map(([category, amount]) => ({ 
                 category: this.formatCategoryName(category), 
                 amount 
             }))
+            .filter(item => includeExcluded || !this.excludedCategories.has(item.category))
             .sort((a, b) => b.amount - a.amount);
     },
     
@@ -702,7 +779,8 @@ const Dashboard = {
             return;
         }
         
-        const data = this.getCategoryData();
+        // Get only non-excluded categories for the chart
+        const data = this.getCategoryData(false);
         
         // Destroy existing chart
         if (this.categoryChartInstance) {
@@ -727,6 +805,17 @@ const Dashboard = {
             'rgba(234, 179, 8, 0.85)',  // Yellow
             'rgba(132, 204, 22, 0.85)'  // Lime
         ];
+        
+        // If no visible categories, still show the legend so users can re-enable categories
+        if (data.length === 0) {
+            // Clear chart
+            this.categoryChartInstance = null;
+            
+            // Still generate the legend with all categories (so user can click to re-enable)
+            this.generateCategoryLegend(data, colors);
+            
+            return;
+        }
         
         this.categoryChartInstance = new Chart(ctx, {
             type: 'pie',
@@ -780,28 +869,55 @@ const Dashboard = {
             }
         });
         
-        // Generate HTML legend with gray percentages
+        // Generate HTML legend with gray percentages (shows all categories including excluded)
         this.generateCategoryLegend(data, colors);
     },
     
     /**
-     * Generate HTML legend for category chart with gray percentages
+     * Generate HTML legend for category chart with gray percentages and click toggle
      */
-    generateCategoryLegend(data, colors) {
+    generateCategoryLegend(visibleData, colors) {
         const legendContainer = document.getElementById('category-chart-legend');
         if (!legendContainer) return;
         
-        const total = data.reduce((sum, d) => sum + d.amount, 0);
+        // Get all categories (including excluded ones)
+        const allData = this.getCategoryData(true);
+        
+        // Calculate total from only visible (non-excluded) categories
+        const visibleTotal = allData
+            .filter(item => !this.excludedCategories.has(item.category))
+            .reduce((sum, d) => sum + d.amount, 0);
         
         let html = '<div style="display: flex; flex-direction: column; gap: 6px;">';
-        data.forEach((item, i) => {
-            const percentage = ((item.amount / total) * 100).toFixed(1);
-            const color = colors[i % colors.length];
+        
+        // Show message if no categories are visible
+        if (visibleTotal === 0 && allData.length > 0) {
             html += `
-                <div style="display: flex; align-items: center; gap: 6px; font-size: 10px;">
-                    <div style="width: 10px; height: 10px; border-radius: 50%; background-color: ${color}; flex-shrink: 0;"></div>
-                    <span style="color: #374151; font-weight: 500;">${item.category}</span>
-                    <span style="color: #9ca3af; font-weight: normal;">(${percentage}%)</span>
+                <div style="color: #9ca3af; font-size: 10px; font-style: italic; margin-bottom: 6px; text-align: center;">
+                    Click on a category below to show it
+                </div>
+            `;
+        }
+        
+        allData.forEach((item, i) => {
+            const isExcluded = this.excludedCategories.has(item.category);
+            
+            // Calculate percentage relative to visible categories only
+            const percentage = visibleTotal > 0 && !isExcluded 
+                ? ((item.amount / visibleTotal) * 100).toFixed(1)
+                : '0.0';
+            
+            const color = colors[i % colors.length];
+            
+            html += `
+                <div onclick="Dashboard.toggleCategoryExclusion('${item.category.replace(/'/g, "\\'")}')" 
+                     style="display: flex; align-items: center; gap: 6px; font-size: 10px; cursor: pointer; user-select: none; padding: 2px 4px; border-radius: 4px; transition: background-color 0.2s;"
+                     onmouseover="this.style.backgroundColor='rgba(0,0,0,0.05)'"
+                     onmouseout="this.style.backgroundColor='transparent'"
+                     title="Click to ${isExcluded ? 'include' : 'exclude'} from chart">
+                    <div style="width: 10px; height: 10px; border-radius: 50%; background-color: ${color}; flex-shrink: 0; opacity: ${isExcluded ? '0.3' : '1'};"></div>
+                    <span style="color: #374151; font-weight: 500; ${isExcluded ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${item.category}</span>
+                    <span style="color: #9ca3af; font-weight: normal; ${isExcluded ? 'text-decoration: line-through; opacity: 0.5;' : ''}">(${percentage}%)</span>
                 </div>
             `;
         });
