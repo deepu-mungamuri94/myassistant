@@ -888,6 +888,14 @@ const Dashboard = {
             .filter(item => !this.excludedCategories.has(item.category))
             .reduce((sum, d) => sum + d.amount, 0);
         
+        // Build a map of visible categories to their chart color index
+        // This ensures legend colors match chart colors exactly
+        const visibleCategories = allData.filter(item => !this.excludedCategories.has(item.category));
+        const categoryColorMap = {};
+        visibleCategories.forEach((item, idx) => {
+            categoryColorMap[item.category] = colors[idx % colors.length];
+        });
+        
         let html = '<div style="display: flex; flex-direction: column; gap: 6px;">';
         
         // Show message if no categories are visible
@@ -907,7 +915,10 @@ const Dashboard = {
                 ? ((item.amount / visibleTotal) * 100).toFixed(1)
                 : '0.0';
             
-            const color = colors[i % colors.length];
+            // Use the color from chart for visible categories, or a gray color for excluded ones
+            const color = isExcluded 
+                ? 'rgba(156, 163, 175, 0.5)' // Gray for excluded categories
+                : categoryColorMap[item.category];
             
             html += `
                 <div onclick="Dashboard.toggleCategoryExclusion('${item.category.replace(/'/g, "\\'")}')" 
@@ -915,7 +926,7 @@ const Dashboard = {
                      onmouseover="this.style.backgroundColor='rgba(0,0,0,0.05)'"
                      onmouseout="this.style.backgroundColor='transparent'"
                      title="Click to ${isExcluded ? 'include' : 'exclude'} from chart">
-                    <div style="width: 10px; height: 10px; border-radius: 50%; background-color: ${color}; flex-shrink: 0; opacity: ${isExcluded ? '0.3' : '1'};"></div>
+                    <div style="width: 10px; height: 10px; border-radius: 50%; background-color: ${color}; flex-shrink: 0;"></div>
                     <span style="color: #374151; font-weight: 500; ${isExcluded ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${item.category}</span>
                     <span style="color: #9ca3af; font-weight: normal; ${isExcluded ? 'text-decoration: line-through; opacity: 0.5;' : ''}">(${percentage}%)</span>
                 </div>
