@@ -1499,6 +1499,11 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             Utils.showSuccess('Bill updated');
         }
         
+        // Update card's outstanding if it's 0 or null and bill has value
+        if (card && amount > 0 && (!card.outstanding || card.outstanding === 0)) {
+            card.outstanding = amount;
+        }
+        
         window.Storage.save();
         if (modal) modal.remove();
         this.render();

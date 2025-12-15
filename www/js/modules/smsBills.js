@@ -563,6 +563,15 @@ Return ONLY the JSON array, no explanations:`;
                 // Add new bill
                 window.DB.cardBills.push(bill);
             }
+            
+            // Update card's outstanding if it's 0 or null and bill has value
+            if (bill.amount > 0) {
+                const card = window.DB.cards?.find(c => String(c.id) === String(bill.cardId));
+                if (card && (!card.outstanding || card.outstanding === 0)) {
+                    card.outstanding = bill.amount;
+                    console.log(`Updated card ${card.name} outstanding to ${bill.amount}`);
+                }
+            }
         });
         
         // Only mark SMS as processed if they resulted in a bill
