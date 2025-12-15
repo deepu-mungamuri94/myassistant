@@ -2092,7 +2092,7 @@
     </div>
     
     <!-- COMMON SUCCESS MODAL (Used across all modules) -->
-    <div id="common-success-modal" class="hidden fixed inset-0 bg-white bg-opacity-60 z-[60] flex items-center justify-center">
+    <div id="common-success-modal" class="hidden fixed inset-0 bg-white bg-opacity-60 z-[10015] flex items-center justify-center">
         <div class="flex flex-col items-center">
             <!-- Animated Checkmark Circle -->
             <div class="relative">
@@ -2109,7 +2109,7 @@
     </div>
     
     <!-- COMMON ERROR MODAL (Used across all modules) -->
-    <div id="common-error-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
+    <div id="common-error-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10015] flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in relative">
             <!-- Close Button (Top Right) -->
             <button onclick="(function() { const modal = document.getElementById('common-error-modal'); Utils.hideModal('common-error-modal'); if (modal._errorCallback) { modal._errorCallback(); modal._errorCallback = null; } })()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors">
@@ -2144,7 +2144,7 @@
     </div>
     
     <!-- COMMON INFO MODAL (Used across all modules for informational messages) -->
-    <div id="common-info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
+    <div id="common-info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10015] flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in relative">
             <!-- Close Button (Top Right) -->
             <button onclick="(function() { const modal = document.getElementById('common-info-modal'); Utils.hideModal('common-info-modal'); if (modal._infoCallback) { modal._infoCallback(); modal._infoCallback = null; } })()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors">
@@ -2593,6 +2593,38 @@
                         <input type="text" id="card-modal-credit-limit" placeholder="Credit Limit (e.g., 50000) - Optional" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="clearFieldError('card-modal-credit-limit')">
                     </div>
                     <div id="card-modal-credit-limit-error" class="text-red-600 text-xs mt-1 hidden"></div>
+                </div>
+                
+                <!-- Statement & Bill Dates -->
+                <div class="flex gap-2 mb-2">
+                    <div class="flex-1">
+                        <label class="block text-xs text-gray-500 mb-1">Statement Date</label>
+                        <select id="card-modal-statement-date" onchange="updateDueDateInfo()" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                            <option value="">Select day...</option>
+                            <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option><option value="5">5th</option>
+                            <option value="6">6th</option><option value="7">7th</option><option value="8">8th</option><option value="9">9th</option><option value="10">10th</option>
+                            <option value="11">11th</option><option value="12">12th</option><option value="13">13th</option><option value="14">14th</option><option value="15">15th</option>
+                            <option value="16">16th</option><option value="17">17th</option><option value="18">18th</option><option value="19">19th</option><option value="20">20th</option>
+                            <option value="21">21st</option><option value="22">22nd</option><option value="23">23rd</option><option value="24">24th</option><option value="25">25th</option>
+                            <option value="26">26th</option><option value="27">27th</option><option value="28">28th</option><option value="29">29th</option><option value="30">30th</option><option value="31">31st</option>
+                        </select>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-xs text-gray-500 mb-1">Bill Due Date</label>
+                        <select id="card-modal-bill-date" onchange="updateDueDateInfo()" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                            <option value="">Select day...</option>
+                            <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option><option value="5">5th</option>
+                            <option value="6">6th</option><option value="7">7th</option><option value="8">8th</option><option value="9">9th</option><option value="10">10th</option>
+                            <option value="11">11th</option><option value="12">12th</option><option value="13">13th</option><option value="14">14th</option><option value="15">15th</option>
+                            <option value="16">16th</option><option value="17">17th</option><option value="18">18th</option><option value="19">19th</option><option value="20">20th</option>
+                            <option value="21">21st</option><option value="22">22nd</option><option value="23">23rd</option><option value="24">24th</option><option value="25">25th</option>
+                            <option value="26">26th</option><option value="27">27th</option><option value="28">28th</option><option value="29">29th</option><option value="30">30th</option><option value="31">31st</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- Due Date Info -->
+                <div id="card-modal-due-date-info" class="text-xs text-blue-600 mb-3 hidden">
+                    <span class="font-medium">📅 Next due:</span> <span id="card-modal-due-date-value"></span>
                 </div>
             </div>
             
@@ -3422,8 +3454,8 @@
         </div>
     </div>
     
-    <!-- CUSTOM CONFIRM MODAL -->
-    <div id="custom-confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-[10001] flex items-center justify-center p-4">
+    <!-- CUSTOM CONFIRM MODAL (highest z-index) -->
+    <div id="custom-confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-[10010] flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full animate-bounce-in">
             <div class="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-full mx-auto mb-4">
                 <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3507,6 +3539,7 @@
     <script src="js/modules/dashboard.js"></script>
     <script src="js/modules/credentials.js"></script>
     <script src="js/modules/cards.js"></script>
+    <script src="js/modules/smsBills.js"></script>
     <script src="js/modules/expenses.js"></script>
     <script src="js/modules/income.js"></script>
     <script src="js/modules/recurringExpenses.js"></script>
@@ -3666,6 +3699,64 @@
             }
         }
         
+        // Update due date info based on statement and bill dates
+        window.updateDueDateInfo = function() {
+            const statementDate = parseInt(document.getElementById('card-modal-statement-date').value);
+            const billDate = parseInt(document.getElementById('card-modal-bill-date').value);
+            const infoDiv = document.getElementById('card-modal-due-date-info');
+            const valueSpan = document.getElementById('card-modal-due-date-value');
+            
+            if (!billDate) {
+                infoDiv.classList.add('hidden');
+                return;
+            }
+            
+            // Calculate next due date
+            const today = new Date();
+            const currentDay = today.getDate();
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+            
+            let dueMonth = currentMonth;
+            let dueYear = currentYear;
+            
+            // If statement date is provided
+            if (statementDate) {
+                // If bill due day is after statement day (same month) or before/equal (next month)
+                if (billDate > statementDate) {
+                    // Due in same month as statement
+                    if (currentDay > billDate) {
+                        // Already passed this month, next month
+                        dueMonth++;
+                        if (dueMonth > 11) { dueMonth = 0; dueYear++; }
+                    }
+                } else {
+                    // Due in month after statement
+                    if (currentDay > statementDate) {
+                        // Statement passed, due is next month
+                        dueMonth++;
+                        if (dueMonth > 11) { dueMonth = 0; dueYear++; }
+                    } else if (currentDay > billDate) {
+                        // Bill date passed but statement hasn't, we're in between
+                        dueMonth++;
+                        if (dueMonth > 11) { dueMonth = 0; dueYear++; }
+                    }
+                }
+            } else {
+                // No statement date, just use bill date
+                if (currentDay > billDate) {
+                    dueMonth++;
+                    if (dueMonth > 11) { dueMonth = 0; dueYear++; }
+                }
+            }
+            
+            const dueDate = new Date(dueYear, dueMonth, billDate);
+            const formattedDate = dueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            
+            valueSpan.textContent = formattedDate;
+            infoDiv.classList.remove('hidden');
+        }
+        
         window.openCardModal = function(id = null) {
             console.log('=== OPEN CARD MODAL DEBUG ===');
             console.log('Received ID:', id, 'Type:', typeof id);
@@ -3679,6 +3770,9 @@
             document.getElementById('card-modal-expiry').value = '';
             document.getElementById('card-modal-cvv').value = '';
             document.getElementById('card-modal-credit-limit').value = '';
+            document.getElementById('card-modal-statement-date').value = '';
+            document.getElementById('card-modal-bill-date').value = '';
+            document.getElementById('card-modal-due-date-info').classList.add('hidden');
             document.getElementById('card-modal-additional-data').value = '';
             
             if (id) {
@@ -3700,6 +3794,9 @@
                     document.getElementById('card-modal-expiry').value = card.expiry;
                     document.getElementById('card-modal-cvv').value = card.cvv;
                     document.getElementById('card-modal-credit-limit').value = card.creditLimit || '';
+                    document.getElementById('card-modal-statement-date').value = card.statementDate || '';
+                    document.getElementById('card-modal-bill-date').value = card.billDate || '';
+                    updateDueDateInfo(); // Show calculated due date
                     document.getElementById('card-modal-additional-data').value = card.additionalData || '';
                     console.log('Modal populated with card data. Hidden ID field value:', document.getElementById('card-modal-id').value);
                 } else {
@@ -3727,6 +3824,8 @@
             const expiry = document.getElementById('card-modal-expiry').value.trim();
             const cvv = document.getElementById('card-modal-cvv').value.trim();
             const creditLimit = document.getElementById('card-modal-credit-limit').value.trim();
+            const statementDate = document.getElementById('card-modal-statement-date').value;
+            const billDate = document.getElementById('card-modal-bill-date').value;
             const additionalData = document.getElementById('card-modal-additional-data').value.trim();
             
             let hasErrors = false;
@@ -3785,13 +3884,18 @@
                 Loading.show('Saving card...');
                 
                 if (id) {
-                    // Update existing
-                    await Cards.update(id, name, cardNumber, expiry, cvv, additionalData, creditLimit, cardType);
+                    // Update existing (don't pass outstanding - preserve existing value, edit via card directly)
+                    await Cards.update(id, name, cardNumber, expiry, cvv, additionalData, creditLimit, cardType, undefined, statementDate, billDate);
                     Utils.showSuccess('Card updated!');
                 } else {
-                    // Add new
-                    await Cards.add(name, cardNumber, expiry, cvv, additionalData, creditLimit, cardType);
+                    // Add new (outstanding starts at 0, can be edited on card)
+                    const newCard = await Cards.add(name, cardNumber, expiry, cvv, additionalData, creditLimit, cardType, '', statementDate, billDate);
                     Utils.showSuccess('Card added!');
+                    
+                    // Check if any bills can be linked to this new card
+                    if (window.SmsBills && newCard) {
+                        window.SmsBills.relinkBillsOnCardAdd(newCard);
+                    }
                 }
                 
                 Cards.render();

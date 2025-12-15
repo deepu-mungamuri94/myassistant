@@ -2467,7 +2467,7 @@ Respond ONLY with valid JSON (no markdown, no explanation):
                 Utils.showProgressError(`⚠️ Partially completed<br><span class="text-sm">${successCount} updated, ${errorCount} failed</span><br><span class="text-xs text-red-600">${errors.join(', ')}</span>`);
             } else {
                 // All failed
-                Utils.showProgressError(`❌ Update failed<br><span class="text-sm">All ${errorCount} stock(s) failed</span><br><span class="text-xs text-gray-600">Check inline errors below each stock</span>`);
+                Utils.showProgressError(`❌ Update failed<br><span class="text-sm">All ${errorCount} stock(s) failed</span><br><span class="text-xs text-gray-300">Check inline errors below each stock</span>`);
             }
             
             // Re-render portfolio to reflect updated prices
@@ -2482,7 +2482,7 @@ Respond ONLY with valid JSON (no markdown, no explanation):
             this.openSharePriceModal();
             
             // Show error in progress modal
-            Utils.showProgressError(`❌ Failed to reload prices<br><span class="text-sm text-gray-600">${error.message}</span>`);
+            Utils.showProgressError(`❌ Failed to reload prices<br><span class="text-sm text-gray-300">${error.message}</span>`);
         } finally {
             // Re-enable AIProvider info messages
             if (window.AIProvider) {
@@ -2578,7 +2578,7 @@ Respond ONLY with valid JSON (no markdown, no explanation):
             priceSpan.innerHTML = originalPrice;
             
             // Show error in progress modal
-            Utils.showProgressError(`❌ Failed to update ${shareName}<br><span class="text-sm text-gray-600">${error.message}</span>`);
+            Utils.showProgressError(`❌ Failed to update ${shareName}<br><span class="text-sm text-gray-300">${error.message}</span>`);
             
             // Show inline error message below the share item
             if (errorDiv) {

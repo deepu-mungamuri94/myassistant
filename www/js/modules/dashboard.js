@@ -193,12 +193,32 @@ const Dashboard = {
                 </div>
             </div>
             ` : ''}
+            
+            <!-- Credit Card Bills Chart -->
+            ${this.renderCreditCardBillsSection()}
         `;
         
         // Initialize charts after a short delay to ensure DOM is ready
         setTimeout(() => {
             this.initializeCharts();
         }, 100);
+    },
+    
+    /**
+     * Render Credit Card Bills section
+     */
+    renderCreditCardBillsSection() {
+        const paidBills = (window.DB.cardBills || []).filter(b => b.isPaid && b.paidAt);
+        if (paidBills.length === 0) return '';
+        
+        return `
+        <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">💳 Credit Card Bills</h3>
+            <div style="height: 220px; max-width: 100%;">
+                <canvas id="credit-card-bills-chart"></canvas>
+            </div>
+        </div>
+        `;
     },
     
     /**
@@ -227,6 +247,14 @@ const Dashboard = {
                 this.loansChartInstance = null;
             } catch (e) {
                 console.error('Error destroying loans chart:', e);
+            }
+        }
+        if (this.creditCardBillsChartInstance) {
+            try {
+                this.creditCardBillsChartInstance.destroy();
+                this.creditCardBillsChartInstance = null;
+            } catch (e) {
+                console.error('Error destroying credit card bills chart:', e);
             }
         }
     },
@@ -458,9 +486,154 @@ const Dashboard = {
             this.renderIncomeExpenseChart();
             this.renderCategoryChart();
             this.renderLoansChart();
+            this.renderCreditCardBillsChart();
         } catch (error) {
             console.error('Error initializing charts:', error);
         }
+    },
+    
+    /**
+     * Render Credit Card Bills Chart
+     */
+    renderCreditCardBillsChart() {
+        const canvas = document.getElementById('credit-card-bills-chart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Get all paid bills
+        const paidBills = (window.DB.cardBills || []).filter(b => b.isPaid && b.paidAt);
+        if (paidBills.length === 0) return;
+        
+        // Get credit cards (non-placeholder)
+        const creditCards = (window.DB.cards || []).filter(c => c.cardType === 'credit' && !c.isPlaceholder);
+        
+        // Group bills by card
+        const cardBillsMap = {};
+        creditCards.forEach(card => {
+            const cardIdStr = String(card.id);
+            cardBillsMap[cardIdStr] = {
+                name: card.name,
+                bills: paidBills.filter(b => String(b.cardId) === cardIdStr)
+                    .sort((a, b) => new Date(a.paidAt) - new Date(b.paidAt))
+            };
+        });
+        
+        // Get unique months (sorted)
+        const allMonths = [...new Set(paidBills.map(b => {
+            const d = new Date(b.paidAt);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        }))].sort();
+        
+        // Format labels (MMM YY)
+        const labels = allMonths.map(d => {
+            const [year, month] = d.split('-');
+            const date = new Date(year, month - 1);
+            return date.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+        });
+        
+        // Card colors
+        const cardColors = [
+            { border: 'rgba(99, 102, 241, 1)', bg: 'rgba(99, 102, 241, 0.1)' },   // Indigo
+            { border: 'rgba(236, 72, 153, 1)', bg: 'rgba(236, 72, 153, 0.1)' },   // Pink
+            { border: 'rgba(34, 197, 94, 1)', bg: 'rgba(34, 197, 94, 0.1)' },     // Green
+            { border: 'rgba(249, 115, 22, 1)', bg: 'rgba(249, 115, 22, 0.1)' },   // Orange
+            { border: 'rgba(14, 165, 233, 1)', bg: 'rgba(14, 165, 233, 0.1)' },   // Sky
+            { border: 'rgba(168, 85, 247, 1)', bg: 'rgba(168, 85, 247, 0.1)' },   // Purple
+        ];
+        
+        // Create datasets for each card
+        const datasets = [];
+        let colorIndex = 0;
+        
+        Object.keys(cardBillsMap).forEach(cardId => {
+            const cardData = cardBillsMap[cardId];
+            if (cardData.bills.length === 0) return;
+            
+            const color = cardColors[colorIndex % cardColors.length];
+            colorIndex++;
+            
+            // Create data points for each month
+            const dataPoints = allMonths.map(monthKey => {
+                const [year, month] = monthKey.split('-');
+                const monthBills = cardData.bills.filter(b => {
+                    const d = new Date(b.paidAt);
+                    return d.getFullYear() === parseInt(year) && (d.getMonth() + 1) === parseInt(month);
+                });
+                // Sum all payments in that month
+                return monthBills.reduce((sum, b) => sum + (parseFloat(b.paidAmount) || parseFloat(b.amount) || 0), 0);
+            });
+            
+            datasets.push({
+                label: cardData.name,
+                data: dataPoints,
+                borderColor: color.border,
+                backgroundColor: color.bg,
+                borderWidth: 2,
+                fill: false,
+                tension: 0.3,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                pointBackgroundColor: color.border,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 1.5
+            });
+        });
+        
+        if (datasets.length === 0) return;
+        
+        this.creditCardBillsChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 10,
+                            font: { size: 10 }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ₹${Utils.formatIndianNumber(context.raw)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 10 } }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0,0,0,0.05)' },
+                        ticks: {
+                            font: { size: 10 },
+                            stepSize: 5000,
+                            callback: function(value) {
+                                if (value >= 1000) {
+                                    return '₹' + (value/1000) + 'k';
+                                }
+                                return '₹' + value;
+                            }
+                        }
+                    }
+                }
+            }
+        });
     },
     
     /**

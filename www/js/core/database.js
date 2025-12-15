@@ -5,7 +5,7 @@
 
 const DB = {
     credentials: [],
-    cards: [],
+    cards: [], // Card fields: id, name, cardNumber, expiry, cvv, cardType, creditLimit, outstanding, statementDate, billDate, isPlaceholder, benefits, benefitsFetchedAt, emis, createdAt
     expenses: [],
     portfolioInvestments: [], // Portfolio investments (id, name, type, goal, quantity, price, currency, amount, tenure, endDate, interestRate, description)
     monthlyInvestments: [], // Monthly investment tracking (id, name, type, goal, quantity, price, currency, amount, date, description)
@@ -19,6 +19,17 @@ const DB = {
     chatHistory: [],
     exchangeRate: 89, // Default USD to INR rate
     goldRatePerGram: 11400, // Gold rate in INR per gram (default)
+    
+    // Credit Card Bills from SMS
+    cardBills: [], // Bill records: { id, cardId, cardLast4, amount, originalAmount, dueDate, minDue, isPaid, paidAmount, paidType, paidAt, smsId, smsBody, parsedAt }
+    processedSmsIds: [], // Track already processed SMS IDs to avoid duplicates
+    
+    // Card Groups - for cards sharing credit limit/billing
+    // { id, name, sharedLimit, primaryCardId, shareBill (bool), cardIds[] }
+    cardGroups: [],
+    
+    // Bank group order for card display (first word of card name)
+    bankGroupOrder: [],
 
     settings: {
         aiProvider: 'gemini',
