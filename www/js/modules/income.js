@@ -772,13 +772,66 @@ const Income = {
     },
     
     /**
+     * Get pay schedule setting
+     */
+    getPaySchedule() {
+        return window.DB.settings.paySchedule || 'first_week';
+    },
+    
+    /**
+     * Set pay schedule setting
+     */
+    setPaySchedule(value) {
+        window.DB.settings.paySchedule = value;
+        window.Storage.save();
+        // Update hint text dynamically
+        const hint = document.getElementById('pay-schedule-hint');
+        if (hint) {
+            hint.textContent = value === 'last_week' 
+                ? 'Dec salary → Jan expenses' 
+                : 'Jan salary → Jan expenses';
+        }
+    },
+    
+    /**
      * Render Salary Tab Content
      */
     renderSalaryTab() {
         const salaries = this.getAllSalaries();
+        const paySchedule = this.getPaySchedule();
+        
+        // Pay schedule section (always shown)
+        const payScheduleSection = `
+            <!-- Pay Schedule Setting -->
+            <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div class="flex items-center justify-between">
+                    <span class="font-semibold text-blue-800 text-sm">Pay Schedule</span>
+                    <span id="pay-schedule-hint" class="text-xs text-blue-600">
+                        ${paySchedule === 'last_week' ? 'Dec salary → Jan expenses' : 'Jan salary → Jan expenses'}
+                    </span>
+                </div>
+                <div class="flex gap-4 mt-2">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="pay-schedule" value="first_week" 
+                               ${paySchedule === 'first_week' ? 'checked' : ''} 
+                               onchange="Income.setPaySchedule('first_week')"
+                               class="w-4 h-4 text-blue-600">
+                        <span class="text-xs text-gray-700">1st week</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="pay-schedule" value="last_week" 
+                               ${paySchedule === 'last_week' ? 'checked' : ''} 
+                               onchange="Income.setPaySchedule('last_week')"
+                               class="w-4 h-4 text-blue-600">
+                        <span class="text-xs text-gray-700">Last week</span>
+                    </label>
+                </div>
+            </div>
+        `;
         
         if (salaries.length === 0) {
             return `
+                ${payScheduleSection}
                 <div class="text-center py-12">
                     <div class="text-6xl mb-4">💰</div>
                     <p class="text-gray-500 text-sm mb-4">No salary records yet</p>
@@ -804,6 +857,8 @@ const Income = {
         const currentYear = new Date().getFullYear();
         
         let html = `
+            ${payScheduleSection}
+            
             <!-- Add Button -->
             <div class="mb-4">
                 <button onclick="Income.openSalaryModal()" 

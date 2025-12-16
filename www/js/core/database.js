@@ -43,7 +43,9 @@ const DB = {
         chatGptModel: 'gpt-4o-mini',
         perplexityModel: 'llama-3.1-sonar-large-128k-online',
         // Priority order for AI fallback (Groq is FIXED at #1 for chat, rest is configurable)
-        priorityOrder: ['groq', 'gemini', 'chatgpt', 'perplexity']
+        priorityOrder: ['groq', 'gemini', 'chatgpt', 'perplexity'],
+        // Pay schedule: 'first_week' or 'last_week' - determines which month's income to compare expenses against
+        paySchedule: 'first_week'
     },
     // Backward compatibility: Store groqApiKey at root level
     groqApiKey: '',

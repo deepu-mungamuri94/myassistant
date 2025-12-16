@@ -343,12 +343,14 @@ const Dashboard = {
     /**
      * Get income data for last N months or custom range
      * Uses actual salary data if available, fallback to estimated payslips
+     * Respects pay schedule setting - shifts income by 1 month if 'last_week'
      */
     getIncomeData(monthsCount = 6) {
         const monthsData = [];
         
         const income = window.DB.income;
         const salaries = window.DB.salaries || [];
+        const paySchedule = window.DB.settings.paySchedule || 'first_week';
         
         if (!income || !income.ctc) {
             return [];
@@ -357,6 +359,37 @@ const Dashboard = {
         // Generate payslips for all months (fallback)
         const { ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent } = income;
         const yearlyPayslips = window.Income.generateYearlyPayslips(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent);
+        
+        /**
+         * Helper function to get income for a specific expense month
+         * If pay schedule is 'last_week', get previous month's income
+         */
+        const getIncomeForMonth = (expenseYear, expenseMonth) => {
+            let incomeYear, incomeMonth;
+            
+            if (paySchedule === 'last_week') {
+                // Shift back by 1 month
+                incomeMonth = expenseMonth === 1 ? 12 : expenseMonth - 1;
+                incomeYear = expenseMonth === 1 ? expenseYear - 1 : expenseYear;
+            } else {
+                incomeMonth = expenseMonth;
+                incomeYear = expenseYear;
+            }
+            
+            // Try actual salary first
+            const actualSalary = salaries.find(s => s.year === incomeYear && s.month === incomeMonth);
+            if (actualSalary) {
+                return actualSalary.amount;
+            }
+            
+            // Fallback to payslip
+            const monthNamesLong = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
+            ];
+            const payslip = yearlyPayslips.find(p => p.month === monthNamesLong[incomeMonth - 1]);
+            return payslip ? payslip.totalNetPay : 0;
+        };
         
         // Use custom range if selected
         if (this.selectedMonthRange) {
@@ -368,20 +401,9 @@ const Dashboard = {
             
             while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) {
                 const date = new Date(currentYear, currentMonth - 1, 1);
-                const monthName = date.toLocaleDateString('en-US', { month: 'long' });
                 const shortMonth = date.toLocaleDateString('en-US', { month: 'short' });
                 
-                // Try to find actual salary first
-                const actualSalary = salaries.find(s => s.year === currentYear && s.month === currentMonth);
-                
-                let incomeAmount;
-                if (actualSalary) {
-                    incomeAmount = actualSalary.amount;
-                } else {
-                    // Fallback to estimated payslip
-                    const payslip = yearlyPayslips.find(p => p.month === monthName);
-                    incomeAmount = payslip ? payslip.totalNetPay : 0;
-                }
+                const incomeAmount = getIncomeForMonth(currentYear, currentMonth);
                 
                 monthsData.push({
                     label: shortMonth,
@@ -405,20 +427,9 @@ const Dashboard = {
             const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const year = date.getFullYear();
             const month = date.getMonth() + 1;
-            const monthName = date.toLocaleDateString('en-US', { month: 'long' });
             const shortMonth = date.toLocaleDateString('en-US', { month: 'short' });
             
-            // Try to find actual salary first
-            const actualSalary = salaries.find(s => s.year === year && s.month === month);
-            
-            let incomeAmount;
-            if (actualSalary) {
-                incomeAmount = actualSalary.amount;
-            } else {
-                // Fallback to estimated payslip
-                const payslip = yearlyPayslips.find(p => p.month === monthName);
-                incomeAmount = payslip ? payslip.totalNetPay : 0;
-            }
+            const incomeAmount = getIncomeForMonth(year, month);
             
             monthsData.push({
                 label: shortMonth,
@@ -1590,25 +1601,110 @@ const Dashboard = {
     },
     
     /**
+     * Get income for expense comparison based on pay schedule
+     * @param {number} expenseYear - Year of expenses
+     * @param {number} expenseMonth - Month of expenses (1-12)
+     * @returns {Object} { income: number|null, month: number, year: number, monthName: string }
+     */
+    getIncomeForExpenseComparison(expenseYear, expenseMonth) {
+        const paySchedule = window.DB.settings.paySchedule || 'first_week';
+        
+        let incomeMonth, incomeYear;
+        
+        if (paySchedule === 'last_week') {
+            // Use previous month's income (Dec salary -> Jan expenses)
+            incomeMonth = expenseMonth === 1 ? 12 : expenseMonth - 1;
+            incomeYear = expenseMonth === 1 ? expenseYear - 1 : expenseYear;
+        } else {
+            // Use same month's income
+            incomeMonth = expenseMonth;
+            incomeYear = expenseYear;
+        }
+        
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthName = monthNames[incomeMonth - 1];
+        
+        // Try to find actual salary first
+        const salaries = window.DB.salaries || [];
+        const actualSalary = salaries.find(s => s.year === incomeYear && s.month === incomeMonth);
+        
+        if (actualSalary) {
+            return { income: actualSalary.amount, month: incomeMonth, year: incomeYear, monthName };
+        }
+        
+        // Fallback to estimated payslip
+        const incomeData = window.DB.income || {};
+        const ctc = incomeData.ctc || 0;
+        
+        if (!ctc || ctc === 0) {
+            return { income: null, month: incomeMonth, year: incomeYear, monthName };
+        }
+        
+        const monthNamesLong = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        
+        const yearlyPayslips = Income.generateYearlyPayslips(
+            ctc, 
+            incomeData.bonusPercent || 0, 
+            incomeData.esppPercentCycle1 || 0, 
+            incomeData.esppPercentCycle2 || 0, 
+            incomeData.pfPercent || 12
+        );
+        
+        const payslip = yearlyPayslips.find(p => p.month === monthNamesLong[incomeMonth - 1]);
+        const income = payslip ? (payslip.totalNetPay || payslip.netPay || 0) : null;
+        
+        return { income, month: incomeMonth, year: incomeYear, monthName };
+    },
+    
+    /**
      * Render monthly breakdown section (second line)
      */
     renderMonthlyBreakdown() {
         const filterMonth = this.getFilterMonthValue();
+        const [expenseYear, expenseMonth] = filterMonth.split('-').map(Number);
         const expenses = this.getMonthExpenses(filterMonth);
         const investments = this.getMonthInvestments(filterMonth);
-        const netPay = this.getMonthNetPay(filterMonth);
         
-        const balance = netPay - expenses - investments;
-        const expensesPercent = netPay > 0 ? ((expenses / netPay) * 100).toFixed(1) : 0;
-        const investmentsPercent = netPay > 0 ? ((investments / netPay) * 100).toFixed(1) : 0;
-        const balancePercent = netPay > 0 ? ((balance / netPay) * 100).toFixed(1) : 0;
+        // Get income using pay schedule logic
+        const incomeData = this.getIncomeForExpenseComparison(expenseYear, expenseMonth);
+        const netPay = incomeData.income;
+        const paySchedule = window.DB.settings.paySchedule || 'first_week';
+        
+        // Check if we have valid income data
+        const hasIncomeData = netPay !== null && netPay > 0;
+        
+        // Calculate percentages and balance
+        let expensesPercent, investmentsPercent, balancePercent, balance;
+        
+        if (hasIncomeData) {
+            balance = netPay - expenses - investments;
+            expensesPercent = ((expenses / netPay) * 100).toFixed(1);
+            investmentsPercent = ((investments / netPay) * 100).toFixed(1);
+            balancePercent = ((balance / netPay) * 100).toFixed(1);
+        } else {
+            balance = 0;
+            expensesPercent = 'N/A';
+            investmentsPercent = 'N/A';
+            balancePercent = 'N/A';
+        }
+        
+        // Income source label for tooltip
+        const incomeSourceLabel = paySchedule === 'last_week' 
+            ? `Based on ${incomeData.monthName} ${incomeData.year} income (last week pay schedule)`
+            : `Based on ${incomeData.monthName} ${incomeData.year} income`;
         
         return `
             <!-- Monthly Breakdown Cards Box -->
             <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
                 <!-- Header with Month Label and Selector -->
                 <div class="flex justify-between items-center mb-3 max-w-full">
-                    <h3 class="text-sm font-semibold text-gray-700">${this.getFormattedFilterMonth(filterMonth)}</h3>
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-700">${this.getFormattedFilterMonth(filterMonth)}</h3>
+                        ${paySchedule === 'last_week' ? `<p class="text-[10px] text-gray-500">vs ${incomeData.monthName} income</p>` : ''}
+                    </div>
                     <div class="relative">
                         <input type="month" id="filter-month-selector" value="${filterMonth}" onchange="Dashboard.updateFilterMonthButton()" class="absolute opacity-0 pointer-events-none" />
                         <button id="filter-month-button" onclick="document.getElementById('filter-month-selector').showPicker()" class="px-2 py-1 border border-gray-300 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50 transition-all whitespace-nowrap">
@@ -1622,18 +1718,24 @@ const Dashboard = {
                     <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
                         <div class="text-xs opacity-90 leading-tight">Expenses</div>
                         <div class="flex-1 flex items-center justify-center">
-                            <div class="text-3xl font-bold">${expensesPercent}<span class="text-lg opacity-80">%</span></div>
+                            ${hasIncomeData 
+                                ? `<div class="text-3xl font-bold">${expensesPercent}<span class="text-lg opacity-80">%</span></div>`
+                                : `<div class="text-xl font-bold opacity-70">N/A</div>`
+                            }
                         </div>
                         <div class="flex items-center justify-between">
                             <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(expenses))}</div>
-                            <button onclick="Dashboard.showTooltip(event, 'Total expenses for selected month from Expenses page')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                            <button onclick="Dashboard.showTooltip(event, '${incomeSourceLabel}')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
                         </div>
                     </div>
                     
                     <div class="bg-gradient-to-br from-yellow-500 to-orange-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
                         <div class="text-xs opacity-90 leading-tight">Investments</div>
                         <div class="flex-1 flex items-center justify-center">
-                            <div class="text-3xl font-bold">${investmentsPercent}<span class="text-lg opacity-80">%</span></div>
+                            ${hasIncomeData 
+                                ? `<div class="text-3xl font-bold">${investmentsPercent}<span class="text-lg opacity-80">%</span></div>`
+                                : `<div class="text-xl font-bold opacity-70">N/A</div>`
+                            }
                         </div>
                         <div class="flex items-center justify-between">
                             <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(investments))}</div>
@@ -1641,14 +1743,17 @@ const Dashboard = {
                         </div>
                     </div>
                     
-                    <div class="bg-gradient-to-br ${balance >= 0 ? 'from-teal-500 to-cyan-600' : 'from-gray-500 to-gray-600'} rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                    <div class="bg-gradient-to-br ${hasIncomeData && balance >= 0 ? 'from-teal-500 to-cyan-600' : 'from-gray-500 to-gray-600'} rounded-lg p-3 text-white shadow-lg relative flex flex-col">
                         <div class="text-xs opacity-90 leading-tight">Balance</div>
                         <div class="flex-1 flex items-center justify-center">
-                            <div class="text-3xl font-bold">${balancePercent}<span class="text-lg opacity-80">%</span></div>
+                            ${hasIncomeData 
+                                ? `<div class="text-3xl font-bold">${balancePercent}<span class="text-lg opacity-80">%</span></div>`
+                                : `<div class="text-xl font-bold opacity-70">N/A</div>`
+                            }
                         </div>
                         <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(balance))}</div>
-                            <button onclick="Dashboard.showTooltip(event, 'Balance: Net Pay - (Expenses + Investments) for selected month')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                            <div class="text-xs opacity-90">${hasIncomeData ? '₹' + Utils.formatIndianNumber(Math.round(balance)) : 'No income data'}</div>
+                            <button onclick="Dashboard.showTooltip(event, '${hasIncomeData ? 'Balance: Income - (Expenses + Investments). ' + incomeSourceLabel : 'No income data for ' + incomeData.monthName + ' ' + incomeData.year}')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
                         </div>
                     </div>
                 </div>
