@@ -2387,9 +2387,9 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         const list = document.getElementById('emi-list');
         const emis = card.emis || [];
         
-        // Auto-mark EMIs as completed if last EMI date has passed
+        // Auto-update EMI progress based on elapsed months
         const today = new Date();
-        let autoCompleted = false;
+        let dataChanged = false;
         emis.forEach(emi => {
             if (emi.firstEmiDate && !emi.completed) {
                 const firstDate = new Date(emi.firstEmiDate);
@@ -2401,20 +2401,26 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     monthsElapsed--;
                 }
                 
-                // Calculate actual paid EMIs
+                // Calculate actual paid EMIs (first EMI is paid on the first date itself)
                 const actualPaidEMIs = Math.max(0, monthsElapsed + 1);
                 
-                // If all EMIs should have been paid by now
+                // Update paidCount to reflect actual progress
+                if (emi.paidCount !== actualPaidEMIs) {
+                    emi.paidCount = Math.min(actualPaidEMIs, emi.totalCount);
+                    dataChanged = true;
+                }
+                
+                // If all EMIs should have been paid by now, mark as completed
                 if (actualPaidEMIs >= emi.totalCount) {
                     emi.completed = true;
                     emi.paidCount = emi.totalCount;
-                    autoCompleted = true;
+                    dataChanged = true;
                 }
             }
         });
         
-        // Save if any EMI was auto-completed
-        if (autoCompleted) {
+        // Save if any EMI data was changed
+        if (dataChanged) {
             window.Storage.save();
         }
         
@@ -2527,42 +2533,34 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                             `;
         }).join('');
         
-        // Now build the complete HTML with tabs
+        // Now build the complete HTML with tabs (always show both tabs)
         html = `
             <div class="bg-white rounded-xl border-2 border-blue-200 overflow-hidden mb-3">
                 <!-- Tabs -->
                 <div class="border-b border-blue-200">
                     <div class="flex justify-evenly">
-                        ${activeEMIs.length > 0 ? `
-                            <button onclick="Cards.switchEMITab(${cardId}, 'active')" 
-                                    id="emi-tab-${cardId}-active"
-                                    class="flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-blue-500 text-blue-600">
-                                Active (${activeEMIs.length})
-                            </button>
-                        ` : ''}
-                        ${completedEMIs.length > 0 ? `
-                            <button onclick="Cards.switchEMITab(${cardId}, 'completed')" 
-                                    id="emi-tab-${cardId}-completed"
-                                    class="flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-                                Completed (${completedEMIs.length})
-                            </button>
-                        ` : ''}
+                        <button onclick="Cards.switchEMITab(${cardId}, 'active')" 
+                                id="emi-tab-${cardId}-active"
+                                class="flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-blue-500 text-blue-600">
+                            Active (${activeEMIs.length})
+                        </button>
+                        <button onclick="Cards.switchEMITab(${cardId}, 'completed')" 
+                                id="emi-tab-${cardId}-completed"
+                                class="flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                            Completed (${completedEMIs.length})
+                        </button>
                     </div>
                 </div>
                 
                 <!-- Tab Content: Active EMIs -->
-                ${activeEMIs.length > 0 ? `
-                    <div id="emi-content-${cardId}-active" class="p-3">
-                        ${activeEMIsHTML}
-                    </div>
-                ` : ''}
+                <div id="emi-content-${cardId}-active" class="p-3">
+                    ${activeEMIs.length > 0 ? activeEMIsHTML : '<p class="text-gray-400 text-center py-4 text-sm">No active EMIs</p>'}
+                </div>
                 
                 <!-- Tab Content: Completed EMIs -->
-                ${completedEMIs.length > 0 ? `
-                    <div id="emi-content-${cardId}-completed" class="p-3 hidden">
-                        ${completedEMIsHTML}
-                    </div>
-                ` : ''}
+                <div id="emi-content-${cardId}-completed" class="p-3 hidden">
+                    ${completedEMIs.length > 0 ? completedEMIsHTML : '<p class="text-gray-400 text-center py-4 text-sm">No completed EMIs</p>'}
+                </div>
             </div>
         `;
         
