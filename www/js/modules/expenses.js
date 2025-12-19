@@ -11,6 +11,7 @@ const Expenses = {
     expandedMonths: new Set(), // Track which months are expanded
     includeLoansInTotal: false, // Toggle for including loans in total
     currentRecurringTab: 'upcoming', // Track current recurring expenses tab
+    viewMode: 'expenses', // 'expenses' or 'events'
     
     /**
      * Initialize with current month dates
@@ -28,7 +29,7 @@ const Expenses = {
     /**
      * Add a new expense
      */
-    add(title, amount, category, date, description = '', suggestedCard = null) {
+    add(title, amount, category, date, description = '', suggestedCard = null, event = null) {
         if (!title || !amount || !category || !date) {
             throw new Error('Please fill in all required fields');
         }
@@ -41,6 +42,7 @@ const Expenses = {
             category,
             date,
             suggestedCard,
+            event: event || null, // Optional event tag for grouping related expenses
             createdAt: Utils.getCurrentTimestamp()
         };
         
@@ -48,6 +50,129 @@ const Expenses = {
         window.Storage.save();
         
         return expense;
+    },
+    
+    /**
+     * Update an existing expense
+     */
+    update(id, updates) {
+        const expense = this.getById(id);
+        if (!expense) {
+            throw new Error('Expense not found');
+        }
+        
+        // Update allowed fields
+        if (updates.title !== undefined) expense.title = updates.title;
+        if (updates.amount !== undefined) expense.amount = parseFloat(updates.amount);
+        if (updates.category !== undefined) expense.category = updates.category;
+        if (updates.date !== undefined) expense.date = updates.date;
+        if (updates.description !== undefined) expense.description = updates.description;
+        if (updates.suggestedCard !== undefined) expense.suggestedCard = updates.suggestedCard;
+        if (updates.event !== undefined) expense.event = updates.event || null;
+        
+        window.Storage.save();
+        return expense;
+    },
+    
+    /**
+     * Get all unique event names for autocomplete
+     */
+    getEventNames() {
+        const events = new Set();
+        window.DB.expenses.forEach(e => {
+            if (e.event && e.event.trim()) {
+                events.add(e.event.trim());
+            }
+        });
+        return Array.from(events).sort();
+    },
+    
+    /**
+     * Get event summary with hierarchical breakdown
+     * Returns events with nested structure for 3-level drill-down
+     */
+    getEventSummary() {
+        const eventMap = {};
+        
+        window.DB.expenses.forEach(expense => {
+            if (!expense.event || !expense.event.trim()) return;
+            
+            const eventName = expense.event.trim();
+            
+            if (!eventMap[eventName]) {
+                eventMap[eventName] = {
+                    name: eventName,
+                    total: 0,
+                    expenseCount: 0,
+                    minDate: null,
+                    maxDate: null,
+                    byTitle: {}
+                };
+            }
+            
+            const event = eventMap[eventName];
+            event.total += expense.amount;
+            event.expenseCount++;
+            
+            // Track date range
+            const expDate = new Date(expense.date);
+            if (!event.minDate || expDate < event.minDate) event.minDate = expDate;
+            if (!event.maxDate || expDate > event.maxDate) event.maxDate = expDate;
+            
+            // Group by title
+            const title = expense.title;
+            if (!event.byTitle[title]) {
+                event.byTitle[title] = {
+                    title: title,
+                    total: 0,
+                    count: 0,
+                    expenses: []
+                };
+            }
+            
+            event.byTitle[title].total += expense.amount;
+            event.byTitle[title].count++;
+            event.byTitle[title].expenses.push({
+                id: expense.id,
+                date: expense.date,
+                amount: expense.amount,
+                description: expense.description,
+                category: expense.category
+            });
+        });
+        
+        // Convert to array and format
+        const events = Object.values(eventMap).map(event => {
+            // Format date range
+            let dateRange = '';
+            if (event.minDate && event.maxDate) {
+                const minMonth = event.minDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                const maxMonth = event.maxDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                dateRange = minMonth === maxMonth ? minMonth : `${minMonth} - ${maxMonth}`;
+            }
+            
+            // Convert byTitle to array, sort by total (highest first)
+            const byTitle = Object.values(event.byTitle)
+                .map(t => {
+                    // Sort expenses by date (chronological)
+                    t.expenses.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    return t;
+                })
+                .sort((a, b) => b.total - a.total);
+            
+            return {
+                name: event.name,
+                total: event.total,
+                expenseCount: event.expenseCount,
+                dateRange: dateRange,
+                byTitle: byTitle
+            };
+        });
+        
+        // Sort events by total (highest first)
+        events.sort((a, b) => b.total - a.total);
+        
+        return events;
     },
 
     /**
@@ -644,6 +769,10 @@ const Expenses = {
         const totalEl = document.getElementById('expenses-total-amount');
         if (totalEl) totalEl.textContent = Utils.formatCurrency(finalTotal);
         
+        // Show loans section for normal expenses view
+        const loansContainer = document.getElementById('loans-toggle-container');
+        if (loansContainer) loansContainer.classList.remove('hidden');
+        
         // Update toggle switch appearance
         const toggleBtn = document.getElementById('toggle-loans-btn');
         const toggleSlider = document.getElementById('toggle-loans-slider');
@@ -683,6 +812,44 @@ const Expenses = {
             const options = { month: 'short', day: 'numeric', year: 'numeric' };
             dateRangeEl.textContent = `${startDate.toLocaleDateString('en-US', options)} - ${endDate.toLocaleDateString('en-US', options)}`;
         }
+    },
+    
+    /**
+     * Update summary section for Events view
+     */
+    updateEventsSummary() {
+        if (!window.Events) return;
+        
+        const events = window.Events.getEventSummary(this.searchTerm);
+        
+        // Calculate totals across all events
+        let totalAmount = 0;
+        let totalExpenseCount = 0;
+        
+        events.forEach(event => {
+            totalAmount += event.total;
+            totalExpenseCount += event.expenseCount;
+        });
+        
+        // Update total amount
+        const totalEl = document.getElementById('expenses-total-amount');
+        if (totalEl) totalEl.textContent = Utils.formatCurrency(totalAmount);
+        
+        // Hide entire loans section for events view
+        const loansContainer = document.getElementById('loans-toggle-container');
+        if (loansContainer) loansContainer.classList.add('hidden');
+        
+        // Hide loan info
+        const loanInfoEl = document.getElementById('expenses-loan-info');
+        if (loanInfoEl) loanInfoEl.classList.add('hidden');
+        
+        // Update transaction count
+        const countEl = document.getElementById('expenses-transaction-info');
+        if (countEl) countEl.textContent = `${events.length} event${events.length !== 1 ? 's' : ''} • ${totalExpenseCount} expense${totalExpenseCount !== 1 ? 's' : ''}`;
+        
+        // Update date range to show "All Events"
+        const dateRangeEl = document.getElementById('expenses-date-range');
+        if (dateRangeEl) dateRangeEl.textContent = 'All Events';
     },
     
     /**
@@ -868,6 +1035,15 @@ const Expenses = {
         const list = document.getElementById('expenses-list');
         
         if (!list) return;
+        
+        // Check if in events view mode
+        if (this.viewMode === 'events') {
+            if (window.Events) {
+                window.Events.renderInExpensesList(list, this.searchTerm);
+                this.updateEventsSummary();
+            }
+            return;
+        }
         
         // Auto-add EMI payments to expenses (if any are due)
         let totalAdded = 0;

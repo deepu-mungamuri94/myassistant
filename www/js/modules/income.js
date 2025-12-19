@@ -127,13 +127,13 @@ const Income = {
             throw new Error('Month, year, and amount are required');
         }
         
-        const salary = window.DB.salaries.find(s => s.id === id);
+        const salary = window.DB.salaries.find(s => String(s.id) === String(id));
         if (!salary) {
             throw new Error('Salary record not found');
         }
         
         // Check if another salary for this month/year exists
-        const duplicate = window.DB.salaries.find(s => s.id !== id && s.month === parseInt(month) && s.year === parseInt(year));
+        const duplicate = window.DB.salaries.find(s => String(s.id) !== String(id) && s.month === parseInt(month) && s.year === parseInt(year));
         if (duplicate) {
             throw new Error(`Salary for ${this.getMonthName(month)} ${year} already exists.`);
         }
@@ -150,7 +150,7 @@ const Income = {
      * Delete a salary record
      */
     deleteSalary(id) {
-        window.DB.salaries = window.DB.salaries.filter(s => s.id !== id);
+        window.DB.salaries = window.DB.salaries.filter(s => String(s.id) !== String(id));
         window.Storage.save();
     },
     
@@ -158,7 +158,7 @@ const Income = {
      * Get salary by id
      */
     getSalaryById(id) {
-        return window.DB.salaries.find(s => s.id === id);
+        return window.DB.salaries.find(s => String(s.id) === String(id));
     },
     
     /**
