@@ -1182,7 +1182,7 @@ const Dashboard = {
                     {
                         label: 'EPF/FD',
                         data: data.map(d => d.epfFd),
-                        borderColor: 'rgba(34, 197, 94, 0.7)',
+                        borderColor: 'rgba(236, 72, 153, 0.7)',
                         backgroundColor: 'transparent',
                         borderWidth: 2,
                         borderDash: [5, 5],
@@ -1190,7 +1190,7 @@ const Dashboard = {
                         tension: 0.3,
                         pointRadius: 3,
                         pointHoverRadius: 5,
-                        pointBackgroundColor: 'rgba(34, 197, 94, 1)',
+                        pointBackgroundColor: 'rgba(236, 72, 153, 1)',
                         pointBorderColor: '#fff',
                         pointBorderWidth: 1,
                         order: 3
