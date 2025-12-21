@@ -17,16 +17,30 @@ const Dashboard = {
     // Selected month range for investments trend
     selectedInvestmentRange: null,
     
-    // Category mappings for Needs vs Wants
-    needsCategories: [
+    // Default category mappings for Needs vs Wants
+    defaultNeedsCategories: [
         'Bills & Utilities', 'Groceries', 'Healthcare', 'Transportation', 
         'EMI', 'Loan EMI', 'Credit Card EMI', 'Rent', 'Insurance', 
         'Education', 'Personal & Family'
     ],
-    wantsCategories: [
+    defaultWantsCategories: [
         'Entertainment', 'Food & Dining', 'Shopping', 'Travel', 
         'Subscriptions', 'Gifts', 'Hobbies', 'Other'
     ],
+    
+    /**
+     * Get needs categories (user configured or default)
+     */
+    get needsCategories() {
+        return window.DB.budgetCategoryConfig?.needs || this.defaultNeedsCategories;
+    },
+    
+    /**
+     * Get wants categories (user configured or default)
+     */
+    get wantsCategories() {
+        return window.DB.budgetCategoryConfig?.wants || this.defaultWantsCategories;
+    },
     
     /**
      * Initialize excluded categories from localStorage
@@ -789,7 +803,15 @@ const Dashboard = {
         
         return `
                 <div class="flex justify-between items-center mb-2">
-                    <h3 class="text-sm font-semibold text-gray-700">50/30/20 Budget Rule</h3>
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-sm font-semibold text-gray-700">50/30/20 Budget Rule</h3>
+                        <button onclick="Dashboard.openCategoryConfigModal()" class="w-5 h-5 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" title="Configure categories">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                        </button>
+                    </div>
                     <div class="relative">
                         <input type="month" id="budget-month-selector" value="${budgetMonth}" onchange="Dashboard.updateBudgetMonth()" class="absolute opacity-0 pointer-events-none" />
                         <button id="budget-month-button" onclick="document.getElementById('budget-month-selector').showPicker()" class="px-3 py-1.5 border border-amber-300 rounded-lg text-xs font-medium text-amber-700 hover:bg-amber-50 transition-all whitespace-nowrap">
@@ -856,6 +878,163 @@ const Dashboard = {
                 </div>
             </div>
         `;
+    },
+    
+    /**
+     * Open category configuration modal
+     */
+    openCategoryConfigModal() {
+        // Get all expense categories
+        const allCategories = window.ExpenseCategories ? window.ExpenseCategories.getAll().map(c => c.name) : [
+            'Bills & Utilities', 'Groceries', 'Healthcare', 'Transportation',
+            'EMI', 'Loan EMI', 'Credit Card EMI', 'Rent', 'Insurance',
+            'Education', 'Personal & Family', 'Entertainment', 'Food & Dining',
+            'Shopping', 'Travel', 'Subscriptions', 'Gifts', 'Hobbies', 'Other'
+        ];
+        
+        // Get current config
+        const currentNeeds = this.needsCategories;
+        const currentWants = this.wantsCategories;
+        
+        // Create or update modal
+        let modal = document.getElementById('category-config-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'category-config-modal';
+            document.body.appendChild(modal);
+        }
+        
+        const categoriesHtml = allCategories.map(cat => {
+            const isNeeds = currentNeeds.some(c => c.toLowerCase() === cat.toLowerCase());
+            const isWants = currentWants.some(c => c.toLowerCase() === cat.toLowerCase());
+            const currentType = isNeeds ? 'needs' : (isWants ? 'wants' : 'none');
+            
+            return `
+                <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                    <span class="text-sm text-gray-700 flex-1">${cat}</span>
+                    <div class="flex gap-1">
+                        <button onclick="Dashboard.setCategoryType('${cat.replace(/'/g, "\\'")}', 'needs', this)" 
+                                class="px-2 py-1 text-xs rounded-lg transition-all ${currentType === 'needs' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-amber-100'}">
+                            Needs
+                        </button>
+                        <button onclick="Dashboard.setCategoryType('${cat.replace(/'/g, "\\'")}', 'wants', this)" 
+                                class="px-2 py-1 text-xs rounded-lg transition-all ${currentType === 'wants' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-pink-100'}">
+                            Wants
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+        modal.onclick = (e) => { if (e.target === modal) this.closeCategoryConfigModal(); };
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] flex flex-col">
+                <div class="p-4 border-b border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800">Configure Categories</h3>
+                            <p class="text-xs text-gray-500">Assign expense categories to Needs or Wants</p>
+                        </div>
+                        <button onclick="Dashboard.closeCategoryConfigModal()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 text-lg">×</button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4" id="category-config-list">
+                    ${categoriesHtml}
+                </div>
+                <div class="p-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+                    <div class="flex gap-3">
+                        <button onclick="Dashboard.resetCategoryConfig()" class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors text-sm">
+                            Reset to Default
+                        </button>
+                        <button onclick="Dashboard.closeCategoryConfigModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium hover:shadow-lg transition-all text-sm">
+                            Done
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
+    },
+    
+    /**
+     * Close category config modal
+     */
+    closeCategoryConfigModal() {
+        const modal = document.getElementById('category-config-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+        // Refresh budget cards
+        const container = document.getElementById('budget-rule-container');
+        if (container) {
+            container.innerHTML = this.renderBudgetRuleContent();
+        }
+    },
+    
+    /**
+     * Set category type (needs/wants)
+     */
+    setCategoryType(category, type, buttonEl) {
+        // Initialize config if not exists
+        if (!window.DB.budgetCategoryConfig) {
+            window.DB.budgetCategoryConfig = {
+                needs: [...this.defaultNeedsCategories],
+                wants: [...this.defaultWantsCategories]
+            };
+        }
+        
+        const config = window.DB.budgetCategoryConfig;
+        
+        // Remove from both arrays first
+        config.needs = config.needs.filter(c => c.toLowerCase() !== category.toLowerCase());
+        config.wants = config.wants.filter(c => c.toLowerCase() !== category.toLowerCase());
+        
+        // Add to the selected type
+        if (type === 'needs') {
+            config.needs.push(category);
+        } else if (type === 'wants') {
+            config.wants.push(category);
+        }
+        
+        // Save to storage
+        window.Storage.save();
+        
+        // Update button styles in the row
+        const row = buttonEl.parentElement;
+        const needsBtn = row.querySelector('button:first-child');
+        const wantsBtn = row.querySelector('button:last-child');
+        
+        // Reset both buttons
+        needsBtn.className = 'px-2 py-1 text-xs rounded-lg transition-all bg-gray-100 text-gray-600 hover:bg-amber-100';
+        wantsBtn.className = 'px-2 py-1 text-xs rounded-lg transition-all bg-gray-100 text-gray-600 hover:bg-pink-100';
+        
+        // Highlight selected
+        if (type === 'needs') {
+            needsBtn.className = 'px-2 py-1 text-xs rounded-lg transition-all bg-amber-500 text-white';
+        } else if (type === 'wants') {
+            wantsBtn.className = 'px-2 py-1 text-xs rounded-lg transition-all bg-pink-500 text-white';
+        }
+    },
+    
+    /**
+     * Reset category config to defaults
+     */
+    resetCategoryConfig() {
+        window.DB.budgetCategoryConfig = {
+            needs: [...this.defaultNeedsCategories],
+            wants: [...this.defaultWantsCategories]
+        };
+        window.Storage.save();
+        
+        // Refresh the modal
+        this.openCategoryConfigModal();
+        
+        if (window.Utils) {
+            Utils.showSuccess('Categories reset to defaults');
+        }
     },
     
     /**
