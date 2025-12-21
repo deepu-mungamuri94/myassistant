@@ -850,8 +850,8 @@ const Dashboard = {
                             <div class="text-xs font-medium">Needs</div>
                             ${hasIncome 
                                 ? (needsOk 
-                                    ? `<span class="text-[9px] bg-green-600/50 px-1.5 py-0.5 rounded">✓ ≤${needsIdeal}%</span>`
-                                    : `<span class="text-[9px] bg-red-600/70 px-1.5 py-0.5 rounded">${needsStatus} over</span>`)
+                                    ? `<span class="text-[9px] bg-green-500 px-1.5 py-0.5 rounded font-semibold">≤${needsIdeal}%</span>`
+                                    : `<span class="text-[9px] bg-red-600 px-1.5 py-0.5 rounded font-semibold">&gt;${needsIdeal}%</span>`)
                                 : ''
                             }
                         </div>
@@ -873,8 +873,8 @@ const Dashboard = {
                             <div class="text-xs font-medium">Wants</div>
                             ${hasIncome 
                                 ? (wantsOk 
-                                    ? `<span class="text-[9px] bg-green-600/50 px-1.5 py-0.5 rounded">✓ ≤${wantsIdeal}%</span>`
-                                    : `<span class="text-[9px] bg-red-600/70 px-1.5 py-0.5 rounded">${wantsStatus} over</span>`)
+                                    ? `<span class="text-[9px] bg-green-500 px-1.5 py-0.5 rounded font-semibold">≤${wantsIdeal}%</span>`
+                                    : `<span class="text-[9px] bg-red-600 px-1.5 py-0.5 rounded font-semibold">&gt;${wantsIdeal}%</span>`)
                                 : ''
                             }
                         </div>
@@ -891,13 +891,13 @@ const Dashboard = {
                     </div>
                     
                     <!-- Investments Card -->
-                    <div onclick="Dashboard.showBudgetBreakdown('investments')" class="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
+                    <div onclick="Dashboard.showBudgetBreakdown('investments')" class="bg-gradient-to-br from-orange-500 to-amber-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
                         <div class="flex items-center justify-between mb-1">
                             <div class="text-xs font-medium">Invest</div>
                             ${hasIncome 
                                 ? (investOk 
-                                    ? `<span class="text-[9px] bg-green-600/50 px-1.5 py-0.5 rounded">✓ ≥${investIdeal}%</span>`
-                                    : `<span class="text-[9px] bg-red-600/70 px-1.5 py-0.5 rounded">&lt;${investIdeal}%</span>`)
+                                    ? `<span class="text-[9px] bg-green-500 px-1.5 py-0.5 rounded font-semibold">≥${investIdeal}%</span>`
+                                    : `<span class="text-[9px] bg-red-600 px-1.5 py-0.5 rounded font-semibold">&lt;${investIdeal}%</span>`)
                                 : ''
                             }
                         </div>
