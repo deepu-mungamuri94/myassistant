@@ -28,6 +28,16 @@ const Dashboard = {
         'Subscriptions', 'Gifts', 'Hobbies', 'Other'
     ],
     
+    // Default budget rule percentages
+    defaultBudgetRule: { needs: 50, wants: 30, invest: 20 },
+    
+    /**
+     * Get budget rule percentages (user configured or default)
+     */
+    get budgetRule() {
+        return window.DB.budgetRuleConfig || this.defaultBudgetRule;
+    },
+    
     /**
      * Get needs categories (user configured or default)
      */
@@ -791,10 +801,11 @@ const Dashboard = {
         const wantsPercent = hasIncome ? ((wants / netPay) * 100).toFixed(1) : 'N/A';
         const investPercent = hasIncome ? ((investments / netPay) * 100).toFixed(1) : 'N/A';
         
-        // Ideal percentages (50/30/20 rule)
-        const needsIdeal = 50;
-        const wantsIdeal = 30;
-        const investIdeal = 20;
+        // Get budget rule percentages (user configurable)
+        const rule = this.budgetRule;
+        const needsIdeal = rule.needs;
+        const wantsIdeal = rule.wants;
+        const investIdeal = rule.invest;
         
         // Calculate differences from ideal
         const needsDiff = hasIncome ? (parseFloat(needsPercent) - needsIdeal).toFixed(1) : 0;
@@ -810,11 +821,14 @@ const Dashboard = {
         const wantsStatus = hasIncome ? (wantsOk ? '✓' : `+${wantsDiff}%`) : '';
         const investStatus = hasIncome ? (investOk ? '✓' : `${investDiff}%`) : '';
         
+        // Budget rule title
+        const ruleTitle = `${needsIdeal}/${wantsIdeal}/${investIdeal} Budget Rule`;
+        
         return `
-                <div class="flex justify-between items-center mb-2">
+                <div class="flex justify-between items-center mb-3">
                     <div class="flex items-center gap-2">
-                        <h3 class="text-sm font-semibold text-gray-700">50/30/20 Budget Rule</h3>
-                        <button onclick="Dashboard.openCategoryConfigModal()" class="w-5 h-5 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" title="Configure categories">
+                        <h3 class="text-sm font-semibold text-gray-700">${ruleTitle}</h3>
+                        <button onclick="Dashboard.openCategoryConfigModal()" class="w-5 h-5 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" title="Configure categories & rule">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -828,7 +842,6 @@ const Dashboard = {
                         </button>
                     </div>
                 </div>
-                <p class="text-[10px] text-gray-400 mb-3">Ideal: Needs ≤50% • Wants ≤30% • Invest ≥20% • Tap card to view details</p>
                 
                 <div class="grid grid-cols-3 gap-3 max-w-full">
                     <!-- Needs Card -->
@@ -884,9 +897,7 @@ const Dashboard = {
                             ${hasIncome 
                                 ? (investOk 
                                     ? `<span class="text-[9px] bg-green-600/50 px-1.5 py-0.5 rounded">✓ ≥${investIdeal}%</span>`
-                                    : (parseFloat(investPercent) === 0 
-                                        ? `<span class="text-[9px] bg-red-600/70 px-1.5 py-0.5 rounded">target ${investIdeal}%</span>`
-                                        : `<span class="text-[9px] bg-red-600/70 px-1.5 py-0.5 rounded">${Math.abs(investDiff)}% short</span>`))
+                                    : `<span class="text-[9px] bg-red-600/70 px-1.5 py-0.5 rounded">&lt;${investIdeal}%</span>`)
                                 : ''
                             }
                         </div>
@@ -921,6 +932,7 @@ const Dashboard = {
         // Get current config
         const currentNeeds = this.needsCategories;
         const currentWants = this.wantsCategories;
+        const rule = this.budgetRule;
         
         // Create or update modal
         let modal = document.getElementById('category-config-modal');
@@ -960,22 +972,59 @@ const Dashboard = {
                 <div class="p-4 border-b border-gray-200">
                     <div class="flex justify-between items-center">
                         <div>
-                            <h3 class="text-lg font-bold text-gray-800">Configure Categories</h3>
-                            <p class="text-xs text-gray-500">Assign expense categories to Needs or Wants</p>
+                            <h3 class="text-lg font-bold text-gray-800">Budget Rule Settings</h3>
+                            <p class="text-xs text-gray-500">Configure percentages and category assignments</p>
                         </div>
                         <button onclick="Dashboard.closeCategoryConfigModal()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 text-lg">×</button>
                     </div>
                 </div>
-                <div class="flex-1 overflow-y-auto p-4" id="category-config-list">
+                
+                <!-- Budget Rule Percentages -->
+                <div class="p-4 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-pink-50">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-3">Budget Rule Percentages</h4>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="text-xs text-amber-700 font-medium">Needs ≤</label>
+                            <div class="flex items-center mt-1">
+                                <input type="number" id="rule-needs" value="${rule.needs}" min="0" max="100" 
+                                       class="w-full p-2 border border-amber-300 rounded-lg text-center text-sm font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                                <span class="ml-1 text-sm text-gray-500">%</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-pink-700 font-medium">Wants ≤</label>
+                            <div class="flex items-center mt-1">
+                                <input type="number" id="rule-wants" value="${rule.wants}" min="0" max="100" 
+                                       class="w-full p-2 border border-pink-300 rounded-lg text-center text-sm font-bold focus:ring-2 focus:ring-pink-500 focus:outline-none">
+                                <span class="ml-1 text-sm text-gray-500">%</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-emerald-700 font-medium">Invest ≥</label>
+                            <div class="flex items-center mt-1">
+                                <input type="number" id="rule-invest" value="${rule.invest}" min="0" max="100" 
+                                       class="w-full p-2 border border-emerald-300 rounded-lg text-center text-sm font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                <span class="ml-1 text-sm text-gray-500">%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-gray-500 mt-2 text-center">Default: 50/30/20 • Total should ideally be 100%</p>
+                </div>
+                
+                <!-- Category Assignments -->
+                <div class="p-4 border-b border-gray-200">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-2">Category Assignments</h4>
+                </div>
+                <div class="flex-1 overflow-y-auto px-4 pb-4" id="category-config-list">
                     ${categoriesHtml}
                 </div>
                 <div class="p-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
                     <div class="flex gap-3">
                         <button onclick="Dashboard.resetCategoryConfig()" class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors text-sm">
-                            Reset to Default
+                            Reset All
                         </button>
-                        <button onclick="Dashboard.closeCategoryConfigModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium hover:shadow-lg transition-all text-sm">
-                            Done
+                        <button onclick="Dashboard.saveBudgetConfig()" class="flex-1 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium hover:shadow-lg transition-all text-sm">
+                            Save
                         </button>
                     </div>
                 </div>
@@ -1046,6 +1095,30 @@ const Dashboard = {
     },
     
     /**
+     * Save budget config (rule percentages)
+     */
+    saveBudgetConfig() {
+        const needsInput = document.getElementById('rule-needs');
+        const wantsInput = document.getElementById('rule-wants');
+        const investInput = document.getElementById('rule-invest');
+        
+        if (needsInput && wantsInput && investInput) {
+            const needs = parseInt(needsInput.value) || 50;
+            const wants = parseInt(wantsInput.value) || 30;
+            const invest = parseInt(investInput.value) || 20;
+            
+            window.DB.budgetRuleConfig = { needs, wants, invest };
+            window.Storage.save();
+            
+            if (window.Utils) {
+                Utils.showSuccess(`Budget rule updated to ${needs}/${wants}/${invest}`);
+            }
+        }
+        
+        this.closeCategoryConfigModal();
+    },
+    
+    /**
      * Reset category config to defaults
      */
     resetCategoryConfig() {
@@ -1053,13 +1126,14 @@ const Dashboard = {
             needs: [...this.defaultNeedsCategories],
             wants: [...this.defaultWantsCategories]
         };
+        window.DB.budgetRuleConfig = { ...this.defaultBudgetRule };
         window.Storage.save();
         
         // Refresh the modal
         this.openCategoryConfigModal();
         
         if (window.Utils) {
-            Utils.showSuccess('Categories reset to defaults');
+            Utils.showSuccess('Budget settings reset to defaults');
         }
     },
     
