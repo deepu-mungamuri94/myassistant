@@ -2314,19 +2314,17 @@ const Dashboard = {
         return `
             <!-- Monthly Breakdown Cards Box -->
             <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
-                <!-- Header with Month Label and Selector -->
-                <div class="flex justify-between items-center mb-3 max-w-full">
-                    <div>
-                        <h3 class="text-sm font-semibold text-gray-700">${this.getFormattedFilterMonth(filterMonth)}</h3>
-                        ${paySchedule === 'last_week' ? `<p class="text-[10px] text-gray-500">vs ${incomeData.monthName} income</p>` : ''}
-                    </div>
+                <!-- Header with Title and Month Selector -->
+                <div class="flex justify-between items-center mb-2 max-w-full">
+                    <h3 class="text-sm font-semibold text-gray-700">Monthly Breakdown</h3>
                     <div class="relative">
                         <input type="month" id="filter-month-selector" value="${filterMonth}" onchange="Dashboard.updateFilterMonthButton()" class="absolute opacity-0 pointer-events-none" />
-                        <button id="filter-month-button" onclick="document.getElementById('filter-month-selector').showPicker()" class="px-2 py-1 border border-gray-300 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50 transition-all whitespace-nowrap">
-                            ▼
+                        <button id="filter-month-button" onclick="document.getElementById('filter-month-selector').showPicker()" class="px-3 py-1.5 border border-red-300 rounded-lg text-xs font-medium text-red-700 hover:bg-red-50 transition-all whitespace-nowrap">
+                            ${this.getFormattedMonth(filterMonth)} ▼
                         </button>
                     </div>
                 </div>
+                ${paySchedule === 'last_week' ? `<p class="text-[10px] text-gray-400 mb-3">Compared with ${incomeData.monthName} ${incomeData.year} income</p>` : '<div class="mb-3"></div>'}
                 
                 <!-- Breakdown Cards -->
                 <div class="grid grid-cols-3 gap-3 max-w-full">
