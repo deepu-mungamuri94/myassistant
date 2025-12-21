@@ -1276,13 +1276,8 @@ const Dashboard = {
                 
                 // If loan EMIs are excluded, filter out expenses that are loan EMIs
                 if (!includeLoanEmis && (category.toLowerCase() === 'loan emi' || category.toLowerCase() === 'emi')) {
-                    const title = (exp.title || '').toLowerCase();
-                    const desc = (exp.description || '').toLowerCase();
-                    const isLoanEmi = title.includes('loan') || desc.includes('loan') || 
-                                      title.includes('home loan') || title.includes('car loan') ||
-                                      title.includes('personal loan') || desc.includes('home loan') ||
-                                      desc.includes('car loan') || desc.includes('personal loan');
-                    if (isLoanEmi) {
+                    // Check if this expense matches any loan in the database
+                    if (this.isLoanEmi(exp)) {
                         return false; // Exclude loan EMIs
                     }
                 }
@@ -1355,6 +1350,24 @@ const Dashboard = {
     },
     
     /**
+     * Check if an expense is a loan EMI (matches any loan in database)
+     */
+    isLoanEmi(expense) {
+        const loans = window.DB.loans || [];
+        const expenseTitle = (expense.title || '').toLowerCase();
+        
+        // Check if the expense title matches any loan's EMI pattern
+        for (const loan of loans) {
+            const loanEmiTitle = `${loan.bankName} ${loan.loanType || 'Loan'} EMI`.toLowerCase();
+            if (expenseTitle === loanEmiTitle || expenseTitle.includes(loan.bankName.toLowerCase())) {
+                return true;
+            }
+        }
+        
+        return false;
+    },
+    
+    /**
      * Get total "Needs" expenses for a month
      * Optionally excludes loan EMIs based on setting
      */
@@ -1377,15 +1390,8 @@ const Dashboard = {
                 
                 // If loan EMIs are excluded, filter out expenses that are loan EMIs
                 if (!includeLoanEmis && (category.toLowerCase() === 'loan emi' || category.toLowerCase() === 'emi')) {
-                    // Check if this is a loan EMI (not credit card EMI)
-                    // Loan EMIs typically have "loan" in description or title
-                    const title = (exp.title || '').toLowerCase();
-                    const desc = (exp.description || '').toLowerCase();
-                    const isLoanEmi = title.includes('loan') || desc.includes('loan') || 
-                                      title.includes('home loan') || title.includes('car loan') ||
-                                      title.includes('personal loan') || desc.includes('home loan') ||
-                                      desc.includes('car loan') || desc.includes('personal loan');
-                    if (isLoanEmi) {
+                    // Check if this expense matches any loan in the database
+                    if (this.isLoanEmi(exp)) {
                         return false; // Exclude loan EMIs
                     }
                 }
