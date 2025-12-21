@@ -14,6 +14,8 @@ const Dashboard = {
     investmentChartInstance: null,
     // Selected month for budget rule cards
     selectedBudgetMonth: null,
+    // Selected month range for investments trend
+    selectedInvestmentRange: null,
     
     // Category mappings for Needs vs Wants
     needsCategories: [
@@ -205,9 +207,11 @@ const Dashboard = {
             <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
                 <div class="flex justify-between items-center mb-3 max-w-full">
                     <h3 class="text-sm font-semibold text-gray-700">📈 Investments Trend</h3>
-                    <span class="text-xs text-gray-500">${this.getMonthRangeLabel()}</span>
+                    <button onclick="Dashboard.openInvestmentRangeModal()" class="px-3 py-1.5 border border-emerald-300 rounded-lg text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-all whitespace-nowrap">
+                        <span id="investment-range-label">${this.getInvestmentRangeLabel()}</span> ▼
+                    </button>
                 </div>
-                <div style="height: 280px; max-width: 100%;">
+                <div style="height: 300px; max-width: 100%;">
                     <canvas id="investments-trend-chart"></canvas>
                 </div>
             </div>
@@ -225,6 +229,35 @@ const Dashboard = {
             <!-- Credit Card Bills Chart -->
             ${this.renderCreditCardBillsSection()}
         `;
+        
+        // Add investment range modal if not exists
+        if (!document.getElementById('investment-range-modal')) {
+            const modalHtml = `
+            <div id="investment-range-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Dashboard.closeInvestmentRangeModal()">
+                <div class="bg-white rounded-2xl shadow-2xl p-5 max-w-sm w-full">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Select Month Range</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Start Month</label>
+                            <input type="month" id="investment-range-start" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">End Month</label>
+                            <input type="month" id="investment-range-end" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                    </div>
+                    <div class="flex gap-3 mt-5">
+                        <button onclick="Dashboard.applyInvestmentRange()" class="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all">
+                            Apply
+                        </button>
+                        <button onclick="Dashboard.resetInvestmentRange()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-all">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
         
         // Initialize charts after a short delay to ensure DOM is ready
         setTimeout(() => {
@@ -862,6 +895,107 @@ const Dashboard = {
     },
     
     /**
+     * Get investment range label
+     */
+    getInvestmentRangeLabel() {
+        if (!this.selectedInvestmentRange) {
+            return 'Last 6 months';
+        }
+        const start = this.getFormattedMonth(this.selectedInvestmentRange.start);
+        const end = this.getFormattedMonth(this.selectedInvestmentRange.end);
+        return `${start} - ${end}`;
+    },
+    
+    /**
+     * Open investment range modal
+     */
+    openInvestmentRangeModal() {
+        const modal = document.getElementById('investment-range-modal');
+        if (modal) {
+            const now = new Date();
+            const endMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+            const startMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+            
+            if (this.selectedInvestmentRange) {
+                document.getElementById('investment-range-start').value = this.selectedInvestmentRange.start;
+                document.getElementById('investment-range-end').value = this.selectedInvestmentRange.end;
+            } else {
+                document.getElementById('investment-range-start').value = startMonth;
+                document.getElementById('investment-range-end').value = endMonth;
+            }
+            
+            modal.classList.remove('hidden');
+        }
+    },
+    
+    /**
+     * Close investment range modal
+     */
+    closeInvestmentRangeModal() {
+        const modal = document.getElementById('investment-range-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    },
+    
+    /**
+     * Apply investment range selection
+     */
+    applyInvestmentRange() {
+        const start = document.getElementById('investment-range-start').value;
+        const end = document.getElementById('investment-range-end').value;
+        
+        if (!start || !end) {
+            alert('Please select both start and end months');
+            return;
+        }
+        
+        const [startYear, startMonth] = start.split('-').map(Number);
+        const [endYear, endMonth] = end.split('-').map(Number);
+        
+        if (startYear > endYear || (startYear === endYear && startMonth > endMonth)) {
+            alert('Start month must be before or equal to end month');
+            return;
+        }
+        
+        const months = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+        if (months > 24) {
+            alert('Maximum range is 24 months');
+            return;
+        }
+        
+        this.selectedInvestmentRange = { start, end };
+        this.closeInvestmentRangeModal();
+        
+        // Update label
+        const label = document.getElementById('investment-range-label');
+        if (label) {
+            label.textContent = this.getInvestmentRangeLabel();
+        }
+        
+        // Re-render chart
+        this.renderInvestmentsTrendChart();
+    },
+    
+    /**
+     * Reset investment range to default
+     */
+    resetInvestmentRange() {
+        this.selectedInvestmentRange = null;
+        this.closeInvestmentRangeModal();
+        
+        // Update label
+        const label = document.getElementById('investment-range-label');
+        if (label) {
+            label.textContent = 'Last 6 months';
+        }
+        
+        // Re-render chart
+        this.renderInvestmentsTrendChart();
+    },
+    
+    /**
      * Get monthly investments data for chart (last N months or custom range)
      */
     getInvestmentsDataForChart(monthsCount = 6) {
@@ -870,10 +1004,10 @@ const Dashboard = {
         const goldRate = window.DB.goldRatePerGram || 7000;
         const exchangeRate = typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : 83;
         
-        // Use custom range if selected
-        if (this.selectedMonthRange) {
-            const [startYear, startMonth] = this.selectedMonthRange.start.split('-').map(Number);
-            const [endYear, endMonth] = this.selectedMonthRange.end.split('-').map(Number);
+        // Use investment-specific range if selected
+        if (this.selectedInvestmentRange) {
+            const [startYear, startMonth] = this.selectedInvestmentRange.start.split('-').map(Number);
+            const [endYear, endMonth] = this.selectedInvestmentRange.end.split('-').map(Number);
             
             let currentYear = startYear;
             let currentMonth = startMonth;
@@ -973,7 +1107,14 @@ const Dashboard = {
             return;
         }
         
-        const monthsCount = this.getMonthsCount();
+        // Use investment-specific range or default 6 months
+        let monthsCount = 6;
+        if (this.selectedInvestmentRange) {
+            const [startYear, startMonth] = this.selectedInvestmentRange.start.split('-').map(Number);
+            const [endYear, endMonth] = this.selectedInvestmentRange.end.split('-').map(Number);
+            monthsCount = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+        }
+        
         const data = this.getInvestmentsDataForChart(monthsCount);
         
         // Destroy existing chart
@@ -987,33 +1128,72 @@ const Dashboard = {
         }
         
         this.investmentChartInstance = new Chart(ctx, {
-            type: 'bar',
+            type: 'line',
             data: {
                 labels: data.map(d => d.label),
                 datasets: [
                     {
+                        label: 'Total',
+                        data: data.map(d => d.total),
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: 'rgba(16, 185, 129, 1)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        order: 0
+                    },
+                    {
                         label: 'Shares',
                         data: data.map(d => d.shares),
-                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
-                        borderColor: 'rgba(99, 102, 241, 1)',
-                        borderWidth: 1,
-                        borderRadius: 4
+                        borderColor: 'rgba(99, 102, 241, 0.7)',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0.3,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 1,
+                        order: 1
                     },
                     {
                         label: 'Gold',
                         data: data.map(d => d.gold),
-                        backgroundColor: 'rgba(251, 191, 36, 0.8)',
-                        borderColor: 'rgba(251, 191, 36, 1)',
-                        borderWidth: 1,
-                        borderRadius: 4
+                        borderColor: 'rgba(251, 191, 36, 0.7)',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0.3,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        pointBackgroundColor: 'rgba(251, 191, 36, 1)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 1,
+                        order: 2
                     },
                     {
                         label: 'EPF/FD',
                         data: data.map(d => d.epfFd),
-                        backgroundColor: 'rgba(34, 197, 94, 0.8)',
-                        borderColor: 'rgba(34, 197, 94, 1)',
-                        borderWidth: 1,
-                        borderRadius: 4
+                        borderColor: 'rgba(34, 197, 94, 0.7)',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0.3,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        pointBackgroundColor: 'rgba(34, 197, 94, 1)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 1,
+                        order: 3
                     }
                 ]
             },
@@ -1029,10 +1209,12 @@ const Dashboard = {
                         position: 'top',
                         labels: {
                             usePointStyle: true,
-                            pointStyle: 'rect',
-                            padding: 15,
-                            font: {
-                                size: 11
+                            pointStyle: 'circle',
+                            padding: 12,
+                            font: { size: 11 },
+                            filter: function(item, chart) {
+                                // Make Total more prominent in legend
+                                return true;
                             }
                         }
                     },
@@ -1040,32 +1222,27 @@ const Dashboard = {
                         display: false
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        titleFont: { size: 12 },
+                        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                        titleFont: { size: 12, weight: 'bold' },
                         bodyFont: { size: 11 },
-                        padding: 10,
-                        cornerRadius: 6,
+                        padding: 12,
+                        cornerRadius: 8,
                         callbacks: {
                             label: function(context) {
                                 const label = context.dataset.label || '';
                                 const value = context.parsed.y;
-                                return label + ': ₹' + value.toLocaleString('en-IN');
-                            },
-                            footer: function(tooltipItems) {
-                                const total = tooltipItems.reduce((sum, item) => sum + item.parsed.y, 0);
-                                return 'Total: ₹' + total.toLocaleString('en-IN');
+                                const prefix = label === 'Total' ? '💰 ' : '   ';
+                                return prefix + label + ': ₹' + value.toLocaleString('en-IN');
                             }
                         }
                     }
                 },
                 scales: {
                     x: {
-                        stacked: true,
                         grid: { display: false },
                         ticks: { font: { size: 11 } }
                     },
                     y: {
-                        stacked: true,
                         beginAtZero: true,
                         grid: { color: 'rgba(0, 0, 0, 0.05)' },
                         ticks: {
