@@ -39,6 +39,14 @@ const Dashboard = {
     },
     
     /**
+     * Check if loan EMIs should be included in budget calculation
+     * Default: false (exclude loan EMIs)
+     */
+    get includeLoanEmis() {
+        return window.DB.budgetIncludeLoanEmis === true;
+    },
+    
+    /**
      * Get needs categories (user configured or default)
      */
     get needsCategories() {
@@ -1011,6 +1019,21 @@ const Dashboard = {
                     <p class="text-[10px] text-gray-500 mt-2 text-center">Default: 50/30/20 • Total should ideally be 100%</p>
                 </div>
                 
+                <!-- Loan EMI Toggle -->
+                <div class="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-slate-50">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-700">Include Loan EMIs</h4>
+                            <p class="text-[10px] text-gray-500 mt-0.5">Include home/car/personal loan EMIs in budget calculation</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="include-loan-emis" class="sr-only peer" ${this.includeLoanEmis ? 'checked' : ''} onchange="Dashboard.toggleLoanEmis(this.checked)">
+                            <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                        </label>
+                    </div>
+                    <p class="text-[10px] text-amber-600 mt-2">💡 Credit card EMIs are always included. Only loan EMIs can be excluded.</p>
+                </div>
+                
                 <!-- Category Assignments -->
                 <div class="p-4 border-b border-gray-200">
                     <h4 class="text-sm font-semibold text-gray-700 mb-2">Category Assignments</h4>
@@ -1095,6 +1118,18 @@ const Dashboard = {
     },
     
     /**
+     * Toggle loan EMI inclusion in budget calculation
+     */
+    toggleLoanEmis(include) {
+        window.DB.budgetIncludeLoanEmis = include;
+        window.Storage.save();
+        
+        if (window.Utils) {
+            Utils.showSuccess(include ? 'Loan EMIs included in budget' : 'Loan EMIs excluded from budget');
+        }
+    },
+    
+    /**
      * Save budget config (rule percentages)
      */
     saveBudgetConfig() {
@@ -1127,6 +1162,7 @@ const Dashboard = {
             wants: [...this.defaultWantsCategories]
         };
         window.DB.budgetRuleConfig = { ...this.defaultBudgetRule };
+        window.DB.budgetIncludeLoanEmis = false; // Default: exclude loan EMIs
         window.Storage.save();
         
         // Refresh the modal
@@ -1219,9 +1255,11 @@ const Dashboard = {
     
     /**
      * Get "Needs" expense items for a month
+     * Optionally excludes loan EMIs based on setting
      */
     getNeedsItems(year, month) {
         const expenses = window.DB.expenses || [];
+        const includeLoanEmis = this.includeLoanEmis;
         
         return expenses
             .filter(exp => {
@@ -1230,7 +1268,26 @@ const Dashboard = {
                     return false;
                 }
                 const category = exp.category || 'Other';
-                return this.needsCategories.some(c => c.toLowerCase() === category.toLowerCase());
+                
+                // Check if this is a Needs category
+                if (!this.needsCategories.some(c => c.toLowerCase() === category.toLowerCase())) {
+                    return false;
+                }
+                
+                // If loan EMIs are excluded, filter out expenses that are loan EMIs
+                if (!includeLoanEmis && (category.toLowerCase() === 'loan emi' || category.toLowerCase() === 'emi')) {
+                    const title = (exp.title || '').toLowerCase();
+                    const desc = (exp.description || '').toLowerCase();
+                    const isLoanEmi = title.includes('loan') || desc.includes('loan') || 
+                                      title.includes('home loan') || title.includes('car loan') ||
+                                      title.includes('personal loan') || desc.includes('home loan') ||
+                                      desc.includes('car loan') || desc.includes('personal loan');
+                    if (isLoanEmi) {
+                        return false; // Exclude loan EMIs
+                    }
+                }
+                
+                return true;
             })
             .map(exp => ({
                 title: exp.title,
@@ -1299,9 +1356,11 @@ const Dashboard = {
     
     /**
      * Get total "Needs" expenses for a month
+     * Optionally excludes loan EMIs based on setting
      */
     getNeedsTotal(year, month) {
         const expenses = window.DB.expenses || [];
+        const includeLoanEmis = this.includeLoanEmis;
         
         return expenses
             .filter(exp => {
@@ -1310,7 +1369,28 @@ const Dashboard = {
                     return false;
                 }
                 const category = exp.category || 'Other';
-                return this.needsCategories.some(c => c.toLowerCase() === category.toLowerCase());
+                
+                // Check if this is a Needs category
+                if (!this.needsCategories.some(c => c.toLowerCase() === category.toLowerCase())) {
+                    return false;
+                }
+                
+                // If loan EMIs are excluded, filter out expenses that are loan EMIs
+                if (!includeLoanEmis && (category.toLowerCase() === 'loan emi' || category.toLowerCase() === 'emi')) {
+                    // Check if this is a loan EMI (not credit card EMI)
+                    // Loan EMIs typically have "loan" in description or title
+                    const title = (exp.title || '').toLowerCase();
+                    const desc = (exp.description || '').toLowerCase();
+                    const isLoanEmi = title.includes('loan') || desc.includes('loan') || 
+                                      title.includes('home loan') || title.includes('car loan') ||
+                                      title.includes('personal loan') || desc.includes('home loan') ||
+                                      desc.includes('car loan') || desc.includes('personal loan');
+                    if (isLoanEmi) {
+                        return false; // Exclude loan EMIs
+                    }
+                }
+                
+                return true;
             })
             .reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
     },
