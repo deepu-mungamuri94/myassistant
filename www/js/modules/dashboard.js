@@ -10,6 +10,19 @@ const Dashboard = {
     selectedFilterMonth: null,
     // Store excluded categories (for category chart filtering)
     excludedCategories: null,
+    // Investment chart instance
+    investmentChartInstance: null,
+    
+    // Category mappings for Needs vs Wants
+    needsCategories: [
+        'Bills & Utilities', 'Groceries', 'Healthcare', 'Transportation', 
+        'EMI', 'Loan EMI', 'Credit Card EMI', 'Rent', 'Insurance', 
+        'Education', 'Personal & Family'
+    ],
+    wantsCategories: [
+        'Entertainment', 'Food & Dining', 'Shopping', 'Travel', 
+        'Subscriptions', 'Gifts', 'Hobbies', 'Other'
+    ],
     
     /**
      * Initialize excluded categories from localStorage
@@ -152,6 +165,8 @@ const Dashboard = {
             
             ${this.renderMonthlyBreakdown()}
             
+            ${this.renderNeedsWantsInvestments()}
+            
             <!-- Category Expenses Chart -->
             <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
                 <div class="flex justify-between items-center mb-3 max-w-full">
@@ -181,6 +196,17 @@ const Dashboard = {
                 </div>
                 <div style="height: 400px; max-width: 100%;">
                     <canvas id="income-expense-chart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Investments Trend Chart -->
+            <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+                <div class="flex justify-between items-center mb-3 max-w-full">
+                    <h3 class="text-sm font-semibold text-gray-700">📈 Investments Trend</h3>
+                    <span class="text-xs text-gray-500">${this.getMonthRangeLabel()}</span>
+                </div>
+                <div style="height: 280px; max-width: 100%;">
+                    <canvas id="investments-trend-chart"></canvas>
                 </div>
             </div>
             
@@ -255,6 +281,14 @@ const Dashboard = {
                 this.creditCardBillsChartInstance = null;
             } catch (e) {
                 console.error('Error destroying credit card bills chart:', e);
+            }
+        }
+        if (this.investmentChartInstance) {
+            try {
+                this.investmentChartInstance.destroy();
+                this.investmentChartInstance = null;
+            } catch (e) {
+                console.error('Error destroying investment chart:', e);
             }
         }
     },
@@ -498,6 +532,7 @@ const Dashboard = {
             this.renderCategoryChart();
             this.renderLoansChart();
             this.renderCreditCardBillsChart();
+            this.renderInvestmentsTrendChart();
         } catch (error) {
             console.error('Error initializing charts:', error);
         }
@@ -637,6 +672,366 @@ const Dashboard = {
                             callback: function(value) {
                                 if (value >= 1000) {
                                     return '₹' + (value/1000) + 'k';
+                                }
+                                return '₹' + value;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    },
+    
+    /**
+     * Render Needs/Wants/Investments cards
+     */
+    renderNeedsWantsInvestments() {
+        const filterMonth = this.getFilterMonthValue();
+        const [year, month] = filterMonth.split('-').map(Number);
+        
+        // Get income for this month
+        const incomeData = this.getIncomeForExpenseComparison(year, month);
+        const netPay = incomeData.income || 0;
+        
+        // Calculate needs, wants, and investments
+        const needs = this.getNeedsTotal(year, month);
+        const wants = this.getWantsTotal(year, month);
+        const investments = this.getMonthInvestments(filterMonth);
+        
+        // Calculate percentages
+        const hasIncome = netPay > 0;
+        const needsPercent = hasIncome ? ((needs / netPay) * 100).toFixed(1) : 'N/A';
+        const wantsPercent = hasIncome ? ((wants / netPay) * 100).toFixed(1) : 'N/A';
+        const investPercent = hasIncome ? ((investments / netPay) * 100).toFixed(1) : 'N/A';
+        
+        // Ideal percentages (50/30/20 rule)
+        const needsIdeal = 50;
+        const wantsIdeal = 30;
+        const investIdeal = 20;
+        
+        // Status indicators
+        const needsStatus = hasIncome ? (parseFloat(needsPercent) <= needsIdeal ? '✓' : '↑') : '';
+        const wantsStatus = hasIncome ? (parseFloat(wantsPercent) <= wantsIdeal ? '✓' : '↑') : '';
+        const investStatus = hasIncome ? (parseFloat(investPercent) >= investIdeal ? '✓' : '↓') : '';
+        
+        return `
+            <!-- Needs/Wants/Investments Cards -->
+            <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-sm font-semibold text-gray-700">50/30/20 Budget Rule</h3>
+                    <span class="text-xs text-gray-500">${this.getFormattedFilterMonth(filterMonth)}</span>
+                </div>
+                <p class="text-[10px] text-gray-400 mb-3">Ideal: Needs ≤50% • Wants ≤30% • Invest ≥20%</p>
+                
+                <div class="grid grid-cols-3 gap-3 max-w-full">
+                    <!-- Needs Card -->
+                    <div class="bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                        <div class="flex items-center justify-between">
+                            <div class="text-xs opacity-90 leading-tight">Needs</div>
+                            <span class="text-xs font-bold ${hasIncome && parseFloat(needsPercent) <= needsIdeal ? 'text-green-200' : 'text-red-200'}">${needsStatus}</span>
+                        </div>
+                        <div class="flex-1 flex items-center justify-center">
+                            ${hasIncome 
+                                ? `<div class="text-3xl font-bold">${needsPercent}<span class="text-lg opacity-80">%</span></div>`
+                                : `<div class="text-xl font-bold opacity-70">N/A</div>`
+                            }
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(needs))}</div>
+                            <button onclick="Dashboard.showTooltip(event, 'Needs: Essential expenses - Bills, Groceries, Healthcare, Transport, EMIs, Rent, Insurance, Education. Ideal: ≤50%')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Wants Card -->
+                    <div class="bg-gradient-to-br from-pink-500 to-rose-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                        <div class="flex items-center justify-between">
+                            <div class="text-xs opacity-90 leading-tight">Wants</div>
+                            <span class="text-xs font-bold ${hasIncome && parseFloat(wantsPercent) <= wantsIdeal ? 'text-green-200' : 'text-red-200'}">${wantsStatus}</span>
+                        </div>
+                        <div class="flex-1 flex items-center justify-center">
+                            ${hasIncome 
+                                ? `<div class="text-3xl font-bold">${wantsPercent}<span class="text-lg opacity-80">%</span></div>`
+                                : `<div class="text-xl font-bold opacity-70">N/A</div>`
+                            }
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(wants))}</div>
+                            <button onclick="Dashboard.showTooltip(event, 'Wants: Non-essential expenses - Entertainment, Dining Out, Shopping, Travel, Subscriptions, Hobbies. Ideal: ≤30%')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Investments Card -->
+                    <div class="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                        <div class="flex items-center justify-between">
+                            <div class="text-xs opacity-90 leading-tight">Invest</div>
+                            <span class="text-xs font-bold ${hasIncome && parseFloat(investPercent) >= investIdeal ? 'text-green-200' : 'text-red-200'}">${investStatus}</span>
+                        </div>
+                        <div class="flex-1 flex items-center justify-center">
+                            ${hasIncome 
+                                ? `<div class="text-3xl font-bold">${investPercent}<span class="text-lg opacity-80">%</span></div>`
+                                : `<div class="text-xl font-bold opacity-70">N/A</div>`
+                            }
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(investments))}</div>
+                            <button onclick="Dashboard.showTooltip(event, 'Investments: Stocks, Gold, EPF, FDs, and other investments made this month. Ideal: ≥20%')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+    
+    /**
+     * Get total "Needs" expenses for a month
+     */
+    getNeedsTotal(year, month) {
+        const expenses = window.DB.expenses || [];
+        
+        return expenses
+            .filter(exp => {
+                const expDate = new Date(exp.date);
+                if (expDate.getFullYear() !== year || (expDate.getMonth() + 1) !== month) {
+                    return false;
+                }
+                const category = exp.category || 'Other';
+                return this.needsCategories.some(c => c.toLowerCase() === category.toLowerCase());
+            })
+            .reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+    },
+    
+    /**
+     * Get total "Wants" expenses for a month
+     */
+    getWantsTotal(year, month) {
+        const expenses = window.DB.expenses || [];
+        
+        return expenses
+            .filter(exp => {
+                const expDate = new Date(exp.date);
+                if (expDate.getFullYear() !== year || (expDate.getMonth() + 1) !== month) {
+                    return false;
+                }
+                const category = exp.category || 'Other';
+                return this.wantsCategories.some(c => c.toLowerCase() === category.toLowerCase());
+            })
+            .reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+    },
+    
+    /**
+     * Get monthly investments data for chart (last N months or custom range)
+     */
+    getInvestmentsDataForChart(monthsCount = 6) {
+        const monthsData = [];
+        const monthlyInvestments = window.DB.monthlyInvestments || [];
+        const goldRate = window.DB.goldRatePerGram || 7000;
+        const exchangeRate = typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : 83;
+        
+        // Use custom range if selected
+        if (this.selectedMonthRange) {
+            const [startYear, startMonth] = this.selectedMonthRange.start.split('-').map(Number);
+            const [endYear, endMonth] = this.selectedMonthRange.end.split('-').map(Number);
+            
+            let currentYear = startYear;
+            let currentMonth = startMonth;
+            
+            while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) {
+                const date = new Date(currentYear, currentMonth - 1, 1);
+                const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+                
+                // Get investments for this month
+                const monthInvs = monthlyInvestments.filter(inv => {
+                    const invDate = new Date(inv.date);
+                    return invDate.getFullYear() === currentYear && invDate.getMonth() + 1 === currentMonth;
+                });
+                
+                // Calculate totals by type
+                let shares = 0, gold = 0, epfFd = 0;
+                monthInvs.forEach(inv => {
+                    if (inv.type === 'SHARES') {
+                        shares += inv.price * inv.quantity * (inv.currency === 'USD' ? exchangeRate : 1);
+                    } else if (inv.type === 'GOLD') {
+                        gold += inv.price * inv.quantity;
+                    } else if (inv.type === 'EPF' || inv.type === 'FD') {
+                        epfFd += inv.amount || 0;
+                    }
+                });
+                
+                monthsData.push({
+                    label: monthName,
+                    shares: shares,
+                    gold: gold,
+                    epfFd: epfFd,
+                    total: shares + gold + epfFd
+                });
+                
+                // Move to next month
+                currentMonth++;
+                if (currentMonth > 12) {
+                    currentMonth = 1;
+                    currentYear++;
+                }
+            }
+            
+            return monthsData;
+        }
+        
+        // Default: last N months
+        const now = new Date();
+        for (let i = monthsCount - 1; i >= 0; i--) {
+            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            
+            // Get investments for this month
+            const monthInvs = monthlyInvestments.filter(inv => {
+                const invDate = new Date(inv.date);
+                return invDate.getFullYear() === year && invDate.getMonth() + 1 === month;
+            });
+            
+            // Calculate totals by type
+            let shares = 0, gold = 0, epfFd = 0;
+            monthInvs.forEach(inv => {
+                if (inv.type === 'SHARES') {
+                    shares += inv.price * inv.quantity * (inv.currency === 'USD' ? exchangeRate : 1);
+                } else if (inv.type === 'GOLD') {
+                    gold += inv.price * inv.quantity;
+                } else if (inv.type === 'EPF' || inv.type === 'FD') {
+                    epfFd += inv.amount || 0;
+                }
+            });
+            
+            monthsData.push({
+                label: monthName,
+                shares: shares,
+                gold: gold,
+                epfFd: epfFd,
+                total: shares + gold + epfFd
+            });
+        }
+        
+        return monthsData;
+    },
+    
+    /**
+     * Render Investments Trend Chart
+     */
+    renderInvestmentsTrendChart() {
+        const canvas = document.getElementById('investments-trend-chart');
+        if (!canvas) {
+            console.warn('Investments trend chart canvas not found');
+            return;
+        }
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            console.error('Cannot get 2d context from investments trend chart canvas');
+            return;
+        }
+        
+        const monthsCount = this.getMonthsCount();
+        const data = this.getInvestmentsDataForChart(monthsCount);
+        
+        // Destroy existing chart
+        if (this.investmentChartInstance) {
+            try {
+                this.investmentChartInstance.destroy();
+                this.investmentChartInstance = null;
+            } catch (e) {
+                console.error('Error destroying existing investment chart:', e);
+            }
+        }
+        
+        this.investmentChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(d => d.label),
+                datasets: [
+                    {
+                        label: 'Shares',
+                        data: data.map(d => d.shares),
+                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Gold',
+                        data: data.map(d => d.gold),
+                        backgroundColor: 'rgba(251, 191, 36, 0.8)',
+                        borderColor: 'rgba(251, 191, 36, 1)',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'EPF/FD',
+                        data: data.map(d => d.epfFd),
+                        backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                        borderColor: 'rgba(34, 197, 94, 1)',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            pointStyle: 'rect',
+                            padding: 15,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleFont: { size: 12 },
+                        bodyFont: { size: 11 },
+                        padding: 10,
+                        cornerRadius: 6,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                const value = context.parsed.y;
+                                return label + ': ₹' + value.toLocaleString('en-IN');
+                            },
+                            footer: function(tooltipItems) {
+                                const total = tooltipItems.reduce((sum, item) => sum + item.parsed.y, 0);
+                                return 'Total: ₹' + total.toLocaleString('en-IN');
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: { display: false },
+                        ticks: { font: { size: 11 } }
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                        ticks: {
+                            font: { size: 11 },
+                            callback: function(value) {
+                                if (value >= 100000) {
+                                    return '₹' + (value / 100000).toFixed(1) + 'L';
+                                } else if (value >= 1000) {
+                                    return '₹' + (value / 1000).toFixed(0) + 'k';
                                 }
                                 return '₹' + value;
                             }
