@@ -869,7 +869,11 @@ const Dashboard = {
                         <div class="flex-1 flex flex-col items-center justify-center">
                             ${hasIncome 
                                 ? `<div class="text-3xl font-bold">${investPercent}<span class="text-lg opacity-80">%</span></div>
-                                   ${!investOk ? `<div class="text-[10px] text-red-200 font-semibold">(${Math.abs(investDiff)}% below ${investIdeal}%)</div>` : `<div class="text-[10px] text-green-200">✓ above ${investIdeal}%</div>`}`
+                                   ${!investOk 
+                                       ? (parseFloat(investPercent) === 0 
+                                           ? `<div class="text-[10px] text-red-200 font-semibold">(need ${investIdeal}%)</div>`
+                                           : `<div class="text-[10px] text-red-200 font-semibold">(need ${Math.abs(investDiff)}% more)</div>`)
+                                       : `<div class="text-[10px] text-green-200">✓ above ${investIdeal}%</div>`}`
                                 : `<div class="text-xl font-bold opacity-70">N/A</div>`
                             }
                         </div>
