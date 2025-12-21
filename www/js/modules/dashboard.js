@@ -2754,7 +2754,7 @@ const Dashboard = {
             <!-- Monthly Breakdown Cards Box -->
             <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
                 <!-- Header with Title and Month Selector -->
-                <div class="flex justify-between items-center mb-2 max-w-full">
+                <div class="flex justify-between items-center max-w-full">
                     <h3 class="text-sm font-semibold text-gray-700">Monthly Breakdown</h3>
                     <div class="relative">
                         <input type="month" id="filter-month-selector" value="${filterMonth}" onchange="Dashboard.updateFilterMonthButton()" class="absolute opacity-0 pointer-events-none" />
@@ -2763,7 +2763,7 @@ const Dashboard = {
                         </button>
                     </div>
                 </div>
-                ${paySchedule === 'last_week' ? `<p class="text-[10px] text-gray-400 mb-3">Compared with ${incomeData.monthName} ${incomeData.year} income</p>` : '<div class="mb-3"></div>'}
+                ${paySchedule === 'last_week' ? `<p class="text-[10px] text-gray-400 mt-1 mb-2">Compared with ${incomeData.monthName} ${incomeData.year} income</p>` : '<div class="mb-3"></div>'}
                 
                 <!-- Breakdown Cards -->
                 <div class="grid grid-cols-3 gap-3 max-w-full">
