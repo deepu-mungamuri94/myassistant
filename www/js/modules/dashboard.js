@@ -796,10 +796,19 @@ const Dashboard = {
         const wantsIdeal = 30;
         const investIdeal = 20;
         
-        // Status indicators
-        const needsStatus = hasIncome ? (parseFloat(needsPercent) <= needsIdeal ? '✓' : '↑') : '';
-        const wantsStatus = hasIncome ? (parseFloat(wantsPercent) <= wantsIdeal ? '✓' : '↑') : '';
-        const investStatus = hasIncome ? (parseFloat(investPercent) >= investIdeal ? '✓' : '↓') : '';
+        // Calculate differences from ideal
+        const needsDiff = hasIncome ? (parseFloat(needsPercent) - needsIdeal).toFixed(1) : 0;
+        const wantsDiff = hasIncome ? (parseFloat(wantsPercent) - wantsIdeal).toFixed(1) : 0;
+        const investDiff = hasIncome ? (parseFloat(investPercent) - investIdeal).toFixed(1) : 0;
+        
+        // Status indicators with difference
+        const needsOk = hasIncome && parseFloat(needsPercent) <= needsIdeal;
+        const wantsOk = hasIncome && parseFloat(wantsPercent) <= wantsIdeal;
+        const investOk = hasIncome && parseFloat(investPercent) >= investIdeal;
+        
+        const needsStatus = hasIncome ? (needsOk ? '✓' : `+${needsDiff}%`) : '';
+        const wantsStatus = hasIncome ? (wantsOk ? '✓' : `+${wantsDiff}%`) : '';
+        const investStatus = hasIncome ? (investOk ? '✓' : `${investDiff}%`) : '';
         
         return `
                 <div class="flex justify-between items-center mb-2">
@@ -825,17 +834,17 @@ const Dashboard = {
                     <!-- Needs Card -->
                     <div onclick="Dashboard.showBudgetBreakdown('needs')" class="bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
                         <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90 leading-tight">Needs</div>
-                            <span class="text-xs font-bold ${hasIncome && parseFloat(needsPercent) <= needsIdeal ? 'text-green-200' : 'text-red-200'}">${needsStatus}</span>
+                            <div class="text-xs opacity-90 leading-tight">Needs ≤${needsIdeal}%</div>
+                            ${hasIncome && !needsOk ? `<span class="text-[10px] font-bold bg-red-600 text-white px-1.5 py-0.5 rounded-full animate-pulse">${needsStatus}</span>` : ''}
                         </div>
                         <div class="flex-1 flex items-center justify-center">
                             ${hasIncome 
-                                ? `<div class="text-3xl font-bold">${needsPercent}<span class="text-lg opacity-80">%</span></div>`
+                                ? `<div class="text-3xl font-bold ${needsOk ? '' : 'text-red-100'}">${needsPercent}<span class="text-lg opacity-80">%</span></div>`
                                 : `<div class="text-xl font-bold opacity-70">N/A</div>`
                             }
                         </div>
                         <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(needs))}</div>
+                            <div class="text-xs opacity-90">${needsOk ? '✓ ' : ''}₹${Utils.formatIndianNumber(Math.round(needs))}</div>
                             <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
                         </div>
                     </div>
@@ -843,17 +852,17 @@ const Dashboard = {
                     <!-- Wants Card -->
                     <div onclick="Dashboard.showBudgetBreakdown('wants')" class="bg-gradient-to-br from-pink-500 to-rose-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
                         <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90 leading-tight">Wants</div>
-                            <span class="text-xs font-bold ${hasIncome && parseFloat(wantsPercent) <= wantsIdeal ? 'text-green-200' : 'text-red-200'}">${wantsStatus}</span>
+                            <div class="text-xs opacity-90 leading-tight">Wants ≤${wantsIdeal}%</div>
+                            ${hasIncome && !wantsOk ? `<span class="text-[10px] font-bold bg-red-600 text-white px-1.5 py-0.5 rounded-full animate-pulse">${wantsStatus}</span>` : ''}
                         </div>
                         <div class="flex-1 flex items-center justify-center">
                             ${hasIncome 
-                                ? `<div class="text-3xl font-bold">${wantsPercent}<span class="text-lg opacity-80">%</span></div>`
+                                ? `<div class="text-3xl font-bold ${wantsOk ? '' : 'text-red-100'}">${wantsPercent}<span class="text-lg opacity-80">%</span></div>`
                                 : `<div class="text-xl font-bold opacity-70">N/A</div>`
                             }
                         </div>
                         <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(wants))}</div>
+                            <div class="text-xs opacity-90">${wantsOk ? '✓ ' : ''}₹${Utils.formatIndianNumber(Math.round(wants))}</div>
                             <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
                         </div>
                     </div>
@@ -861,17 +870,17 @@ const Dashboard = {
                     <!-- Investments Card -->
                     <div onclick="Dashboard.showBudgetBreakdown('investments')" class="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
                         <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90 leading-tight">Invest</div>
-                            <span class="text-xs font-bold ${hasIncome && parseFloat(investPercent) >= investIdeal ? 'text-green-200' : 'text-red-200'}">${investStatus}</span>
+                            <div class="text-xs opacity-90 leading-tight">Invest ≥${investIdeal}%</div>
+                            ${hasIncome && !investOk ? `<span class="text-[10px] font-bold bg-red-600 text-white px-1.5 py-0.5 rounded-full animate-pulse">${investStatus}</span>` : ''}
                         </div>
                         <div class="flex-1 flex items-center justify-center">
                             ${hasIncome 
-                                ? `<div class="text-3xl font-bold">${investPercent}<span class="text-lg opacity-80">%</span></div>`
+                                ? `<div class="text-3xl font-bold ${investOk ? '' : 'text-red-100'}">${investPercent}<span class="text-lg opacity-80">%</span></div>`
                                 : `<div class="text-xl font-bold opacity-70">N/A</div>`
                             }
                         </div>
                         <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(investments))}</div>
+                            <div class="text-xs opacity-90">${investOk ? '✓ ' : ''}₹${Utils.formatIndianNumber(Math.round(investments))}</div>
                             <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
                         </div>
                     </div>
