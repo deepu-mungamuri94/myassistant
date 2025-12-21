@@ -833,11 +833,18 @@ const Dashboard = {
                 <div class="grid grid-cols-3 gap-3 max-w-full">
                     <!-- Needs Card -->
                     <div onclick="Dashboard.showBudgetBreakdown('needs')" class="bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                        <div class="text-xs opacity-90 leading-tight">Needs</div>
-                        <div class="flex-1 flex flex-col items-center justify-center">
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="text-xs font-medium">Needs</div>
                             ${hasIncome 
-                                ? `<div class="text-3xl font-bold">${needsPercent}<span class="text-lg opacity-80">%</span></div>
-                                   ${!needsOk ? `<div class="text-[10px] text-red-200 font-semibold">(${needsStatus} over)</div>` : `<div class="text-[10px] text-green-200">✓ within ${needsIdeal}%</div>`}`
+                                ? (needsOk 
+                                    ? `<span class="text-[9px] bg-green-600/50 px-1.5 py-0.5 rounded">✓ ≤${needsIdeal}%</span>`
+                                    : `<span class="text-[9px] bg-red-600/70 px-1.5 py-0.5 rounded">${needsStatus} over</span>`)
+                                : ''
+                            }
+                        </div>
+                        <div class="flex-1 flex items-center justify-center">
+                            ${hasIncome 
+                                ? `<div class="text-3xl font-bold">${needsPercent}<span class="text-lg opacity-80">%</span></div>`
                                 : `<div class="text-xl font-bold opacity-70">N/A</div>`
                             }
                         </div>
@@ -849,11 +856,18 @@ const Dashboard = {
                     
                     <!-- Wants Card -->
                     <div onclick="Dashboard.showBudgetBreakdown('wants')" class="bg-gradient-to-br from-pink-500 to-rose-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                        <div class="text-xs opacity-90 leading-tight">Wants</div>
-                        <div class="flex-1 flex flex-col items-center justify-center">
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="text-xs font-medium">Wants</div>
                             ${hasIncome 
-                                ? `<div class="text-3xl font-bold">${wantsPercent}<span class="text-lg opacity-80">%</span></div>
-                                   ${!wantsOk ? `<div class="text-[10px] text-red-200 font-semibold">(${wantsStatus} over)</div>` : `<div class="text-[10px] text-green-200">✓ within ${wantsIdeal}%</div>`}`
+                                ? (wantsOk 
+                                    ? `<span class="text-[9px] bg-green-600/50 px-1.5 py-0.5 rounded">✓ ≤${wantsIdeal}%</span>`
+                                    : `<span class="text-[9px] bg-red-600/70 px-1.5 py-0.5 rounded">${wantsStatus} over</span>`)
+                                : ''
+                            }
+                        </div>
+                        <div class="flex-1 flex items-center justify-center">
+                            ${hasIncome 
+                                ? `<div class="text-3xl font-bold">${wantsPercent}<span class="text-lg opacity-80">%</span></div>`
                                 : `<div class="text-xl font-bold opacity-70">N/A</div>`
                             }
                         </div>
@@ -865,15 +879,20 @@ const Dashboard = {
                     
                     <!-- Investments Card -->
                     <div onclick="Dashboard.showBudgetBreakdown('investments')" class="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                        <div class="text-xs opacity-90 leading-tight">Invest</div>
-                        <div class="flex-1 flex flex-col items-center justify-center">
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="text-xs font-medium">Invest</div>
                             ${hasIncome 
-                                ? `<div class="text-3xl font-bold">${investPercent}<span class="text-lg opacity-80">%</span></div>
-                                   ${!investOk 
-                                       ? (parseFloat(investPercent) === 0 
-                                           ? `<div class="text-[10px] text-red-200 font-semibold">(need ${investIdeal}%)</div>`
-                                           : `<div class="text-[10px] text-red-200 font-semibold">(need ${Math.abs(investDiff)}% more)</div>`)
-                                       : `<div class="text-[10px] text-green-200">✓ above ${investIdeal}%</div>`}`
+                                ? (investOk 
+                                    ? `<span class="text-[9px] bg-green-600/50 px-1.5 py-0.5 rounded">✓ ≥${investIdeal}%</span>`
+                                    : (parseFloat(investPercent) === 0 
+                                        ? `<span class="text-[9px] bg-red-600/70 px-1.5 py-0.5 rounded">target ${investIdeal}%</span>`
+                                        : `<span class="text-[9px] bg-red-600/70 px-1.5 py-0.5 rounded">${Math.abs(investDiff)}% short</span>`))
+                                : ''
+                            }
+                        </div>
+                        <div class="flex-1 flex items-center justify-center">
+                            ${hasIncome 
+                                ? `<div class="text-3xl font-bold">${investPercent}<span class="text-lg opacity-80">%</span></div>`
                                 : `<div class="text-xl font-bold opacity-70">N/A</div>`
                             }
                         </div>
