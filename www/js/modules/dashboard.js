@@ -845,7 +845,7 @@ const Dashboard = {
                 
                 <div class="grid grid-cols-3 gap-3 max-w-full">
                     <!-- Needs Card -->
-                    <div onclick="Dashboard.showBudgetBreakdown('needs')" class="bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
+                    <div onclick="Dashboard.showBudgetBreakdown('needs')" class="bg-gradient-to-br from-gray-600 to-gray-700 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
                         <div class="flex items-center justify-between mb-1">
                             <div class="text-xs font-medium">Needs</div>
                             ${hasIncome 
