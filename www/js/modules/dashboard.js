@@ -12,6 +12,8 @@ const Dashboard = {
     excludedCategories: null,
     // Investment chart instance
     investmentChartInstance: null,
+    // Selected month for budget rule cards
+    selectedBudgetMonth: null,
     
     // Category mappings for Needs vs Wants
     needsCategories: [
@@ -683,11 +685,49 @@ const Dashboard = {
     },
     
     /**
+     * Get budget month value
+     */
+    getBudgetMonthValue() {
+        if (this.selectedBudgetMonth) {
+            return this.selectedBudgetMonth;
+        }
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    },
+    
+    /**
+     * Update budget month and re-render only budget cards
+     */
+    updateBudgetMonth() {
+        const input = document.getElementById('budget-month-selector');
+        if (input) {
+            this.selectedBudgetMonth = input.value;
+            // Re-render only the budget cards section
+            const container = document.getElementById('budget-rule-container');
+            if (container) {
+                container.innerHTML = this.renderBudgetRuleContent();
+            }
+        }
+    },
+    
+    /**
      * Render Needs/Wants/Investments cards
      */
     renderNeedsWantsInvestments() {
-        const filterMonth = this.getFilterMonthValue();
-        const [year, month] = filterMonth.split('-').map(Number);
+        return `
+            <!-- Needs/Wants/Investments Cards -->
+            <div id="budget-rule-container" class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+                ${this.renderBudgetRuleContent()}
+            </div>
+        `;
+    },
+    
+    /**
+     * Render budget rule content (for initial and updates)
+     */
+    renderBudgetRuleContent() {
+        const budgetMonth = this.getBudgetMonthValue();
+        const [year, month] = budgetMonth.split('-').map(Number);
         
         // Get income for this month
         const incomeData = this.getIncomeForExpenseComparison(year, month);
@@ -696,7 +736,7 @@ const Dashboard = {
         // Calculate needs, wants, and investments
         const needs = this.getNeedsTotal(year, month);
         const wants = this.getWantsTotal(year, month);
-        const investments = this.getMonthInvestments(filterMonth);
+        const investments = this.getMonthInvestments(budgetMonth);
         
         // Calculate percentages
         const hasIncome = netPay > 0;
@@ -715,11 +755,14 @@ const Dashboard = {
         const investStatus = hasIncome ? (parseFloat(investPercent) >= investIdeal ? '✓' : '↓') : '';
         
         return `
-            <!-- Needs/Wants/Investments Cards -->
-            <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
                 <div class="flex justify-between items-center mb-2">
                     <h3 class="text-sm font-semibold text-gray-700">50/30/20 Budget Rule</h3>
-                    <span class="text-xs text-gray-500">${this.getFormattedFilterMonth(filterMonth)}</span>
+                    <div class="relative">
+                        <input type="month" id="budget-month-selector" value="${budgetMonth}" onchange="Dashboard.updateBudgetMonth()" class="absolute opacity-0 pointer-events-none" />
+                        <button id="budget-month-button" onclick="document.getElementById('budget-month-selector').showPicker()" class="px-3 py-1.5 border border-amber-300 rounded-lg text-xs font-medium text-amber-700 hover:bg-amber-50 transition-all whitespace-nowrap">
+                            ${this.getFormattedMonth(budgetMonth)} ▼
+                        </button>
+                    </div>
                 </div>
                 <p class="text-[10px] text-gray-400 mb-3">Ideal: Needs ≤50% • Wants ≤30% • Invest ≥20%</p>
                 
