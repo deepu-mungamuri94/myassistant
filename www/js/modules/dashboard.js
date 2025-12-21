@@ -833,54 +833,48 @@ const Dashboard = {
                 <div class="grid grid-cols-3 gap-3 max-w-full">
                     <!-- Needs Card -->
                     <div onclick="Dashboard.showBudgetBreakdown('needs')" class="bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                        <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90 leading-tight">Needs ≤${needsIdeal}%</div>
-                            ${hasIncome && !needsOk ? `<span class="text-[10px] font-bold bg-red-600 text-white px-1.5 py-0.5 rounded-full animate-pulse">${needsStatus}</span>` : ''}
-                        </div>
-                        <div class="flex-1 flex items-center justify-center">
+                        <div class="text-xs opacity-90 leading-tight">Needs</div>
+                        <div class="flex-1 flex flex-col items-center justify-center">
                             ${hasIncome 
-                                ? `<div class="text-3xl font-bold ${needsOk ? '' : 'text-red-100'}">${needsPercent}<span class="text-lg opacity-80">%</span></div>`
+                                ? `<div class="text-3xl font-bold">${needsPercent}<span class="text-lg opacity-80">%</span></div>
+                                   ${!needsOk ? `<div class="text-[10px] text-red-200 font-semibold">(${needsStatus} over)</div>` : `<div class="text-[10px] text-green-200">✓ within ${needsIdeal}%</div>`}`
                                 : `<div class="text-xl font-bold opacity-70">N/A</div>`
                             }
                         </div>
                         <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90">${needsOk ? '✓ ' : ''}₹${Utils.formatIndianNumber(Math.round(needs))}</div>
+                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(needs))}</div>
                             <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
                         </div>
                     </div>
                     
                     <!-- Wants Card -->
                     <div onclick="Dashboard.showBudgetBreakdown('wants')" class="bg-gradient-to-br from-pink-500 to-rose-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                        <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90 leading-tight">Wants ≤${wantsIdeal}%</div>
-                            ${hasIncome && !wantsOk ? `<span class="text-[10px] font-bold bg-red-600 text-white px-1.5 py-0.5 rounded-full animate-pulse">${wantsStatus}</span>` : ''}
-                        </div>
-                        <div class="flex-1 flex items-center justify-center">
+                        <div class="text-xs opacity-90 leading-tight">Wants</div>
+                        <div class="flex-1 flex flex-col items-center justify-center">
                             ${hasIncome 
-                                ? `<div class="text-3xl font-bold ${wantsOk ? '' : 'text-red-100'}">${wantsPercent}<span class="text-lg opacity-80">%</span></div>`
+                                ? `<div class="text-3xl font-bold">${wantsPercent}<span class="text-lg opacity-80">%</span></div>
+                                   ${!wantsOk ? `<div class="text-[10px] text-red-200 font-semibold">(${wantsStatus} over)</div>` : `<div class="text-[10px] text-green-200">✓ within ${wantsIdeal}%</div>`}`
                                 : `<div class="text-xl font-bold opacity-70">N/A</div>`
                             }
                         </div>
                         <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90">${wantsOk ? '✓ ' : ''}₹${Utils.formatIndianNumber(Math.round(wants))}</div>
+                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(wants))}</div>
                             <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
                         </div>
                     </div>
                     
                     <!-- Investments Card -->
                     <div onclick="Dashboard.showBudgetBreakdown('investments')" class="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                        <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90 leading-tight">Invest ≥${investIdeal}%</div>
-                            ${hasIncome && !investOk ? `<span class="text-[10px] font-bold bg-red-600 text-white px-1.5 py-0.5 rounded-full animate-pulse">${investStatus}</span>` : ''}
-                        </div>
-                        <div class="flex-1 flex items-center justify-center">
+                        <div class="text-xs opacity-90 leading-tight">Invest</div>
+                        <div class="flex-1 flex flex-col items-center justify-center">
                             ${hasIncome 
-                                ? `<div class="text-3xl font-bold ${investOk ? '' : 'text-red-100'}">${investPercent}<span class="text-lg opacity-80">%</span></div>`
+                                ? `<div class="text-3xl font-bold">${investPercent}<span class="text-lg opacity-80">%</span></div>
+                                   ${!investOk ? `<div class="text-[10px] text-red-200 font-semibold">(${Math.abs(investDiff)}% below ${investIdeal}%)</div>` : `<div class="text-[10px] text-green-200">✓ above ${investIdeal}%</div>`}`
                                 : `<div class="text-xl font-bold opacity-70">N/A</div>`
                             }
                         </div>
                         <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90">${investOk ? '✓ ' : ''}₹${Utils.formatIndianNumber(Math.round(investments))}</div>
+                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(investments))}</div>
                             <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
                         </div>
                     </div>
