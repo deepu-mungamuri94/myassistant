@@ -3049,188 +3049,54 @@
         </div>
     </div>
     
-    <!-- SECURITY UNLOCK MODAL -->
-    <div id="security-unlock-modal" class="hidden fixed inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 z-[10000] flex items-center justify-center p-4">
-        <!-- Animated background particles -->
-        <div class="absolute inset-0 overflow-hidden">
-            <div class="absolute top-20 left-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-            <div class="absolute top-40 right-10 w-72 h-72 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-            <div class="absolute -bottom-8 left-20 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
-        </div>
-        
-        <div class="relative z-10 w-full max-w-md">
-            <!-- Main Card with Glassmorphism -->
-            <div class="relative backdrop-blur-2xl bg-white/10 rounded-3xl shadow-2xl border border-white/20 p-8 transform transition-all duration-500 hover:shadow-purple-500/20">
-                
-                <!-- Logo Section -->
-                <div class="text-center mb-8">
-                    <div class="relative inline-block mb-6">
-                        <!-- Rotating gradient ring -->
-                        <div class="absolute inset-0 bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 rounded-full blur-lg opacity-75 animate-spin-slow"></div>
-                        
-                        <!-- Logo container -->
-                        <div class="relative w-24 h-24 mx-auto bg-gradient-to-br from-slate-800 to-slate-900 rounded-full flex items-center justify-center ring-4 ring-white/20">
-                            <svg class="w-20 h-20" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                                    <linearGradient id="loginRobotGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" style="stop-color:#06b6d4" />
-                                        <stop offset="50%" style="stop-color:#a855f7" />
-                                        <stop offset="100%" style="stop-color:#ec4899" />
-                            </linearGradient>
-                        </defs>
-                                
-                                <!-- Robot with Headphones -->
-                        <g transform="translate(50, 50)">
-                                    <!-- Body (rounded rectangle) -->
-                                    <rect x="-4" y="15" width="8" height="5" rx="1" fill="url(#loginRobotGrad)"/>
-                                    
-                                    <!-- Base/Stand -->
-                                    <ellipse cx="0" cy="26" rx="20" ry="10" fill="url(#loginRobotGrad)" opacity="0.8"/>
-                                    
-                                    <!-- Head -->
-                                    <ellipse cx="0" cy="0" rx="14" ry="16" fill="url(#loginRobotGrad)"/>
-                                    
-                                    <!-- Antenna -->
-                                    <rect x="-3" y="-16" width="6" height="3" fill="#06b6d4"/>
-                            <circle cx="0" cy="-22" r="1.5" fill="#4CAF50"/>
-                                    
-                                    <!-- Headphones arc -->
-                                    <path d="M -14 -8 Q -14 -18, 0 -20 Q 14 -18, 14 -8" stroke="url(#loginRobotGrad)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-                                    
-                                    <!-- Left Headphone -->
-                            <g transform="translate(-17, 0)">
-                                        <ellipse cx="0" cy="0" rx="5" ry="7" fill="url(#loginRobotGrad)"/>
-                                        <ellipse cx="0" cy="0" rx="3.5" ry="5" fill="#a855f7"/>
-                                        <ellipse cx="0" cy="0" rx="2" ry="3" fill="#c084fc"/>
-                            </g>
-                                    
-                                    <!-- Right Headphone -->
-                            <g transform="translate(17, 0)">
-                                        <ellipse cx="0" cy="0" rx="5" ry="7" fill="url(#loginRobotGrad)"/>
-                                        <ellipse cx="0" cy="0" rx="3.5" ry="5" fill="#a855f7"/>
-                                        <ellipse cx="0" cy="0" rx="2" ry="3" fill="#c084fc"/>
-                            </g>
-                                    
-                                    <!-- Left Eye -->
-                                    <ellipse cx="-5" cy="-2" rx="3.5" ry="4.5" fill="#06b6d4"/>
-                                    <ellipse cx="-5" cy="-2" rx="2" ry="2.5" fill="#0891b2"/>
-                                    <circle cx="-6" cy="-3" r="1" fill="#ffffff"/>
-                                    
-                                    <!-- Right Eye -->
-                                    <ellipse cx="5" cy="-2" rx="3.5" ry="4.5" fill="#06b6d4"/>
-                                    <ellipse cx="5" cy="-2" rx="2" ry="2.5" fill="#0891b2"/>
-                                    <circle cx="4" cy="-3" r="1" fill="#ffffff"/>
-                                    
-                                    <!-- Robot Smile -->
-                                    <path d="M -6 6 Q 0 10 6 6" stroke="#06b6d4" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-                                    
-                                    <!-- Microphone -->
-                                    <path d="M 17 5 L 22 8" stroke="url(#loginRobotGrad)" stroke-width="1.2" stroke-linecap="round"/>
-                                    <circle cx="23" cy="9" r="2" fill="#ec4899"/>
-                                    
-                                    <!-- Chest Panel -->
-                            <rect x="-5" y="16" width="10" height="2" fill="#f8f9ff"/>
-                                    <circle cx="-3" cy="17" r="0.5" fill="#06b6d4"/>
-                            <circle cx="0" cy="17" r="0.5" fill="#4CAF50"/>
-                                    <circle cx="3" cy="17" r="0.5" fill="#ec4899"/>
-                        </g>
+    <!-- SECURITY UNLOCK MODAL - Simple PIN Screen -->
+    <div id="security-unlock-modal" class="hidden fixed inset-0 bg-slate-900 z-[10000] flex items-center justify-center p-6">
+        <div class="w-full max-w-xs">
+            <!-- Lock Icon -->
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 mx-auto bg-slate-800 rounded-full flex items-center justify-center mb-4">
+                    <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                     </svg>
                 </div>
-                    </div>
-                    
-                    <h2 id="security-unlock-title" class="text-3xl font-bold mb-2 bg-gradient-to-r from-cyan-300 via-purple-300 to-pink-300 bg-clip-text text-transparent animate-gradient">
-                    My Assistant
-                </h2>
-                    <p class="text-slate-300 text-sm font-medium">Secure Authentication</p>
+                <h2 id="security-unlock-title" class="text-xl font-semibold text-white mb-1">My Assistant</h2>
+                <p class="text-slate-400 text-sm">Enter PIN to unlock</p>
             </div>
             
-                <!-- PIN Input Section -->
-                <div class="space-y-6">
-                    <!-- Error Message -->
-                    <div id="security-unlock-error" class="hidden">
-                        <div class="bg-red-500/20 border border-red-500/50 rounded-xl p-3 backdrop-blur-sm">
-                            <p class="text-red-200 text-center text-sm font-semibold"></p>
-                        </div>
-                    </div>
-                    
-                    <!-- PIN Input Container -->
-                    <div class="relative">
-                        <div class="absolute -inset-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-200"></div>
-                        <div class="relative">
-                    <input type="password" id="security-unlock-pin" inputmode="numeric" maxlength="4"
-                                   class="w-full px-6 py-4 bg-slate-800/50 backdrop-blur-xl border-2 border-slate-700/50 rounded-2xl focus:outline-none focus:border-cyan-400/50 focus:ring-4 focus:ring-cyan-400/20 text-center text-3xl tracking-[1em] font-bold text-white placeholder-slate-500 transition-all duration-300"
-                           placeholder="••••"
-                                   oninput="handleUnlockPinInput()"
-                                   autocomplete="off">
-                        </div>
-                        <!-- Subtle hint -->
-                        <p class="text-center text-slate-400 text-xs mt-3 font-medium">Enter your 4-digit PIN</p>
-                </div>
-                
-                    <!-- Hidden Unlock Button (auto-submit on 4 digits) -->
-                <button onclick="unlockWithPin()" 
-                            class="hidden w-full px-6 py-3 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-purple-500/50 transition-all duration-300 transform hover:scale-[1.02]">
-                    Unlock
-                </button>
+            <!-- Error Message -->
+            <div id="security-unlock-error" class="hidden mb-4">
+                <div class="bg-red-500/20 border border-red-500/40 rounded-lg p-2">
+                    <p class="text-red-300 text-center text-sm"></p>
                 </div>
             </div>
-                
-            <!-- Biometric Authentication Section (Bottom with more spacing) -->
-            <div id="biometric-unlock-section" class="hidden mt-12 flex flex-col items-center">
-                <p class="text-slate-300 text-xs font-semibold mb-4 tracking-widest uppercase">Or use fingerprint</p>
+            
+            <!-- PIN Input -->
+            <div class="mb-6">
+                <input type="password" id="security-unlock-pin" inputmode="numeric" maxlength="4"
+                       class="w-full px-4 py-4 bg-slate-800 border border-slate-700 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 text-center text-2xl tracking-[0.5em] font-bold text-white placeholder-slate-600"
+                       placeholder="••••"
+                       oninput="handleUnlockPinInput()"
+                       autocomplete="off">
+            </div>
+            
+            <!-- Biometric Button (shown inline if available) -->
+            <div id="biometric-unlock-section" class="hidden">
+                <div class="relative flex items-center justify-center mb-4">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-slate-700"></div>
+                    </div>
+                    <span class="relative bg-slate-900 px-3 text-slate-500 text-xs">or</span>
+                </div>
                 <button id="biometric-unlock-btn" onclick="unlockWithBiometric()" 
-                        class="group relative w-20 h-20 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 shadow-2xl hover:shadow-cyan-400/50 transition-all duration-300 transform hover:scale-110 flex items-center justify-center ring-4 ring-cyan-400/30 hover:ring-cyan-400/60">
-                    <!-- Animated glow effect -->
-                    <div class="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300"></div>
-                    
-                    <!-- Inner circle -->
-                    <div class="absolute inset-2 rounded-full bg-gradient-to-br from-slate-900 to-black"></div>
-                    
-                    <!-- Fingerprint Icon -->
-                    <svg class="w-9 h-9 relative z-10 text-cyan-400 group-hover:text-cyan-300 transition-all duration-300 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        class="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-white font-medium transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
                     </svg>
-                    
-                    <!-- Pulse rings animation -->
-                    <div class="absolute inset-0 rounded-full border-2 border-cyan-400 opacity-0 group-hover:opacity-75 animate-ping"></div>
-                    <div class="absolute inset-0 rounded-full border border-cyan-400 opacity-0 group-hover:opacity-50 group-hover:scale-110 transition-all duration-700"></div>
+                    Use Fingerprint
                 </button>
             </div>
         </div>
     </div>
-    
-    <!-- Add custom animations -->
-    <style>
-        @keyframes blob {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(30px, -50px) scale(1.1); }
-            66% { transform: translate(-20px, 20px) scale(0.9); }
-        }
-        @keyframes spin-slow {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        @keyframes gradient {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
-        .animate-blob {
-            animation: blob 7s infinite;
-        }
-        .animate-spin-slow {
-            animation: spin-slow 3s linear infinite;
-        }
-        .animate-gradient {
-            background-size: 200% 200%;
-            animation: gradient 3s ease infinite;
-        }
-        .animation-delay-2000 {
-            animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-            animation-delay: 4s;
-        }
-    </style>
     
     <!-- CHANGE PIN MODAL -->
     <div id="change-pin-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4">
@@ -6535,16 +6401,13 @@ Technical: ${error.stack ? error.stack.split('\n')[0] : 'No stack trace'}
         async function checkBiometricAvailability() {
             const available = await window.Security.isBiometricAvailable();
             if (available) {
-                // Show biometric setup option
+                // Show biometric setup option in settings
                 document.getElementById('biometric-setup-option').classList.remove('hidden');
                 
-                // TEMPORARY: Always show biometric button for design validation
-                document.getElementById('biometric-unlock-section').classList.remove('hidden');
-                
-                // Show biometric unlock section ONLY if biometric is enabled by user
-                // if (window.DB.security && window.DB.security.biometricEnabled) {
-                //     document.getElementById('biometric-unlock-section').classList.remove('hidden');
-                // }
+                // Show biometric unlock button only if user has enabled it
+                if (window.DB.security && window.DB.security.biometricEnabled) {
+                    document.getElementById('biometric-unlock-section').classList.remove('hidden');
+                }
             }
         }
         

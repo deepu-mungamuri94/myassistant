@@ -56,47 +56,41 @@ const App = {
             
             // Security is set up, check if already unlocked
             if (!window.Security.isUnlocked) {
-                // Show unlock screen (reduced delay for faster startup)
+                // Show unlock screen
                 console.log('🔒 App locked - showing unlock screen');
-                setTimeout(() => {
+                setTimeout(async () => {
                     const unlockModal = document.getElementById('security-unlock-modal');
                     unlockModal.classList.remove('hidden');
                     
                     // Auto-focus PIN input
-                    const pinInput = document.getElementById('unlock-pin');
+                    const pinInput = document.getElementById('security-unlock-pin');
                     if (pinInput) {
                         setTimeout(() => pinInput.focus(), 200);
                     }
                     
-                    // TEMPORARY: Always show biometric button for design validation
-                    document.getElementById('biometric-unlock-section').classList.remove('hidden');
-                    
-                    // Show biometric button if enabled
-                    if (window.DB.security.biometricEnabled) {
-                        // document.getElementById('biometric-unlock-section').classList.remove('hidden');
-                        
-                        // Auto-trigger biometric only if hardware is available and enrolled
-                        if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-                            setTimeout(async () => {
-                                try {
-                                    // Check if biometric is actually available before auto-triggering
-                                    const isAvailable = await window.Security.isBiometricAvailable();
-                                    if (isAvailable && window.unlockWithBiometric) {
-                                        console.log('🔐 Auto-triggering biometric authentication');
+                    // Check biometric availability and auto-trigger if enabled
+                    if (window.DB.security.biometricEnabled && window.Capacitor && window.Capacitor.isNativePlatform()) {
+                        try {
+                            const isAvailable = await window.Security.isBiometricAvailable();
+                            if (isAvailable) {
+                                // Show biometric button
+                                document.getElementById('biometric-unlock-section').classList.remove('hidden');
+                                
+                                // Auto-trigger biometric immediately
+                                console.log('🔐 Auto-triggering biometric authentication');
+                                setTimeout(() => {
+                                    if (window.unlockWithBiometric) {
                                         window.unlockWithBiometric().catch(() => {
-                                            // Silently fail, user can use PIN
-                                            console.log('ℹ️ Biometric auto-trigger cancelled/failed');
+                                            console.log('ℹ️ Biometric auto-trigger cancelled/failed, use PIN');
                                         });
-                                    } else {
-                                        console.log('ℹ️ Biometric not available, skipping auto-trigger');
                                     }
-                                } catch (error) {
-                                    console.log('ℹ️ Could not check biometric availability:', error);
-                                }
-                            }, 400);
+                                }, 300);
+                            }
+                        } catch (error) {
+                            console.log('ℹ️ Biometric not available:', error.message);
                         }
                     }
-                }, 300);
+                }, 100);
                 return; // Stop here, will continue after unlock
             }
             

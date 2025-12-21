@@ -85,14 +85,16 @@ const Events = {
                 dateRange = minMonth === maxMonth ? minMonth : `${minMonth} - ${maxMonth}`;
             }
             
-            // Convert byTitle to array, sort by total (highest first)
+            // Convert byTitle to array, sort by earliest date (ascending)
             const byTitle = Object.values(event.byTitle)
                 .map(t => {
                     // Sort expenses by date (chronological)
                     t.expenses.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    // Track earliest date for sorting
+                    t.earliestDate = t.expenses.length > 0 ? new Date(t.expenses[0].date) : new Date();
                     return t;
                 })
-                .sort((a, b) => b.total - a.total);
+                .sort((a, b) => a.earliestDate - b.earliestDate);
             
             return {
                 name: event.name,
