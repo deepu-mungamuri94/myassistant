@@ -1254,6 +1254,80 @@ const Dashboard = {
     },
     
     /**
+     * Show monthly breakdown list (for Monthly Breakdown cards)
+     */
+    showMonthlyBreakdownList(type) {
+        const filterMonth = this.getFilterMonthValue();
+        
+        let items = [];
+        let title = '';
+        let color = '';
+        let total = 0;
+        
+        if (type === 'expenses') {
+            items = this.getMonthExpenseItems(filterMonth);
+            title = '💸 Monthly Expenses';
+            color = 'red';
+            total = items.reduce((sum, i) => sum + i.amount, 0);
+        } else if (type === 'investments') {
+            items = this.getMonthInvestmentItems(filterMonth);
+            title = '📈 Monthly Investments';
+            color = 'amber';
+            total = items.reduce((sum, i) => sum + i.amount, 0);
+        }
+        
+        // Create or update modal
+        let modal = document.getElementById('monthly-breakdown-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'monthly-breakdown-modal';
+            document.body.appendChild(modal);
+        }
+        
+        const monthLabel = this.getFormattedMonth(filterMonth);
+        
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+        modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
+        
+        const itemsHtml = items.length > 0 
+            ? items.map(item => `
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-800 truncate">${Utils.escapeHtml(item.title)}</p>
+                        <p class="text-xs text-gray-500">${item.category} • ${item.date}</p>
+                    </div>
+                    <span class="text-sm font-semibold text-gray-700 ml-2">₹${Utils.formatIndianNumber(item.amount)}</span>
+                </div>
+            `).join('')
+            : `<p class="text-center text-gray-500 py-4">No items for this month</p>`;
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] flex flex-col">
+                <div class="p-4 border-b border-gray-200 bg-gradient-to-r from-${color}-500 to-${color}-600 rounded-t-2xl">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-bold text-white">${title}</h3>
+                            <p class="text-xs text-white/80">${monthLabel}</p>
+                        </div>
+                        <button onclick="document.getElementById('monthly-breakdown-modal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white text-lg">×</button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4">
+                    ${itemsHtml}
+                </div>
+                <div class="p-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-600">Total (${items.length} items)</span>
+                        <span class="text-lg font-bold text-${color}-600">₹${Utils.formatIndianNumber(Math.round(total))}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
+    },
+    
+    /**
      * Get "Needs" expense items for a month
      * Optionally excludes loan EMIs based on setting
      */
@@ -2675,6 +2749,27 @@ const Dashboard = {
     },
     
     /**
+     * Get expense items for a month
+     */
+    getMonthExpenseItems(monthValue) {
+        const [year, month] = monthValue.split('-').map(Number);
+        const expenses = window.DB.expenses || [];
+        
+        return expenses
+            .filter(exp => {
+                const expDate = new Date(exp.date);
+                return expDate.getFullYear() === year && (expDate.getMonth() + 1) === month;
+            })
+            .map(exp => ({
+                title: exp.title,
+                category: exp.category || 'Other',
+                amount: parseFloat(exp.amount) || 0,
+                date: new Date(exp.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+            }))
+            .sort((a, b) => b.amount - a.amount);
+    },
+    
+    /**
      * Get total monthly investments for selected filter month
      */
     getMonthInvestments(monthValue) {
@@ -2698,6 +2793,44 @@ const Dashboard = {
                 }
                 return sum;
             }, 0);
+    },
+    
+    /**
+     * Get investment items for a month
+     */
+    getMonthInvestmentItems(monthValue) {
+        const [year, month] = monthValue.split('-').map(Number);
+        const monthlyInvestments = window.DB.monthlyInvestments || [];
+        const exchangeRate = typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : 83;
+        
+        return monthlyInvestments
+            .filter(inv => {
+                const invDate = new Date(inv.date);
+                return invDate.getFullYear() === year && (invDate.getMonth() + 1) === month;
+            })
+            .map(inv => {
+                let amount = 0;
+                let title = inv.name || inv.type;
+                
+                if (inv.type === 'SHARES') {
+                    amount = inv.price * inv.quantity * (inv.currency === 'USD' ? exchangeRate : 1);
+                    title = inv.name || 'Shares';
+                } else if (inv.type === 'GOLD') {
+                    amount = inv.price * inv.quantity;
+                    title = inv.name || 'Gold';
+                } else if (inv.type === 'EPF' || inv.type === 'FD') {
+                    amount = inv.amount || 0;
+                    title = inv.name || inv.type;
+                }
+                
+                return {
+                    title: title,
+                    category: inv.type,
+                    amount: amount,
+                    date: new Date(inv.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+                };
+            })
+            .sort((a, b) => b.amount - a.amount);
     },
     
     /**
@@ -2853,7 +2986,7 @@ const Dashboard = {
                 
                 <!-- Breakdown Cards -->
                 <div class="grid grid-cols-3 gap-3 max-w-full">
-                    <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                    <div onclick="Dashboard.showMonthlyBreakdownList('expenses')" class="bg-gradient-to-br from-red-500 to-red-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
                         <div class="text-xs opacity-90 leading-tight">Expenses</div>
                         <div class="flex-1 flex items-center justify-center">
                             ${hasIncomeData 
@@ -2863,11 +2996,11 @@ const Dashboard = {
                         </div>
                         <div class="flex items-center justify-between">
                             <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(expenses))}</div>
-                            <button onclick="Dashboard.showTooltip(event, '${incomeSourceLabel}')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                            <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
                         </div>
                     </div>
                     
-                    <div class="bg-gradient-to-br from-yellow-500 to-orange-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                    <div onclick="Dashboard.showMonthlyBreakdownList('investments')" class="bg-gradient-to-br from-yellow-500 to-orange-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
                         <div class="text-xs opacity-90 leading-tight">Investments</div>
                         <div class="flex-1 flex items-center justify-center">
                             ${hasIncomeData 
@@ -2877,7 +3010,7 @@ const Dashboard = {
                         </div>
                         <div class="flex items-center justify-between">
                             <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(investments))}</div>
-                            <button onclick="Dashboard.showTooltip(event, 'Total monthly investments added in selected month')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                            <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
                         </div>
                     </div>
                     
@@ -2891,7 +3024,7 @@ const Dashboard = {
                         </div>
                         <div class="flex items-center justify-between">
                             <div class="text-xs opacity-90">${hasIncomeData ? '₹' + Utils.formatIndianNumber(Math.round(balance)) : 'No income data'}</div>
-                            <button onclick="Dashboard.showTooltip(event, '${hasIncomeData ? 'Balance: Income - (Expenses + Investments). ' + incomeSourceLabel : 'No income data for ' + incomeData.monthName + ' ' + incomeData.year}')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                            <button onclick="event.stopPropagation(); Dashboard.showTooltip(event, '${hasIncomeData ? 'Balance: Income - (Expenses + Investments)' : 'No income data for ' + incomeData.monthName + ' ' + incomeData.year}')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
                         </div>
                     </div>
                 </div>
