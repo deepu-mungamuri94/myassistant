@@ -166,34 +166,34 @@ const Dashboard = {
             <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
                 <h3 class="text-sm font-semibold text-gray-700 mb-3">Current Month</h3>
                 <div class="grid grid-cols-3 gap-3 max-w-full">
-                    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                    <div onclick="Dashboard.showCurrentMonthList('recurring')" class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
                         <div class="text-xs opacity-90 leading-tight">Rec.Payments</div>
                         <div class="flex-1 flex items-center justify-center">
                             <div class="text-3xl font-bold">${recurringPercent}<span class="text-lg opacity-80">%</span></div>
                         </div>
                         <div class="flex items-center justify-between">
                             <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(recurringExpenses)}</div>
-                            <button onclick="Dashboard.showTooltip(event, 'Recurring payments (Current Month): Scheduled payments excluding monthly Loans/EMIs')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                            <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
                         </div>
                     </div>
-                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                    <div onclick="Dashboard.showCurrentMonthList('emis')" class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
                         <div class="text-xs opacity-90 leading-tight">Loans / EMIs</div>
                         <div class="flex-1 flex items-center justify-center">
                             <div class="text-3xl font-bold">${emisPercent}<span class="text-lg opacity-80">%</span></div>
                         </div>
                         <div class="flex items-center justify-between">
                             <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(totalEmis)}</div>
-                            <button onclick="Dashboard.showTooltip(event, 'Loans / EMIs (Current Month): Total monthly EMIs from active loans and credit cards')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                            <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
                         </div>
                     </div>
-                    <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                    <div onclick="Dashboard.showCurrentMonthList('regular')" class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
                         <div class="text-xs opacity-90 leading-tight">Reg.Expenses</div>
                         <div class="flex-1 flex items-center justify-center">
                             <div class="text-3xl font-bold">${regularPercent}<span class="text-lg opacity-80">%</span></div>
                         </div>
                         <div class="flex items-center justify-between">
                             <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(regularExpenses)}</div>
-                            <button onclick="Dashboard.showTooltip(event, 'Regular Expenses (Current Month): All monthly expenses without Recurring payments and Monthly EMIs')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                            <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
                         </div>
                     </div>
                 </div>
@@ -2511,6 +2511,245 @@ const Dashboard = {
         });
         
         return regularTotal;
+    },
+    
+    /**
+     * Get recurring expense items for current month (excluding Loan EMI and Credit Card EMI)
+     */
+    getRecurringExpenseItems() {
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth() + 1; // 1-12
+        
+        if (!window.RecurringExpenses) {
+            return [];
+        }
+        
+        const allRecurring = window.RecurringExpenses.getAll();
+        const items = [];
+        
+        allRecurring.forEach(recurring => {
+            // Skip inactive
+            if (recurring.isActive === false) {
+                return;
+            }
+            
+            // Skip if end date is before this month
+            if (recurring.endDate) {
+                const endDate = new Date(recurring.endDate);
+                const checkDate = new Date(currentYear, currentMonth - 1, 1);
+                if (checkDate > endDate) {
+                    return;
+                }
+            }
+            
+            // Check if due in this month
+            const isDue = window.RecurringExpenses.isDueInMonth(recurring, currentYear, currentMonth);
+            
+            if (isDue) {
+                const category = recurring.category || '';
+                // Exclude Loan EMI and Credit Card EMI
+                if (category !== 'Loan EMI' && category !== 'Credit Card EMI') {
+                    items.push({
+                        title: recurring.title || recurring.name || 'Recurring',
+                        category: category || 'Other',
+                        amount: parseFloat(recurring.amount) || 0,
+                        date: `Day ${recurring.dayOfMonth || '-'}`
+                    });
+                }
+            }
+        });
+        
+        return items.sort((a, b) => b.amount - a.amount);
+    },
+    
+    /**
+     * Get EMI items for current month (loans + credit cards)
+     */
+    getEmiItems() {
+        const loans = window.DB.loans || [];
+        const cards = window.DB.cards || [];
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth(); // 0-11
+        const items = [];
+        
+        // Add active loan EMIs
+        loans.forEach(loan => {
+            // Check if loan has started before or during this month
+            const firstDate = new Date(loan.firstEmiDate);
+            const firstEmiMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+            const currentMonthStart = new Date(currentYear, currentMonth, 1);
+            
+            if (firstEmiMonth > currentMonthStart) {
+                return;
+            }
+            
+            if (window.Loans) {
+                const remaining = window.Loans.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
+                
+                let emiAmount = loan.emi;
+                if (!emiAmount && loan.amount && loan.interestRate && loan.tenure) {
+                    emiAmount = window.Loans.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
+                }
+                
+                if (remaining.emisRemaining > 0 && emiAmount) {
+                    const emiDay = firstDate.getDate();
+                    items.push({
+                        title: `${loan.bankName} ${loan.loanType || 'Loan'}`,
+                        category: 'Loan EMI',
+                        amount: parseFloat(emiAmount),
+                        date: `Day ${emiDay}`,
+                        type: 'loan'
+                    });
+                }
+            }
+        });
+        
+        // Add active credit card EMIs
+        cards.forEach(card => {
+            if (card.cardType === 'debit') return;
+            
+            if (card.emis && card.emis.length > 0) {
+                card.emis.forEach(emi => {
+                    if (emi.firstEmiDate) {
+                        const emiFirstDate = new Date(emi.firstEmiDate);
+                        const emiFirstMonth = new Date(emiFirstDate.getFullYear(), emiFirstDate.getMonth(), 1);
+                        const currentMonthStart = new Date(currentYear, currentMonth, 1);
+                        
+                        if (emiFirstMonth > currentMonthStart) {
+                            return;
+                        }
+                    }
+                    
+                    const paidCount = emi.paidCount || 0;
+                    const totalCount = emi.totalCount || emi.totalEmis || 0;
+                    const remaining = totalCount - paidCount;
+                    
+                    if (!emi.completed && remaining > 0 && emi.emiAmount) {
+                        items.push({
+                            title: `${card.name || card.bankName} - ${emi.description || 'EMI'}`,
+                            category: 'Credit Card EMI',
+                            amount: parseFloat(emi.emiAmount),
+                            date: `${paidCount}/${totalCount} paid`,
+                            type: 'card'
+                        });
+                    }
+                });
+            }
+        });
+        
+        return items.sort((a, b) => b.amount - a.amount);
+    },
+    
+    /**
+     * Get regular expense items for current month (excluding EMI category)
+     */
+    getRegularExpenseItems() {
+        const expenses = window.DB.expenses || [];
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth() + 1; // 1-12
+        
+        return expenses
+            .filter(expense => {
+                const expenseDate = new Date(expense.date);
+                const expenseYear = expenseDate.getFullYear();
+                const expenseMonth = expenseDate.getMonth() + 1;
+                
+                if (expenseYear !== currentYear || expenseMonth !== currentMonth) {
+                    return false;
+                }
+                
+                const category = (expense.category || '').toLowerCase();
+                // Exclude EMI category
+                return category !== 'emi' && category !== 'recurring';
+            })
+            .map(expense => ({
+                title: expense.title,
+                category: expense.category || 'Other',
+                amount: parseFloat(expense.amount) || 0,
+                date: new Date(expense.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+            }))
+            .sort((a, b) => b.amount - a.amount);
+    },
+    
+    /**
+     * Show current month breakdown list
+     */
+    showCurrentMonthList(type) {
+        let items = [];
+        let title = '';
+        let color = '';
+        let total = 0;
+        
+        if (type === 'recurring') {
+            items = this.getRecurringExpenseItems();
+            title = '🔄 Recurring Payments';
+            color = 'purple';
+            total = items.reduce((sum, i) => sum + i.amount, 0);
+        } else if (type === 'emis') {
+            items = this.getEmiItems();
+            title = '🏦 Loans / EMIs';
+            color = 'blue';
+            total = items.reduce((sum, i) => sum + i.amount, 0);
+        } else if (type === 'regular') {
+            items = this.getRegularExpenseItems();
+            title = '💵 Regular Expenses';
+            color = 'emerald';
+            total = items.reduce((sum, i) => sum + i.amount, 0);
+        }
+        
+        // Create or update modal
+        let modal = document.getElementById('current-month-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'current-month-modal';
+            document.body.appendChild(modal);
+        }
+        
+        const today = new Date();
+        const monthLabel = today.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+        
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+        modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
+        
+        const itemsHtml = items.length > 0 
+            ? items.map(item => `
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-800 truncate">${Utils.escapeHtml(item.title)}</p>
+                        <p class="text-xs text-gray-500">${item.category} • ${item.date}</p>
+                    </div>
+                    <span class="text-sm font-semibold text-gray-700 ml-2">₹${Utils.formatIndianNumber(item.amount)}</span>
+                </div>
+            `).join('')
+            : `<p class="text-center text-gray-500 py-4">No items for this month</p>`;
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] flex flex-col">
+                <div class="p-4 border-b border-gray-200 bg-gradient-to-r from-${color}-500 to-${color}-600 rounded-t-2xl">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-bold text-white">${title}</h3>
+                            <p class="text-xs text-white/80">${monthLabel}</p>
+                        </div>
+                        <button onclick="document.getElementById('current-month-modal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white text-lg">×</button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4">
+                    ${itemsHtml}
+                </div>
+                <div class="p-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-600">Total (${items.length} items)</span>
+                        <span class="text-lg font-bold text-${color}-600">₹${Utils.formatIndianNumber(Math.round(total))}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
     },
     
     /**
