@@ -464,6 +464,7 @@ const Dashboard = {
         /**
          * Helper function to get income for a specific expense month
          * If pay schedule is 'last_week', get previous month's income
+         * Includes salary + additional income (bonus, freelance, etc.)
          */
         const getIncomeForMonth = (expenseYear, expenseMonth) => {
             let incomeYear, incomeMonth;
@@ -477,19 +478,23 @@ const Dashboard = {
                 incomeYear = expenseYear;
             }
             
+            // Get additional income for the month
+            const additionalIncomeTotal = window.Income ? 
+                window.Income.getAdditionalIncomeTotalForMonth(incomeMonth, incomeYear) : 0;
+            
             // Try actual salary first
             const actualSalary = salaries.find(s => s.year === incomeYear && s.month === incomeMonth);
             if (actualSalary) {
-                return actualSalary.amount;
+                return actualSalary.amount + additionalIncomeTotal;
             }
             
-            // Fallback to payslip
+            // Fallback to payslip + additional income
             const monthNamesLong = [
                 'January', 'February', 'March', 'April', 'May', 'June',
                 'July', 'August', 'September', 'October', 'November', 'December'
             ];
             const payslip = yearlyPayslips.find(p => p.month === monthNamesLong[incomeMonth - 1]);
-            return payslip ? payslip.totalNetPay : 0;
+            return (payslip ? payslip.totalNetPay : 0) + additionalIncomeTotal;
         };
         
         // Use custom range if selected
@@ -3114,9 +3119,10 @@ const Dashboard = {
     
     /**
      * Get income for expense comparison based on pay schedule
+     * Includes salary + additional income (bonus, freelance, etc.)
      * @param {number} expenseYear - Year of expenses
      * @param {number} expenseMonth - Month of expenses (1-12)
-     * @returns {Object} { income: number|null, month: number, year: number, monthName: string }
+     * @returns {Object} { income: number|null, month: number, year: number, monthName: string, salary: number, additionalIncome: number }
      */
     getIncomeForExpenseComparison(expenseYear, expenseMonth) {
         const paySchedule = window.DB.settings.paySchedule || 'first_week';
@@ -3136,12 +3142,24 @@ const Dashboard = {
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const monthName = monthNames[incomeMonth - 1];
         
+        // Get additional income for the month
+        const additionalIncomeTotal = window.Income ? 
+            window.Income.getAdditionalIncomeTotalForMonth(incomeMonth, incomeYear) : 0;
+        
         // Try to find actual salary first
         const salaries = window.DB.salaries || [];
         const actualSalary = salaries.find(s => s.year === incomeYear && s.month === incomeMonth);
         
         if (actualSalary) {
-            return { income: actualSalary.amount, month: incomeMonth, year: incomeYear, monthName };
+            const totalIncome = actualSalary.amount + additionalIncomeTotal;
+            return { 
+                income: totalIncome, 
+                salary: actualSalary.amount,
+                additionalIncome: additionalIncomeTotal,
+                month: incomeMonth, 
+                year: incomeYear, 
+                monthName 
+            };
         }
         
         // Fallback to estimated payslip
@@ -3149,7 +3167,18 @@ const Dashboard = {
         const ctc = incomeData.ctc || 0;
         
         if (!ctc || ctc === 0) {
-            return { income: null, month: incomeMonth, year: incomeYear, monthName };
+            // Still include additional income even if no salary/CTC
+            if (additionalIncomeTotal > 0) {
+                return { 
+                    income: additionalIncomeTotal, 
+                    salary: 0,
+                    additionalIncome: additionalIncomeTotal,
+                    month: incomeMonth, 
+                    year: incomeYear, 
+                    monthName 
+                };
+            }
+            return { income: null, salary: 0, additionalIncome: 0, month: incomeMonth, year: incomeYear, monthName };
         }
         
         const monthNamesLong = [
@@ -3166,9 +3195,17 @@ const Dashboard = {
         );
         
         const payslip = yearlyPayslips.find(p => p.month === monthNamesLong[incomeMonth - 1]);
-        const income = payslip ? (payslip.totalNetPay || payslip.netPay || 0) : null;
+        const payslipIncome = payslip ? (payslip.totalNetPay || payslip.netPay || 0) : 0;
+        const totalIncome = payslipIncome + additionalIncomeTotal;
         
-        return { income, month: incomeMonth, year: incomeYear, monthName };
+        return { 
+            income: totalIncome > 0 ? totalIncome : null, 
+            salary: payslipIncome,
+            additionalIncome: additionalIncomeTotal,
+            month: incomeMonth, 
+            year: incomeYear, 
+            monthName 
+        };
     },
     
     /**

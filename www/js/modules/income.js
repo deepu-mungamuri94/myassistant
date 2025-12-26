@@ -161,6 +161,117 @@ const Income = {
         return window.DB.salaries.find(s => String(s.id) === String(id));
     },
     
+    // ==================== ADDITIONAL INCOME MANAGEMENT ====================
+    
+    /**
+     * Get all additional income entries
+     */
+    getAllAdditionalIncome() {
+        if (!window.DB.additionalIncome) {
+            window.DB.additionalIncome = [];
+        }
+        return window.DB.additionalIncome;
+    },
+    
+    /**
+     * Get additional income for a specific month/year
+     */
+    getAdditionalIncomeForMonth(month, year) {
+        return this.getAllAdditionalIncome().filter(
+            a => a.month === parseInt(month) && a.year === parseInt(year)
+        );
+    },
+    
+    /**
+     * Get total additional income for a specific month/year
+     */
+    getAdditionalIncomeTotalForMonth(month, year) {
+        const entries = this.getAdditionalIncomeForMonth(month, year);
+        return entries.reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
+    },
+    
+    /**
+     * Add additional income entry
+     */
+    addAdditionalIncome(month, year, amount, source) {
+        if (!month || !year || !amount) {
+            throw new Error('Month, year, and amount are required');
+        }
+        if (!source || source.trim() === '') {
+            throw new Error('Source is required for additional income');
+        }
+        
+        if (!window.DB.additionalIncome) {
+            window.DB.additionalIncome = [];
+        }
+        
+        const entry = {
+            id: Utils.generateId(),
+            month: parseInt(month),
+            year: parseInt(year),
+            amount: parseFloat(amount),
+            source: source.trim(),
+            createdAt: Utils.getCurrentTimestamp()
+        };
+        
+        window.DB.additionalIncome.push(entry);
+        window.Storage.save();
+        
+        return entry;
+    },
+    
+    /**
+     * Update additional income entry
+     */
+    updateAdditionalIncome(id, amount, source) {
+        if (!amount) {
+            throw new Error('Amount is required');
+        }
+        if (!source || source.trim() === '') {
+            throw new Error('Source is required');
+        }
+        
+        const entry = this.getAllAdditionalIncome().find(a => String(a.id) === String(id));
+        if (!entry) {
+            throw new Error('Additional income entry not found');
+        }
+        
+        entry.amount = parseFloat(amount);
+        entry.source = source.trim();
+        
+        window.Storage.save();
+        return entry;
+    },
+    
+    /**
+     * Delete additional income entry
+     */
+    deleteAdditionalIncome(id) {
+        window.DB.additionalIncome = this.getAllAdditionalIncome().filter(
+            a => String(a.id) !== String(id)
+        );
+        window.Storage.save();
+    },
+    
+    /**
+     * Get additional income by id
+     */
+    getAdditionalIncomeById(id) {
+        return this.getAllAdditionalIncome().find(a => String(a.id) === String(id));
+    },
+    
+    /**
+     * Get total income (salary + additional) for a specific month/year
+     */
+    getTotalIncomeForMonth(month, year) {
+        const salary = window.DB.salaries.find(
+            s => s.month === parseInt(month) && s.year === parseInt(year)
+        );
+        const salaryAmount = salary ? parseFloat(salary.amount) : 0;
+        const additionalAmount = this.getAdditionalIncomeTotalForMonth(month, year);
+        return salaryAmount + additionalAmount;
+    },
+    
     /**
      * Get all salaries
      */
@@ -766,9 +877,15 @@ const Income = {
      * Get total salary for a specific year
      */
     getYearSalaryTotal(year) {
-        return window.DB.salaries
+        const salaryTotal = window.DB.salaries
             .filter(s => s.year === parseInt(year))
             .reduce((sum, s) => sum + parseFloat(s.amount), 0);
+        
+        const additionalTotal = this.getAllAdditionalIncome()
+            .filter(a => a.year === parseInt(year))
+            .reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
+        
+        return salaryTotal + additionalTotal;
     },
     
     /**
@@ -876,7 +993,11 @@ const Income = {
         
         years.forEach(year => {
             const yearSalaries = byYear[year].sort((a, b) => a.month - b.month);
-            const yearTotal = yearSalaries.reduce((sum, s) => sum + s.amount, 0);
+            const yearSalaryTotal = yearSalaries.reduce((sum, s) => sum + s.amount, 0);
+            const yearAdditionalTotal = this.getAllAdditionalIncome()
+                .filter(a => a.year === parseInt(year))
+                .reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
+            const yearTotal = yearSalaryTotal + yearAdditionalTotal;
             const isCurrentYear = parseInt(year) === currentYear;
             
             html += `
@@ -889,19 +1010,26 @@ const Income = {
                                 </svg>
                                 <div>
                                     <h4 class="font-bold text-green-800">${year}</h4>
-                                    <p class="text-xs text-green-600">${yearSalaries.length} month${yearSalaries.length !== 1 ? 's' : ''}</p>
+                                    <p class="text-xs text-green-600">${yearSalaries.length} month${yearSalaries.length !== 1 ? 's' : ''}${yearAdditionalTotal > 0 ? ' + extras' : ''}</p>
                                 </div>
                             </div>
                             <div class="text-right">
                                 <p class="font-bold text-green-700 text-lg">₹${Utils.formatIndianNumber(Math.round(yearTotal))}</p>
-                                <p class="text-xs text-green-600">Total</p>
+                                <p class="text-xs text-green-600">Total${yearAdditionalTotal > 0 ? ' (incl. additional)' : ''}</p>
                             </div>
                         </div>
                     </summary>
                     
                     <div class="p-4 pt-2 grid grid-cols-3 gap-3">
-                        ${yearSalaries.map(salary => `
-                            <div class="bg-white p-3 rounded-lg border border-green-200 hover:shadow-md transition-all">
+                        ${yearSalaries.map(salary => {
+                            const additionalForMonth = this.getAdditionalIncomeForMonth(salary.month, salary.year);
+                            const additionalTotal = additionalForMonth.reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
+                            const totalForMonth = salary.amount + additionalTotal;
+                            const hasAdditional = additionalForMonth.length > 0;
+                            
+                            return `
+                            <div class="bg-white p-3 rounded-lg border ${hasAdditional ? 'border-cyan-300' : 'border-green-200'} hover:shadow-md transition-all ${hasAdditional ? 'relative' : ''}">
+                                ${hasAdditional ? `<div class="absolute -top-1 -right-1 w-4 h-4 bg-cyan-500 rounded-full flex items-center justify-center text-[8px] text-white font-bold">+${additionalForMonth.length}</div>` : ''}
                                 <div class="flex justify-between items-start mb-2">
                                     <p class="font-semibold text-green-700 text-xs">${this.getMonthName(salary.month)}</p>
                                     <div class="flex gap-1">
@@ -917,9 +1045,15 @@ const Income = {
                                         </button>
                                     </div>
                                 </div>
-                                <p class="text-base font-bold text-gray-800">₹${Utils.formatIndianNumber(Math.round(salary.amount))}</p>
+                                ${hasAdditional ? `
+                                    <p class="text-sm font-semibold text-gray-700">₹${Utils.formatIndianNumber(Math.round(salary.amount))}</p>
+                                    <p class="text-[10px] text-cyan-600 mt-0.5">+₹${Utils.formatIndianNumber(Math.round(additionalTotal))} extra</p>
+                                    <p class="text-base font-bold text-green-800 border-t border-green-100 pt-1 mt-1">₹${Utils.formatIndianNumber(Math.round(totalForMonth))}</p>
+                                ` : `
+                                    <p class="text-base font-bold text-gray-800">₹${Utils.formatIndianNumber(Math.round(salary.amount))}</p>
+                                `}
                             </div>
-                        `).join('')}
+                        `}).join('')}
                     </div>
                 </details>
             `;
@@ -1814,6 +1948,9 @@ const Income = {
         return Array.from(checkboxes).map(cb => parseInt(cb.value));
     },
     
+    // Temporary storage for additional income entries being edited in modal
+    tempAdditionalIncomeEntries: [],
+    
     /**
      * Open salary modal for add/edit
      */
@@ -1829,6 +1966,9 @@ const Income = {
         document.getElementById('salary-modal-amount').value = '';
         document.getElementById('salary-modal-title').textContent = 'Add Salary';
         
+        // Clear temporary additional income entries
+        this.tempAdditionalIncomeEntries = [];
+        
         // If editing, populate with existing data
         if (id) {
             const salary = this.getSalaryById(id);
@@ -1838,10 +1978,98 @@ const Income = {
                 document.getElementById('salary-modal-year').value = salary.year;
                 document.getElementById('salary-modal-amount').value = salary.amount;
                 document.getElementById('salary-modal-title').textContent = 'Edit Salary';
+                
+                // Load existing additional income for this month/year
+                const existingAdditional = this.getAdditionalIncomeForMonth(salary.month, salary.year);
+                this.tempAdditionalIncomeEntries = existingAdditional.map(a => ({
+                    id: a.id,
+                    amount: a.amount,
+                    source: a.source,
+                    isExisting: true
+                }));
             }
         }
         
+        // Render additional income entries
+        this.renderAdditionalIncomeEntries();
+        
         modal.classList.remove('hidden');
+    },
+    
+    /**
+     * Add a new additional income entry row in the modal
+     */
+    addAdditionalIncomeEntry() {
+        this.tempAdditionalIncomeEntries.push({
+            id: 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+            amount: '',
+            source: '',
+            isExisting: false
+        });
+        this.renderAdditionalIncomeEntries();
+    },
+    
+    /**
+     * Remove additional income entry from modal
+     */
+    removeAdditionalIncomeEntry(tempId) {
+        this.tempAdditionalIncomeEntries = this.tempAdditionalIncomeEntries.filter(
+            e => String(e.id) !== String(tempId)
+        );
+        this.renderAdditionalIncomeEntries();
+    },
+    
+    /**
+     * Render additional income entries in modal
+     */
+    renderAdditionalIncomeEntries() {
+        const container = document.getElementById('additional-income-entries');
+        if (!container) return;
+        
+        if (this.tempAdditionalIncomeEntries.length === 0) {
+            container.innerHTML = `
+                <p class="text-xs text-gray-400 italic">No additional income added. Click "+ Add" to add bonus, freelance work, or other income.</p>
+            `;
+            return;
+        }
+        
+        container.innerHTML = this.tempAdditionalIncomeEntries.map((entry, index) => `
+            <div class="flex gap-2 items-start mb-2 p-2 bg-cyan-50 rounded-lg border border-cyan-200" data-entry-id="${entry.id}">
+                <div class="flex-1">
+                    <input type="text" 
+                           placeholder="Source (e.g., Bonus, Freelance)" 
+                           value="${entry.source || ''}"
+                           onchange="Income.updateTempEntry('${entry.id}', 'source', this.value)"
+                           class="w-full p-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-cyan-500 mb-1">
+                    <div class="relative">
+                        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs pointer-events-none">₹</span>
+                        <input type="number" 
+                               placeholder="Amount" 
+                               value="${entry.amount || ''}"
+                               onchange="Income.updateTempEntry('${entry.id}', 'amount', this.value)"
+                               step="0.01"
+                               class="w-full p-1.5 pl-6 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-cyan-500">
+                    </div>
+                </div>
+                <button onclick="Income.removeAdditionalIncomeEntry('${entry.id}')" 
+                        class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-100 rounded transition-all"
+                        title="Remove">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+            </div>
+        `).join('');
+    },
+    
+    /**
+     * Update temporary entry value
+     */
+    updateTempEntry(tempId, field, value) {
+        const entry = this.tempAdditionalIncomeEntries.find(e => String(e.id) === String(tempId));
+        if (entry) {
+            entry[field] = value;
+        }
     },
     
     /**
@@ -1849,6 +2077,8 @@ const Income = {
      */
     closeSalaryModal() {
         document.getElementById('salary-modal').classList.add('hidden');
+        // Clear temporary additional income entries
+        this.tempAdditionalIncomeEntries = [];
     },
     
     /**
@@ -1861,12 +2091,61 @@ const Income = {
         const amount = document.getElementById('salary-modal-amount').value;
         
         try {
+            // Validate additional income entries
+            for (const entry of this.tempAdditionalIncomeEntries) {
+                if (entry.amount && (!entry.source || entry.source.trim() === '')) {
+                    Utils.showError('Please provide a source for all additional income entries');
+                    return;
+                }
+                if (entry.source && entry.source.trim() !== '' && (!entry.amount || parseFloat(entry.amount) <= 0)) {
+                    Utils.showError('Please provide a valid amount for all additional income entries');
+                    return;
+                }
+            }
+            
+            // Save/update salary
             if (id) {
                 this.updateSalary(id, month, year, amount);
-                Utils.showSuccess('Salary updated successfully!');
             } else {
                 this.addSalary(month, year, amount);
-                Utils.showSuccess('Salary added successfully!');
+            }
+            
+            // Process additional income entries
+            const existingAdditional = this.getAdditionalIncomeForMonth(month, year);
+            const existingIds = existingAdditional.map(a => String(a.id));
+            const tempIds = this.tempAdditionalIncomeEntries
+                .filter(e => e.isExisting)
+                .map(e => String(e.id));
+            
+            // Delete removed entries
+            existingIds.forEach(existingId => {
+                if (!tempIds.includes(existingId)) {
+                    this.deleteAdditionalIncome(existingId);
+                }
+            });
+            
+            // Add/update entries
+            this.tempAdditionalIncomeEntries.forEach(entry => {
+                // Skip if no amount or source
+                if (!entry.amount || !entry.source || entry.source.trim() === '') return;
+                
+                if (entry.isExisting) {
+                    // Update existing entry
+                    this.updateAdditionalIncome(entry.id, entry.amount, entry.source);
+                } else {
+                    // Add new entry
+                    this.addAdditionalIncome(month, year, entry.amount, entry.source);
+                }
+            });
+            
+            const additionalCount = this.tempAdditionalIncomeEntries.filter(
+                e => e.amount && e.source && e.source.trim() !== ''
+            ).length;
+            
+            if (id) {
+                Utils.showSuccess(`Salary updated${additionalCount > 0 ? ` with ${additionalCount} additional income entries` : ''}!`);
+            } else {
+                Utils.showSuccess(`Salary added${additionalCount > 0 ? ` with ${additionalCount} additional income entries` : ''}!`);
             }
             
             this.closeSalaryModal();
@@ -1884,10 +2163,27 @@ const Income = {
         if (!salary) return;
         
         const monthName = this.getMonthName(salary.month);
+        const additionalForMonth = this.getAdditionalIncomeForMonth(salary.month, salary.year);
+        const additionalTotal = additionalForMonth.reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
         
-        if (confirm(`Delete salary for ${monthName} ${salary.year}?\n\nAmount: ₹${Utils.formatIndianNumber(salary.amount)}\n\nThis action cannot be undone.`)) {
+        let message = `Delete salary for ${monthName} ${salary.year}?\n\nSalary: ₹${Utils.formatIndianNumber(salary.amount)}`;
+        
+        if (additionalForMonth.length > 0) {
+            message += `\n\n⚠️ This month also has ${additionalForMonth.length} additional income entry(ies) totaling ₹${Utils.formatIndianNumber(additionalTotal)}. These will also be deleted.`;
+        }
+        
+        message += '\n\nThis action cannot be undone.';
+        
+        if (confirm(message)) {
+            // Delete salary
             this.deleteSalary(id);
-            Utils.showSuccess('Salary deleted');
+            
+            // Also delete associated additional income
+            additionalForMonth.forEach(a => {
+                this.deleteAdditionalIncome(a.id);
+            });
+            
+            Utils.showSuccess('Salary' + (additionalForMonth.length > 0 ? ' and additional income' : '') + ' deleted');
             this.render();
         }
     }

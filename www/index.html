@@ -1716,7 +1716,7 @@
     
     <!-- SALARY MODAL -->
     <div id="salary-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) Income.closeSalaryModal()">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
             <h2 id="salary-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Add Salary</h2>
             
             <input type="hidden" id="salary-modal-id">
@@ -1747,12 +1747,34 @@
             </div>
             
             <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Amount *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Salary Amount *</label>
                 <div class="relative">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
                     <input type="number" id="salary-modal-amount" placeholder="Net salary credited" step="0.01" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
                 </div>
-                <p class="text-xs text-gray-500 mt-1">Enter the actual amount credited to your bank account</p>
+                <p class="text-xs text-gray-500 mt-1">Enter the actual salary credited to your bank account</p>
+            </div>
+            
+            <!-- Additional Income Section -->
+            <div class="mb-4 p-3 bg-gradient-to-br from-cyan-50 to-teal-50 rounded-xl border border-cyan-200">
+                <div class="flex justify-between items-center mb-2">
+                    <div>
+                        <h3 class="text-sm font-semibold text-cyan-800">💰 Additional Income</h3>
+                        <p class="text-xs text-cyan-600">Bonus, freelance, interest, etc.</p>
+                    </div>
+                    <button type="button" onclick="Income.addAdditionalIncomeEntry()" 
+                            class="px-3 py-1.5 bg-cyan-600 text-white text-xs rounded-lg hover:bg-cyan-700 transition-all font-semibold flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                        </svg>
+                        Add
+                    </button>
+                </div>
+                
+                <!-- Container for additional income entries -->
+                <div id="additional-income-entries">
+                    <p class="text-xs text-gray-400 italic">No additional income added. Click "+ Add" to add bonus, freelance work, or other income.</p>
+                </div>
             </div>
             
             <div class="flex space-x-3">

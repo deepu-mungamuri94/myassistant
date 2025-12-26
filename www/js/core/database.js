@@ -15,6 +15,7 @@ const DB = {
     moneyLent: [], // Money lent to others tracking
     income: null, // Income and payslip data
     salaries: [], // Actual salary tracking (month, year, amount) - factual bank credits
+    additionalIncome: [], // Additional income entries (id, month, year, amount, source, createdAt)
     dismissedRecurringExpenses: [], // Track dismissed auto-recurring expenses
     chatHistory: [],
     exchangeRate: 89, // Default USD to INR rate
