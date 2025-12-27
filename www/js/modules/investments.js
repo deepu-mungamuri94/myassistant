@@ -76,6 +76,62 @@ const Investments = {
         }
         return typeof rate === 'number' ? rate : 83;
     },
+    
+    /**
+     * Suggest income month based on investment date and pay schedule
+     * If pay schedule is 'last_week' and investment day >= 25, suggest next month
+     * @param {string} investmentDate - Investment date string (YYYY-MM-DD)
+     * @returns {Object} { month: number (1-12), year: number }
+     */
+    suggestIncomeMonth(investmentDate) {
+        const date = new Date(investmentDate);
+        const paySchedule = window.DB.settings?.paySchedule || 'first_week';
+        
+        let incomeMonth = date.getMonth() + 1; // 1-12
+        let incomeYear = date.getFullYear();
+        
+        // If pay schedule is 'last_week' and day >= 25, suggest next month
+        if (paySchedule === 'last_week' && date.getDate() >= 25) {
+            incomeMonth++;
+            if (incomeMonth > 12) {
+                incomeMonth = 1;
+                incomeYear++;
+            }
+        }
+        
+        return { month: incomeMonth, year: incomeYear };
+    },
+    
+    /**
+     * Update income month suggestion when investment date changes
+     */
+    updateIncomeSuggestion() {
+        const dateInput = document.getElementById('investment-date');
+        const incomeMonthSelect = document.getElementById('investment-income-month');
+        const incomeYearInput = document.getElementById('investment-income-year');
+        const suggestionHint = document.getElementById('income-month-hint');
+        
+        if (!dateInput || !incomeMonthSelect || !incomeYearInput) return;
+        
+        const investmentDate = dateInput.value;
+        if (!investmentDate) return;
+        
+        const suggestion = this.suggestIncomeMonth(investmentDate);
+        incomeMonthSelect.value = suggestion.month;
+        incomeYearInput.value = suggestion.year;
+        
+        // Update hint
+        if (suggestionHint) {
+            const paySchedule = window.DB.settings?.paySchedule || 'first_week';
+            const date = new Date(investmentDate);
+            if (paySchedule === 'last_week' && date.getDate() >= 25) {
+                suggestionHint.textContent = '(Next month: salary already credited)';
+                suggestionHint.classList.remove('hidden');
+            } else {
+                suggestionHint.classList.add('hidden');
+            }
+        }
+    },
 
     /**
      * Render the investments page
@@ -1120,11 +1176,42 @@ const Investments = {
         `;
 
         // Date field (if tracking monthly)
+        const today = new Date();
+        const suggestion = this.suggestIncomeMonth(today.toISOString().split('T')[0]);
+        
         html += `
             <div id="investment-date-container" class="mb-3">
-                <label class="block text-sm font-semibold text-gray-700 mb-1">Date</label>
-                <input type="date" id="investment-date" value="${new Date().toISOString().split('T')[0]}"
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Investment Date</label>
+                <input type="date" id="investment-date" value="${today.toISOString().split('T')[0]}"
+                       onchange="Investments.updateIncomeSuggestion()"
                        class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+            </div>
+            
+            <!-- Budget Month Attribution -->
+            <div id="investment-income-month-container" class="mb-3 p-3 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg border border-blue-200">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-sm font-semibold text-blue-800">Budget Month</label>
+                    <span id="income-month-hint" class="text-[10px] text-blue-600 hidden">(Auto-suggested)</span>
+                </div>
+                <p class="text-xs text-blue-600 mb-2">Count this investment towards which month's budget?</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="investment-income-month" class="p-2 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="1" ${suggestion.month === 1 ? 'selected' : ''}>January</option>
+                        <option value="2" ${suggestion.month === 2 ? 'selected' : ''}>February</option>
+                        <option value="3" ${suggestion.month === 3 ? 'selected' : ''}>March</option>
+                        <option value="4" ${suggestion.month === 4 ? 'selected' : ''}>April</option>
+                        <option value="5" ${suggestion.month === 5 ? 'selected' : ''}>May</option>
+                        <option value="6" ${suggestion.month === 6 ? 'selected' : ''}>June</option>
+                        <option value="7" ${suggestion.month === 7 ? 'selected' : ''}>July</option>
+                        <option value="8" ${suggestion.month === 8 ? 'selected' : ''}>August</option>
+                        <option value="9" ${suggestion.month === 9 ? 'selected' : ''}>September</option>
+                        <option value="10" ${suggestion.month === 10 ? 'selected' : ''}>October</option>
+                        <option value="11" ${suggestion.month === 11 ? 'selected' : ''}>November</option>
+                        <option value="12" ${suggestion.month === 12 ? 'selected' : ''}>December</option>
+                    </select>
+                    <input type="number" id="investment-income-year" value="${suggestion.year}" min="2020" max="2100"
+                           class="p-2 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                </div>
             </div>
         `;
 
@@ -1133,10 +1220,13 @@ const Investments = {
         // Add event listener for monthly checkbox
         document.getElementById('investment-track-monthly').addEventListener('change', (e) => {
             const dateContainer = document.getElementById('investment-date-container');
+            const incomeMonthContainer = document.getElementById('investment-income-month-container');
             if (e.target.checked) {
                 dateContainer.classList.remove('hidden');
+                incomeMonthContainer.classList.remove('hidden');
             } else {
                 dateContainer.classList.add('hidden');
+                incomeMonthContainer.classList.add('hidden');
             }
         });
 
@@ -1428,6 +1518,10 @@ const Investments = {
         const description = document.getElementById('investment-description')?.value.trim() || '';
         const trackMonthly = document.getElementById('investment-track-monthly').checked;
         const date = trackMonthly ? document.getElementById('investment-date').value : null;
+        
+        // Get income month attribution (for monthly investments)
+        const incomeMonth = trackMonthly ? parseInt(document.getElementById('investment-income-month')?.value) : null;
+        const incomeYear = trackMonthly ? parseInt(document.getElementById('investment-income-year')?.value) : null;
 
         let investmentData = {
             name,
@@ -1521,14 +1615,16 @@ const Investments = {
 
         if (isEditing && editId) {
             // Update existing investment
-            this.updateExistingInvestment(parseInt(editId), investmentData, trackMonthly, date);
+            this.updateExistingInvestment(parseInt(editId), investmentData, trackMonthly, date, incomeMonth, incomeYear);
         } else {
             // Check for duplicates and handle add/override
             const userDataKey = `${name}_${type}_${goal}`;
             
             if (trackMonthly) {
-                // Add to monthly investments
+                // Add to monthly investments with income month attribution
                 investmentData.date = date;
+                investmentData.incomeMonth = incomeMonth;
+                investmentData.incomeYear = incomeYear;
                 this.addToMonthlyInvestments(investmentData);
                 
                 // Also sync to portfolio
@@ -1546,7 +1642,7 @@ const Investments = {
     /**
      * Update existing investment
      */
-    updateExistingInvestment(id, data, trackMonthly, date) {
+    updateExistingInvestment(id, data, trackMonthly, date, incomeMonth, incomeYear) {
         const isMonthly = this.editingInvestment.isMonthly;
         
         if (isMonthly) {
@@ -1556,7 +1652,9 @@ const Investments = {
                 window.DB.monthlyInvestments[index] = {
                     ...window.DB.monthlyInvestments[index],
                     ...data,
-                    date: date || window.DB.monthlyInvestments[index].date
+                    date: date || window.DB.monthlyInvestments[index].date,
+                    incomeMonth: incomeMonth || window.DB.monthlyInvestments[index].incomeMonth,
+                    incomeYear: incomeYear || window.DB.monthlyInvestments[index].incomeYear
                 };
                 window.Storage.save();
                 this.showSuccess();
@@ -1917,10 +2015,37 @@ const Investments = {
             document.getElementById('investment-track-monthly').checked = true;
             document.getElementById('investment-track-monthly').disabled = true;
             document.getElementById('investment-date').value = investment.date;
+            
+            // Set income month attribution
+            const incomeMonthSelect = document.getElementById('investment-income-month');
+            const incomeYearInput = document.getElementById('investment-income-year');
+            const incomeMonthContainer = document.getElementById('investment-income-month-container');
+            
+            if (incomeMonthSelect && incomeYearInput) {
+                if (investment.incomeMonth && investment.incomeYear) {
+                    // Use stored income month
+                    incomeMonthSelect.value = investment.incomeMonth;
+                    incomeYearInput.value = investment.incomeYear;
+                } else {
+                    // Fallback: use investment date month (backward compatibility)
+                    const invDate = new Date(investment.date);
+                    incomeMonthSelect.value = invDate.getMonth() + 1;
+                    incomeYearInput.value = invDate.getFullYear();
+                }
+            }
+            if (incomeMonthContainer) {
+                incomeMonthContainer.classList.remove('hidden');
+            }
         } else {
             document.getElementById('investment-track-monthly').checked = false;
             document.getElementById('investment-track-monthly').disabled = true;
             document.getElementById('investment-date-container').classList.add('hidden');
+            
+            // Hide income month container for portfolio investments
+            const incomeMonthContainer = document.getElementById('investment-income-month-container');
+            if (incomeMonthContainer) {
+                incomeMonthContainer.classList.add('hidden');
+            }
         }
     },
 

@@ -1398,6 +1398,7 @@ const Dashboard = {
     
     /**
      * Get investment items for a month
+     * Uses incomeMonth/incomeYear if available for proper income attribution
      */
     getInvestmentItems(year, month) {
         const monthlyInvestments = window.DB.monthlyInvestments || [];
@@ -1405,6 +1406,11 @@ const Dashboard = {
         
         return monthlyInvestments
             .filter(inv => {
+                // Use incomeMonth/incomeYear if available
+                if (inv.incomeMonth && inv.incomeYear) {
+                    return inv.incomeYear === year && inv.incomeMonth === month;
+                }
+                // Fallback: use investment date (backward compatibility)
                 const invDate = new Date(inv.date);
                 return invDate.getFullYear() === year && (invDate.getMonth() + 1) === month;
             })
@@ -1601,12 +1607,26 @@ const Dashboard = {
     
     /**
      * Get monthly investments data for chart (last N months or custom range)
+     * Uses incomeMonth/incomeYear if available for proper income attribution
      */
     getInvestmentsDataForChart(monthsCount = 6) {
         const monthsData = [];
         const monthlyInvestments = window.DB.monthlyInvestments || [];
         const goldRate = window.DB.goldRatePerGram || 7000;
         const exchangeRate = typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : 83;
+        
+        /**
+         * Helper to filter investments by income month (or fall back to investment date)
+         */
+        const filterByIncomeMonth = (inv, targetYear, targetMonth) => {
+            // Use incomeMonth/incomeYear if available
+            if (inv.incomeMonth && inv.incomeYear) {
+                return inv.incomeYear === targetYear && inv.incomeMonth === targetMonth;
+            }
+            // Fallback: use investment date (backward compatibility)
+            const invDate = new Date(inv.date);
+            return invDate.getFullYear() === targetYear && invDate.getMonth() + 1 === targetMonth;
+        };
         
         // Use investment-specific range if selected
         if (this.selectedInvestmentRange) {
@@ -1620,11 +1640,10 @@ const Dashboard = {
                 const date = new Date(currentYear, currentMonth - 1, 1);
                 const monthName = date.toLocaleDateString('en-US', { month: 'short' });
                 
-                // Get investments for this month
-                const monthInvs = monthlyInvestments.filter(inv => {
-                    const invDate = new Date(inv.date);
-                    return invDate.getFullYear() === currentYear && invDate.getMonth() + 1 === currentMonth;
-                });
+                // Get investments for this month using income attribution
+                const monthInvs = monthlyInvestments.filter(inv => 
+                    filterByIncomeMonth(inv, currentYear, currentMonth)
+                );
                 
                 // Calculate totals by type
                 let shares = 0, gold = 0, epfFd = 0;
@@ -1665,11 +1684,10 @@ const Dashboard = {
             const year = date.getFullYear();
             const month = date.getMonth() + 1;
             
-            // Get investments for this month
-            const monthInvs = monthlyInvestments.filter(inv => {
-                const invDate = new Date(inv.date);
-                return invDate.getFullYear() === year && invDate.getMonth() + 1 === month;
-            });
+            // Get investments for this month using income attribution
+            const monthInvs = monthlyInvestments.filter(inv => 
+                filterByIncomeMonth(inv, year, month)
+            );
             
             // Calculate totals by type
             let shares = 0, gold = 0, epfFd = 0;
@@ -3015,6 +3033,7 @@ const Dashboard = {
     
     /**
      * Get total monthly investments for selected filter month
+     * Uses incomeMonth/incomeYear if available, falls back to investment date
      */
     getMonthInvestments(monthValue) {
         const [year, month] = monthValue.split('-').map(Number);
@@ -3023,6 +3042,11 @@ const Dashboard = {
         
         return monthlyInvestments
             .filter(inv => {
+                // Use incomeMonth/incomeYear if available, otherwise fall back to investment date
+                if (inv.incomeMonth && inv.incomeYear) {
+                    return inv.incomeYear === year && inv.incomeMonth === month;
+                }
+                // Fallback: use investment date (backward compatibility)
                 const invDate = new Date(inv.date);
                 return invDate.getFullYear() === year && (invDate.getMonth() + 1) === month;
             })
@@ -3041,6 +3065,7 @@ const Dashboard = {
     
     /**
      * Get investment items for a month
+     * Uses incomeMonth/incomeYear if available, falls back to investment date
      */
     getMonthInvestmentItems(monthValue) {
         const [year, month] = monthValue.split('-').map(Number);
@@ -3049,6 +3074,11 @@ const Dashboard = {
         
         return monthlyInvestments
             .filter(inv => {
+                // Use incomeMonth/incomeYear if available, otherwise fall back to investment date
+                if (inv.incomeMonth && inv.incomeYear) {
+                    return inv.incomeYear === year && inv.incomeMonth === month;
+                }
+                // Fallback: use investment date (backward compatibility)
                 const invDate = new Date(inv.date);
                 return invDate.getFullYear() === year && (invDate.getMonth() + 1) === month;
             })

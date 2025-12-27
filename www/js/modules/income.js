@@ -1028,30 +1028,16 @@ const Income = {
                             const hasAdditional = additionalForMonth.length > 0;
                             
                             return `
-                            <div class="bg-white p-3 rounded-lg border ${hasAdditional ? 'border-cyan-300' : 'border-green-200'} hover:shadow-md transition-all ${hasAdditional ? 'relative' : ''}">
+                            <div onclick="Income.showIncomeDetailsModal(${salary.id})" 
+                                 class="bg-white p-3 rounded-lg border ${hasAdditional ? 'border-cyan-300' : 'border-green-200'} hover:shadow-md transition-all cursor-pointer active:scale-95 ${hasAdditional ? 'relative' : ''}">
                                 ${hasAdditional ? `<div class="absolute -top-1 -right-1 w-4 h-4 bg-cyan-500 rounded-full flex items-center justify-center text-[8px] text-white font-bold">+${additionalForMonth.length}</div>` : ''}
-                                <div class="flex justify-between items-start mb-2">
+                                <div class="flex justify-between items-center mb-2">
                                     <p class="font-semibold text-green-700 text-xs">${this.getMonthName(salary.month)}</p>
-                                    <div class="flex gap-1">
-                                        <button onclick="Income.openSalaryModal(${salary.id})" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                            </svg>
-                                        </button>
-                                        <button onclick="Income.deleteSalaryWithConfirm(${salary.id})" class="text-red-600 hover:text-red-800 p-0.5" title="Delete">
-                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                            </svg>
-                                        </button>
-                                    </div>
+                                    <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
                                 </div>
-                                ${hasAdditional ? `
-                                    <p class="text-sm font-semibold text-gray-700">₹${Utils.formatIndianNumber(Math.round(salary.amount))}</p>
-                                    <p class="text-[10px] text-cyan-600 mt-0.5">+₹${Utils.formatIndianNumber(Math.round(additionalTotal))} extra</p>
-                                    <p class="text-base font-bold text-green-800 border-t border-green-100 pt-1 mt-1">₹${Utils.formatIndianNumber(Math.round(totalForMonth))}</p>
-                                ` : `
-                                    <p class="text-base font-bold text-gray-800">₹${Utils.formatIndianNumber(Math.round(salary.amount))}</p>
-                                `}
+                                <p class="text-base font-bold ${hasAdditional ? 'text-green-800' : 'text-gray-800'}">₹${Utils.formatIndianNumber(Math.round(totalForMonth))}</p>
                             </div>
                         `}).join('')}
                     </div>
@@ -2185,6 +2171,123 @@ const Income = {
             
             Utils.showSuccess('Salary' + (additionalForMonth.length > 0 ? ' and additional income' : '') + ' deleted');
             this.render();
+        }
+    },
+    
+    /**
+     * Show income details modal for a salary record
+     */
+    showIncomeDetailsModal(salaryId) {
+        const salary = this.getSalaryById(salaryId);
+        if (!salary) return;
+        
+        const monthName = this.getMonthName(salary.month);
+        const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                                'July', 'August', 'September', 'October', 'November', 'December'];
+        const fullMonthName = fullMonthNames[salary.month - 1];
+        const additionalForMonth = this.getAdditionalIncomeForMonth(salary.month, salary.year);
+        const additionalTotal = additionalForMonth.reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
+        const totalIncome = salary.amount + additionalTotal;
+        
+        // Build modal content
+        let modalContent = `
+            <div class="fixed inset-0 bg-black bg-opacity-80 z-[10001] flex items-center justify-center p-4" 
+                 id="income-details-modal" onclick="if(event.target===this) Income.closeIncomeDetailsModal()">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden">
+                    <!-- Header -->
+                    <div class="bg-gradient-to-r from-green-600 to-emerald-600 p-4 text-white">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="text-lg font-bold">${fullMonthName} ${salary.year}</h3>
+                                <p class="text-sm opacity-90">Income Details</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(totalIncome))}</p>
+                                <p class="text-xs opacity-80">Total Income</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Content -->
+                    <div class="p-4 space-y-3">
+                        <!-- Salary -->
+                        <div class="bg-green-50 p-3 rounded-lg border border-green-200">
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-lg">💵</span>
+                                    <span class="font-semibold text-green-800">Salary</span>
+                                </div>
+                                <span class="font-bold text-green-700">₹${Utils.formatIndianNumber(Math.round(salary.amount))}</span>
+                            </div>
+                        </div>
+                        
+                        ${additionalForMonth.length > 0 ? `
+                        <!-- Additional Income Section -->
+                        <div class="bg-cyan-50 p-3 rounded-lg border border-cyan-200">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-lg">💰</span>
+                                <span class="font-semibold text-cyan-800">Additional Income</span>
+                                <span class="text-xs bg-cyan-200 text-cyan-800 px-2 py-0.5 rounded-full">${additionalForMonth.length} item${additionalForMonth.length > 1 ? 's' : ''}</span>
+                            </div>
+                            <div class="space-y-2">
+                                ${additionalForMonth.map(a => `
+                                    <div class="flex justify-between items-center bg-white p-2 rounded border border-cyan-100">
+                                        <span class="text-sm text-gray-700">${a.source}</span>
+                                        <span class="font-semibold text-cyan-700">₹${Utils.formatIndianNumber(Math.round(a.amount))}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div class="flex justify-between items-center mt-2 pt-2 border-t border-cyan-200">
+                                <span class="text-sm font-semibold text-cyan-800">Subtotal</span>
+                                <span class="font-bold text-cyan-700">₹${Utils.formatIndianNumber(Math.round(additionalTotal))}</span>
+                            </div>
+                        </div>
+                        ` : `
+                        <div class="text-center py-3 text-gray-400 text-sm">
+                            <p>No additional income for this month</p>
+                        </div>
+                        `}
+                    </div>
+                    
+                    <!-- Footer Actions -->
+                    <div class="p-4 pt-0 flex gap-2">
+                        <button onclick="Income.closeIncomeDetailsModal(); Income.openSalaryModal(${salary.id})" 
+                                class="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:shadow-lg transition-all font-semibold text-sm flex items-center justify-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                            Edit
+                        </button>
+                        <button onclick="Income.closeIncomeDetailsModal(); Income.deleteSalaryWithConfirm(${salary.id})" 
+                                class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-all font-semibold text-sm flex items-center justify-center gap-1">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            Delete
+                        </button>
+                        <button onclick="Income.closeIncomeDetailsModal()" 
+                                class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all font-semibold text-sm">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if any
+        this.closeIncomeDetailsModal();
+        
+        // Add modal to body
+        document.body.insertAdjacentHTML('beforeend', modalContent);
+    },
+    
+    /**
+     * Close income details modal
+     */
+    closeIncomeDetailsModal() {
+        const modal = document.getElementById('income-details-modal');
+        if (modal) {
+            modal.remove();
         }
     }
 };
