@@ -626,13 +626,21 @@ const Investments = {
 
     /**
      * Group investments by year and month
+     * Uses budget month (incomeMonth/incomeYear) if available, falls back to investment date
      */
     groupByYearMonth(investments) {
         const grouped = {};
         investments.forEach(inv => {
-            const date = new Date(inv.date);
-            const year = date.getFullYear();
-            const month = date.getMonth() + 1;
+            // Use budget month if available, otherwise fall back to investment date
+            let year, month;
+            if (inv.incomeMonth && inv.incomeYear) {
+                year = inv.incomeYear;
+                month = inv.incomeMonth;
+            } else {
+                const date = new Date(inv.date);
+                year = date.getFullYear();
+                month = date.getMonth() + 1;
+            }
                         
             if (!grouped[year]) {
                 grouped[year] = {};
