@@ -16,6 +16,14 @@ const Dashboard = {
     selectedBudgetMonth: null,
     // Selected month range for investments trend
     selectedInvestmentRange: null,
+    // Credit card chart view mode: 'total' or 'individual'
+    creditCardChartView: 'total',
+    // Selected month range for credit card bills chart
+    selectedCreditCardRange: null,
+    // Investments chart view mode: 'total' or 'category'
+    investmentsChartView: 'total',
+    // First line cards month view: 'current' or 'next'
+    firstLineMonthView: 'current',
     
     // Default category mappings for Needs vs Wants
     defaultNeedsCategories: [
@@ -147,57 +155,11 @@ const Dashboard = {
         const monthsCount = this.getMonthsCount();
         
         // Get data for specified months
-        const expenses = this.getExpensesData(monthsCount);
-        const income = this.getIncomeData(monthsCount);
         const loans = this.getLoansData();
         
-        // Get percentage cards data
-        const minNetPay = this.getMinimumNetPay();
-        const recurringExpenses = this.getTotalRecurringExpenses();
-        const totalEmis = this.getTotalEmis();
-        const regularExpenses = this.getRegularExpenses(); // Only non-recurring expenses
-        
-        const recurringPercent = minNetPay > 0 ? ((recurringExpenses / minNetPay) * 100).toFixed(1) : 0;
-        const emisPercent = minNetPay > 0 ? ((totalEmis / minNetPay) * 100).toFixed(1) : 0;
-        const regularPercent = minNetPay > 0 ? ((regularExpenses / minNetPay) * 100).toFixed(1) : 0;
-        
         container.innerHTML = `
-            <!-- Current Month Cards Box -->
-            <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
-                <h3 class="text-sm font-semibold text-gray-700 mb-3">Current Month</h3>
-                <div class="grid grid-cols-3 gap-3 max-w-full">
-                    <div onclick="Dashboard.showCurrentMonthList('recurring')" class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                        <div class="text-xs opacity-90 leading-tight">Rec.Payments</div>
-                        <div class="flex-1 flex items-center justify-center">
-                            <div class="text-3xl font-bold">${recurringPercent}<span class="text-lg opacity-80">%</span></div>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(recurringExpenses)}</div>
-                            <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
-                        </div>
-                    </div>
-                    <div onclick="Dashboard.showCurrentMonthList('emis')" class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                        <div class="text-xs opacity-90 leading-tight">Loans / EMIs</div>
-                        <div class="flex-1 flex items-center justify-center">
-                            <div class="text-3xl font-bold">${emisPercent}<span class="text-lg opacity-80">%</span></div>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(totalEmis)}</div>
-                            <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
-                        </div>
-                    </div>
-                    <div onclick="Dashboard.showCurrentMonthList('regular')" class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                        <div class="text-xs opacity-90 leading-tight">Reg.Expenses</div>
-                        <div class="flex-1 flex items-center justify-center">
-                            <div class="text-3xl font-bold">${regularPercent}<span class="text-lg opacity-80">%</span></div>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(regularExpenses)}</div>
-                            <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- Monthly Expenses Cards Box -->
+            ${this.renderFirstLineCards()}
             
             ${this.renderMonthlyBreakdown()}
             
@@ -235,18 +197,8 @@ const Dashboard = {
                 </div>
             </div>
             
-            <!-- Investments Trend Chart -->
-            <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
-                <div class="flex justify-between items-center mb-3 max-w-full">
-                    <h3 class="text-sm font-semibold text-gray-700">📈 Investments Trend</h3>
-                    <button onclick="Dashboard.openInvestmentRangeModal()" class="px-3 py-1.5 border border-emerald-300 rounded-lg text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-all whitespace-nowrap">
-                        <span id="investment-range-label">${this.getInvestmentRangeLabel()}</span> ▼
-                    </button>
-                </div>
-                <div style="height: 300px; max-width: 100%;">
-                    <canvas id="investments-trend-chart"></canvas>
-                </div>
-            </div>
+            <!-- Investments Chart -->
+            ${this.renderInvestmentsSection()}
             
             <!-- EMI/Loan Progress -->
             ${loans.length > 0 ? `
@@ -298,20 +250,333 @@ const Dashboard = {
     },
     
     /**
+     * Render First Line Cards (Recurring, Loans/EMIs, Regular Expenses)
+     */
+    renderFirstLineCards() {
+        const isCurrent = this.firstLineMonthView === 'current';
+        const now = new Date();
+        const targetYear = isCurrent ? now.getFullYear() : (now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear());
+        const targetMonth = isCurrent ? now.getMonth() + 1 : (now.getMonth() === 11 ? 1 : now.getMonth() + 2);
+        
+        const minNetPay = this.getMinimumNetPay();
+        const recurringExpenses = this.getTotalRecurringExpensesForMonth(targetYear, targetMonth);
+        const totalEmis = this.getTotalEmisForMonth(targetYear, targetMonth);
+        // For regular expenses: use actual for current month, projected average for next month
+        const regularExpenses = isCurrent ? this.getRegularExpenses() : this.getProjectedRegularExpenses();
+        const isProjected = !isCurrent;
+        
+        const recurringPercent = minNetPay > 0 ? ((recurringExpenses / minNetPay) * 100).toFixed(1) : 0;
+        const emisPercent = minNetPay > 0 ? ((totalEmis / minNetPay) * 100).toFixed(1) : 0;
+        const regularPercent = minNetPay > 0 ? ((regularExpenses / minNetPay) * 100).toFixed(1) : 0;
+        
+        const monthLabel = isCurrent ? 'Current Month' : 'Next Month';
+        const regularLabel = 'Reg.Expenses';
+        
+        return `
+        <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden" id="first-line-cards-section">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-semibold text-gray-700">${monthLabel}</h3>
+                <div class="flex bg-gray-100 rounded-lg p-0.5">
+                    <button onclick="Dashboard.switchFirstLineMonthView('current')" 
+                        class="px-2 py-1 text-xs rounded-md transition-all ${isCurrent ? 'bg-white shadow-sm text-purple-600 font-medium' : 'text-gray-500 hover:text-gray-700'}">
+                        Current
+                    </button>
+                    <button onclick="Dashboard.switchFirstLineMonthView('next')" 
+                        class="px-2 py-1 text-xs rounded-md transition-all ${!isCurrent ? 'bg-white shadow-sm text-purple-600 font-medium' : 'text-gray-500 hover:text-gray-700'}">
+                        Next
+                    </button>
+                </div>
+            </div>
+            <div class="grid grid-cols-3 gap-3 max-w-full">
+                <div onclick="Dashboard.showMonthList('recurring', ${targetYear}, ${targetMonth})" class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
+                    <div class="text-xs opacity-90 leading-tight">Rec.Payments</div>
+                    <div class="flex-1 flex items-center justify-center">
+                        <div class="text-3xl font-bold">${recurringPercent}<span class="text-lg opacity-80">%</span></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(recurringExpenses)}</div>
+                        <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
+                    </div>
+                </div>
+                <div onclick="Dashboard.showMonthList('emis', ${targetYear}, ${targetMonth})" class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
+                    <div class="text-xs opacity-90 leading-tight">Loans / EMIs</div>
+                    <div class="flex-1 flex items-center justify-center">
+                        <div class="text-3xl font-bold">${emisPercent}<span class="text-lg opacity-80">%</span></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(totalEmis)}</div>
+                        <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
+                    </div>
+                </div>
+                <div onclick="Dashboard.showMonthList('regular', ${targetYear}, ${targetMonth})" class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
+                    <div class="text-xs opacity-90 leading-tight">${regularLabel}</div>
+                    <div class="flex-1 flex items-center justify-center">
+                        <div class="text-3xl font-bold">${isProjected ? '~' : ''}${regularPercent}<span class="text-lg opacity-80">%</span></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs opacity-90">${isProjected ? '~' : ''}₹${Utils.formatIndianNumber(regularExpenses)}</div>
+                        <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">${isProjected ? '?' : '›'}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+    },
+    
+    /**
+     * Switch first line cards month view
+     */
+    switchFirstLineMonthView(view) {
+        this.firstLineMonthView = view;
+        const section = document.getElementById('first-line-cards-section');
+        if (section) {
+            section.outerHTML = this.renderFirstLineCards();
+        }
+    },
+    
+    /**
+     * Render Investments section
+     */
+    renderInvestmentsSection() {
+        const isTotal = this.investmentsChartView === 'total';
+        
+        return `
+        <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden" id="investments-section">
+            <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                <h3 class="text-sm font-semibold text-gray-700">📈 Investments</h3>
+                <div class="flex items-center gap-2">
+                    <button onclick="Dashboard.openInvestmentRangeModal()" class="px-2 py-1 border border-emerald-300 rounded-lg text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-all whitespace-nowrap">
+                        <span id="investment-range-label">${this.getInvestmentRangeLabel()}</span> ▼
+                    </button>
+                    <div class="flex bg-gray-100 rounded-lg p-0.5">
+                        <button onclick="Dashboard.switchInvestmentsChartView('total')" 
+                            class="px-2 py-1 text-xs rounded-md transition-all ${isTotal ? 'bg-white shadow-sm text-emerald-600 font-medium' : 'text-gray-500 hover:text-gray-700'}">
+                            Total
+                        </button>
+                        <button onclick="Dashboard.switchInvestmentsChartView('category')" 
+                            class="px-2 py-1 text-xs rounded-md transition-all ${!isTotal ? 'bg-white shadow-sm text-emerald-600 font-medium' : 'text-gray-500 hover:text-gray-700'}">
+                            By Type
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div style="height: 300px; max-width: 100%;">
+                <canvas id="investments-trend-chart"></canvas>
+            </div>
+        </div>
+        `;
+    },
+    
+    /**
+     * Switch investments chart view
+     */
+    switchInvestmentsChartView(view) {
+        this.investmentsChartView = view;
+        
+        // Destroy existing chart
+        if (this.investmentChartInstance) {
+            this.investmentChartInstance.destroy();
+            this.investmentChartInstance = null;
+        }
+        
+        // Re-render the section
+        const section = document.getElementById('investments-section');
+        if (section) {
+            section.outerHTML = this.renderInvestmentsSection();
+            this.renderInvestmentsTrendChart();
+        }
+    },
+    
+    /**
      * Render Credit Card Bills section
      */
     renderCreditCardBillsSection() {
         const paidBills = (window.DB.cardBills || []).filter(b => b.isPaid && b.paidAt);
         if (paidBills.length === 0) return '';
         
+        const isTotal = this.creditCardChartView === 'total';
+        
         return `
-        <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
-            <h3 class="text-sm font-semibold text-gray-700 mb-3">💳 Credit Card Bills</h3>
+        <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden" id="credit-card-bills-section">
+            <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                <h3 class="text-sm font-semibold text-gray-700">💳 Credit Usage</h3>
+                <div class="flex items-center gap-2">
+                    <button onclick="Dashboard.openCreditCardRangeModal()" class="px-2 py-1 border border-indigo-300 rounded-lg text-xs font-medium text-indigo-600 hover:bg-indigo-50 transition-all whitespace-nowrap">
+                        <span id="credit-card-range-label">${this.getCreditCardRangeLabel()}</span> ▼
+                    </button>
+                    <div class="flex bg-gray-100 rounded-lg p-0.5">
+                        <button onclick="Dashboard.switchCreditCardChartView('total')" 
+                            class="px-2 py-1 text-xs rounded-md transition-all ${isTotal ? 'bg-white shadow-sm text-indigo-600 font-medium' : 'text-gray-500 hover:text-gray-700'}">
+                            Total
+                        </button>
+                        <button onclick="Dashboard.switchCreditCardChartView('individual')" 
+                            class="px-2 py-1 text-xs rounded-md transition-all ${!isTotal ? 'bg-white shadow-sm text-indigo-600 font-medium' : 'text-gray-500 hover:text-gray-700'}">
+                            By Card
+                        </button>
+                    </div>
+                </div>
+            </div>
             <div style="height: 220px; max-width: 100%;">
                 <canvas id="credit-card-bills-chart"></canvas>
             </div>
         </div>
         `;
+    },
+    
+    /**
+     * Switch credit card chart view
+     */
+    switchCreditCardChartView(view) {
+        this.creditCardChartView = view;
+        
+        // Destroy existing chart
+        if (this.creditCardBillsChartInstance) {
+            this.creditCardBillsChartInstance.destroy();
+            this.creditCardBillsChartInstance = null;
+        }
+        
+        // Re-render the section
+        const section = document.getElementById('credit-card-bills-section');
+        if (section) {
+            section.outerHTML = this.renderCreditCardBillsSection();
+            this.renderCreditCardBillsChart();
+        }
+    },
+    
+    /**
+     * Get credit card range label
+     */
+    getCreditCardRangeLabel() {
+        if (!this.selectedCreditCardRange) {
+            return 'Last 6 months';
+        }
+        const start = this.getFormattedMonth(this.selectedCreditCardRange.start);
+        const end = this.getFormattedMonth(this.selectedCreditCardRange.end);
+        return `${start} - ${end}`;
+    },
+    
+    /**
+     * Open credit card range modal
+     */
+    openCreditCardRangeModal() {
+        // Create modal if it doesn't exist
+        if (!document.getElementById('credit-card-range-modal')) {
+            const modalHtml = `
+            <div id="credit-card-range-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) Dashboard.closeCreditCardRangeModal()">
+                <div class="bg-white rounded-2xl shadow-2xl p-5 max-w-sm w-full">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Select Month Range</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Start Month</label>
+                            <input type="month" id="cc-range-start" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">End Month</label>
+                            <input type="month" id="cc-range-end" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    <div class="flex gap-3 mt-5">
+                        <button onclick="Dashboard.applyCreditCardRange()" class="flex-1 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all">
+                            Apply
+                        </button>
+                        <button onclick="Dashboard.resetCreditCardRange()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-all">
+                            Reset
+                        </button>
+                        <button onclick="Dashboard.closeCreditCardRangeModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-all">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+        
+        const modal = document.getElementById('credit-card-range-modal');
+        
+        // Set default values
+        const now = new Date();
+        const endMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+        const startMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+        
+        if (this.selectedCreditCardRange) {
+            document.getElementById('cc-range-start').value = this.selectedCreditCardRange.start;
+            document.getElementById('cc-range-end').value = this.selectedCreditCardRange.end;
+        } else {
+            document.getElementById('cc-range-start').value = startMonth;
+            document.getElementById('cc-range-end').value = endMonth;
+        }
+        
+        modal.classList.remove('hidden');
+    },
+    
+    /**
+     * Close credit card range modal
+     */
+    closeCreditCardRangeModal() {
+        const modal = document.getElementById('credit-card-range-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    },
+    
+    /**
+     * Apply credit card range selection
+     */
+    applyCreditCardRange() {
+        const start = document.getElementById('cc-range-start').value;
+        const end = document.getElementById('cc-range-end').value;
+        
+        if (!start || !end) {
+            alert('Please select both start and end months');
+            return;
+        }
+        
+        // Validate range
+        const [startYear, startMonth] = start.split('-').map(Number);
+        const [endYear, endMonth] = end.split('-').map(Number);
+        
+        if (startYear > endYear || (startYear === endYear && startMonth > endMonth)) {
+            alert('Start month must be before end month');
+            return;
+        }
+        
+        this.selectedCreditCardRange = { start, end };
+        this.closeCreditCardRangeModal();
+        
+        // Update label
+        const label = document.getElementById('credit-card-range-label');
+        if (label) {
+            label.textContent = this.getCreditCardRangeLabel();
+        }
+        
+        // Re-render chart
+        if (this.creditCardBillsChartInstance) {
+            this.creditCardBillsChartInstance.destroy();
+            this.creditCardBillsChartInstance = null;
+        }
+        this.renderCreditCardBillsChart();
+    },
+    
+    /**
+     * Reset credit card range to default (last 6 months)
+     */
+    resetCreditCardRange() {
+        this.selectedCreditCardRange = null;
+        this.closeCreditCardRangeModal();
+        
+        // Update label
+        const label = document.getElementById('credit-card-range-label');
+        if (label) {
+            label.textContent = this.getCreditCardRangeLabel();
+        }
+        
+        // Re-render chart
+        if (this.creditCardBillsChartInstance) {
+            this.creditCardBillsChartInstance.destroy();
+            this.creditCardBillsChartInstance = null;
+        }
+        this.renderCreditCardBillsChart();
     },
     
     /**
@@ -620,28 +885,48 @@ const Dashboard = {
         const ctx = canvas.getContext('2d');
         
         // Get all paid bills
-        const paidBills = (window.DB.cardBills || []).filter(b => b.isPaid && b.paidAt);
+        let paidBills = (window.DB.cardBills || []).filter(b => b.isPaid && b.paidAt);
         if (paidBills.length === 0) return;
         
         // Get credit cards (non-placeholder)
         const creditCards = (window.DB.cards || []).filter(c => c.cardType === 'credit' && !c.isPlaceholder);
         
-        // Group bills by card
-        const cardBillsMap = {};
-        creditCards.forEach(card => {
-            const cardIdStr = String(card.id);
-            cardBillsMap[cardIdStr] = {
-                name: card.name,
-                bills: paidBills.filter(b => String(b.cardId) === cardIdStr)
-                    .sort((a, b) => new Date(a.paidAt) - new Date(b.paidAt))
-            };
+        // Determine month range
+        let rangeMonths = [];
+        if (this.selectedCreditCardRange) {
+            // Custom range selected
+            const [startYear, startMonth] = this.selectedCreditCardRange.start.split('-').map(Number);
+            const [endYear, endMonth] = this.selectedCreditCardRange.end.split('-').map(Number);
+            
+            let currentYear = startYear;
+            let currentMonth = startMonth;
+            
+            while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) {
+                rangeMonths.push(`${currentYear}-${String(currentMonth).padStart(2, '0')}`);
+                currentMonth++;
+                if (currentMonth > 12) {
+                    currentMonth = 1;
+                    currentYear++;
+                }
+            }
+        } else {
+            // Default: last 6 months
+            const now = new Date();
+            for (let i = 5; i >= 0; i--) {
+                const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                rangeMonths.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
+            }
+        }
+        
+        // Filter bills to only include those in the selected range
+        paidBills = paidBills.filter(b => {
+            const d = new Date(b.paidAt);
+            const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            return rangeMonths.includes(monthKey);
         });
         
-        // Get unique months (sorted)
-        const allMonths = [...new Set(paidBills.map(b => {
-            const d = new Date(b.paidAt);
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        }))].sort();
+        // Use only the months in the range that have data OR all range months for a complete view
+        const allMonths = rangeMonths;
         
         // Format labels (MMM YY)
         const labels = allMonths.map(d => {
@@ -650,53 +935,92 @@ const Dashboard = {
             return date.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
         });
         
-        // Card colors
-        const cardColors = [
-            { border: 'rgba(99, 102, 241, 1)', bg: 'rgba(99, 102, 241, 0.1)' },   // Indigo
-            { border: 'rgba(236, 72, 153, 1)', bg: 'rgba(236, 72, 153, 0.1)' },   // Pink
-            { border: 'rgba(34, 197, 94, 1)', bg: 'rgba(34, 197, 94, 0.1)' },     // Green
-            { border: 'rgba(249, 115, 22, 1)', bg: 'rgba(249, 115, 22, 0.1)' },   // Orange
-            { border: 'rgba(14, 165, 233, 1)', bg: 'rgba(14, 165, 233, 0.1)' },   // Sky
-            { border: 'rgba(168, 85, 247, 1)', bg: 'rgba(168, 85, 247, 0.1)' },   // Purple
-        ];
+        let datasets = [];
         
-        // Create datasets for each card
-        const datasets = [];
-        let colorIndex = 0;
-        
-        Object.keys(cardBillsMap).forEach(cardId => {
-            const cardData = cardBillsMap[cardId];
-            if (cardData.bills.length === 0) return;
-            
-            const color = cardColors[colorIndex % cardColors.length];
-            colorIndex++;
-            
-            // Create data points for each month
-            const dataPoints = allMonths.map(monthKey => {
+        if (this.creditCardChartView === 'total') {
+            // Total view: Single line showing sum of all cards
+            const totalDataPoints = allMonths.map(monthKey => {
                 const [year, month] = monthKey.split('-');
-                const monthBills = cardData.bills.filter(b => {
+                const monthBills = paidBills.filter(b => {
                     const d = new Date(b.paidAt);
                     return d.getFullYear() === parseInt(year) && (d.getMonth() + 1) === parseInt(month);
                 });
-                // Sum all payments in that month
                 return monthBills.reduce((sum, b) => sum + (parseFloat(b.paidAmount) || parseFloat(b.amount) || 0), 0);
             });
             
             datasets.push({
-                label: cardData.name,
-                data: dataPoints,
-                borderColor: color.border,
-                backgroundColor: color.bg,
-                borderWidth: 2,
-                fill: false,
+                label: 'Total Bills',
+                data: totalDataPoints,
+                borderColor: 'rgba(99, 102, 241, 1)',
+                backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                borderWidth: 2.5,
+                fill: true,
                 tension: 0.3,
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                pointBackgroundColor: color.border,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                pointBackgroundColor: 'rgba(99, 102, 241, 1)',
                 pointBorderColor: '#fff',
-                pointBorderWidth: 1.5
+                pointBorderWidth: 2
             });
-        });
+        } else {
+            // Individual view: Separate lines per card
+            // Group bills by card
+            const cardBillsMap = {};
+            creditCards.forEach(card => {
+                const cardIdStr = String(card.id);
+                cardBillsMap[cardIdStr] = {
+                    name: card.name,
+                    bills: paidBills.filter(b => String(b.cardId) === cardIdStr)
+                        .sort((a, b) => new Date(a.paidAt) - new Date(b.paidAt))
+                };
+            });
+            
+            // Card colors
+            const cardColors = [
+                { border: 'rgba(99, 102, 241, 1)', bg: 'rgba(99, 102, 241, 0.1)' },   // Indigo
+                { border: 'rgba(236, 72, 153, 1)', bg: 'rgba(236, 72, 153, 0.1)' },   // Pink
+                { border: 'rgba(34, 197, 94, 1)', bg: 'rgba(34, 197, 94, 0.1)' },     // Green
+                { border: 'rgba(249, 115, 22, 1)', bg: 'rgba(249, 115, 22, 0.1)' },   // Orange
+                { border: 'rgba(14, 165, 233, 1)', bg: 'rgba(14, 165, 233, 0.1)' },   // Sky
+                { border: 'rgba(168, 85, 247, 1)', bg: 'rgba(168, 85, 247, 0.1)' },   // Purple
+            ];
+            
+            let colorIndex = 0;
+            
+            Object.keys(cardBillsMap).forEach(cardId => {
+                const cardData = cardBillsMap[cardId];
+                if (cardData.bills.length === 0) return;
+                
+                const color = cardColors[colorIndex % cardColors.length];
+                colorIndex++;
+                
+                // Create data points for each month
+                const dataPoints = allMonths.map(monthKey => {
+                    const [year, month] = monthKey.split('-');
+                    const monthBills = cardData.bills.filter(b => {
+                        const d = new Date(b.paidAt);
+                        return d.getFullYear() === parseInt(year) && (d.getMonth() + 1) === parseInt(month);
+                    });
+                    // Sum all payments in that month
+                    return monthBills.reduce((sum, b) => sum + (parseFloat(b.paidAmount) || parseFloat(b.amount) || 0), 0);
+                });
+                
+                datasets.push({
+                    label: cardData.name,
+                    data: dataPoints,
+                    borderColor: color.border,
+                    backgroundColor: color.bg,
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: color.border,
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 1.5
+                });
+            });
+        }
         
         if (datasets.length === 0) return;
         
@@ -715,6 +1039,7 @@ const Dashboard = {
                 },
                 plugins: {
                     legend: {
+                        display: this.creditCardChartView !== 'total',
                         position: 'bottom',
                         labels: {
                             boxWidth: 12,
@@ -1749,75 +2074,79 @@ const Dashboard = {
             }
         }
         
+        // Build datasets based on view mode
+        let datasets = [];
+        const isTotal = this.investmentsChartView === 'total';
+        
+        if (isTotal) {
+            // Total view: Only show total line with filled area
+            datasets = [{
+                label: 'Total',
+                data: data.map(d => d.total),
+                borderColor: 'rgba(16, 185, 129, 1)',
+                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.3,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                pointBackgroundColor: 'rgba(16, 185, 129, 1)',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2
+            }];
+        } else {
+            // Category view: Show individual categories
+            datasets = [
+                {
+                    label: 'Shares',
+                    data: data.map(d => d.shares),
+                    borderColor: 'rgba(99, 102, 241, 1)',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 1.5
+                },
+                {
+                    label: 'Gold',
+                    data: data.map(d => d.gold),
+                    borderColor: 'rgba(251, 191, 36, 1)',
+                    backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: 'rgba(251, 191, 36, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 1.5
+                },
+                {
+                    label: 'EPF/FD',
+                    data: data.map(d => d.epfFd),
+                    borderColor: 'rgba(236, 72, 153, 1)',
+                    backgroundColor: 'rgba(236, 72, 153, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: 'rgba(236, 72, 153, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 1.5
+                }
+            ];
+        }
+        
         this.investmentChartInstance = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: data.map(d => d.label),
-                datasets: [
-                    {
-                        label: 'Total',
-                        data: data.map(d => d.total),
-                        borderColor: 'rgba(16, 185, 129, 1)',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 5,
-                        pointHoverRadius: 7,
-                        pointBackgroundColor: 'rgba(16, 185, 129, 1)',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2,
-                        order: 0
-                    },
-                    {
-                        label: 'Shares',
-                        data: data.map(d => d.shares),
-                        borderColor: 'rgba(99, 102, 241, 0.7)',
-                        backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        borderDash: [5, 5],
-                        fill: false,
-                        tension: 0.3,
-                        pointRadius: 3,
-                        pointHoverRadius: 5,
-                        pointBackgroundColor: 'rgba(99, 102, 241, 1)',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 1,
-                        order: 1
-                    },
-                    {
-                        label: 'Gold',
-                        data: data.map(d => d.gold),
-                        borderColor: 'rgba(251, 191, 36, 0.7)',
-                        backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        borderDash: [5, 5],
-                        fill: false,
-                        tension: 0.3,
-                        pointRadius: 3,
-                        pointHoverRadius: 5,
-                        pointBackgroundColor: 'rgba(251, 191, 36, 1)',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 1,
-                        order: 2
-                    },
-                    {
-                        label: 'EPF/FD',
-                        data: data.map(d => d.epfFd),
-                        borderColor: 'rgba(236, 72, 153, 0.7)',
-                        backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        borderDash: [5, 5],
-                        fill: false,
-                        tension: 0.3,
-                        pointRadius: 3,
-                        pointHoverRadius: 5,
-                        pointBackgroundColor: 'rgba(236, 72, 153, 1)',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 1,
-                        order: 3
-                    }
-                ]
+                datasets: datasets
             },
             options: {
                 responsive: true,
@@ -1828,16 +2157,13 @@ const Dashboard = {
                 },
                 plugins: {
                     legend: {
-                        position: 'top',
+                        display: !isTotal,
+                        position: 'bottom',
                         labels: {
                             usePointStyle: true,
                             pointStyle: 'circle',
                             padding: 12,
-                            font: { size: 11 },
-                            filter: function(item, chart) {
-                                // Make Total more prominent in legend
-                                return true;
-                            }
+                            font: { size: 11 }
                         }
                     },
                     datalabels: {
@@ -1853,8 +2179,7 @@ const Dashboard = {
                             label: function(context) {
                                 const label = context.dataset.label || '';
                                 const value = context.parsed.y;
-                                const prefix = label === 'Total' ? '💰 ' : '   ';
-                                return prefix + label + ': ₹' + value.toLocaleString('en-IN');
+                                return label + ': ₹' + value.toLocaleString('en-IN');
                             }
                         }
                     }
@@ -2508,7 +2833,396 @@ const Dashboard = {
     },
     
     /**
-     * Get regular expenses for current month (excluding expenses with 'emi' or 'recurring' categories)
+     * Get total recurring expenses for a specific month (excluding Loan EMI and Credit Card EMI)
+     */
+    getTotalRecurringExpensesForMonth(year, month) {
+        if (!window.RecurringExpenses) {
+            return 0;
+        }
+        
+        const allRecurring = window.RecurringExpenses.getAll();
+        let total = 0;
+        
+        allRecurring.forEach(recurring => {
+            // Skip inactive
+            if (recurring.isActive === false) {
+                return;
+            }
+            
+            // Skip if end date is before the target month
+            if (recurring.endDate) {
+                const endDate = new Date(recurring.endDate);
+                const checkDate = new Date(year, month - 1, 1);
+                if (checkDate > endDate) {
+                    return;
+                }
+            }
+            
+            // Check if due in the target month
+            const isDue = window.RecurringExpenses.isDueInMonth(recurring, year, month);
+            
+            if (isDue) {
+                const category = recurring.category || '';
+                if (category !== 'Loan EMI' && category !== 'Credit Card EMI') {
+                    total += recurring.amount;
+                }
+            }
+        });
+        
+        return total;
+    },
+    
+    /**
+     * Get total EMIs for a specific month (loans + credit cards)
+     */
+    getTotalEmisForMonth(year, month) {
+        const loans = window.DB.loans || [];
+        const cards = window.DB.cards || [];
+        const targetMonth = month - 1; // Convert to 0-indexed
+        let total = 0;
+        
+        // Add active loan EMIs
+        loans.forEach(loan => {
+            // Check if loan has started before or during target month
+            const firstDate = new Date(loan.firstEmiDate);
+            const firstEmiMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+            const targetMonthStart = new Date(year, targetMonth, 1);
+            
+            if (firstEmiMonth > targetMonthStart) {
+                return;
+            }
+            
+            // Calculate remaining EMIs
+            if (window.Loans) {
+                const remaining = window.Loans.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
+                
+                let emiAmount = loan.emi;
+                if (!emiAmount && loan.amount && loan.interestRate && loan.tenure) {
+                    emiAmount = window.Loans.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
+                }
+                
+                if (remaining.emisRemaining > 0 && emiAmount) {
+                    total += parseFloat(emiAmount);
+                }
+            }
+        });
+        
+        // Add active credit card EMIs
+        cards.forEach(card => {
+            if (card.cardType === 'debit') return;
+            
+            if (card.emis && card.emis.length > 0) {
+                card.emis.forEach(emi => {
+                    if (emi.firstEmiDate) {
+                        const emiFirstDate = new Date(emi.firstEmiDate);
+                        const emiFirstMonth = new Date(emiFirstDate.getFullYear(), emiFirstDate.getMonth(), 1);
+                        const targetMonthStart = new Date(year, targetMonth, 1);
+                        
+                        if (emiFirstMonth > targetMonthStart) {
+                            return;
+                        }
+                    }
+                    
+                    const paidCount = emi.paidCount || 0;
+                    const totalCount = emi.totalCount || emi.totalEmis || 0;
+                    const remaining = totalCount - paidCount;
+                    
+                    if (!emi.completed && remaining > 0 && emi.emiAmount) {
+                        total += parseFloat(emi.emiAmount);
+                    }
+                });
+            }
+        });
+        
+        return total;
+    },
+    
+    /**
+     * Show month list modal for a specific month
+     */
+    showMonthList(type, year, month) {
+        // Get the date for the target month
+        const targetDate = new Date(year, month - 1, 15);
+        const monthName = targetDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        
+        // Check if this is a future month
+        const now = new Date();
+        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const targetMonthStart = new Date(year, month - 1, 1);
+        const isFutureMonth = targetMonthStart > currentMonthStart;
+        
+        let items = [];
+        let title = '';
+        let total = 0;
+        let isProjected = false;
+        let projectionNote = '';
+        
+        if (type === 'recurring') {
+            title = `Recurring Payments - ${monthName}`;
+            items = this.getRecurringExpenseItemsForMonth(year, month);
+            total = items.reduce((sum, item) => sum + item.amount, 0);
+        } else if (type === 'emis') {
+            title = `Loans / EMIs - ${monthName}`;
+            items = this.getEmiItemsForMonth(year, month);
+            total = items.reduce((sum, item) => sum + item.amount, 0);
+        } else if (type === 'regular') {
+            if (isFutureMonth) {
+                // For future months, show projection explanation
+                title = `Regular Expenses - ${monthName} (Estimate)`;
+                isProjected = true;
+                const projectionData = this.getProjectedRegularExpensesWithDetails();
+                total = projectionData.average;
+                items = projectionData.monthlyData; // Reuse items for the breakdown
+                projectionNote = 'This is an estimated amount based on your average regular expenses from the last 3 months.';
+            } else {
+                title = `Regular Expenses - ${monthName}`;
+                items = this.getRegularExpenseItemsForMonth(year, month);
+                total = items.reduce((sum, item) => sum + item.amount, 0);
+            }
+        }
+        
+        // Create/show modal
+        let modal = document.getElementById('month-list-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'month-list-modal';
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+            modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
+            document.body.appendChild(modal);
+        }
+        
+        let contentHtml = '';
+        if (isProjected) {
+            const hasData = items.length > 0;
+            contentHtml = `
+                <div class="py-2">
+                    <p class="text-gray-600 text-sm mb-4 text-center">${projectionNote}</p>
+                    
+                    ${hasData ? `
+                    <!-- Monthly Breakdown -->
+                    <div class="mb-4">
+                        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Data Used</div>
+                        <div class="bg-gray-50 rounded-lg p-3 space-y-2">
+                            ${items.map(item => `
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-700">${item.label}</span>
+                                    <span class="text-sm font-semibold text-gray-800">₹${Utils.formatIndianNumber(item.amount)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <!-- Calculation -->
+                    <div class="mb-4">
+                        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Calculation</div>
+                        <div class="bg-blue-50 rounded-lg p-3">
+                            <div class="text-sm text-blue-700">
+                                <div class="flex justify-between mb-1">
+                                    <span>Total of ${items.length} months</span>
+                                    <span class="font-medium">₹${Utils.formatIndianNumber(items.reduce((s, i) => s + i.amount, 0))}</span>
+                                </div>
+                                <div class="flex justify-between text-blue-600">
+                                    <span>÷ ${items.length} months</span>
+                                    <span class="font-medium">= ₹${Utils.formatIndianNumber(total)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    ` : `
+                    <div class="text-center py-4 text-gray-500">
+                        <p>No historical data available to calculate projection.</p>
+                    </div>
+                    `}
+                    
+                    <!-- Result -->
+                    <div class="bg-emerald-50 rounded-lg p-4 text-center">
+                        <div class="text-xs text-emerald-600 font-medium mb-1">Estimated for Next Month</div>
+                        <div class="text-2xl font-bold text-emerald-700">~₹${Utils.formatIndianNumber(total)}</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            contentHtml = `
+                <div class="flex-1 overflow-y-auto">
+                    ${items.length > 0 ? items.map(item => `
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                            <div>
+                                <div class="font-medium text-gray-800 text-sm">${item.name}</div>
+                                ${item.category ? `<div class="text-xs text-gray-500">${item.category}</div>` : ''}
+                            </div>
+                            <div class="text-sm font-semibold text-gray-700">₹${Utils.formatIndianNumber(item.amount)}</div>
+                        </div>
+                    `).join('') : '<p class="text-gray-500 text-center py-4">No items found</p>'}
+                </div>
+                <div class="border-t border-gray-200 pt-3 mt-3 flex justify-between items-center">
+                    <span class="font-semibold text-gray-700">Total</span>
+                    <span class="font-bold text-lg text-gray-800">₹${Utils.formatIndianNumber(total)}</span>
+                </div>
+            `;
+        }
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl p-5 max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">${title}</h3>
+                    <button onclick="document.getElementById('month-list-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                ${contentHtml}
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
+    },
+    
+    /**
+     * Get recurring expense items for a specific month
+     */
+    getRecurringExpenseItemsForMonth(year, month) {
+        if (!window.RecurringExpenses) return [];
+        
+        const allRecurring = window.RecurringExpenses.getAll();
+        const items = [];
+        
+        allRecurring.forEach(recurring => {
+            if (recurring.isActive === false) return;
+            
+            if (recurring.endDate) {
+                const endDate = new Date(recurring.endDate);
+                const checkDate = new Date(year, month - 1, 1);
+                if (checkDate > endDate) return;
+            }
+            
+            const isDue = window.RecurringExpenses.isDueInMonth(recurring, year, month);
+            
+            if (isDue) {
+                const category = recurring.category || '';
+                if (category !== 'Loan EMI' && category !== 'Credit Card EMI') {
+                    items.push({
+                        name: recurring.name,
+                        category: recurring.category,
+                        amount: recurring.amount
+                    });
+                }
+            }
+        });
+        
+        return items;
+    },
+    
+    /**
+     * Get EMI items for a specific month
+     */
+    getEmiItemsForMonth(year, month) {
+        const loans = window.DB.loans || [];
+        const cards = window.DB.cards || [];
+        const targetMonth = month - 1;
+        const items = [];
+        
+        loans.forEach(loan => {
+            const firstDate = new Date(loan.firstEmiDate);
+            const firstEmiMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+            const targetMonthStart = new Date(year, targetMonth, 1);
+            
+            if (firstEmiMonth > targetMonthStart) return;
+            
+            if (window.Loans) {
+                const remaining = window.Loans.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
+                
+                let emiAmount = loan.emi;
+                if (!emiAmount && loan.amount && loan.interestRate && loan.tenure) {
+                    emiAmount = window.Loans.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
+                }
+                
+                if (remaining.emisRemaining > 0 && emiAmount) {
+                    items.push({
+                        name: loan.reason || loan.type || 'Loan',
+                        category: 'Loan EMI',
+                        amount: parseFloat(emiAmount)
+                    });
+                }
+            }
+        });
+        
+        cards.forEach(card => {
+            if (card.cardType === 'debit') return;
+            
+            if (card.emis && card.emis.length > 0) {
+                card.emis.forEach(emi => {
+                    if (emi.firstEmiDate) {
+                        const emiFirstDate = new Date(emi.firstEmiDate);
+                        const emiFirstMonth = new Date(emiFirstDate.getFullYear(), emiFirstDate.getMonth(), 1);
+                        const targetMonthStart = new Date(year, targetMonth, 1);
+                        
+                        if (emiFirstMonth > targetMonthStart) return;
+                    }
+                    
+                    const paidCount = emi.paidCount || 0;
+                    const totalCount = emi.totalCount || emi.totalEmis || 0;
+                    const remaining = totalCount - paidCount;
+                    
+                    if (!emi.completed && remaining > 0 && emi.emiAmount) {
+                        items.push({
+                            name: `${card.nickname || card.name} - ${emi.reason || 'EMI'}`,
+                            category: 'Card EMI',
+                            amount: parseFloat(emi.emiAmount)
+                        });
+                    }
+                });
+            }
+        });
+        
+        return items;
+    },
+    
+    /**
+     * Get regular expense items for a specific month
+     */
+    getRegularExpenseItemsForMonth(year, month) {
+        const expenses = window.DB.expenses || [];
+        const items = [];
+        
+        expenses.forEach(expense => {
+            const expenseDate = new Date(expense.date);
+            const expenseYear = expenseDate.getFullYear();
+            const expenseMonth = expenseDate.getMonth() + 1;
+            
+            if (expenseYear === year && expenseMonth === month) {
+                // Use the same filtering logic as other regular expense functions
+                if (this.isRegularExpenseCategory(expense.category)) {
+                    items.push({
+                        name: expense.name,
+                        category: expense.category,
+                        amount: parseFloat(expense.amount) || 0
+                    });
+                }
+            }
+        });
+        
+        return items;
+    },
+    
+    /**
+     * Check if an expense category is a regular (non-EMI, non-recurring) category
+     */
+    isRegularExpenseCategory(category) {
+        const cat = (category || '').toLowerCase();
+        // Exclude if category contains these keywords
+        if (cat.includes('emi') || 
+            cat.includes('loan') || 
+            cat.includes('recurring') ||
+            cat === 'rent' ||
+            cat === 'insurance') {
+            return false;
+        }
+        return true;
+    },
+    
+    /**
+     * Get regular expenses for current month (excluding EMI, loans, recurring categories)
      */
     getRegularExpenses() {
         const expenses = window.DB.expenses || [];
@@ -2523,17 +3237,83 @@ const Dashboard = {
             const expenseYear = expenseDate.getFullYear();
             const expenseMonth = expenseDate.getMonth() + 1;
             
-            // Only count expenses in current month that are NOT 'emi' or 'recurring'
+            // Only count expenses in current month that are regular expenses
             if (expenseYear === currentYear && expenseMonth === currentMonth) {
-                const category = (expense.category || '').toLowerCase();
-                // Exclude expenses with category 'emi' or 'recurring'
-                if (category !== 'emi' && category !== 'recurring') {
+                if (this.isRegularExpenseCategory(expense.category)) {
                     regularTotal += parseFloat(expense.amount) || 0;
                 }
             }
         });
         
         return regularTotal;
+    },
+    
+    /**
+     * Get projected regular expenses for next month based on historical average
+     * Uses the average of the last 3 completed months (excluding current month)
+     */
+    getProjectedRegularExpenses() {
+        return this.getProjectedRegularExpensesWithDetails().average;
+    },
+    
+    /**
+     * Get projected regular expenses with detailed breakdown
+     * Returns both the average and individual month data
+     */
+    getProjectedRegularExpensesWithDetails() {
+        const expenses = window.DB.expenses || [];
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth() + 1; // 1-12
+        
+        // Calculate averages from the last 3 completed months
+        const monthlyData = [];
+        
+        for (let i = 1; i <= 3; i++) {
+            let targetMonth = currentMonth - i;
+            let targetYear = currentYear;
+            
+            if (targetMonth <= 0) {
+                targetMonth += 12;
+                targetYear -= 1;
+            }
+            
+            let monthTotal = 0;
+            expenses.forEach(expense => {
+                const expenseDate = new Date(expense.date);
+                const expenseYear = expenseDate.getFullYear();
+                const expenseMonth = expenseDate.getMonth() + 1;
+                
+                if (expenseYear === targetYear && expenseMonth === targetMonth) {
+                    // Use the same filtering logic as getRegularExpenses
+                    if (this.isRegularExpenseCategory(expense.category)) {
+                        monthTotal += parseFloat(expense.amount) || 0;
+                    }
+                }
+            });
+            
+            // Only include months that have data
+            if (monthTotal > 0) {
+                const monthDate = new Date(targetYear, targetMonth - 1, 1);
+                const monthLabel = monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                monthlyData.push({
+                    month: targetMonth,
+                    year: targetYear,
+                    label: monthLabel,
+                    amount: Math.round(monthTotal)
+                });
+            }
+        }
+        
+        // Calculate average (or return 0 if no historical data)
+        if (monthlyData.length === 0) {
+            return { average: 0, monthlyData: [] };
+        }
+        
+        const totalSum = monthlyData.reduce((sum, data) => sum + data.amount, 0);
+        const average = Math.round(totalSum / monthlyData.length);
+        
+        return { average, monthlyData, totalSum, monthCount: monthlyData.length };
     },
     
     /**
