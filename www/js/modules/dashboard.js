@@ -3192,9 +3192,9 @@ const Dashboard = {
             
             if (expenseYear === year && expenseMonth === month) {
                 // Use the same filtering logic as other regular expense functions
-                if (this.isRegularExpenseCategory(expense.category)) {
+                if (this.isRegularExpense(expense)) {
                     items.push({
-                        name: expense.name,
+                        name: expense.title || expense.description || 'Expense',
                         category: expense.category,
                         amount: parseFloat(expense.amount) || 0
                     });
@@ -3206,19 +3206,11 @@ const Dashboard = {
     },
     
     /**
-     * Check if an expense category is a regular (non-EMI, non-recurring) category
+     * Check if an expense is a regular expense (not EMI, not recurring)
+     * Reuses Expenses module's isAutoRecurringExpense for consistency
      */
-    isRegularExpenseCategory(category) {
-        const cat = (category || '').toLowerCase();
-        // Exclude if category contains these keywords
-        if (cat.includes('emi') || 
-            cat.includes('loan') || 
-            cat.includes('recurring') ||
-            cat === 'rent' ||
-            cat === 'insurance') {
-            return false;
-        }
-        return true;
+    isRegularExpense(expense) {
+        return !window.Expenses.isAutoRecurringExpense(expense);
     },
     
     /**
@@ -3239,7 +3231,7 @@ const Dashboard = {
             
             // Only count expenses in current month that are regular expenses
             if (expenseYear === currentYear && expenseMonth === currentMonth) {
-                if (this.isRegularExpenseCategory(expense.category)) {
+                if (this.isRegularExpense(expense)) {
                     regularTotal += parseFloat(expense.amount) || 0;
                 }
             }
@@ -3286,7 +3278,7 @@ const Dashboard = {
                 
                 if (expenseYear === targetYear && expenseMonth === targetMonth) {
                     // Use the same filtering logic as getRegularExpenses
-                    if (this.isRegularExpenseCategory(expense.category)) {
+                    if (this.isRegularExpense(expense)) {
                         monthTotal += parseFloat(expense.amount) || 0;
                     }
                 }
