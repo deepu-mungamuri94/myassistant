@@ -4,6 +4,8 @@
  */
 
 const Income = {
+    // Year view mode: 'calendar' (Jan-Dec) or 'financial' (Apr-Mar)
+    salaryYearView: 'calendar',
     
     /**
      * Get default tax slabs (New Tax Regime 2024)
@@ -916,6 +918,7 @@ const Income = {
     renderSalaryTab() {
         const salaries = this.getAllSalaries();
         const paySchedule = this.getPaySchedule();
+        const isCalendar = this.salaryYearView === 'calendar';
         
         // Pay schedule section (always shown)
         const payScheduleSection = `
@@ -958,47 +961,64 @@ const Income = {
                     </button>
                 </div>
             `;
-            }
+        }
         
-        // Group by year
-        const byYear = {};
-        salaries.forEach(s => {
-            if (!byYear[s.year]) {
-                byYear[s.year] = [];
-            }
-            byYear[s.year].push(s);
-        });
-        
-        // Sort years descending
-        const years = Object.keys(byYear).sort((a, b) => b - a);
-        const currentYear = new Date().getFullYear();
+        // Group salaries based on view mode
+        const grouped = isCalendar ? this.groupByCalendarYear(salaries) : this.groupByFinancialYear(salaries);
+        const now = new Date();
+        const currentCalendarYear = now.getFullYear();
+        const currentFY = now.getMonth() >= 3 ? `FY ${currentCalendarYear}-${(currentCalendarYear + 1).toString().slice(-2)}` : `FY ${currentCalendarYear - 1}-${currentCalendarYear.toString().slice(-2)}`;
         
         let html = `
             ${payScheduleSection}
             
-            <!-- Add Button -->
-            <div class="mb-4">
+            <!-- Year View Toggle -->
+            <div class="mb-4 flex items-center justify-between">
                 <button onclick="Income.openSalaryModal()" 
-                        class="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all font-semibold flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        class="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:shadow-lg transition-all font-semibold flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                     </svg>
                     Add Salary
                 </button>
+                <div class="flex bg-gray-100 rounded-lg p-0.5">
+                    <button onclick="Income.switchSalaryYearView('calendar')" 
+                        class="px-3 py-1.5 text-xs rounded-md transition-all ${isCalendar ? 'bg-white shadow-sm text-green-600 font-medium' : 'text-gray-500 hover:text-gray-700'}">
+                        Calendar
+                    </button>
+                    <button onclick="Income.switchSalaryYearView('financial')" 
+                        class="px-3 py-1.5 text-xs rounded-md transition-all ${!isCalendar ? 'bg-white shadow-sm text-green-600 font-medium' : 'text-gray-500 hover:text-gray-700'}">
+                        Financial
+                    </button>
+                </div>
             </div>
             
             <!-- Salary Records Grouped by Year -->
             <div class="space-y-3">
         `;
         
-        years.forEach(year => {
-            const yearSalaries = byYear[year].sort((a, b) => a.month - b.month);
-            const yearSalaryTotal = yearSalaries.reduce((sum, s) => sum + s.amount, 0);
-            const yearAdditionalTotal = this.getAllAdditionalIncome()
-                .filter(a => a.year === parseInt(year))
-                .reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
-            const yearTotal = yearSalaryTotal + yearAdditionalTotal;
-            const isCurrentYear = parseInt(year) === currentYear;
+        // Sort years descending
+        const yearKeys = Object.keys(grouped).sort((a, b) => {
+            if (isCalendar) {
+                return parseInt(b) - parseInt(a);
+            } else {
+                // For FY, extract start year for sorting
+                const aYear = parseInt(a.match(/\d{4}/)[0]);
+                const bYear = parseInt(b.match(/\d{4}/)[0]);
+                return bYear - aYear;
+            }
+        });
+        
+        yearKeys.forEach(yearKey => {
+            const yearData = grouped[yearKey];
+            const yearSalaries = yearData.salaries.sort((a, b) => {
+                // Sort by year first, then by month
+                if (a.year !== b.year) return a.year - b.year;
+                return a.month - b.month;
+            });
+            const yearTotal = yearData.total;
+            const yearAdditionalTotal = yearData.additionalTotal;
+            const isCurrentYear = isCalendar ? (parseInt(yearKey) === currentCalendarYear) : (yearKey === currentFY);
             
             html += `
                 <details ${isCurrentYear ? 'open' : ''} class="salary-year-group bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 overflow-hidden">
@@ -1009,7 +1029,7 @@ const Income = {
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                 </svg>
                                 <div>
-                                    <h4 class="font-bold text-green-800">${year}</h4>
+                                    <h4 class="font-bold text-green-800">${yearKey}</h4>
                                     <p class="text-xs text-green-600">${yearSalaries.length} month${yearSalaries.length !== 1 ? 's' : ''}${yearAdditionalTotal > 0 ? ' + extras' : ''}</p>
                                 </div>
                             </div>
@@ -1026,13 +1046,14 @@ const Income = {
                             const additionalTotal = additionalForMonth.reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
                             const totalForMonth = salary.amount + additionalTotal;
                             const hasAdditional = additionalForMonth.length > 0;
+                            const monthLabel = !isCalendar ? `${this.getMonthName(salary.month).slice(0, 3)} '${salary.year.toString().slice(-2)}` : this.getMonthName(salary.month);
                             
                             return `
                             <div onclick="Income.showIncomeDetailsModal(${salary.id})" 
                                  class="bg-white p-3 rounded-lg border ${hasAdditional ? 'border-cyan-300' : 'border-green-200'} hover:shadow-md transition-all cursor-pointer active:scale-95 ${hasAdditional ? 'relative' : ''}">
                                 ${hasAdditional ? `<div class="absolute -top-1 -right-1 w-4 h-4 bg-cyan-500 rounded-full flex items-center justify-center text-[8px] text-white font-bold">+${additionalForMonth.length}</div>` : ''}
                                 <div class="flex justify-between items-center mb-2">
-                                    <p class="font-semibold text-green-700 text-xs">${this.getMonthName(salary.month)}</p>
+                                    <p class="font-semibold text-green-700 text-xs">${monthLabel}</p>
                                     <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                                     </svg>
@@ -1050,6 +1071,92 @@ const Income = {
         `;
         
         return html;
+    },
+    
+    /**
+     * Group salaries by calendar year (Jan-Dec)
+     */
+    groupByCalendarYear(salaries) {
+        const grouped = {};
+        const allAdditional = this.getAllAdditionalIncome();
+        
+        salaries.forEach(s => {
+            const yearKey = s.year.toString();
+            if (!grouped[yearKey]) {
+                grouped[yearKey] = { salaries: [], total: 0, additionalTotal: 0 };
+            }
+            grouped[yearKey].salaries.push(s);
+            grouped[yearKey].total += s.amount;
+        });
+        
+        // Add additional income totals
+        Object.keys(grouped).forEach(yearKey => {
+            const yearAdditional = allAdditional
+                .filter(a => a.year === parseInt(yearKey))
+                .reduce((sum, a) => sum + parseFloat(a.amount || 0), 0);
+            grouped[yearKey].additionalTotal = yearAdditional;
+            grouped[yearKey].total += yearAdditional;
+        });
+        
+        return grouped;
+    },
+    
+    /**
+     * Group salaries by financial year (Apr-Mar)
+     * FY 2024-25 = April 2024 to March 2025
+     */
+    groupByFinancialYear(salaries) {
+        const grouped = {};
+        const allAdditional = this.getAllAdditionalIncome();
+        
+        salaries.forEach(s => {
+            // Determine FY: Apr-Dec belongs to current year's FY, Jan-Mar belongs to previous year's FY
+            let fyStartYear;
+            if (s.month >= 4) {
+                fyStartYear = s.year;
+            } else {
+                fyStartYear = s.year - 1;
+            }
+            const fyEndYear = fyStartYear + 1;
+            const yearKey = `FY ${fyStartYear}-${fyEndYear.toString().slice(-2)}`;
+            
+            if (!grouped[yearKey]) {
+                grouped[yearKey] = { salaries: [], total: 0, additionalTotal: 0, startYear: fyStartYear };
+            }
+            grouped[yearKey].salaries.push(s);
+            grouped[yearKey].total += s.amount;
+        });
+        
+        // Add additional income totals (also grouped by FY)
+        allAdditional.forEach(a => {
+            let fyStartYear;
+            if (a.month >= 4) {
+                fyStartYear = a.year;
+            } else {
+                fyStartYear = a.year - 1;
+            }
+            const fyEndYear = fyStartYear + 1;
+            const yearKey = `FY ${fyStartYear}-${fyEndYear.toString().slice(-2)}`;
+            
+            if (grouped[yearKey]) {
+                grouped[yearKey].additionalTotal += parseFloat(a.amount || 0);
+                grouped[yearKey].total += parseFloat(a.amount || 0);
+            }
+        });
+        
+        return grouped;
+    },
+    
+    /**
+     * Switch salary year view mode
+     */
+    switchSalaryYearView(view) {
+        this.salaryYearView = view;
+        // Re-render just the salary tab content
+        const salaryContent = document.getElementById('income-content-salary');
+        if (salaryContent) {
+            salaryContent.innerHTML = this.renderSalaryTab();
+        }
     },
     
     /**
