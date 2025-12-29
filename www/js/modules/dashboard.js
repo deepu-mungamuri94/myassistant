@@ -258,6 +258,10 @@ const Dashboard = {
         const targetYear = isCurrent ? now.getFullYear() : (now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear());
         const targetMonth = isCurrent ? now.getMonth() + 1 : (now.getMonth() === 11 ? 1 : now.getMonth() + 2);
         
+        // Get formatted month name (e.g., "Dec 2024")
+        const targetDate = new Date(targetYear, targetMonth - 1, 1);
+        const monthName = targetDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        
         const minNetPay = this.getMinimumNetPay();
         const recurringExpenses = this.getTotalRecurringExpensesForMonth(targetYear, targetMonth);
         const totalEmis = this.getTotalEmisForMonth(targetYear, targetMonth);
@@ -269,13 +273,12 @@ const Dashboard = {
         const emisPercent = minNetPay > 0 ? ((totalEmis / minNetPay) * 100).toFixed(1) : 0;
         const regularPercent = minNetPay > 0 ? ((regularExpenses / minNetPay) * 100).toFixed(1) : 0;
         
-        const monthLabel = isCurrent ? 'Current Month' : 'Next Month';
         const regularLabel = 'Reg.Expenses';
         
         return `
         <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden" id="first-line-cards-section">
             <div class="flex items-center justify-between mb-3">
-                <h3 class="text-sm font-semibold text-gray-700">${monthLabel}</h3>
+                <h3 class="text-sm font-semibold text-gray-700">${monthName}</h3>
                 <div class="flex bg-gray-100 rounded-lg p-0.5">
                     <button onclick="Dashboard.switchFirstLineMonthView('current')" 
                         class="px-2 py-1 text-xs rounded-md transition-all ${isCurrent ? 'bg-white shadow-sm text-purple-600 font-medium' : 'text-gray-500 hover:text-gray-700'}">
@@ -627,9 +630,11 @@ const Dashboard = {
     
     /**
      * Get expenses data for last N months or custom range
+     * Uses budget month if available, falls back to expense date
      */
     getExpensesData(monthsCount = 6) {
         const monthsData = [];
+        const expenses = window.DB.expenses || [];
         
         // Use custom range if selected
         if (this.selectedMonthRange) {
@@ -643,11 +648,10 @@ const Dashboard = {
                 const date = new Date(currentYear, currentMonth - 1, 1);
                 const monthName = date.toLocaleDateString('en-US', { month: 'short' });
                 
-                // Get expenses for this month
-                const expenses = window.DB.expenses || [];
+                // Get expenses for this month using budget month
                 const monthExpenses = expenses.filter(exp => {
-                    const expDate = new Date(exp.date);
-                    return expDate.getFullYear() === currentYear && expDate.getMonth() + 1 === currentMonth;
+                    const { month: expMonth, year: expYear } = this.getExpenseBudgetMonth(exp);
+                    return expYear === currentYear && expMonth === currentMonth;
                 });
                 
                 const totalWithLoans = monthExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
@@ -682,11 +686,10 @@ const Dashboard = {
             const year = date.getFullYear();
             const month = date.getMonth() + 1;
             
-            // Get expenses for this month
-            const expenses = window.DB.expenses || [];
+            // Get expenses for this month using budget month
             const monthExpenses = expenses.filter(exp => {
-                const expDate = new Date(exp.date);
-                return expDate.getFullYear() === year && expDate.getMonth() + 1 === month;
+                const { month: expMonth, year: expYear } = this.getExpenseBudgetMonth(exp);
+                return expYear === year && expMonth === month;
             });
             
             const totalWithoutLoans = monthExpenses
@@ -1660,6 +1663,7 @@ const Dashboard = {
     /**
      * Get "Needs" expense items for a month
      * Optionally excludes loan EMIs based on setting
+     * Uses budget month if available, falls back to expense date
      */
     getNeedsItems(year, month) {
         const expenses = window.DB.expenses || [];
@@ -1667,8 +1671,9 @@ const Dashboard = {
         
         return expenses
             .filter(exp => {
-                const expDate = new Date(exp.date);
-                if (expDate.getFullYear() !== year || (expDate.getMonth() + 1) !== month) {
+                // Use budget month if available, fallback to expense date
+                const { month: expMonth, year: expYear } = this.getExpenseBudgetMonth(exp);
+                if (expYear !== year || expMonth !== month) {
                     return false;
                 }
                 const category = exp.category || 'Other';
@@ -1692,21 +1697,24 @@ const Dashboard = {
                 title: exp.title,
                 category: exp.category || 'Other',
                 amount: parseFloat(exp.amount) || 0,
-                date: new Date(exp.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+                date: new Date(exp.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+                sortDate: new Date(exp.date).getTime()
             }))
-            .sort((a, b) => b.amount - a.amount);
+            .sort((a, b) => a.sortDate - b.sortDate); // Sort by date ascending
     },
     
     /**
      * Get "Wants" expense items for a month
+     * Uses budget month if available, falls back to expense date
      */
     getWantsItems(year, month) {
         const expenses = window.DB.expenses || [];
         
         return expenses
             .filter(exp => {
-                const expDate = new Date(exp.date);
-                if (expDate.getFullYear() !== year || (expDate.getMonth() + 1) !== month) {
+                // Use budget month if available, fallback to expense date
+                const { month: expMonth, year: expYear } = this.getExpenseBudgetMonth(exp);
+                if (expYear !== year || expMonth !== month) {
                     return false;
                 }
                 const category = exp.category || 'Other';
@@ -1716,9 +1724,10 @@ const Dashboard = {
                 title: exp.title,
                 category: exp.category || 'Other',
                 amount: parseFloat(exp.amount) || 0,
-                date: new Date(exp.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+                date: new Date(exp.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+                sortDate: new Date(exp.date).getTime()
             }))
-            .sort((a, b) => b.amount - a.amount);
+            .sort((a, b) => a.sortDate - b.sortDate); // Sort by date ascending
     },
     
     /**
@@ -1753,10 +1762,11 @@ const Dashboard = {
                     title: inv.name || inv.type,
                     category: inv.type,
                     amount: amount,
-                    date: new Date(inv.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+                    date: new Date(inv.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+                    sortDate: new Date(inv.date).getTime()
                 };
             })
-            .sort((a, b) => b.amount - a.amount);
+            .sort((a, b) => a.sortDate - b.sortDate); // Sort by date ascending
     },
     
     /**
@@ -1787,8 +1797,9 @@ const Dashboard = {
         
         return expenses
             .filter(exp => {
-                const expDate = new Date(exp.date);
-                if (expDate.getFullYear() !== year || (expDate.getMonth() + 1) !== month) {
+                // Use budget month if available, fallback to expense date
+                const { month: expMonth, year: expYear } = this.getExpenseBudgetMonth(exp);
+                if (expYear !== year || expMonth !== month) {
                     return false;
                 }
                 const category = exp.category || 'Other';
@@ -1813,14 +1824,16 @@ const Dashboard = {
     
     /**
      * Get total "Wants" expenses for a month
+     * Uses budget month if available, falls back to expense date
      */
     getWantsTotal(year, month) {
         const expenses = window.DB.expenses || [];
         
         return expenses
             .filter(exp => {
-                const expDate = new Date(exp.date);
-                if (expDate.getFullYear() !== year || (expDate.getMonth() + 1) !== month) {
+                // Use budget month if available, fallback to expense date
+                const { month: expMonth, year: expYear } = this.getExpenseBudgetMonth(exp);
+                if (expYear !== year || expMonth !== month) {
                     return false;
                 }
                 const category = exp.category || 'Other';
@@ -2446,6 +2459,7 @@ const Dashboard = {
     
     /**
      * Get category-wise expenses for selected month
+     * Uses budget month if available, falls back to expense date
      */
     getCategoryData(includeExcluded = false) {
         const selector = document.getElementById('category-month-selector');
@@ -2453,10 +2467,10 @@ const Dashboard = {
         
         const [year, month] = selector.value.split('-').map(Number);
         
-        // Get all expenses for the selected month
+        // Get all expenses for the selected month using budget month
         const expenses = window.DB.expenses.filter(exp => {
-            const expDate = new Date(exp.date);
-            return expDate.getFullYear() === year && expDate.getMonth() + 1 === month;
+            const { month: expMonth, year: expYear } = this.getExpenseBudgetMonth(exp);
+            return expYear === year && expMonth === month;
         });
         
         // Get all recurring expenses for the selected month
@@ -3046,9 +3060,13 @@ const Dashboard = {
                 <div class="flex-1 overflow-y-auto">
                     ${items.length > 0 ? items.map(item => `
                         <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                            <div>
+                            <div class="flex-1">
                                 <div class="font-medium text-gray-800 text-sm">${item.name}</div>
-                                ${item.category ? `<div class="text-xs text-gray-500">${item.category}</div>` : ''}
+                                <div class="flex items-center gap-2 text-xs text-gray-500">
+                                    ${item.category ? `<span>${item.category}</span>` : ''}
+                                    ${item.category && item.date ? '<span>•</span>' : ''}
+                                    ${item.date ? `<span>${item.date}</span>` : ''}
+                                </div>
                             </div>
                             <div class="text-sm font-semibold text-gray-700">₹${Utils.formatIndianNumber(item.amount)}</div>
                         </div>
@@ -3101,16 +3119,22 @@ const Dashboard = {
             if (isDue) {
                 const category = recurring.category || '';
                 if (category !== 'Loan EMI' && category !== 'Credit Card EMI') {
+                    // Determine due date for this month
+                    const dayOfMonth = recurring.dayOfMonth || 1;
+                    const dueDate = new Date(year, month - 1, dayOfMonth);
                     items.push({
                         name: recurring.name,
                         category: recurring.category,
-                        amount: recurring.amount
+                        amount: recurring.amount,
+                        date: dueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+                        sortDate: dueDate.getTime()
                     });
                 }
             }
         });
         
-        return items;
+        // Sort by date ascending
+        return items.sort((a, b) => a.sortDate - b.sortDate);
     },
     
     /**
@@ -3138,10 +3162,15 @@ const Dashboard = {
                 }
                 
                 if (remaining.emisRemaining > 0 && emiAmount) {
+                    // EMI due date is same day of month as first EMI
+                    const emiDueDay = firstDate.getDate();
+                    const emiDueDate = new Date(year, targetMonth, emiDueDay);
                     items.push({
                         name: loan.reason || loan.type || 'Loan',
                         category: 'Loan EMI',
-                        amount: parseFloat(emiAmount)
+                        amount: parseFloat(emiAmount),
+                        date: emiDueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+                        sortDate: emiDueDate.getTime()
                     });
                 }
             }
@@ -3165,17 +3194,24 @@ const Dashboard = {
                     const remaining = totalCount - paidCount;
                     
                     if (!emi.completed && remaining > 0 && emi.emiAmount) {
+                        // Card EMI due date - use first EMI date's day or default to card bill due date
+                        const emiFirstDate = emi.firstEmiDate ? new Date(emi.firstEmiDate) : null;
+                        const emiDueDay = emiFirstDate ? emiFirstDate.getDate() : (card.billDueDate || 1);
+                        const emiDueDate = new Date(year, targetMonth, emiDueDay);
                         items.push({
                             name: `${card.nickname || card.name} - ${emi.reason || 'EMI'}`,
                             category: 'Card EMI',
-                            amount: parseFloat(emi.emiAmount)
+                            amount: parseFloat(emi.emiAmount),
+                            date: emiDueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+                            sortDate: emiDueDate.getTime()
                         });
                     }
                 });
             }
         });
         
-        return items;
+        // Sort by date ascending
+        return items.sort((a, b) => a.sortDate - b.sortDate);
     },
     
     /**
@@ -3186,23 +3222,26 @@ const Dashboard = {
         const items = [];
         
         expenses.forEach(expense => {
-            const expenseDate = new Date(expense.date);
-            const expenseYear = expenseDate.getFullYear();
-            const expenseMonth = expenseDate.getMonth() + 1;
+            // Use budget month if available
+            const { month: expenseMonth, year: expenseYear } = this.getExpenseBudgetMonth(expense);
             
             if (expenseYear === year && expenseMonth === month) {
                 // Use the same filtering logic as other regular expense functions
                 if (this.isRegularExpense(expense)) {
+                    const expDate = new Date(expense.date);
                     items.push({
                         name: expense.title || expense.description || 'Expense',
                         category: expense.category,
-                        amount: parseFloat(expense.amount) || 0
+                        amount: parseFloat(expense.amount) || 0,
+                        date: expDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+                        sortDate: expDate.getTime()
                     });
                 }
             }
         });
         
-        return items;
+        // Sort by date ascending
+        return items.sort((a, b) => a.sortDate - b.sortDate);
     },
     
     /**
@@ -3211,6 +3250,21 @@ const Dashboard = {
      */
     isRegularExpense(expense) {
         return !window.Expenses.isAutoRecurringExpense(expense);
+    },
+    
+    /**
+     * Get budget month/year for an expense
+     * Uses budgetMonth/budgetYear if set, otherwise falls back to expense date
+     */
+    getExpenseBudgetMonth(expense) {
+        if (expense.budgetMonth && expense.budgetYear) {
+            return { month: expense.budgetMonth, year: expense.budgetYear };
+        }
+        const expenseDate = new Date(expense.date);
+        return {
+            month: expenseDate.getMonth() + 1,
+            year: expenseDate.getFullYear()
+        };
     },
     
     /**
@@ -3225,9 +3279,8 @@ const Dashboard = {
         // Get only regular expenses (non-recurring, non-EMI) for current month
         let regularTotal = 0;
         expenses.forEach(expense => {
-            const expenseDate = new Date(expense.date);
-            const expenseYear = expenseDate.getFullYear();
-            const expenseMonth = expenseDate.getMonth() + 1;
+            // Use budget month if available, otherwise fall back to expense date
+            const { month: expenseMonth, year: expenseYear } = this.getExpenseBudgetMonth(expense);
             
             // Only count expenses in current month that are regular expenses
             if (expenseYear === currentYear && expenseMonth === currentMonth) {
@@ -3272,9 +3325,8 @@ const Dashboard = {
             
             let monthTotal = 0;
             expenses.forEach(expense => {
-                const expenseDate = new Date(expense.date);
-                const expenseYear = expenseDate.getFullYear();
-                const expenseMonth = expenseDate.getMonth() + 1;
+                // Use budget month if available
+                const { month: expenseMonth, year: expenseYear } = this.getExpenseBudgetMonth(expense);
                 
                 if (expenseYear === targetYear && expenseMonth === targetMonth) {
                     // Use the same filtering logic as getRegularExpenses
@@ -3769,6 +3821,7 @@ const Dashboard = {
     
     /**
      * Get total expenses for selected filter month
+     * Uses budget month if available, falls back to expense date
      */
     getMonthExpenses(monthValue) {
         const [year, month] = monthValue.split('-').map(Number);
@@ -3776,14 +3829,15 @@ const Dashboard = {
         
         return expenses
             .filter(exp => {
-                const expDate = new Date(exp.date);
-                return expDate.getFullYear() === year && (expDate.getMonth() + 1) === month;
+                const { month: expMonth, year: expYear } = this.getExpenseBudgetMonth(exp);
+                return expYear === year && expMonth === month;
             })
             .reduce((sum, exp) => sum + (exp.amount || 0), 0);
     },
     
     /**
      * Get expense items for a month
+     * Uses budget month if available, falls back to expense date
      */
     getMonthExpenseItems(monthValue) {
         const [year, month] = monthValue.split('-').map(Number);
@@ -3791,16 +3845,17 @@ const Dashboard = {
         
         return expenses
             .filter(exp => {
-                const expDate = new Date(exp.date);
-                return expDate.getFullYear() === year && (expDate.getMonth() + 1) === month;
+                const { month: expMonth, year: expYear } = this.getExpenseBudgetMonth(exp);
+                return expYear === year && expMonth === month;
             })
             .map(exp => ({
                 title: exp.title,
                 category: exp.category || 'Other',
                 amount: parseFloat(exp.amount) || 0,
-                date: new Date(exp.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+                date: new Date(exp.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+                sortDate: new Date(exp.date).getTime()
             }))
-            .sort((a, b) => b.amount - a.amount);
+            .sort((a, b) => a.sortDate - b.sortDate); // Sort by date ascending
     },
     
     /**

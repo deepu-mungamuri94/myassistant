@@ -1189,8 +1189,35 @@
             </div>
             
             <div class="mb-3">
-                <input type="date" id="expense-modal-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" onchange="clearFieldError('expense-modal-date')">
+                <input type="date" id="expense-modal-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" onchange="clearFieldError('expense-modal-date'); updateExpenseBudgetMonthSuggestion()">
                 <div id="expense-modal-date-error" class="text-red-600 text-xs mt-1 hidden"></div>
+            </div>
+            
+            <!-- Budget Month Selector -->
+            <div class="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="text-sm font-medium text-blue-800">Track in Month</label>
+                    <span class="text-xs text-blue-600" id="expense-budget-month-hint"></span>
+                </div>
+                <div class="flex gap-2">
+                    <select id="expense-budget-month" class="flex-1 p-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                    </select>
+                    <select id="expense-budget-year" class="w-24 p-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    </select>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Expense will be listed and tracked in this month</p>
             </div>
             
             <textarea id="expense-modal-description" placeholder="Description (optional - additional details)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" rows="2"></textarea>
@@ -4219,6 +4246,14 @@
             document.getElementById('expense-modal-title-header').textContent = 'Add Expense';
             document.getElementById('expense-modal-save-btn').textContent = 'Add';
             
+            // Populate budget year dropdown
+            const budgetYearSelect = document.getElementById('expense-budget-year');
+            const currentYear = new Date().getFullYear();
+            budgetYearSelect.innerHTML = '';
+            for (let y = currentYear - 1; y <= currentYear + 1; y++) {
+                budgetYearSelect.innerHTML += `<option value="${y}">${y}</option>`;
+            }
+            
             // If editing, populate with existing data
             if (id) {
                 const expense = window.DB.expenses.find(e => e.id == id || String(e.id) === String(id));
@@ -4237,12 +4272,61 @@
                         document.getElementById('expense-category-btn').innerHTML = '<div class=\'flex items-center flex-1\'><span class=\'text-xl mr-2\'>' + cat.icon + '</span><span class=\'font-semibold text-sm\'>' + cat.name + '</span></div><svg class=\'w-5 h-5 text-gray-400 flex-shrink-0\' fill=\'none\' stroke=\'currentColor\' viewBox=\'0 0 24 24\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M9 5l7 7-7 7\'/></svg>';
                     }
                     
+                    // Set budget month/year from expense or calculate from date
+                    if (expense.budgetMonth && expense.budgetYear) {
+                        document.getElementById('expense-budget-month').value = expense.budgetMonth;
+                        document.getElementById('expense-budget-year').value = expense.budgetYear;
+                    } else {
+                        // Calculate suggestion based on expense date
+                        updateExpenseBudgetMonthSuggestion();
+                    }
+                    
                     document.getElementById('expense-modal-title-header').textContent = 'Edit Expense';
                     document.getElementById('expense-modal-save-btn').textContent = 'Update';
                 }
+            } else {
+                // For new expense, suggest budget month based on date
+                updateExpenseBudgetMonthSuggestion();
             }
             
             document.getElementById('expense-modal').classList.remove('hidden');
+        }
+        
+        // Update budget month suggestion based on expense date and pay schedule
+        window.updateExpenseBudgetMonthSuggestion = function() {
+            const dateStr = document.getElementById('expense-modal-date').value;
+            if (!dateStr) return;
+            
+            const expenseDate = new Date(dateStr);
+            const day = expenseDate.getDate();
+            const month = expenseDate.getMonth() + 1;
+            const year = expenseDate.getFullYear();
+            
+            // Get pay schedule from Income module
+            const paySchedule = window.Income ? window.Income.getPaySchedule() : 'first_week';
+            
+            let budgetMonth = month;
+            let budgetYear = year;
+            
+            // If pay schedule is last_week and expense is on or after 25th, suggest next month
+            if (paySchedule === 'last_week' && day >= 25) {
+                budgetMonth = month + 1;
+                if (budgetMonth > 12) {
+                    budgetMonth = 1;
+                    budgetYear = year + 1;
+                }
+            }
+            
+            document.getElementById('expense-budget-month').value = budgetMonth;
+            document.getElementById('expense-budget-year').value = budgetYear;
+            
+            // Update hint
+            const hintEl = document.getElementById('expense-budget-month-hint');
+            if (paySchedule === 'last_week' && day >= 25) {
+                hintEl.textContent = '→ Next month suggested';
+            } else {
+                hintEl.textContent = '';
+            }
         }
         
         window.closeExpenseModal = function() {
@@ -4421,6 +4505,8 @@
             const date = document.getElementById('expense-modal-date').value;
             const description = document.getElementById('expense-modal-description').value.trim();
             const event = document.getElementById('expense-modal-event').value.trim();
+            const budgetMonth = parseInt(document.getElementById('expense-budget-month').value);
+            const budgetYear = parseInt(document.getElementById('expense-budget-year').value);
             
             let hasErrors = false;
             
@@ -4477,12 +4563,19 @@
                         expense.date = date;
                         expense.description = description;
                         expense.event = event || null;
+                        expense.budgetMonth = budgetMonth;
+                        expense.budgetYear = budgetYear;
                         window.Storage.save();
                     }
                     Utils.showSuccess('Expense updated!');
                 } else {
-                    // Add new expense
-                    Expenses.add(title, amount, category, date, description, null, event);
+                    // Add new expense with budget month
+                    const newExpense = Expenses.add(title, amount, category, date, description, null, event);
+                    if (newExpense) {
+                        newExpense.budgetMonth = budgetMonth;
+                        newExpense.budgetYear = budgetYear;
+                        window.Storage.save();
+                    }
                     Utils.showSuccess('Expense added!');
                 }
                 

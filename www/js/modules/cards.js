@@ -1759,7 +1759,9 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
      */
     payOutstandingAmount(cardId, amount) {
         const dateInput = document.getElementById('os-payment-date-input');
-        const paidDate = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
+        const paidDateStr = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
+        // Convert to ISO date format like markBillPaid does
+        const paidAt = new Date(paidDateStr + 'T12:00:00').toISOString();
         
         const card = window.DB.cards?.find(c => String(c.id) === String(cardId));
         if (!card) { Utils.showError('Card not found'); return; }
@@ -1777,7 +1779,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             dueDate: null,
             isPaid: true,
             paidAmount: amount,
-            paidDate: paidDate,
+            paidAt: paidAt,
             paidType: 'outstanding',
             originalBillAmount: 0,
             createdAt: Utils.getCurrentTimestamp()
@@ -1992,7 +1994,9 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             const totalPaid = yearBills.filter(b => b.isPaid).reduce((sum, b) => sum + (parseFloat(b.paidAmount) || parseFloat(b.amount) || 0), 0);
             
             const billsHtml = yearBills.map(b => {
-                const paidDate = b.paidAt ? new Date(b.paidAt).toLocaleDateString('en-IN', {day: 'numeric', month: 'short', year: 'numeric'}) : '';
+                // Check paidAt first, fallback to paidDate for legacy records
+                const paidDateValue = b.paidAt || b.paidDate;
+                const paidDate = paidDateValue ? new Date(paidDateValue).toLocaleDateString('en-IN', {day: 'numeric', month: 'short', year: 'numeric'}) : '';
                 const dueDate = b.dueDate ? new Date(b.dueDate).toLocaleDateString('en-IN', {day: 'numeric', month: 'short', year: 'numeric'}) : '';
                 const paidTypeLabel = b.paidType === 'outstanding' ? 'Outstanding' : (b.paidType === 'custom' ? 'Custom' : 'Bill');
                 

@@ -277,18 +277,30 @@ const Expenses = {
 
     /**
      * Get filtered expenses based on date range and search
+     * Uses budget month for filtering (not transaction date)
      */
     getFilteredExpenses() {
         let filtered = window.DB.expenses;
         
-        // Apply date filter
+        // Apply date filter based on budget month
         if (this.startDate && this.endDate) {
+            const start = new Date(this.startDate);
+            const end = new Date(this.endDate);
+            const startMonth = start.getMonth() + 1;
+            const startYear = start.getFullYear();
+            const endMonth = end.getMonth() + 1;
+            const endYear = end.getFullYear();
+            
             filtered = filtered.filter(e => {
-                const expenseDate = new Date(e.date);
-                const start = new Date(this.startDate);
-                const end = new Date(this.endDate);
-                end.setHours(23, 59, 59, 999); // Include end date fully
-                return expenseDate >= start && expenseDate <= end;
+                // Use budget month if available, otherwise fall back to expense date
+                const { month, year } = this.getExpenseBudgetMonth(e);
+                
+                // Check if budget month falls within the date range
+                const budgetDate = new Date(year, month - 1, 15); // Use middle of month for comparison
+                const startOfRange = new Date(startYear, startMonth - 1, 1);
+                const endOfRange = new Date(endYear, endMonth, 0); // Last day of end month
+                
+                return budgetDate >= startOfRange && budgetDate <= endOfRange;
             });
         }
         
@@ -308,15 +320,31 @@ const Expenses = {
     },
     
     /**
-     * Group expenses by month
+     * Get budget month/year for an expense
+     * Uses budgetMonth/budgetYear if set, otherwise falls back to expense date
+     */
+    getExpenseBudgetMonth(expense) {
+        if (expense.budgetMonth && expense.budgetYear) {
+            return { month: expense.budgetMonth, year: expense.budgetYear };
+        }
+        const expenseDate = new Date(expense.date);
+        return {
+            month: expenseDate.getMonth() + 1,
+            year: expenseDate.getFullYear()
+        };
+    },
+    
+    /**
+     * Group expenses by budget month (uses budgetMonth if set, otherwise expense date)
      */
     groupByMonth(expenses) {
         const groups = {};
         
         expenses.forEach(expense => {
-            const date = new Date(expense.date);
-            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            const monthLabel = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+            // Use budget month if available, otherwise fall back to expense date
+            const { month, year } = this.getExpenseBudgetMonth(expense);
+            const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+            const monthLabel = new Date(year, month - 1, 1).toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
             
             if (!groups[monthKey]) {
                 groups[monthKey] = {
