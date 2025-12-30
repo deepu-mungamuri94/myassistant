@@ -887,8 +887,8 @@ const Dashboard = {
         
         const ctx = canvas.getContext('2d');
         
-        // Get all paid bills
-        let paidBills = (window.DB.cardBills || []).filter(b => b.isPaid && b.paidAt);
+        // Get all paid bills (check both paidAt and paidDate for backward compatibility)
+        let paidBills = (window.DB.cardBills || []).filter(b => b.isPaid && (b.paidAt || b.paidDate));
         if (paidBills.length === 0) return;
         
         // Get credit cards (non-placeholder)
@@ -923,7 +923,8 @@ const Dashboard = {
         
         // Filter bills to only include those in the selected range
         paidBills = paidBills.filter(b => {
-            const d = new Date(b.paidAt);
+            const paidDateValue = b.paidAt || b.paidDate;
+            const d = new Date(paidDateValue);
             const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
             return rangeMonths.includes(monthKey);
         });
@@ -945,7 +946,8 @@ const Dashboard = {
             const totalDataPoints = allMonths.map(monthKey => {
                 const [year, month] = monthKey.split('-');
                 const monthBills = paidBills.filter(b => {
-                    const d = new Date(b.paidAt);
+                    const paidDateValue = b.paidAt || b.paidDate;
+                    const d = new Date(paidDateValue);
                     return d.getFullYear() === parseInt(year) && (d.getMonth() + 1) === parseInt(month);
                 });
                 return monthBills.reduce((sum, b) => sum + (parseFloat(b.paidAmount) || parseFloat(b.amount) || 0), 0);
@@ -974,7 +976,7 @@ const Dashboard = {
                 cardBillsMap[cardIdStr] = {
                     name: card.name,
                     bills: paidBills.filter(b => String(b.cardId) === cardIdStr)
-                        .sort((a, b) => new Date(a.paidAt) - new Date(b.paidAt))
+                        .sort((a, b) => new Date(a.paidAt || a.paidDate) - new Date(b.paidAt || b.paidDate))
                 };
             });
             
@@ -1001,7 +1003,8 @@ const Dashboard = {
                 const dataPoints = allMonths.map(monthKey => {
                     const [year, month] = monthKey.split('-');
                     const monthBills = cardData.bills.filter(b => {
-                        const d = new Date(b.paidAt);
+                        const paidDateValue = b.paidAt || b.paidDate;
+                        const d = new Date(paidDateValue);
                         return d.getFullYear() === parseInt(year) && (d.getMonth() + 1) === parseInt(month);
                     });
                     // Sum all payments in that month

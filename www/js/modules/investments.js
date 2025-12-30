@@ -738,33 +738,65 @@ const Investments = {
     },
 
     /**
+     * Get budget month/year for an investment
+     * Uses incomeMonth/incomeYear if available, falls back to investment date
+     */
+    getInvestmentBudgetMonth(inv) {
+        if (inv.incomeMonth && inv.incomeYear) {
+            return { month: inv.incomeMonth, year: inv.incomeYear };
+        }
+        const date = new Date(inv.date);
+        return { month: date.getMonth() + 1, year: date.getFullYear() };
+    },
+
+    /**
      * Apply date filter to investments
+     * Uses budget month (incomeMonth/incomeYear) if available, falls back to investment date
      */
     applyDateFilterToInvestments(investments) {
         const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
         
         switch (this.dateFilter) {
             case 'thisMonth':
                 return investments.filter(inv => {
-                    const date = new Date(inv.date);
-                    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+                    const { month, year } = this.getInvestmentBudgetMonth(inv);
+                    return month === currentMonth && year === currentYear;
                 });
             
             case 'last6Months':
-                const sixMonthsAgo = new Date();
-                sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-                return investments.filter(inv => new Date(inv.date) >= sixMonthsAgo);
+                // Calculate the range of 6 months back
+                let startMonth = currentMonth - 5;
+                let startYear = currentYear;
+                if (startMonth <= 0) {
+                    startMonth += 12;
+                    startYear--;
+                }
+                return investments.filter(inv => {
+                    const { month, year } = this.getInvestmentBudgetMonth(inv);
+                    const invMonthValue = year * 12 + month;
+                    const startMonthValue = startYear * 12 + startMonth;
+                    const currentMonthValue = currentYear * 12 + currentMonth;
+                    return invMonthValue >= startMonthValue && invMonthValue <= currentMonthValue;
+                });
             
             case 'thisYear':
-                return investments.filter(inv => new Date(inv.date).getFullYear() === now.getFullYear());
+                return investments.filter(inv => {
+                    const { year } = this.getInvestmentBudgetMonth(inv);
+                    return year === currentYear;
+                });
             
             case 'custom':
                 if (this.customDateRange.start && this.customDateRange.end) {
-                    const start = new Date(this.customDateRange.start);
-                    const end = new Date(this.customDateRange.end);
+                    const [startYear, startMonth] = this.customDateRange.start.split('-').map(Number);
+                    const [endYear, endMonth] = this.customDateRange.end.split('-').map(Number);
+                    const startMonthValue = startYear * 12 + startMonth;
+                    const endMonthValue = endYear * 12 + endMonth;
                     return investments.filter(inv => {
-                        const date = new Date(inv.date);
-                        return date >= start && date <= end;
+                        const { month, year } = this.getInvestmentBudgetMonth(inv);
+                        const invMonthValue = year * 12 + month;
+                        return invMonthValue >= startMonthValue && invMonthValue <= endMonthValue;
                     });
                 }
                 return investments;
