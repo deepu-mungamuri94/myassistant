@@ -586,6 +586,92 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         const modal = document.getElementById('card-details-modal');
         if (modal) modal.remove();
     },
+    
+    /**
+     * Show simple card summary modal (for expense details view)
+     */
+    showCardSummaryModal(cardId) {
+        const card = window.DB.cards.find(c => c.id === cardId || String(c.id) === String(cardId));
+        if (!card) {
+            Utils.showError('Card not found');
+            return;
+        }
+        
+        const isCredit = card.cardType === 'credit' || !card.cardType;
+        const outstanding = parseFloat(card.outstanding) || 0;
+        const creditLimit = parseFloat(card.creditLimit) || 0;
+        const available = creditLimit - outstanding;
+        
+        // Get latest bill info
+        const bills = window.DB.cardBills?.filter(b => String(b.cardId) === String(cardId)) || [];
+        const latestBill = bills.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+        const billAmount = latestBill ? parseFloat(latestBill.amount) || 0 : 0;
+        const billPaid = latestBill?.isPaid || false;
+        
+        const modalHtml = `
+            <div id="card-summary-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[10002] flex items-end justify-center" onclick="if(event.target===this) this.remove()">
+                <div class="bg-white rounded-t-2xl w-full max-w-lg animate-slide-up">
+                    <!-- Header -->
+                    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-800">💳 Card Details</h3>
+                        <button onclick="document.getElementById('card-summary-modal').remove()" class="p-2 hover:bg-gray-100 rounded-full">
+                            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Card Visual -->
+                    <div class="p-4">
+                        <div class="p-4 bg-gradient-to-br ${isCredit ? 'from-indigo-600 to-purple-700' : 'from-teal-600 to-emerald-700'} rounded-xl text-white shadow-lg">
+                            <div class="flex justify-between items-start mb-4">
+                                <h4 class="font-bold text-lg">${Utils.escapeHtml(card.name)}</h4>
+                                <span class="text-xs bg-white bg-opacity-20 px-2 py-1 rounded">${isCredit ? 'Credit' : 'Debit'}</span>
+                            </div>
+                            <p class="font-mono text-lg tracking-wider mb-4">${this.maskCardNumber(card.cardNumber)}</p>
+                            <div class="flex justify-between text-sm opacity-90">
+                                <span>Expiry: ${Utils.escapeHtml(card.expiry)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${isCredit ? `
+                    <!-- Financial Details -->
+                    <div class="px-4 pb-4 space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-gray-50 rounded-lg p-3 text-center">
+                                <p class="text-xs text-gray-500 mb-1">Credit Limit</p>
+                                <p class="text-lg font-bold text-gray-800">₹${Utils.formatIndianNumber(creditLimit)}</p>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-3 text-center">
+                                <p class="text-xs text-gray-500 mb-1">Available</p>
+                                <p class="text-lg font-bold ${available >= 0 ? 'text-green-600' : 'text-red-600'}">₹${Utils.formatIndianNumber(available)}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-orange-50 rounded-lg p-3 text-center">
+                                <p class="text-xs text-orange-600 mb-1">Outstanding</p>
+                                <p class="text-lg font-bold text-orange-700">₹${Utils.formatIndianNumber(outstanding)}</p>
+                            </div>
+                            <div class="bg-blue-50 rounded-lg p-3 text-center">
+                                <p class="text-xs text-blue-600 mb-1">Latest Bill</p>
+                                <p class="text-lg font-bold text-blue-700">₹${Utils.formatIndianNumber(billAmount)}</p>
+                                ${billPaid ? '<span class="text-xs text-green-600">✓ Paid</span>' : billAmount > 0 ? '<span class="text-xs text-red-600">Unpaid</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if any
+        const existing = document.getElementById('card-summary-modal');
+        if (existing) existing.remove();
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
 
     /**
      * Show specific EMI details in a modal (called from expenses page)

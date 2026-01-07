@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <!-- PhonePe purple background -->
+  <rect width="48" height="48" rx="12" fill="#5f259f"/>
+  <!-- PhonePe P with tick mark style -->
+  <g fill="white">
+    <!-- Vertical line of P -->
+    <rect x="14" y="10" width="5" height="28" rx="2"/>
+    <!-- P curve -->
+    <path d="M14 10 h10 c6 0 10 4 10 8 c0 4 -4 8 -10 8 h-10 v-4 h10 c3 0 6-2 6-4 c0-2-3-4-6-4 h-10 z"/>
+    <!-- Tick/checkmark extending from P -->
+    <path d="M26 26 L32 34 L38 20" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>

@@ -512,6 +512,176 @@ const Expenses = {
     },
     
     /**
+     * Truncate name to max length with ellipsis
+     */
+    truncateName(name, maxLength = 22) {
+        if (!name) return '';
+        if (name.length <= maxLength + 3) return name; // +3 for "..."
+        return name.substring(0, maxLength) + '...';
+    },
+    
+    /**
+     * Get just the payment method icon (no text)
+     */
+    getPaymentMethodIcon(method) {
+        if (!method || !method.type) return '';
+        
+        switch(method.type) {
+            case 'cash':
+                return `<span class="text-green-600 text-sm" title="Cash">💵</span>`;
+            case 'upi':
+                if (method.id === 'phonepe') return `<img src="assets/icons/phonepe.webp" class="w-4 h-4 rounded" alt="PhonePe">`;
+                if (method.id === 'gpay') return `<img src="assets/icons/gpay.webp" class="w-4 h-4 rounded" alt="GPay">`;
+                if (method.id === 'paytm') return `<img src="assets/icons/paytm.webp" class="w-4 h-4 rounded" alt="Paytm">`;
+                return `<img src="assets/icons/upi.svg" class="w-4 h-4 rounded" alt="UPI">`;
+            case 'credit_card':
+                return `<span class="text-purple-600 text-sm" title="Credit Card">💳</span>`;
+            case 'debit_card':
+                return `<span class="text-teal-600 text-sm" title="Debit Card">💳</span>`;
+            default:
+                return '';
+        }
+    },
+    
+    /**
+     * Show expense details modal
+     */
+    showExpenseDetails(expenseId) {
+        const expense = this.getAll().find(e => e.id === expenseId);
+        if (!expense) {
+            Utils.showError('Expense not found');
+            return;
+        }
+        
+        const date = new Date(expense.date);
+        const dateStr = date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        
+        // Get payment method display
+        let paymentMethodHtml = '<span class="text-gray-400">Not specified</span>';
+        let isCardClickable = false;
+        let cardId = null;
+        
+        if (expense.paymentMethod && window.getPaymentMethodDisplayText) {
+            const method = expense.paymentMethod;
+            // Check if it's a credit/debit card and if card still exists
+            if ((method.type === 'credit_card' || method.type === 'debit_card') && method.id) {
+                const card = (window.DB.cards || []).find(c => String(c.id) === String(method.id));
+                if (card) {
+                    isCardClickable = true;
+                    cardId = card.id;
+                    paymentMethodHtml = `<span class="text-blue-600 underline cursor-pointer">${window.getPaymentMethodDisplayText(method, true, 'normal')}</span>`;
+                } else {
+                    // Card deleted, show with last4 if available
+                    paymentMethodHtml = window.getPaymentMethodDisplayText(method, true, 'normal') + ' <span class="text-gray-400 text-xs">(deleted)</span>';
+                }
+            } else {
+                paymentMethodHtml = window.getPaymentMethodDisplayText(method, true, 'normal');
+            }
+        } else if (expense.suggestedCard) {
+            // Check if suggested card still exists
+            const card = (window.DB.cards || []).find(c => c.name === expense.suggestedCard);
+            if (card) {
+                isCardClickable = true;
+                cardId = card.id;
+                paymentMethodHtml = `<span class="text-blue-600 underline cursor-pointer">💳 ${Utils.escapeHtml(expense.suggestedCard)}</span>`;
+            } else {
+                paymentMethodHtml = `<span class="text-green-600">💳 ${Utils.escapeHtml(expense.suggestedCard)}</span>`;
+            }
+        }
+        
+        // Get budget month display
+        let budgetMonthHtml = '';
+        if (expense.budgetMonth && expense.budgetYear) {
+            const budgetDate = new Date(expense.budgetYear, expense.budgetMonth - 1);
+            budgetMonthHtml = budgetDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+        } else {
+            budgetMonthHtml = date.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+        }
+        
+        // Category emoji
+        const categoryEmojis = {
+            'food': '🍔', 'transport': '🚗', 'shopping': '🛒', 'entertainment': '🎬',
+            'health': '💊', 'utilities': '💡', 'education': '📚', 'travel': '✈️',
+            'groceries': '🥬', 'rent': '🏠', 'emi': '💳', 'insurance': '🛡️',
+            'investment': '📈', 'bills': '📄', 'personal': '👤', 'recurring': '🔄',
+            'other': '📦'
+        };
+        const categoryEmoji = categoryEmojis[expense.category?.toLowerCase()] || '📦';
+        
+        const modalHtml = `
+            <div id="expense-details-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end justify-center" onclick="if(event.target === this) this.remove()">
+                <div class="bg-white rounded-t-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto animate-slide-up">
+                    <!-- Header -->
+                    <div class="sticky top-0 bg-white px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-800">Expense Details</h3>
+                        <button onclick="document.getElementById('expense-details-modal').remove()" class="p-2 hover:bg-gray-100 rounded-full">
+                            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Content -->
+                    <div class="p-4 space-y-4">
+                        <!-- Amount & Title -->
+                        <div class="text-center pb-4 border-b border-gray-100">
+                            <p class="text-3xl font-bold text-purple-700">₹${parseFloat(expense.amount).toLocaleString()}</p>
+                            <p class="text-lg text-gray-800 mt-1">${Utils.escapeHtml(expense.title)}</p>
+                            <p class="text-sm text-gray-500 mt-1">${dateStr}</p>
+                        </div>
+                        
+                        <!-- Details Grid -->
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center py-2 border-b border-gray-50">
+                                <span class="text-gray-500 text-sm">Category</span>
+                                <span class="font-medium">${categoryEmoji} ${Utils.escapeHtml(expense.category || 'Other')}</span>
+                            </div>
+                            
+                            <div class="flex justify-between items-center py-2 border-b border-gray-50">
+                                <span class="text-gray-500 text-sm">Payment Method</span>
+                                <span class="font-medium" ${isCardClickable ? `onclick="document.getElementById('expense-details-modal').remove(); Cards.showCardSummaryModal('${cardId}')"` : ''}>${paymentMethodHtml}</span>
+                            </div>
+                            
+                            <div class="flex justify-between items-center py-2 border-b border-gray-50">
+                                <span class="text-gray-500 text-sm">Budget Month</span>
+                                <span class="font-medium">${budgetMonthHtml}</span>
+                            </div>
+                            
+                            ${expense.description ? `
+                            <div class="py-2 border-b border-gray-50">
+                                <span class="text-gray-500 text-sm block mb-1">Description</span>
+                                <p class="text-gray-800">${Utils.escapeHtml(expense.description)}</p>
+                            </div>
+                            ` : ''}
+                            
+                            ${expense.isRecurring || expense.recurringId ? `
+                            <div class="flex justify-between items-center py-2 border-b border-gray-50">
+                                <span class="text-gray-500 text-sm">Type</span>
+                                <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">🔄 Recurring</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div class="flex gap-3 pt-4">
+                            <button onclick="document.getElementById('expense-details-modal').remove(); openExpenseModal(${expense.id})" 
+                                class="flex-1 py-3 bg-purple-600 text-white rounded-xl font-medium hover:bg-purple-700 transition-colors">
+                                ✏️ Edit
+                            </button>
+                            <button onclick="document.getElementById('expense-details-modal').remove(); Expenses.deleteWithConfirm(${expense.id})" 
+                                class="py-3 px-6 bg-red-50 text-red-600 rounded-xl font-medium hover:bg-red-100 transition-colors">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+    
+    /**
      * Show loan details in view-only modal
      */
     showLoanDetails(loanTitle) {
@@ -1369,7 +1539,12 @@ const Expenses = {
         }
         
         html += sortedDates.map((date, index) => {
-            const dayExpenses = groupedByDate[date];
+            // Sort expenses within the day by time descending (most recent first)
+            const dayExpenses = groupedByDate[date].sort((a, b) => {
+                const timeA = new Date(a.createdAt || a.date).getTime();
+                const timeB = new Date(b.createdAt || b.date).getTime();
+                return timeB - timeA; // Descending order
+            });
             const dayTotal = dayExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
             const dateObj = new Date(date);
             const formattedDate = dateObj.toLocaleDateString('en-US', { 
@@ -1401,8 +1576,9 @@ const Expenses = {
                             <div class="p-3 bg-white hover:bg-purple-50 transition-all ${!isLast ? 'border-b border-purple-100' : ''}">
                                 <!-- Top Row: Title with Category + Actions -->
                                 <div class="flex justify-between items-start mb-1">
-                                    <div class="flex-1 flex items-center gap-2 flex-wrap">
-                                        <h4 class="font-semibold text-purple-800 text-sm">${Utils.escapeHtml(expense.title || expense.description)}</h4>
+                                    <div onclick="Expenses.showExpenseDetails(${expense.id})" class="flex-1 flex items-center gap-2 flex-wrap cursor-pointer">
+                                        ${expense.paymentMethod ? this.getPaymentMethodIcon(expense.paymentMethod) : ''}
+                                        <h4 class="font-semibold text-purple-800 text-sm">${Utils.escapeHtml(this.truncateName(expense.title || expense.description, 22))}</h4>
                                         <span class="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded flex items-center gap-1">
                                             ${(expense.isRecurring || expense.category === 'emi') ? '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>' : ''}
                                             <span>${Utils.escapeHtml(this.formatCategoryDisplay(expense.category))}</span>
@@ -1423,10 +1599,10 @@ const Expenses = {
                                 </div>
                                 
                                 <!-- Bottom Row: Description + Amount -->
-                                <div class="flex justify-between items-start">
+                                <div onclick="Expenses.showExpenseDetails(${expense.id})" class="flex justify-between items-start cursor-pointer">
                                     <div class="flex-1">
                                         ${expense.description ? `<p class="text-xs text-gray-600">${Utils.escapeHtml(expense.description)}</p>` : '<p class="text-xs text-gray-400 italic">No description</p>'}
-                                        ${expense.suggestedCard ? `<p class="text-xs text-green-600 mt-1">💳 ${Utils.escapeHtml(expense.suggestedCard)}</p>` : ''}
+                                        ${expense.suggestedCard && !expense.paymentMethod ? `<p class="text-xs text-green-600 mt-1">💳 ${Utils.escapeHtml(expense.suggestedCard)}</p>` : ''}
                                         ${this.getFullDetailsLink(expense)}
                                     </div>
                                     <div class="text-right ml-4">

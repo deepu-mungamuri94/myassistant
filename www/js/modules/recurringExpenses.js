@@ -14,8 +14,9 @@ const RecurringExpenses = {
      * @param {array} months - For yearly/custom frequency, array of month numbers (1-12). Empty for monthly.
      * @param {string} description - Optional description
      * @param {string} endDate - Optional end date (YYYY-MM-DD), null for indefinite
+     * @param {object} paymentMethod - Optional payment method object
      */
-    add(name, category, amount, frequency, day, months = [], description = '', endDate = null) {
+    add(name, category, amount, frequency, day, months = [], description = '', endDate = null, paymentMethod = null) {
         if (!name || !category || !amount || !frequency || !day) {
             throw new Error('Please fill in all required fields');
         }
@@ -30,6 +31,7 @@ const RecurringExpenses = {
             months: frequency === 'monthly' ? [] : months, // Empty for monthly (all months)
             description,
             endDate: endDate || null, // null = indefinite
+            paymentMethod: paymentMethod || null, // Payment method for this recurring expense
             isActive: true, // Becomes false when end date is reached
             addedToExpenses: [], // Track which months were added (format: 'YYYY-MM')
             createdAt: Utils.getCurrentTimestamp()
@@ -44,7 +46,7 @@ const RecurringExpenses = {
     /**
      * Update a recurring expense
      */
-    update(id, name, category, amount, frequency, day, months, description, endDate = null) {
+    update(id, name, category, amount, frequency, day, months, description, endDate = null, paymentMethod = null) {
         const recurring = this.getById(id);
         if (!recurring) {
             throw new Error('Recurring expense not found');
@@ -64,6 +66,7 @@ const RecurringExpenses = {
         recurring.months = frequency === 'monthly' ? [] : months;
         recurring.description = description;
         recurring.endDate = endDate || null;
+        recurring.paymentMethod = paymentMethod || null;
         // Keep isActive unchanged during manual updates
         
         // If category changed, update all related expenses
@@ -379,10 +382,25 @@ const RecurringExpenses = {
                                 null
                             );
                             
-                            // Store recurring ID and isRecurring flag in the expense for tracking
+                            // Store recurring ID, isRecurring flag, and payment method in the expense
                             if (expense) {
                                 expense.recurringId = recurring.id;
                                 expense.isRecurring = true;
+                                
+                                // Copy payment method from recurring expense
+                                if (recurring.paymentMethod) {
+                                    expense.paymentMethod = recurring.paymentMethod;
+                                    
+                                    // Update credit card outstanding if paid via credit card
+                                    if (recurring.paymentMethod.type === 'credit_card' && recurring.paymentMethod.id) {
+                                        const card = (window.DB.cards || []).find(c => String(c.id) === String(recurring.paymentMethod.id));
+                                        if (card) {
+                                            const oldAmount = parseFloat(card.outstanding) || 0;
+                                            card.outstanding = oldAmount + parseFloat(recurring.amount);
+                                            console.log(`Auto-updated ${card.name} outstanding: ₹${oldAmount} → ₹${card.outstanding}`);
+                                        }
+                                    }
+                                }
                             }
                             
                             recurring.addedToExpenses.push(monthKey);
@@ -508,6 +526,19 @@ const RecurringExpenses = {
                         <span class="text-xs font-semibold text-gray-800">${Utils.escapeHtml(endDateText)}</span>
                     </div>
                 </div>
+                
+                <!-- Payment Method -->
+                ${recurring.paymentMethod ? `
+                <div class="bg-gray-50 p-3 rounded-lg mt-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-gray-600">Payment Method</span>
+                        <span class="text-xs font-semibold text-gray-800 flex items-center gap-1">
+                            ${this.getPaymentMethodIcon(recurring.paymentMethod)}
+                            ${this.getPaymentMethodLabel(recurring.paymentMethod)}
+                        </span>
+                    </div>
+                </div>
+                ` : ''}
                 
                 <!-- Status -->
                 ${recurring.isActive !== false ? `
@@ -657,8 +688,9 @@ const RecurringExpenses = {
                     <div class="p-3 bg-white hover:bg-orange-50 transition-all ${!isLast ? 'border-b border-orange-100' : ''}">
                         <!-- First Line: Name + Category | Actions -->
                         <div class="flex justify-between items-start mb-2">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <h4 class="font-bold text-gray-800 text-sm">${Utils.escapeHtml(recurring.name)}</h4>
+                            <div onclick="RecurringExpenses.showDetailsModal(${recurring.id})" class="flex items-center gap-2 flex-wrap cursor-pointer flex-1">
+                                ${recurring.paymentMethod ? this.getPaymentMethodIcon(recurring.paymentMethod) : ''}
+                                <h4 class="font-bold text-gray-800 text-sm">${Utils.escapeHtml(this.truncateName(recurring.name, 22))}</h4>
                                 ${recurring.category ? `<span class="text-xs bg-orange-200 text-orange-800 px-1.5 py-0.5 rounded">${Utils.escapeHtml(recurring.category)}</span>` : ''}
                             </div>
                             <div class="flex gap-2 ml-4">
@@ -675,8 +707,8 @@ const RecurringExpenses = {
                                 </div>
                             </div>
                         
-                        <!-- Second Line: Description | Amount -->
-                        <div class="flex justify-between items-center">
+                        <!-- Second Line: Description | Amount (clickable) -->
+                        <div onclick="RecurringExpenses.showDetailsModal(${recurring.id})" class="flex justify-between items-center cursor-pointer">
                             <div class="flex-1">
                                 ${recurring.description ? `<p class="text-xs text-gray-600">${Utils.escapeHtml(recurring.description)}</p>` : '<p class="text-xs text-gray-400 italic">No description</p>'}
                             </div>
@@ -818,6 +850,65 @@ const RecurringExpenses = {
             case 2: return 'nd';
             case 3: return 'rd';
             default: return 'th';
+        }
+    },
+    
+    /**
+     * Truncate name to max length with ellipsis
+     */
+    truncateName(name, maxLength = 22) {
+        if (!name) return '';
+        if (name.length <= maxLength + 3) return name; // +3 for "..."
+        return name.substring(0, maxLength) + '...';
+    },
+    
+    /**
+     * Get payment method icon (same as Expenses module)
+     */
+    getPaymentMethodIcon(method) {
+        if (!method || !method.type) return '';
+        
+        switch(method.type) {
+            case 'cash':
+                return `<span class="text-green-600 text-sm" title="Cash">💵</span>`;
+            case 'upi':
+                if (method.id === 'phonepe') return `<img src="assets/icons/phonepe.webp" class="w-4 h-4 rounded" alt="PhonePe">`;
+                if (method.id === 'gpay') return `<img src="assets/icons/gpay.webp" class="w-4 h-4 rounded" alt="GPay">`;
+                if (method.id === 'paytm') return `<img src="assets/icons/paytm.webp" class="w-4 h-4 rounded" alt="Paytm">`;
+                return `<img src="assets/icons/upi.svg" class="w-4 h-4 rounded" alt="UPI">`;
+            case 'credit_card':
+                return `<span class="text-purple-600 text-sm" title="Credit Card">💳</span>`;
+            case 'debit_card':
+                return `<span class="text-teal-600 text-sm" title="Debit Card">💳</span>`;
+            default:
+                return '';
+        }
+    },
+    
+    /**
+     * Get payment method label text
+     */
+    getPaymentMethodLabel(method) {
+        if (!method || !method.type) return '';
+        
+        switch(method.type) {
+            case 'cash':
+                return 'Cash';
+            case 'upi':
+                if (method.id === 'phonepe') return 'PhonePe';
+                if (method.id === 'gpay') return 'Google Pay';
+                if (method.id === 'paytm') return 'Paytm';
+                return 'UPI';
+            case 'credit_card':
+                let ccLabel = method.name || 'Credit Card';
+                if (method.last4) ccLabel += ` ••${method.last4}`;
+                return ccLabel;
+            case 'debit_card':
+                let dcLabel = method.name || 'Debit Card';
+                if (method.last4) dcLabel += ` ••${method.last4}`;
+                return dcLabel;
+            default:
+                return method.type;
         }
     }
 };
