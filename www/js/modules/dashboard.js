@@ -1509,6 +1509,11 @@ const Dashboard = {
         }
     },
     
+    // Track grouped view state for budget breakdown modal
+    budgetBreakdownGrouped: false,
+    // Track which groups are expanded in budget breakdown modal
+    budgetBreakdownExpandedGroups: {},
+    
     /**
      * Show budget breakdown modal
      */
@@ -1538,6 +1543,13 @@ const Dashboard = {
             total = items.reduce((sum, i) => sum + i.amount, 0);
         }
         
+        // Store current items and type for re-rendering
+        this._currentBudgetBreakdownItems = items;
+        this._currentBudgetBreakdownType = type;
+        this._currentBudgetBreakdownColor = color;
+        this._currentBudgetBreakdownTitle = title;
+        this._currentBudgetBreakdownTotal = total;
+        
         // Create or update modal
         let modal = document.getElementById('budget-breakdown-modal');
         if (!modal) {
@@ -1547,12 +1559,82 @@ const Dashboard = {
         }
         
         const monthLabel = this.getFormattedMonth(budgetMonth);
+        this._currentBudgetBreakdownMonthLabel = monthLabel;
         
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
         modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
         
-        const itemsHtml = items.length > 0 
-            ? items.map(item => `
+        this.renderBudgetBreakdownModalContent(modal);
+        
+        modal.classList.remove('hidden');
+    },
+    
+    /**
+     * Render budget breakdown modal content (supports grouped view toggle)
+     */
+    renderBudgetBreakdownModalContent(modal) {
+        const items = this._currentBudgetBreakdownItems;
+        const color = this._currentBudgetBreakdownColor;
+        const title = this._currentBudgetBreakdownTitle;
+        const total = this._currentBudgetBreakdownTotal;
+        const monthLabel = this._currentBudgetBreakdownMonthLabel;
+        const isGrouped = this.budgetBreakdownGrouped;
+        
+        let itemsHtml = '';
+        
+        if (items.length === 0) {
+            itemsHtml = `<p class="text-center text-gray-500 py-4">No items for this month</p>`;
+        } else if (isGrouped) {
+            // Group items by title
+            const grouped = this.groupItemsByName(items);
+            itemsHtml = grouped.map(group => {
+                const isExpanded = this.budgetBreakdownExpandedGroups[group.name] || false;
+                const hasMultiple = group.items.length > 1;
+                
+                if (!hasMultiple) {
+                    // Single item - show normally
+                    const item = group.items[0];
+                    return `
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-800 truncate">${Utils.escapeHtml(item.title)}</p>
+                                <p class="text-xs text-gray-500">${item.category} • ${item.date}</p>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-700 ml-2">₹${Utils.formatIndianNumber(item.amount)}</span>
+                        </div>
+                    `;
+                } else {
+                    // Multiple items - show as expandable group
+                    const expandedItems = isExpanded ? group.items.map(item => `
+                        <div class="flex justify-between items-center py-2 pl-4 border-b border-gray-50 last:border-0 bg-gray-50">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs text-gray-600 truncate">${Utils.escapeHtml(item.title)}</p>
+                                <p class="text-xs text-gray-400">${item.category} • ${item.date}</p>
+                            </div>
+                            <span class="text-xs font-medium text-gray-600 ml-2">₹${Utils.formatIndianNumber(item.amount)}</span>
+                        </div>
+                    `).join('') : '';
+                    
+                    return `
+                        <div class="border-b border-gray-100 last:border-0">
+                            <div class="flex justify-between items-center py-2 cursor-pointer hover:bg-gray-50 transition-colors" onclick="Dashboard.toggleBudgetBreakdownGroup('${Utils.escapeHtml(group.name).replace(/'/g, "\\'")}')">
+                                <div class="flex-1 min-w-0 flex items-center gap-2">
+                                    <span class="text-xs text-${color}-500 font-semibold transform transition-transform ${isExpanded ? 'rotate-90' : ''}">${isExpanded ? '▼' : '▶'}</span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800 truncate">${Utils.escapeHtml(group.name)}</p>
+                                        <p class="text-xs text-gray-500">${group.items.length} items • ${group.items[0].category}</p>
+                                    </div>
+                                </div>
+                                <span class="text-sm font-semibold text-gray-700 ml-2">₹${Utils.formatIndianNumber(group.total)}</span>
+                            </div>
+                            ${isExpanded ? `<div class="border-t border-gray-100">${expandedItems}</div>` : ''}
+                        </div>
+                    `;
+                }
+            }).join('');
+        } else {
+            // Default individual items view
+            itemsHtml = items.map(item => `
                 <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-medium text-gray-800 truncate">${Utils.escapeHtml(item.title)}</p>
@@ -1560,8 +1642,13 @@ const Dashboard = {
                     </div>
                     <span class="text-sm font-semibold text-gray-700 ml-2">₹${Utils.formatIndianNumber(item.amount)}</span>
                 </div>
-            `).join('')
-            : `<p class="text-center text-gray-500 py-4">No items for this month</p>`;
+            `).join('');
+        }
+        
+        // Count display - show unique groups if grouped
+        const countDisplay = isGrouped 
+            ? `${this.groupItemsByName(items).length} groups (${items.length} items)`
+            : `${items.length} items`;
         
         modal.innerHTML = `
             <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] flex flex-col">
@@ -1574,20 +1661,80 @@ const Dashboard = {
                         <button onclick="document.getElementById('budget-breakdown-modal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white text-lg">×</button>
                     </div>
                 </div>
+                <!-- Group Toggle -->
+                <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                    <span class="text-xs text-gray-600">Group by name</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer" ${isGrouped ? 'checked' : ''} onchange="Dashboard.toggleBudgetBreakdownGroupView(this.checked)">
+                        <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-${color}-500"></div>
+                    </label>
+                </div>
                 <div class="flex-1 overflow-y-auto p-4">
                     ${itemsHtml}
                 </div>
                 <div class="p-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
                     <div class="flex justify-between items-center">
-                        <span class="text-sm font-medium text-gray-600">Total (${items.length} items)</span>
+                        <span class="text-sm font-medium text-gray-600">Total (${countDisplay})</span>
                         <span class="text-lg font-bold text-${color}-600">₹${Utils.formatIndianNumber(Math.round(total))}</span>
                     </div>
                 </div>
             </div>
         `;
-        
-        modal.classList.remove('hidden');
     },
+    
+    /**
+     * Group items by name for budget breakdown modal
+     */
+    groupItemsByName(items) {
+        const groups = {};
+        
+        items.forEach(item => {
+            const name = item.title.trim().toLowerCase();
+            if (!groups[name]) {
+                groups[name] = {
+                    name: item.title,
+                    items: [],
+                    total: 0
+                };
+            }
+            groups[name].items.push(item);
+            groups[name].total += item.amount;
+        });
+        
+        // Convert to array and sort by total (highest first)
+        return Object.values(groups).sort((a, b) => b.total - a.total);
+    },
+    
+    /**
+     * Toggle grouped view for budget breakdown modal
+     */
+    toggleBudgetBreakdownGroupView(isGrouped) {
+        this.budgetBreakdownGrouped = isGrouped;
+        // Reset expanded groups when toggling
+        this.budgetBreakdownExpandedGroups = {};
+        
+        const modal = document.getElementById('budget-breakdown-modal');
+        if (modal) {
+            this.renderBudgetBreakdownModalContent(modal);
+        }
+    },
+    
+    /**
+     * Toggle expanded state for a group in budget breakdown modal
+     */
+    toggleBudgetBreakdownGroup(groupName) {
+        this.budgetBreakdownExpandedGroups[groupName] = !this.budgetBreakdownExpandedGroups[groupName];
+        
+        const modal = document.getElementById('budget-breakdown-modal');
+        if (modal) {
+            this.renderBudgetBreakdownModalContent(modal);
+        }
+    },
+    
+    // Track grouped view state for monthly breakdown modal
+    monthlyBreakdownGrouped: false,
+    // Track which groups are expanded in monthly breakdown modal
+    monthlyBreakdownExpandedGroups: {},
     
     /**
      * Show monthly breakdown list (for Monthly Breakdown cards)
@@ -1612,6 +1759,13 @@ const Dashboard = {
             total = items.reduce((sum, i) => sum + i.amount, 0);
         }
         
+        // Store current items and type for re-rendering
+        this._currentMonthlyBreakdownItems = items;
+        this._currentMonthlyBreakdownType = type;
+        this._currentMonthlyBreakdownColor = color;
+        this._currentMonthlyBreakdownTitle = title;
+        this._currentMonthlyBreakdownTotal = total;
+        
         // Create or update modal
         let modal = document.getElementById('monthly-breakdown-modal');
         if (!modal) {
@@ -1621,12 +1775,82 @@ const Dashboard = {
         }
         
         const monthLabel = this.getFormattedMonth(filterMonth);
+        this._currentMonthlyBreakdownMonthLabel = monthLabel;
         
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
         modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
         
-        const itemsHtml = items.length > 0 
-            ? items.map(item => `
+        this.renderMonthlyBreakdownModalContent(modal);
+        
+        modal.classList.remove('hidden');
+    },
+    
+    /**
+     * Render monthly breakdown modal content (supports grouped view toggle)
+     */
+    renderMonthlyBreakdownModalContent(modal) {
+        const items = this._currentMonthlyBreakdownItems;
+        const color = this._currentMonthlyBreakdownColor;
+        const title = this._currentMonthlyBreakdownTitle;
+        const total = this._currentMonthlyBreakdownTotal;
+        const monthLabel = this._currentMonthlyBreakdownMonthLabel;
+        const isGrouped = this.monthlyBreakdownGrouped;
+        
+        let itemsHtml = '';
+        
+        if (items.length === 0) {
+            itemsHtml = `<p class="text-center text-gray-500 py-4">No items for this month</p>`;
+        } else if (isGrouped) {
+            // Group items by title
+            const grouped = this.groupItemsByName(items);
+            itemsHtml = grouped.map(group => {
+                const isExpanded = this.monthlyBreakdownExpandedGroups[group.name] || false;
+                const hasMultiple = group.items.length > 1;
+                
+                if (!hasMultiple) {
+                    // Single item - show normally
+                    const item = group.items[0];
+                    return `
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-800 truncate">${Utils.escapeHtml(item.title)}</p>
+                                <p class="text-xs text-gray-500">${item.category} • ${item.date}</p>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-700 ml-2">₹${Utils.formatIndianNumber(item.amount)}</span>
+                        </div>
+                    `;
+                } else {
+                    // Multiple items - show as expandable group
+                    const expandedItems = isExpanded ? group.items.map(item => `
+                        <div class="flex justify-between items-center py-2 pl-4 border-b border-gray-50 last:border-0 bg-gray-50">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs text-gray-600 truncate">${Utils.escapeHtml(item.title)}</p>
+                                <p class="text-xs text-gray-400">${item.category} • ${item.date}</p>
+                            </div>
+                            <span class="text-xs font-medium text-gray-600 ml-2">₹${Utils.formatIndianNumber(item.amount)}</span>
+                        </div>
+                    `).join('') : '';
+                    
+                    return `
+                        <div class="border-b border-gray-100 last:border-0">
+                            <div class="flex justify-between items-center py-2 cursor-pointer hover:bg-gray-50 transition-colors" onclick="Dashboard.toggleMonthlyBreakdownGroup('${Utils.escapeHtml(group.name).replace(/'/g, "\\'")}')">
+                                <div class="flex-1 min-w-0 flex items-center gap-2">
+                                    <span class="text-xs text-${color}-500 font-semibold transform transition-transform ${isExpanded ? 'rotate-90' : ''}">${isExpanded ? '▼' : '▶'}</span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800 truncate">${Utils.escapeHtml(group.name)}</p>
+                                        <p class="text-xs text-gray-500">${group.items.length} items • ${group.items[0].category}</p>
+                                    </div>
+                                </div>
+                                <span class="text-sm font-semibold text-gray-700 ml-2">₹${Utils.formatIndianNumber(group.total)}</span>
+                            </div>
+                            ${isExpanded ? `<div class="border-t border-gray-100">${expandedItems}</div>` : ''}
+                        </div>
+                    `;
+                }
+            }).join('');
+        } else {
+            // Default individual items view
+            itemsHtml = items.map(item => `
                 <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-medium text-gray-800 truncate">${Utils.escapeHtml(item.title)}</p>
@@ -1634,8 +1858,13 @@ const Dashboard = {
                     </div>
                     <span class="text-sm font-semibold text-gray-700 ml-2">₹${Utils.formatIndianNumber(item.amount)}</span>
                 </div>
-            `).join('')
-            : `<p class="text-center text-gray-500 py-4">No items for this month</p>`;
+            `).join('');
+        }
+        
+        // Count display - show unique groups if grouped
+        const countDisplay = isGrouped 
+            ? `${this.groupItemsByName(items).length} groups (${items.length} items)`
+            : `${items.length} items`;
         
         modal.innerHTML = `
             <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] flex flex-col">
@@ -1648,19 +1877,51 @@ const Dashboard = {
                         <button onclick="document.getElementById('monthly-breakdown-modal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white text-lg">×</button>
                     </div>
                 </div>
+                <!-- Group Toggle -->
+                <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                    <span class="text-xs text-gray-600">Group by name</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer" ${isGrouped ? 'checked' : ''} onchange="Dashboard.toggleMonthlyBreakdownGroupView(this.checked)">
+                        <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-${color}-500"></div>
+                    </label>
+                </div>
                 <div class="flex-1 overflow-y-auto p-4">
                     ${itemsHtml}
                 </div>
                 <div class="p-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
                     <div class="flex justify-between items-center">
-                        <span class="text-sm font-medium text-gray-600">Total (${items.length} items)</span>
+                        <span class="text-sm font-medium text-gray-600">Total (${countDisplay})</span>
                         <span class="text-lg font-bold text-${color}-600">₹${Utils.formatIndianNumber(Math.round(total))}</span>
                     </div>
                 </div>
             </div>
         `;
+    },
+    
+    /**
+     * Toggle grouped view for monthly breakdown modal
+     */
+    toggleMonthlyBreakdownGroupView(isGrouped) {
+        this.monthlyBreakdownGrouped = isGrouped;
+        // Reset expanded groups when toggling
+        this.monthlyBreakdownExpandedGroups = {};
         
-        modal.classList.remove('hidden');
+        const modal = document.getElementById('monthly-breakdown-modal');
+        if (modal) {
+            this.renderMonthlyBreakdownModalContent(modal);
+        }
+    },
+    
+    /**
+     * Toggle expanded state for a group in monthly breakdown modal
+     */
+    toggleMonthlyBreakdownGroup(groupName) {
+        this.monthlyBreakdownExpandedGroups[groupName] = !this.monthlyBreakdownExpandedGroups[groupName];
+        
+        const modal = document.getElementById('monthly-breakdown-modal');
+        if (modal) {
+            this.renderMonthlyBreakdownModalContent(modal);
+        }
     },
     
     /**

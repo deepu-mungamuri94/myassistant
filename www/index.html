@@ -4678,7 +4678,8 @@
                             category: exp.category,
                             amount: exp.amount,
                             description: exp.description,
-                            date: exp.date
+                            date: exp.date,
+                            paymentMethod: exp.paymentMethod || null
                         });
                     }
                 }
@@ -4729,6 +4730,15 @@
             }
             if (suggestion.description) {
                 document.getElementById('expense-modal-description').value = suggestion.description;
+            }
+            // Populate payment method if available
+            if (suggestion.paymentMethod && suggestion.paymentMethod.type) {
+                const method = suggestion.paymentMethod;
+                document.getElementById('expense-payment-method-type').value = method.type;
+                document.getElementById('expense-payment-method-id').value = method.id || '';
+                document.getElementById('expense-payment-method-name').value = method.name || '';
+                document.getElementById('expense-payment-method-last4').value = method.last4 || '';
+                updatePaymentMethodDisplay(method);
             }
             hideExpenseSuggestions();
             // Focus on amount field if it's empty
