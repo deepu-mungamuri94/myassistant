@@ -8,6 +8,47 @@ const Cards = {
     currentEMITabs: {}, // Track current tab for each card's EMI modal: {cardId: 'active' or 'completed'}
     
     /**
+     * Auto-update EMI progress based on elapsed months
+     * @param {Object} emi - The EMI object to update
+     * @returns {boolean} - Whether the EMI was updated
+     */
+    updateEMIProgress(emi) {
+        if (!emi.firstEmiDate || emi.completed) {
+            return false;
+        }
+        
+        const today = new Date();
+        const firstDate = new Date(emi.firstEmiDate);
+        let monthsElapsed = (today.getFullYear() - firstDate.getFullYear()) * 12 
+                          + (today.getMonth() - firstDate.getMonth());
+        
+        // If current date hasn't reached the EMI day this month, subtract 1
+        if (today.getDate() < firstDate.getDate()) {
+            monthsElapsed--;
+        }
+        
+        // Calculate actual paid EMIs (first EMI is paid on the first date itself)
+        const actualPaidEMIs = Math.max(0, monthsElapsed + 1);
+        
+        let dataChanged = false;
+        
+        // Update paidCount to reflect actual progress
+        if (emi.paidCount !== actualPaidEMIs) {
+            emi.paidCount = Math.min(actualPaidEMIs, emi.totalCount);
+            dataChanged = true;
+        }
+        
+        // If all EMIs should have been paid by now, mark as completed
+        if (actualPaidEMIs >= emi.totalCount) {
+            emi.completed = true;
+            emi.paidCount = emi.totalCount;
+            dataChanged = true;
+        }
+        
+        return dataChanged;
+    },
+    
+    /**
      * Add a new card (fetches benefits automatically for credit cards)
      */
     async add(name, cardNumber, expiry, cvv, additionalData = '', creditLimit = '', cardType = 'credit', outstanding = '', statementDate = '', billDate = '') {
@@ -689,6 +730,11 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         if (!emi) {
             Utils.showError('EMI not found');
             return;
+        }
+
+        // Auto-update EMI progress based on elapsed months
+        if (this.updateEMIProgress(emi)) {
+            window.Storage.save();
         }
 
         // Calculate EMI details
@@ -2478,34 +2524,10 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         const emis = card.emis || [];
         
         // Auto-update EMI progress based on elapsed months
-        const today = new Date();
         let dataChanged = false;
         emis.forEach(emi => {
-            if (emi.firstEmiDate && !emi.completed) {
-                const firstDate = new Date(emi.firstEmiDate);
-                let monthsElapsed = (today.getFullYear() - firstDate.getFullYear()) * 12 
-                                  + (today.getMonth() - firstDate.getMonth());
-                
-                // If current date hasn't reached the EMI day this month, subtract 1
-                if (today.getDate() < firstDate.getDate()) {
-                    monthsElapsed--;
-                }
-                
-                // Calculate actual paid EMIs (first EMI is paid on the first date itself)
-                const actualPaidEMIs = Math.max(0, monthsElapsed + 1);
-                
-                // Update paidCount to reflect actual progress
-                if (emi.paidCount !== actualPaidEMIs) {
-                    emi.paidCount = Math.min(actualPaidEMIs, emi.totalCount);
-                    dataChanged = true;
-                }
-                
-                // If all EMIs should have been paid by now, mark as completed
-                if (actualPaidEMIs >= emi.totalCount) {
-                    emi.completed = true;
-                    emi.paidCount = emi.totalCount;
-                    dataChanged = true;
-                }
+            if (this.updateEMIProgress(emi)) {
+                dataChanged = true;
             }
         });
         
@@ -2927,6 +2949,13 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                                 `Auto-added EMI payment ${i + 1}/${emi.totalCount} for ${card.name}`,
                                 card.name
                             );
+                            
+                            // Update card's outstanding amount (EMI adds to bill)
+                            if (card.cardType === 'credit') {
+                                const oldOutstanding = parseFloat(card.outstanding) || 0;
+                                card.outstanding = oldOutstanding + parseFloat(emi.emiAmount);
+                                console.log(`Auto-updated ${card.name} outstanding for EMI: ₹${oldOutstanding} → ₹${card.outstanding}`);
+                            }
                             
                             // Mark this month as added
                             emi.addedToExpenses.push(emiMonthKey);
