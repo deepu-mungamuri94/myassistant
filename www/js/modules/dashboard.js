@@ -3835,22 +3835,26 @@ const Dashboard = {
         // Categories to exclude (occasional, not continuous)
         const excludeCategories = ['Gifts', 'Gift', 'Gifting'];
         
-        // Get last 3 months of expenses
-        const projectionData = this.getProjectedRegularExpensesWithDetails();
+        // Configuration: Number of months for analysis
+        const ANALYSIS_MONTHS = 6;
+        
+        // Get last 6 months of expenses for recent trend
+        const projectionData = this.getProjectedRegularExpensesWithDetails(ANALYSIS_MONTHS);
         data.historicalExpenses = projectionData.monthlyData || [];
         data.projectedAverage = projectionData.average;
+        data.analysisMonths = ANALYSIS_MONTHS;
         
-        // Get detailed expenses by category for last 3 months
+        // Get detailed expenses by category for last 6 months
         const expenses = window.DB.expenses || [];
         const today = new Date();
-        const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+        const analysisStartDate = new Date(today.getFullYear(), today.getMonth() - ANALYSIS_MONTHS, 1);
         
         const recentExpenses = expenses.filter(exp => {
             const expDate = new Date(exp.date);
             const cat = (exp.category || '').toLowerCase();
             // Exclude gift-related expenses
             const isGift = excludeCategories.some(g => cat.includes(g.toLowerCase()));
-            return expDate >= threeMonthsAgo && expDate < new Date(today.getFullYear(), today.getMonth(), 1) && !isGift;
+            return expDate >= analysisStartDate && expDate < new Date(today.getFullYear(), today.getMonth(), 1) && !isGift;
         });
         
         // Category breakdown with individual expense items
@@ -3885,11 +3889,11 @@ const Dashboard = {
         Object.keys(data.categoryBreakdown).forEach(cat => {
             const info = data.categoryBreakdown[cat];
             info.avgPerTransaction = Math.round(info.total / info.count);
-            info.monthlyAvg = Math.round(info.total / 3);
+            info.monthlyAvg = Math.round(info.total / ANALYSIS_MONTHS);
             
             // Calculate averages for individual items
             Object.keys(info.items).forEach(title => {
-                info.items[title].monthlyAvg = Math.round(info.items[title].total / 3);
+                info.items[title].monthlyAvg = Math.round(info.items[title].total / ANALYSIS_MONTHS);
             });
         });
         
@@ -3902,7 +3906,7 @@ const Dashboard = {
                 category: info.category,
                 total: info.total,
                 count: info.count,
-                monthlyAvg: Math.round(info.total / 3)
+                monthlyAvg: Math.round(info.total / ANALYSIS_MONTHS)
             }));
         
         // Top expense categories with their top items
@@ -4042,7 +4046,7 @@ const Dashboard = {
         const goldRate = window.DB.goldRatePerGram || 7000;
         const exchangeRate = typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : 83;
         
-        for (let i = 1; i <= 3; i++) {
+        for (let i = 1; i <= ANALYSIS_MONTHS; i++) {
             const analysisDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
             const invYear = analysisDate.getFullYear();
             const invMonth = analysisDate.getMonth() + 1;
@@ -4074,19 +4078,19 @@ const Dashboard = {
         
         data.investments = {
             byMonth: investmentsByMonth,
-            totalLast3Months: Object.values(investmentsByMonth).reduce((sum, m) => sum + m.total, 0),
-            monthlyAvg: Math.round(Object.values(investmentsByMonth).reduce((sum, m) => sum + m.total, 0) / 3)
+            totalLastMonths: Object.values(investmentsByMonth).reduce((sum, m) => sum + m.total, 0),
+            monthlyAvg: Math.round(Object.values(investmentsByMonth).reduce((sum, m) => sum + m.total, 0) / ANALYSIS_MONTHS)
         };
         
-        // Budget Rule Analysis (Needs/Wants/Invest) for last 3 months
+        // Budget Rule Analysis (Needs/Wants/Invest) for last 6 months
         const budgetRule = this.budgetRule; // User's target: e.g., 50/30/20
         data.budgetAnalysis = {
             targetRule: budgetRule,
             monthlyBreakdown: []
         };
         
-        // Analyze each of the last 3 months
-        for (let i = 1; i <= 3; i++) {
+        // Analyze each of the last 6 months
+        for (let i = 1; i <= ANALYSIS_MONTHS; i++) {
             const analysisDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
             const monthYear = analysisDate.getFullYear();
             const monthNum = analysisDate.getMonth() + 1;
@@ -4120,10 +4124,11 @@ const Dashboard = {
         }
         
         // Calculate averages for budget analysis
-        const avgNeeds = Math.round(data.budgetAnalysis.monthlyBreakdown.reduce((s, m) => s + m.needs.percent, 0) / 3);
-        const avgWants = Math.round(data.budgetAnalysis.monthlyBreakdown.reduce((s, m) => s + m.wants.percent, 0) / 3);
-        const avgInvest = Math.round(data.budgetAnalysis.monthlyBreakdown.reduce((s, m) => s + m.invest.percent, 0) / 3);
-        const avgIncome = Math.round(data.budgetAnalysis.monthlyBreakdown.reduce((s, m) => s + m.income, 0) / 3);
+        const monthCount = data.budgetAnalysis.monthlyBreakdown.length || 1;
+        const avgNeeds = Math.round(data.budgetAnalysis.monthlyBreakdown.reduce((s, m) => s + m.needs.percent, 0) / monthCount);
+        const avgWants = Math.round(data.budgetAnalysis.monthlyBreakdown.reduce((s, m) => s + m.wants.percent, 0) / monthCount);
+        const avgInvest = Math.round(data.budgetAnalysis.monthlyBreakdown.reduce((s, m) => s + m.invest.percent, 0) / monthCount);
+        const avgIncome = Math.round(data.budgetAnalysis.monthlyBreakdown.reduce((s, m) => s + m.income, 0) / monthCount);
         
         data.budgetAnalysis.averages = {
             income: avgIncome,
@@ -4153,7 +4158,249 @@ const Dashboard = {
             savingsAfterExpenses: data.projectedAverage > 0 ? Math.round((data.investments.monthlyAvg / data.projectedAverage) * 100) : 0
         };
         
+        // Add Year-over-Year comparison data
+        // Use the passed targetMonth parameter (the month we're analyzing for)
+        data.yearOverYear = this.getYearOverYearData(targetMonth);
+        
+        // Add detected annual patterns
+        data.annualPatterns = this.detectAnnualPatterns(targetMonth);
+        
         return data;
+    },
+    
+    /**
+     * Get Year-over-Year expense data for the same month from previous years
+     * @param {number} targetMonth - Month to analyze (1-12)
+     */
+    getYearOverYearData(targetMonth) {
+        const expenses = window.DB.expenses || [];
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const result = {
+            hasData: false,
+            years: []
+        };
+        
+        // Check last 2 years for the same month
+        for (let yearsAgo = 1; yearsAgo <= 2; yearsAgo++) {
+            const targetYear = currentYear - yearsAgo;
+            const yearData = {
+                year: targetYear,
+                month: targetMonth,
+                label: new Date(targetYear, targetMonth - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+                totalSpent: 0,
+                expenses: [],
+                categoryBreakdown: {}
+            };
+            
+            // Filter expenses for this month/year
+            const monthExpenses = expenses.filter(exp => {
+                const expDate = new Date(exp.date);
+                return expDate.getFullYear() === targetYear && (expDate.getMonth() + 1) === targetMonth;
+            });
+            
+            if (monthExpenses.length > 0) {
+                result.hasData = true;
+                
+                // Calculate totals and breakdown
+                monthExpenses.forEach(exp => {
+                    const amount = parseFloat(exp.amount) || 0;
+                    yearData.totalSpent += amount;
+                    
+                    // Category breakdown
+                    const cat = exp.category || 'Other';
+                    if (!yearData.categoryBreakdown[cat]) {
+                        yearData.categoryBreakdown[cat] = { total: 0, count: 0, items: [] };
+                    }
+                    yearData.categoryBreakdown[cat].total += amount;
+                    yearData.categoryBreakdown[cat].count++;
+                    yearData.categoryBreakdown[cat].items.push({
+                        title: exp.title || 'Untitled',
+                        amount: amount,
+                        date: exp.date
+                    });
+                });
+                
+                // Get top expenses for this month
+                yearData.expenses = monthExpenses
+                    .sort((a, b) => (parseFloat(b.amount) || 0) - (parseFloat(a.amount) || 0))
+                    .slice(0, 10)
+                    .map(exp => ({
+                        title: exp.title || 'Untitled',
+                        category: exp.category || 'Other',
+                        amount: parseFloat(exp.amount) || 0,
+                        date: exp.date
+                    }));
+                
+                // Sort categories by total spend
+                yearData.topCategories = Object.entries(yearData.categoryBreakdown)
+                    .sort((a, b) => b[1].total - a[1].total)
+                    .slice(0, 5)
+                    .map(([cat, info]) => ({
+                        category: cat,
+                        total: Math.round(info.total),
+                        count: info.count
+                    }));
+                
+                yearData.totalSpent = Math.round(yearData.totalSpent);
+                result.years.push(yearData);
+            }
+        }
+        
+        return result;
+    },
+    
+    /**
+     * Detect recurring annual patterns for a specific month
+     * Analyzes expenses across multiple years to find patterns
+     * @param {number} targetMonth - Month to analyze (1-12)
+     */
+    detectAnnualPatterns(targetMonth) {
+        const expenses = window.DB.expenses || [];
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const result = {
+            hasPatterns: false,
+            patterns: [],
+            monthName: new Date(2024, targetMonth - 1, 1).toLocaleDateString('en-US', { month: 'long' })
+        };
+        
+        // Collect expenses for this month across all available years
+        const yearlyData = {};
+        const categoryYearlySpend = {};
+        const titleYearlySpend = {};
+        
+        expenses.forEach(exp => {
+            const expDate = new Date(exp.date);
+            const expMonth = expDate.getMonth() + 1;
+            const expYear = expDate.getFullYear();
+            
+            // Only consider this specific month
+            if (expMonth !== targetMonth) return;
+            
+            // Only look at data from previous years (not current year)
+            if (expYear >= currentYear) return;
+            
+            const amount = parseFloat(exp.amount) || 0;
+            const category = exp.category || 'Other';
+            const title = exp.title || 'Untitled';
+            
+            // Track by year
+            if (!yearlyData[expYear]) {
+                yearlyData[expYear] = { total: 0, count: 0 };
+            }
+            yearlyData[expYear].total += amount;
+            yearlyData[expYear].count++;
+            
+            // Track category spending per year
+            if (!categoryYearlySpend[category]) {
+                categoryYearlySpend[category] = {};
+            }
+            if (!categoryYearlySpend[category][expYear]) {
+                categoryYearlySpend[category][expYear] = { total: 0, count: 0, items: [] };
+            }
+            categoryYearlySpend[category][expYear].total += amount;
+            categoryYearlySpend[category][expYear].count++;
+            categoryYearlySpend[category][expYear].items.push({ title, amount });
+            
+            // Track specific expense titles per year
+            if (!titleYearlySpend[title]) {
+                titleYearlySpend[title] = { category, years: {} };
+            }
+            if (!titleYearlySpend[title].years[expYear]) {
+                titleYearlySpend[title].years[expYear] = 0;
+            }
+            titleYearlySpend[title].years[expYear] += amount;
+        });
+        
+        const yearsWithData = Object.keys(yearlyData).length;
+        
+        // Need at least 1 year of historical data for the same month
+        if (yearsWithData < 1) {
+            return result;
+        }
+        
+        result.hasPatterns = true;
+        result.yearsAnalyzed = yearsWithData;
+        
+        // Detect category patterns (categories that spike in this month)
+        Object.entries(categoryYearlySpend).forEach(([category, yearData]) => {
+            const yearsPresent = Object.keys(yearData).length;
+            
+            // Pattern: Category appears in this month across multiple years
+            if (yearsPresent >= 1) {
+                const totalAcrossYears = Object.values(yearData).reduce((s, y) => s + y.total, 0);
+                const avgSpend = Math.round(totalAcrossYears / yearsPresent);
+                const countAcrossYears = Object.values(yearData).reduce((s, y) => s + y.count, 0);
+                
+                // Get most common items in this category for this month
+                const allItems = {};
+                Object.values(yearData).forEach(y => {
+                    y.items.forEach(item => {
+                        if (!allItems[item.title]) {
+                            allItems[item.title] = { total: 0, count: 0 };
+                        }
+                        allItems[item.title].total += item.amount;
+                        allItems[item.title].count++;
+                    });
+                });
+                
+                const topItems = Object.entries(allItems)
+                    .sort((a, b) => b[1].total - a[1].total)
+                    .slice(0, 3)
+                    .map(([title, info]) => ({
+                        title,
+                        avgAmount: Math.round(info.total / yearsPresent)
+                    }));
+                
+                // Only include significant patterns (above ₹500 average)
+                if (avgSpend > 500) {
+                    result.patterns.push({
+                        type: 'category',
+                        category: category,
+                        yearsDetected: yearsPresent,
+                        avgSpend: avgSpend,
+                        totalTransactions: countAcrossYears,
+                        topItems: topItems,
+                        confidence: yearsPresent >= 2 ? 'high' : 'medium',
+                        description: `${category} spending typically increases in ${result.monthName}`
+                    });
+                }
+            }
+        });
+        
+        // Detect specific recurring expense titles (same expense every year)
+        Object.entries(titleYearlySpend).forEach(([title, data]) => {
+            const yearsPresent = Object.keys(data.years).length;
+            
+            // Strong pattern: Same expense title appears in multiple years
+            if (yearsPresent >= 2) {
+                const totalAcrossYears = Object.values(data.years).reduce((s, amt) => s + amt, 0);
+                const avgAmount = Math.round(totalAcrossYears / yearsPresent);
+                
+                // Only include significant patterns
+                if (avgAmount > 1000) {
+                    result.patterns.push({
+                        type: 'recurring_expense',
+                        title: title,
+                        category: data.category,
+                        yearsDetected: yearsPresent,
+                        avgAmount: avgAmount,
+                        yearlyAmounts: data.years,
+                        confidence: 'high',
+                        description: `"${title}" is a recurring annual expense in ${result.monthName}`
+                    });
+                }
+            }
+        });
+        
+        // Sort patterns by average spend (highest first)
+        result.patterns.sort((a, b) => (b.avgSpend || b.avgAmount || 0) - (a.avgSpend || a.avgAmount || 0));
+        
+        // Keep top 10 patterns
+        result.patterns = result.patterns.slice(0, 10);
+        
+        return result;
     },
     
     /**
@@ -4174,10 +4421,11 @@ const Dashboard = {
         }).join('\n');
         
         // Build top individual expenses list
+        const analysisMonths = data.analysisMonths || 6;
         let topExpensesText = '';
         if (data.topExpenses && data.topExpenses.length > 0) {
             topExpensesText = data.topExpenses.map(e => 
-                `• ${e.title} (${e.category}): ₹${Math.round(e.monthlyAvg).toLocaleString()}/month - ${e.count} times in 3 months`
+                `• ${e.title} (${e.category}): ₹${Math.round(e.monthlyAvg).toLocaleString()}/month - ${e.count} times in ${analysisMonths} months`
             ).join('\n');
         }
         
@@ -4264,14 +4512,76 @@ const Dashboard = {
             budgetText += `• Invest: ${avg.investPercent}% (target ${rule.invest}%) → ${avg.investDeviation < 0 ? 'UNDER by ' + Math.abs(avg.investDeviation) + '% = ₹' + Math.round((Math.abs(avg.investDeviation)/100) * avg.income).toLocaleString() + ' gap' : 'OK'}`;
         }
         
+        // Build Year-over-Year comparison text
+        let yoyText = '';
+        if (data.yearOverYear && data.yearOverYear.hasData) {
+            yoyText = data.yearOverYear.years.map(yearData => {
+                let text = `**${yearData.label}**: Total spent ₹${yearData.totalSpent.toLocaleString()}\n`;
+                
+                // Top categories for that month
+                if (yearData.topCategories && yearData.topCategories.length > 0) {
+                    text += '  Top spending categories:\n';
+                    yearData.topCategories.forEach(cat => {
+                        text += `  • ${cat.category}: ₹${cat.total.toLocaleString()} (${cat.count} transactions)\n`;
+                    });
+                }
+                
+                // Notable high expenses
+                if (yearData.expenses && yearData.expenses.length > 0) {
+                    const highExpenses = yearData.expenses.filter(e => e.amount > 2000).slice(0, 5);
+                    if (highExpenses.length > 0) {
+                        text += '  Notable expenses:\n';
+                        highExpenses.forEach(exp => {
+                            text += `  • ${exp.title} (${exp.category}): ₹${Math.round(exp.amount).toLocaleString()}\n`;
+                        });
+                    }
+                }
+                
+                return text;
+            }).join('\n');
+        } else {
+            yoyText = 'No historical data available for this month from previous years.';
+        }
+        
+        // Build Annual Patterns text
+        let patternsText = '';
+        if (data.annualPatterns && data.annualPatterns.hasPatterns) {
+            const patterns = data.annualPatterns.patterns;
+            if (patterns.length > 0) {
+                patternsText = patterns.map(p => {
+                    if (p.type === 'recurring_expense') {
+                        return `• **RECURRING ANNUAL**: "${p.title}" (${p.category})\n  - Detected in ${p.yearsDetected} years\n  - Average amount: ₹${p.avgAmount.toLocaleString()}\n  - Confidence: ${p.confidence.toUpperCase()}\n  - ${p.description}`;
+                    } else {
+                        let text = `• **CATEGORY SPIKE**: ${p.category}\n  - Detected in ${p.yearsDetected} year(s)\n  - Average spend: ₹${p.avgSpend.toLocaleString()}\n  - Confidence: ${p.confidence.toUpperCase()}`;
+                        if (p.topItems && p.topItems.length > 0) {
+                            text += '\n  - Typical expenses:';
+                            p.topItems.forEach(item => {
+                                text += `\n    · ${item.title}: ~₹${item.avgAmount.toLocaleString()}`;
+                            });
+                        }
+                        return text;
+                    }
+                }).join('\n\n');
+            }
+        } else {
+            patternsText = 'No recurring annual patterns detected for this month (need more historical data).';
+        }
+        
         return `You are a personal finance advisor analyzing detailed spending data. Provide SPECIFIC, ACTIONABLE insights based on the actual expense names and amounts below.
 
 ## BUDGET RULE ANALYSIS (${data.budgetAnalysis?.targetRule?.needs || 50}/${data.budgetAnalysis?.targetRule?.wants || 30}/${data.budgetAnalysis?.targetRule?.invest || 20} Rule)
 ${budgetText || 'No budget data'}
 
-## EXPENSE TREND (Last 3 Months)
+## EXPENSE TREND (Last ${analysisMonths} Months)
 ${data.historicalExpenses.map(h => `• ${h.label}: ₹${Math.round(h.amount).toLocaleString()}`).join('\n')}
 → Monthly Average: ₹${Math.round(data.projectedAverage).toLocaleString()}
+
+## YEAR-OVER-YEAR COMPARISON (Same month from previous years)
+${yoyText}
+
+## DETECTED ANNUAL PATTERNS FOR ${monthName.toUpperCase()}
+These are recurring expenses/patterns detected in the same month from previous years:
+${patternsText}
 
 ## DETAILED CATEGORY BREAKDOWN (with individual expenses)
 ${categoryDetailText || 'No category data'}
@@ -4289,7 +4599,7 @@ ${loansText}
 Card EMIs (Total: ₹${Math.round(data.insights.totalEmis).toLocaleString()}/month):
 ${emisText}
 
-## INVESTMENTS (Last 3 Months)
+## INVESTMENTS (Last ${analysisMonths} Months)
 ${investText || 'No investment data'}
 → Monthly Avg: ₹${Math.round(data.investments?.monthlyAvg || 0).toLocaleString()}
 
@@ -4308,6 +4618,17 @@ RESPOND IN THIS EXACT FORMAT. Use bullet points (•) for each item. Each sectio
 • Invest Category: [X% actual vs Y% target] - [OVER/UNDER by Z%]
 • Amount Over Budget: ₹[amount] in [category]
 • Key Issue: [One-line summary of main budget problem]
+
+**🎂 EXPECTED ANNUAL EVENTS FOR ${monthName.toUpperCase()}**
+Based on Year-over-Year data and detected patterns, list expected expenses:
+• [Event/Occasion]: ~₹X expected (based on [year] data)
+  - Last year spent: ₹Y on [category/items]
+  - Recommendation: [Budget accordingly / Set aside funds]
+• [Recurring Annual Expense]: ~₹X expected
+  - Pattern: Occurs every ${monthName.split(' ')[0]}
+  - Tip: [Plan in advance / Compare prices]
+• **Total Expected Annual Expenses This Month: ~₹X**
+(If no patterns detected, state: "No specific annual patterns detected for this month")
 
 **💡 REALISTIC EXPENSE REDUCTIONS FOR ${monthName.toUpperCase()}**
 Focus ONLY on discretionary spending the USER can personally limit:
@@ -4400,7 +4721,15 @@ DATA USAGE:
 • USE EXACT names from the data provided
 • Reference actual EMI progress (X/Y paid) from data
 • Use actual investment amounts per month from data
-• Categories show accumulated spending - don't negotiate, advise user to limit`;
+• Categories show accumulated spending - don't negotiate, advise user to limit
+
+YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
+• If YoY data shows higher spending in same month last year, MENTION IT
+• If annual patterns are detected (e.g., birthday, anniversary, festival), HIGHLIGHT them
+• Adjust projections based on historical patterns for this specific month
+• Example: "Based on last year's ${monthName}, expect ~₹X for [occasion]"
+• Recurring annual expenses should be EXPECTED, not flagged as overspending
+• Help user PLAN for these known annual expenses in advance`;
     },
     
     /**
@@ -4639,17 +4968,18 @@ DATA USAGE:
     /**
      * Get projected regular expenses with detailed breakdown
      * Returns both the average and individual month data
+     * @param {number} numMonths - Number of months to analyze (default: 3)
      */
-    getProjectedRegularExpensesWithDetails() {
+    getProjectedRegularExpensesWithDetails(numMonths = 3) {
         const expenses = window.DB.expenses || [];
         const today = new Date();
         const currentYear = today.getFullYear();
         const currentMonth = today.getMonth() + 1; // 1-12
         
-        // Calculate averages from the last 3 completed months
+        // Calculate averages from the last N completed months
         const monthlyData = [];
         
-        for (let i = 1; i <= 3; i++) {
+        for (let i = 1; i <= numMonths; i++) {
             let targetMonth = currentMonth - i;
             let targetYear = currentYear;
             
