@@ -25,6 +25,19 @@ const Dashboard = {
     // First line cards month view: 'current' or 'next'
     firstLineMonthView: 'current',
     
+    // Loading state for AI insights
+    aiInsightsLoading: false,
+    
+    /**
+     * Get AI expense insights cache (persisted in DB)
+     */
+    get aiExpenseInsightsCache() {
+        if (!window.DB.aiExpenseInsights) {
+            window.DB.aiExpenseInsights = {};
+        }
+        return window.DB.aiExpenseInsights;
+    },
+    
     // Default category mappings for Needs vs Wants
     defaultNeedsCategories: [
         'Bills & Utilities', 'Groceries', 'Healthcare', 'Transportation', 
@@ -322,6 +335,7 @@ const Dashboard = {
                     </div>
                 </div>
             </div>
+            ${!isCurrent ? this.renderAIInsightsSection(targetYear, targetMonth) : ''}
         </div>
         `;
     },
@@ -335,6 +349,22 @@ const Dashboard = {
         if (section) {
             section.outerHTML = this.renderFirstLineCards();
         }
+    },
+    
+    /**
+     * Render AI Insights Section for next month projection
+     */
+    renderAIInsightsSection(year, month) {
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        const cached = this.aiExpenseInsightsCache[monthKey];
+        
+        return `
+            <div class="mt-3 pt-3 border-t border-gray-200" id="ai-insights-section">
+                <div id="ai-insights-content">
+                    ${this.getAIInsightsContent(year, month)}
+                </div>
+            </div>
+        `;
     },
     
     /**
@@ -3234,26 +3264,34 @@ const Dashboard = {
         let total = 0;
         let isProjected = false;
         let projectionNote = '';
+        let color = 'gray';
+        let icon = '📋';
         
         if (type === 'recurring') {
-            title = `Recurring Payments - ${monthName}`;
+            title = `Recurring Payments`;
+            icon = '🔄';
+            color = 'purple';
             items = this.getRecurringExpenseItemsForMonth(year, month);
             total = items.reduce((sum, item) => sum + item.amount, 0);
         } else if (type === 'emis') {
-            title = `Loans / EMIs - ${monthName}`;
+            title = `Loans / EMIs`;
+            icon = '🏦';
+            color = 'blue';
             items = this.getEmiItemsForMonth(year, month);
             total = items.reduce((sum, item) => sum + item.amount, 0);
         } else if (type === 'regular') {
+            icon = '💵';
+            color = 'emerald';
             if (isFutureMonth) {
                 // For future months, show projection explanation
-                title = `Regular Expenses - ${monthName} (Estimate)`;
+                title = `Regular Expenses (Estimate)`;
                 isProjected = true;
                 const projectionData = this.getProjectedRegularExpensesWithDetails();
                 total = projectionData.average;
                 items = projectionData.monthlyData; // Reuse items for the breakdown
                 projectionNote = 'This is an estimated amount based on your average regular expenses from the last 3 months.';
             } else {
-                title = `Regular Expenses - ${monthName}`;
+                title = `Regular Expenses`;
                 items = this.getRegularExpenseItemsForMonth(year, month);
                 total = items.reduce((sum, item) => sum + item.amount, 0);
             }
@@ -3320,44 +3358,1049 @@ const Dashboard = {
                 </div>
             `;
         } else {
+            // Check if this is EMI list (type === 'emis')
+            const isEmiList = type === 'emis';
+            
             contentHtml = `
-                <div class="flex-1 overflow-y-auto">
-                    ${items.length > 0 ? items.map(item => `
-                        <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                            <div class="flex-1">
-                                <div class="font-medium text-gray-800 text-sm">${item.name}</div>
-                                <div class="flex items-center gap-2 text-xs text-gray-500">
-                                    ${item.category ? `<span>${item.category}</span>` : ''}
-                                    ${item.category && item.date ? '<span>•</span>' : ''}
-                                    ${item.date ? `<span>${item.date}</span>` : ''}
+                    ${items.length > 0 ? items.map(item => {
+                        // Enhanced display for EMI items
+                        if (isEmiList && item.paidCount !== undefined && item.totalCount !== undefined) {
+                            const progressColor = item.type === 'loan' ? 'blue' : 'purple';
+                            return `
+                                <div class="py-3 border-b border-gray-100 last:border-0">
+                                    <!-- Title and Amount -->
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div class="font-semibold text-gray-800 text-sm">${item.name}</div>
+                                        <div class="text-sm font-bold text-${progressColor}-600">₹${Utils.formatIndianNumber(item.amount)}</div>
+                                    </div>
+                                    
+                                    <!-- Progress Bar -->
+                                    <div class="mb-2">
+                                        <div class="flex justify-between items-center text-xs text-gray-600 mb-1">
+                                            <span class="font-medium">${item.paidCount}/${item.totalCount} EMIs paid</span>
+                                            <span>${item.progress}%</span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-1.5">
+                                            <div class="bg-${progressColor}-500 h-1.5 rounded-full transition-all" style="width: ${item.progress}%"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Date and Description -->
+                                    <div class="flex items-center gap-2 text-xs text-gray-500">
+                                        <span>📅 ${item.date}</span>
+                                        ${item.description ? `<span>•</span><span class="italic">${item.description}</span>` : ''}
+                                    </div>
                                 </div>
+                            `;
+                        }
+                        
+                        // Default display for non-EMI items
+                        return `
+                            <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                                <div class="flex-1">
+                                    <div class="font-medium text-gray-800 text-sm">${item.name}</div>
+                                    <div class="flex items-center gap-2 text-xs text-gray-500">
+                                        ${item.category ? `<span>${item.category}</span>` : ''}
+                                        ${item.category && item.date ? '<span>•</span>' : ''}
+                                        ${item.date ? `<span>${item.date}</span>` : ''}
+                                    </div>
+                                </div>
+                                <div class="text-sm font-semibold text-gray-700">₹${Utils.formatIndianNumber(item.amount)}</div>
                             </div>
-                            <div class="text-sm font-semibold text-gray-700">₹${Utils.formatIndianNumber(item.amount)}</div>
-                        </div>
-                    `).join('') : '<p class="text-gray-500 text-center py-4">No items found</p>'}
-                </div>
-                <div class="border-t border-gray-200 pt-3 mt-3 flex justify-between items-center">
-                    <span class="font-semibold text-gray-700">Total</span>
-                    <span class="font-bold text-lg text-gray-800">₹${Utils.formatIndianNumber(total)}</span>
-                </div>
+                        `;
+                    }).join('') : '<p class="text-gray-500 text-center py-4">No items found</p>'}
             `;
         }
         
         modal.innerHTML = `
-            <div class="bg-white rounded-2xl shadow-2xl p-5 max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-gray-800">${title}</h3>
-                    <button onclick="document.getElementById('month-list-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col">
+                <div class="p-4 border-b border-gray-200 bg-gradient-to-r from-${color}-500 to-${color}-600 rounded-t-2xl">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-bold text-white">${icon} ${title}</h3>
+                            <p class="text-xs text-white/80">${monthName}</p>
+                        </div>
+                        <button onclick="document.getElementById('month-list-modal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white text-lg">×</button>
+                    </div>
                 </div>
-                ${contentHtml}
+                <div class="flex-1 overflow-y-auto p-4">
+                    ${contentHtml}
+                </div>
+                <div class="p-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-600">Total (${items.length} items)</span>
+                        <span class="text-lg font-bold text-${color}-600">₹${Utils.formatIndianNumber(Math.round(total))}</span>
+                    </div>
+                </div>
             </div>
         `;
         
         modal.classList.remove('hidden');
+    },
+    
+    /**
+     * Get AI insights actions HTML (button)
+     */
+    getAIInsightsActions(year, month) {
+        if (this.aiInsightsLoading) {
+            return `<span class="text-[10px] text-gray-400">loading...</span>`;
+        }
+        
+        return `
+            <button onclick="Dashboard.fetchAIInsights(${year}, ${month})" 
+                    class="flex items-center gap-1 px-2 py-1 text-[10px] bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded transition-all shadow-sm">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                get suggestions
+            </button>
+        `;
+    },
+    
+    /**
+     * Get AI insights content HTML
+     */
+    getAIInsightsContent(year, month) {
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        const cached = this.aiExpenseInsightsCache[monthKey];
+        
+        if (this.aiInsightsLoading) {
+            return `
+                <div class="bg-purple-50 rounded-lg p-3 flex items-center gap-3">
+                    <div class="flex-shrink-0 px-3 py-3 bg-purple-100 rounded-lg">
+                        <div class="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                    <p class="text-[11px] text-purple-600 leading-relaxed">analyzing your spending patterns, loans, EMIs and recurring payments...</p>
+                </div>
+            `;
+        }
+        
+        if (cached) {
+            return `
+                <div class="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg p-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center shadow-sm">
+                            <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <span class="text-xs font-medium text-purple-700">AI insights</span>
+                            <span class="text-[10px] text-gray-400 ml-2">${this.formatRelativeTime(cached.timestamp)}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="Dashboard.showAIInsightsModal(${cached.year || new Date().getFullYear()}, ${cached.month || new Date().getMonth() + 2})" 
+                                class="flex items-center gap-1 px-3 py-1.5 text-xs bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors shadow-sm">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            view
+                        </button>
+                        <button onclick="Dashboard.reloadAIInsights(${cached.year || new Date().getFullYear()}, ${cached.month || new Date().getMonth() + 2})" 
+                                class="flex items-center gap-1 px-2 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-lg transition-colors">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Use passed year/month or fallback to next month
+        const targetYear = year || this.getNextMonthYear();
+        const targetMonth = month || this.getNextMonth();
+        
+        return `
+            <div class="bg-gray-50 rounded-lg p-3 flex items-center gap-3">
+                <div id="ai-insights-actions" class="flex-shrink-0">
+                    <button onclick="Dashboard.fetchAIInsights(${targetYear}, ${targetMonth})" 
+                            class="flex items-center gap-1.5 px-3 py-3 text-xs bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg transition-all shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        get suggestions
+                    </button>
+                </div>
+                <p class="text-[11px] text-gray-500 leading-relaxed">click "get suggestions" to receive AI-powered insights for reducing your expenses next month.</p>
+            </div>
+        `;
+    },
+    
+    /**
+     * Show AI insights in a modal
+     */
+    showAIInsightsModal(year, month) {
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        const cached = this.aiExpenseInsightsCache[monthKey];
+        
+        if (!cached) return;
+        
+        const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        const formattedInsights = this.formatAIInsightsCollapsible(cached.insights);
+        
+        // Create or update modal
+        let modal = document.getElementById('ai-insights-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'ai-insights-modal';
+            document.body.appendChild(modal);
+        }
+        
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4';
+        modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden">
+                <!-- Header -->
+                <div class="p-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white flex items-center justify-between flex-shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg">AI Insights</h3>
+                            <p class="text-xs text-white/80">${monthName} • ${this.formatRelativeTime(cached.timestamp)}</p>
+                        </div>
+                    </div>
+                    <button onclick="document.getElementById('ai-insights-modal').classList.add('hidden')" 
+                            class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white text-lg transition-colors">
+                        ×
+                    </button>
+                </div>
+                
+                <!-- Content -->
+                <div class="flex-1 overflow-y-auto p-4">
+                    <div class="prose prose-sm text-gray-700 max-w-none ai-insights-text">
+                        ${formattedInsights}
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="p-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between flex-shrink-0">
+                    <span class="text-[10px] text-gray-400">Based on your last 3 months data</span>
+                    <button onclick="document.getElementById('ai-insights-modal').classList.add('hidden'); Dashboard.reloadAIInsights(${year}, ${month})" 
+                            class="flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        refresh insights
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
+    },
+    
+    /**
+     * Format AI insights text with proper HTML (with bullet points)
+     */
+    formatAIInsightsCollapsible(text) {
+        if (!text) return '';
+        
+        // Split by section headers (emoji + bold text pattern)
+        const headerPattern = /(\*\*[📊💡🔄🏦📈✅].*?\*\*)/g;
+        const sections = text.split(headerPattern).filter(s => s.trim());
+        
+        let html = '';
+        
+        sections.forEach(section => {
+            // Check if this is a header (starts with ** and contains emoji)
+            if (section.match(/^\*\*[📊💡🔄🏦📈✅]/)) {
+                const header = section.replace(/\*\*/g, '');
+                html += `<div class="font-bold text-purple-700 mt-4 mb-2 text-sm border-b border-purple-200 pb-1">${header}</div>`;
+            } else {
+                // This is content - convert to bullet points
+                // Split by newlines, handling various bullet formats
+                const lines = section
+                    .trim()
+                    .split(/\n/)
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0);
+                
+                if (lines.length > 0) {
+                    html += `<ul class="space-y-2 pl-0 mb-3">`;
+                    lines.forEach(line => {
+                        // Check if this is a numbered item (1., 2., etc.)
+                        const numberedMatch = line.match(/^(\d+)\.\s*(.+)/);
+                        // Check if this line starts with - or • already
+                        const isBullet = line.match(/^[-•]\s*/);
+                        
+                        // Clean up the line
+                        let cleanLine = line
+                            .replace(/^[-•]\s*/, '') // Remove existing bullets/dashes
+                            .replace(/^\d+\.\s*/, '') // Remove numbered list markers
+                            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-800">$1</strong>')
+                            .replace(/₹(\d[\d,]*)/g, '<span class="text-green-600 font-bold">₹$1</span>')
+                            .replace(/→/g, '<span class="text-blue-500">→</span>');
+                        
+                        if (numberedMatch) {
+                            // Numbered item with special styling
+                            html += `
+                                <li class="flex items-start gap-2 text-[12px] text-gray-700 leading-relaxed bg-gray-50 p-2 rounded-lg">
+                                    <span class="bg-purple-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold flex-shrink-0">${numberedMatch[1]}</span>
+                                    <span class="flex-1">${cleanLine}</span>
+                                </li>
+                            `;
+                        } else if (cleanLine.includes(':') && cleanLine.indexOf(':') < 30) {
+                            // This looks like a key: value format
+                            const [key, ...valueParts] = cleanLine.split(':');
+                            const value = valueParts.join(':').trim();
+                            html += `
+                                <li class="flex items-start gap-2 text-[12px] text-gray-700 leading-relaxed">
+                                    <span class="text-purple-500 mt-0.5 flex-shrink-0">▸</span>
+                                    <span><strong class="text-gray-800">${key}:</strong> ${value}</span>
+                                </li>
+                            `;
+                        } else {
+                            // Regular bullet point
+                            html += `
+                                <li class="flex items-start gap-2 text-[12px] text-gray-700 leading-relaxed">
+                                    <span class="text-purple-500 mt-0.5 flex-shrink-0">•</span>
+                                    <span>${cleanLine}</span>
+                                </li>
+                            `;
+                        }
+                    });
+                    html += `</ul>`;
+                }
+            }
+        });
+        
+        return html || this.formatAIInsights(text);
+    },
+    
+    /**
+     * Format AI insights text with proper HTML (fallback)
+     */
+    formatAIInsights(text) {
+        if (!text) return '';
+        
+        // Convert markdown-style formatting to HTML
+        return text
+            // Bold text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            // Bullet points
+            .replace(/^[-•]\s+(.*)$/gm, '<li class="ml-4">$1</li>')
+            // Numbered lists
+            .replace(/^(\d+)\.\s+(.*)$/gm, '<li class="ml-4"><span class="font-semibold">$1.</span> $2</li>')
+            // Line breaks
+            .replace(/\n\n/g, '</p><p class="mt-2">')
+            .replace(/\n/g, '<br>')
+            // Wrap in paragraph
+            .replace(/^(.*)$/, '<p>$1</p>');
+    },
+    
+    /**
+     * Get next month's year
+     */
+    getNextMonthYear() {
+        const now = new Date();
+        return now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear();
+    },
+    
+    /**
+     * Get next month (1-12)
+     */
+    getNextMonth() {
+        const now = new Date();
+        return now.getMonth() === 11 ? 1 : now.getMonth() + 2;
+    },
+    
+    /**
+     * Format relative time
+     */
+    formatRelativeTime(timestamp) {
+        const now = Date.now();
+        const diff = now - timestamp;
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        const days = Math.floor(diff / 86400000);
+        
+        if (minutes < 1) return 'just now';
+        if (minutes < 60) return `${minutes}m ago`;
+        if (hours < 24) return `${hours}h ago`;
+        return `${days}d ago`;
+    },
+    
+    /**
+     * Fetch AI insights for expense reduction
+     */
+    async fetchAIInsights(year, month, forceReload = false) {
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        
+        // Check cache unless force reload
+        if (!forceReload && this.aiExpenseInsightsCache[monthKey]) {
+            return;
+        }
+        
+        // Check if AI is configured
+        if (!window.AIProvider || !window.AIProvider.isConfigured()) {
+            Utils.showError('Please configure AI provider in settings first');
+            return;
+        }
+        
+        this.aiInsightsLoading = true;
+        this.updateAIInsightsUI(year, month);
+        
+        // Suppress AI provider info messages
+        const previousSuppressState = window.AIProvider.suppressInfoMessages;
+        window.AIProvider.suppressInfoMessages = true;
+        
+        try {
+            // Prepare comprehensive expense data
+            const analysisData = this.prepareExpenseAnalysisData(year, month);
+            
+            // Build the prompt
+            const prompt = this.buildExpenseInsightsPrompt(analysisData, year, month);
+            
+            // Call AI
+            const response = await window.AIProvider.call(prompt, null);
+            
+            // Cache the response (persisted to storage)
+            this.aiExpenseInsightsCache[monthKey] = {
+                insights: response,
+                timestamp: Date.now(),
+                year: year,
+                month: month
+            };
+            window.Storage.save(); // Persist to storage
+            
+        } catch (error) {
+            console.error('AI Insights error:', error);
+            Utils.showError('Failed to get AI insights. Please try again.');
+        } finally {
+            // Restore AI provider info messages state
+            window.AIProvider.suppressInfoMessages = previousSuppressState;
+            this.aiInsightsLoading = false;
+            this.updateAIInsightsUI(year, month);
+        }
+    },
+    
+    /**
+     * Reload AI insights (force refresh)
+     */
+    reloadAIInsights(year, month) {
+        this.fetchAIInsights(year, month, true);
+    },
+    
+    /**
+     * Update the AI insights UI in the modal
+     */
+    updateAIInsightsUI(year, month) {
+        const actionsEl = document.getElementById('ai-insights-actions');
+        const contentEl = document.getElementById('ai-insights-content');
+        
+        if (actionsEl) {
+            actionsEl.innerHTML = this.getAIInsightsActions(year, month);
+        }
+        if (contentEl) {
+            contentEl.innerHTML = this.getAIInsightsContent(year, month);
+        }
+    },
+    
+    /**
+     * Mask sensitive data for AI (remove personal identifiers)
+     */
+    maskSensitiveData(text) {
+        if (!text) return text;
+        // Mask phone numbers, emails, account numbers
+        return text
+            .replace(/\b\d{10,}\b/g, '***')
+            .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '***@***.***')
+            .replace(/\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g, '****-****-****-****');
+    },
+    
+    /**
+     * Prepare comprehensive expense analysis data for AI (with masking)
+     */
+    prepareExpenseAnalysisData(targetYear, targetMonth) {
+        const data = {
+            targetMonth: { year: targetYear, month: targetMonth },
+            historicalExpenses: [],
+            recurringPayments: [],
+            loans: [],
+            emis: [],
+            categoryBreakdown: {},
+            topExpenses: [],
+            investments: [],
+            insights: {}
+        };
+        
+        // Categories to exclude (occasional, not continuous)
+        const excludeCategories = ['Gifts', 'Gift', 'Gifting'];
+        
+        // Get last 3 months of expenses
+        const projectionData = this.getProjectedRegularExpensesWithDetails();
+        data.historicalExpenses = projectionData.monthlyData || [];
+        data.projectedAverage = projectionData.average;
+        
+        // Get detailed expenses by category for last 3 months
+        const expenses = window.DB.expenses || [];
+        const today = new Date();
+        const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+        
+        const recentExpenses = expenses.filter(exp => {
+            const expDate = new Date(exp.date);
+            const cat = (exp.category || '').toLowerCase();
+            // Exclude gift-related expenses
+            const isGift = excludeCategories.some(g => cat.includes(g.toLowerCase()));
+            return expDate >= threeMonthsAgo && expDate < new Date(today.getFullYear(), today.getMonth(), 1) && !isGift;
+        });
+        
+        // Category breakdown with individual expense items
+        const expensesByTitle = {}; // Group by title for detailed breakdown
+        
+        recentExpenses.forEach(exp => {
+            const cat = exp.category || 'Other';
+            const title = exp.title || 'Untitled';
+            
+            if (!data.categoryBreakdown[cat]) {
+                data.categoryBreakdown[cat] = { total: 0, count: 0, avgPerTransaction: 0, items: {} };
+            }
+            data.categoryBreakdown[cat].total += parseFloat(exp.amount) || 0;
+            data.categoryBreakdown[cat].count++;
+            
+            // Track individual items within each category
+            if (!data.categoryBreakdown[cat].items[title]) {
+                data.categoryBreakdown[cat].items[title] = { total: 0, count: 0 };
+            }
+            data.categoryBreakdown[cat].items[title].total += parseFloat(exp.amount) || 0;
+            data.categoryBreakdown[cat].items[title].count++;
+            
+            // Also track overall by title
+            if (!expensesByTitle[title]) {
+                expensesByTitle[title] = { total: 0, count: 0, category: cat };
+            }
+            expensesByTitle[title].total += parseFloat(exp.amount) || 0;
+            expensesByTitle[title].count++;
+        });
+        
+        // Calculate averages
+        Object.keys(data.categoryBreakdown).forEach(cat => {
+            const info = data.categoryBreakdown[cat];
+            info.avgPerTransaction = Math.round(info.total / info.count);
+            info.monthlyAvg = Math.round(info.total / 3);
+            
+            // Calculate averages for individual items
+            Object.keys(info.items).forEach(title => {
+                info.items[title].monthlyAvg = Math.round(info.items[title].total / 3);
+            });
+        });
+        
+        // Top individual expenses (by title) for detailed breakdown
+        data.topExpenses = Object.entries(expensesByTitle)
+            .sort((a, b) => b[1].total - a[1].total)
+            .slice(0, 15) // Top 15 expense titles
+            .map(([title, info]) => ({
+                title: title,
+                category: info.category,
+                total: info.total,
+                count: info.count,
+                monthlyAvg: Math.round(info.total / 3)
+            }));
+        
+        // Top expense categories with their top items
+        data.topCategories = Object.entries(data.categoryBreakdown)
+            .sort((a, b) => b[1].total - a[1].total)
+            .slice(0, 8)
+            .map(([cat, info]) => {
+                // Get top items in this category
+                const topItems = Object.entries(info.items || {})
+                    .sort((a, b) => b[1].total - a[1].total)
+                    .slice(0, 5) // Top 5 items per category
+                    .map(([title, itemInfo]) => ({
+                        title: title,
+                        total: itemInfo.total,
+                        count: itemInfo.count,
+                        monthlyAvg: itemInfo.monthlyAvg
+                    }));
+                
+                return {
+                    category: cat,
+                    total: info.total,
+                    count: info.count,
+                    monthlyAvg: info.monthlyAvg,
+                    topItems: topItems
+                };
+            });
+        
+        // Recurring payments with actual names
+        if (window.RecurringExpenses) {
+            const recurring = window.RecurringExpenses.getAll();
+            data.recurringPayments = recurring
+                .filter(r => r.isActive !== false)
+                .filter(r => !excludeCategories.some(g => (r.category || '').toLowerCase().includes(g.toLowerCase())))
+                .map(r => ({
+                    name: r.title || r.name || 'Subscription',
+                    category: r.category || 'Other',
+                    amount: parseFloat(r.amount) || 0,
+                    frequency: r.frequency
+                }));
+        }
+        
+        // Loans with actual names
+        if (window.DB.loans && window.DB.loans.length > 0) {
+            data.loans = window.DB.loans.map((loan) => {
+                // Calculate EMI amount using the Loans module
+                let emiAmount = loan.emi;
+                if (!emiAmount && loan.amount && loan.interestRate && loan.tenure && window.Loans) {
+                    emiAmount = window.Loans.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
+                }
+                emiAmount = parseFloat(emiAmount) || 0;
+                
+                // Calculate remaining balance and months
+                let remainingAmount = 0;
+                let remainingMonths = 0;
+                let paidEmis = 0;
+                if (window.Loans && loan.firstEmiDate && loan.amount && loan.interestRate && loan.tenure) {
+                    const remaining = window.Loans.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
+                    remainingAmount = remaining.remainingBalance || 0;
+                    remainingMonths = remaining.emisRemaining || 0;
+                    paidEmis = remaining.emisPaid || 0;
+                }
+                
+                // Use actual loan name: "BankName LoanType" (e.g., "HDFC Home Loan", "SBI Personal Loan")
+                const loanTypeDisplay = loan.loanType === 'Other' && loan.customLoanType 
+                    ? loan.customLoanType 
+                    : (loan.loanType || 'Loan');
+                const loanName = `${loan.bankName || 'Unknown'} ${loanTypeDisplay}`;
+                
+                // Determine if this is a high-interest loan (bad loan)
+                // Home loans: avg 8-9%, Personal: avg 12-15%, Credit Card: 15-24%
+                const interestRate = parseFloat(loan.interestRate) || 0;
+                let loanCategory = 'normal';
+                if (loanTypeDisplay.toLowerCase().includes('personal') && interestRate > 15) {
+                    loanCategory = 'high-interest';
+                } else if (loanTypeDisplay.toLowerCase().includes('home') && interestRate > 10) {
+                    loanCategory = 'high-interest';
+                } else if (interestRate > 18) {
+                    loanCategory = 'high-interest';
+                }
+                
+                return {
+                    name: loanName,
+                    loanType: loanTypeDisplay,
+                    reason: loan.reason || '',
+                    emiAmount: Math.round(emiAmount),
+                    remainingAmount: Math.round(remainingAmount),
+                    totalAmount: Math.round(parseFloat(loan.amount) || 0),
+                    totalTenure: loan.tenure || 0,
+                    paidEmis: paidEmis,
+                    remainingMonths: remainingMonths,
+                    interestRate: interestRate,
+                    loanCategory: loanCategory // 'normal' or 'high-interest'
+                };
+            }).filter(loan => loan.remainingMonths > 0); // Only include active loans
+        }
+        
+        // EMIs from cards with actual names
+        if (window.DB.cards) {
+            window.DB.cards.forEach(card => {
+                if (card.cardType === 'debit') return; // Skip debit cards
+                if (card.emis && card.emis.length > 0) {
+                    card.emis.forEach(emi => {
+                        // Auto-update EMI progress
+                        if (window.Cards && window.Cards.updateEMIProgress) {
+                            window.Cards.updateEMIProgress(emi);
+                        }
+                        
+                        const totalCount = emi.totalCount || emi.totalEmis || 0;
+                        const paidCount = emi.paidCount || 0;
+                        const remainingEmis = totalCount - paidCount;
+                        
+                        // Only include active EMIs with remaining payments
+                        if (!emi.completed && remainingEmis > 0 && emi.emiAmount) {
+                            // Use actual card and EMI name: "CardName - EMI Reason"
+                            const emiName = `${card.nickname || card.name || 'Card'}: ${emi.reason || 'EMI'}`;
+                            
+                            data.emis.push({
+                                name: emiName,
+                                cardName: card.nickname || card.name || 'Card',
+                                reason: emi.reason || '',
+                                description: emi.description || '',
+                                emiAmount: Math.round(parseFloat(emi.emiAmount) || 0),
+                                paidEmis: paidCount,
+                                remainingEmis: remainingEmis,
+                                totalEmis: totalCount,
+                                totalAmount: Math.round(parseFloat(emi.emiAmount) * totalCount)
+                            });
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Investments data for the same period
+        // Use getMonthInvestments which properly handles incomeMonth/incomeYear attribution
+        const investmentsByMonth = {};
+        const goldRate = window.DB.goldRatePerGram || 7000;
+        const exchangeRate = typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : 83;
+        
+        for (let i = 1; i <= 3; i++) {
+            const analysisDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            const invYear = analysisDate.getFullYear();
+            const invMonth = analysisDate.getMonth() + 1;
+            const monthKey = analysisDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            const monthValue = `${invYear}-${String(invMonth).padStart(2, '0')}`;
+            
+            // Use the existing getMonthInvestments function
+            const monthTotal = this.getMonthInvestments(monthValue);
+            
+            // Get investment items for type breakdown
+            const monthItems = this.getMonthInvestmentItems ? this.getMonthInvestmentItems(monthValue) : [];
+            const types = {};
+            monthItems.forEach(item => {
+                // Only include non-zero values
+                if (item.amount && item.amount > 0) {
+                    types[item.type] = (types[item.type] || 0) + item.amount;
+                }
+            });
+            
+            // Only include month if there are actual investments
+            if (monthTotal > 0) {
+                investmentsByMonth[monthKey] = { 
+                    total: Math.round(monthTotal), 
+                    count: monthItems.filter(i => i.amount > 0).length, 
+                    types: types 
+                };
+            }
+        }
+        
+        data.investments = {
+            byMonth: investmentsByMonth,
+            totalLast3Months: Object.values(investmentsByMonth).reduce((sum, m) => sum + m.total, 0),
+            monthlyAvg: Math.round(Object.values(investmentsByMonth).reduce((sum, m) => sum + m.total, 0) / 3)
+        };
+        
+        // Budget Rule Analysis (Needs/Wants/Invest) for last 3 months
+        const budgetRule = this.budgetRule; // User's target: e.g., 50/30/20
+        data.budgetAnalysis = {
+            targetRule: budgetRule,
+            monthlyBreakdown: []
+        };
+        
+        // Analyze each of the last 3 months
+        for (let i = 1; i <= 3; i++) {
+            const analysisDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            const monthYear = analysisDate.getFullYear();
+            const monthNum = analysisDate.getMonth() + 1;
+            const monthLabel = analysisDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            
+            // Get income for this month using the correct function
+            const incomeResult = this.getIncomeForExpenseComparison(monthYear, monthNum);
+            const monthlyIncome = incomeResult.income || 0;
+            
+            // Get needs, wants for this month
+            const needsTotal = this.getNeedsTotal(monthYear, monthNum);
+            const wantsTotal = this.getWantsTotal(monthYear, monthNum);
+            const monthInvestments = this.getMonthInvestments(`${monthYear}-${String(monthNum).padStart(2, '0')}`);
+            
+            // Calculate percentages
+            const needsPercent = monthlyIncome > 0 ? Math.round((needsTotal / monthlyIncome) * 100) : 0;
+            const wantsPercent = monthlyIncome > 0 ? Math.round((wantsTotal / monthlyIncome) * 100) : 0;
+            const investPercent = monthlyIncome > 0 ? Math.round((monthInvestments / monthlyIncome) * 100) : 0;
+            
+            data.budgetAnalysis.monthlyBreakdown.push({
+                month: monthLabel,
+                income: monthlyIncome,
+                needs: { amount: needsTotal, percent: needsPercent, target: budgetRule.needs },
+                wants: { amount: wantsTotal, percent: wantsPercent, target: budgetRule.wants },
+                invest: { amount: monthInvestments, percent: investPercent, target: budgetRule.invest },
+                // Deviations from target
+                needsDeviation: needsPercent - budgetRule.needs,
+                wantsDeviation: wantsPercent - budgetRule.wants,
+                investDeviation: investPercent - budgetRule.invest
+            });
+        }
+        
+        // Calculate averages for budget analysis
+        const avgNeeds = Math.round(data.budgetAnalysis.monthlyBreakdown.reduce((s, m) => s + m.needs.percent, 0) / 3);
+        const avgWants = Math.round(data.budgetAnalysis.monthlyBreakdown.reduce((s, m) => s + m.wants.percent, 0) / 3);
+        const avgInvest = Math.round(data.budgetAnalysis.monthlyBreakdown.reduce((s, m) => s + m.invest.percent, 0) / 3);
+        const avgIncome = Math.round(data.budgetAnalysis.monthlyBreakdown.reduce((s, m) => s + m.income, 0) / 3);
+        
+        data.budgetAnalysis.averages = {
+            income: avgIncome,
+            needsPercent: avgNeeds,
+            wantsPercent: avgWants,
+            investPercent: avgInvest,
+            needsDeviation: avgNeeds - budgetRule.needs,
+            wantsDeviation: avgWants - budgetRule.wants,
+            investDeviation: avgInvest - budgetRule.invest
+        };
+        
+        // Calculate insights
+        const totalRecurring = data.recurringPayments.reduce((sum, r) => sum + r.amount, 0);
+        const totalLoans = data.loans.reduce((sum, l) => sum + l.emiAmount, 0);
+        const totalEmis = data.emis.reduce((sum, e) => sum + e.emiAmount, 0);
+        const totalFixed = totalRecurring + totalLoans + totalEmis;
+        
+        data.insights = {
+            totalRecurring,
+            totalLoans,
+            totalEmis,
+            totalFixed,
+            variableExpenses: data.projectedAverage,
+            totalProjected: totalFixed + data.projectedAverage,
+            investmentRate: data.investments.monthlyAvg,
+            avgMonthlyIncome: avgIncome,
+            savingsAfterExpenses: data.projectedAverage > 0 ? Math.round((data.investments.monthlyAvg / data.projectedAverage) * 100) : 0
+        };
+        
+        return data;
+    },
+    
+    /**
+     * Build the prompt for expense insights
+     */
+    buildExpenseInsightsPrompt(data, year, month) {
+        const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        
+        // Build detailed category breakdown with individual items
+        let categoryDetailText = data.topCategories.map(c => {
+            let text = `\n**${c.category}** - ₹${Math.round(c.monthlyAvg).toLocaleString()}/month (${c.count} transactions):`;
+            if (c.topItems && c.topItems.length > 0) {
+                c.topItems.forEach(item => {
+                    text += `\n  - ${item.title}: ₹${Math.round(item.monthlyAvg).toLocaleString()}/month (${item.count} times)`;
+                });
+            }
+            return text;
+        }).join('\n');
+        
+        // Build top individual expenses list
+        let topExpensesText = '';
+        if (data.topExpenses && data.topExpenses.length > 0) {
+            topExpensesText = data.topExpenses.map(e => 
+                `• ${e.title} (${e.category}): ₹${Math.round(e.monthlyAvg).toLocaleString()}/month - ${e.count} times in 3 months`
+            ).join('\n');
+        }
+        
+        // Build recurring payments with actual names
+        let recurringText = '';
+        if (data.recurringPayments.length > 0) {
+            // Sort by amount descending and list each subscription by name
+            recurringText = data.recurringPayments
+                .sort((a, b) => b.amount - a.amount)
+                .map(r => `• ${r.name} (${r.category}): ₹${Math.round(r.amount).toLocaleString()}/${r.frequency || 'month'}`)
+                .join('\n');
+        }
+        
+        // Build loans summary with actual names and detailed info
+        let loansText = data.loans.length > 0 
+            ? data.loans.map(l => {
+                let text = `• **${l.name}**: ₹${Math.round(l.emiAmount).toLocaleString()}/month EMI`;
+                text += `\n  - Progress: ${l.paidEmis}/${l.totalTenure} EMIs paid (${l.remainingMonths} remaining)`;
+                text += `\n  - Balance: ₹${Math.round(l.remainingAmount).toLocaleString()} of ₹${Math.round(l.totalAmount).toLocaleString()}`;
+                text += `\n  - Interest Rate: ${l.interestRate}% p.a.`;
+                if (l.loanCategory === 'high-interest') {
+                    text += ` ⚠️ HIGH INTEREST`;
+                }
+                if (l.reason) text += `\n  - Purpose: ${l.reason}`;
+                return text;
+            }).join('\n\n')
+            : 'None';
+        
+        // Build EMIs summary with actual names and detailed info
+        let emisText = data.emis.length > 0
+            ? data.emis.map(e => {
+                let text = `• **${e.name}**: ₹${Math.round(e.emiAmount).toLocaleString()}/month`;
+                text += `\n  - Progress: ${e.paidEmis}/${e.totalEmis} EMIs paid (${e.remainingEmis} remaining)`;
+                text += `\n  - Total Value: ₹${Math.round(e.totalAmount).toLocaleString()}`;
+                if (e.description) text += `\n  - Description: ${e.description}`;
+                return text;
+            }).join('\n\n')
+            : 'None';
+        
+        // Build investments summary - only show months with actual investments
+        let investText = '';
+        if (data.investments && data.investments.byMonth) {
+            const months = Object.entries(data.investments.byMonth).filter(([_, info]) => info.total > 0);
+            if (months.length > 0) {
+                investText = months.map(([month, info]) => {
+                    let text = `• **${month}**: ₹${Math.round(info.total).toLocaleString()} total`;
+                    if (Object.keys(info.types).length > 0) {
+                        const typeBreakdown = Object.entries(info.types)
+                            .filter(([_, amt]) => amt > 0)
+                            .map(([t, amt]) => `  - ${t}: ₹${Math.round(amt).toLocaleString()}`)
+                            .join('\n');
+                        if (typeBreakdown) {
+                            text += `\n${typeBreakdown}`;
+                        }
+                    }
+                    return text;
+                }).join('\n\n');
+            } else {
+                investText = 'No investments recorded in last 3 months';
+            }
+        }
+        
+        // Build budget rule analysis
+        let budgetText = '';
+        if (data.budgetAnalysis && data.budgetAnalysis.monthlyBreakdown) {
+            const rule = data.budgetAnalysis.targetRule;
+            budgetText = `Target: ${rule.needs}% Needs / ${rule.wants}% Wants / ${rule.invest}% Invest\n\n`;
+            
+            data.budgetAnalysis.monthlyBreakdown.forEach(m => {
+                const needsStatus = m.needsDeviation > 0 ? `⚠️ OVER +${m.needsDeviation}%` : `✓ OK`;
+                const wantsStatus = m.wantsDeviation > 0 ? `⚠️ OVER +${m.wantsDeviation}%` : `✓ OK`;
+                const investStatus = m.investDeviation < 0 ? `⚠️ UNDER ${m.investDeviation}%` : `✓ OK`;
+                budgetText += `• ${m.month} (Income: ₹${Math.round(m.income).toLocaleString()}):\n`;
+                budgetText += `  - Needs: ${m.needs.percent}% = ₹${Math.round(m.needs.amount).toLocaleString()} ${needsStatus}\n`;
+                budgetText += `  - Wants: ${m.wants.percent}% = ₹${Math.round(m.wants.amount).toLocaleString()} ${wantsStatus}\n`;
+                budgetText += `  - Invest: ${m.invest.percent}% = ₹${Math.round(m.invest.amount).toLocaleString()} ${investStatus}\n`;
+            });
+            
+            const avg = data.budgetAnalysis.averages;
+            budgetText += `\n3-MONTH AVERAGE:\n`;
+            budgetText += `• Income: ₹${Math.round(avg.income).toLocaleString()}/month\n`;
+            budgetText += `• Needs: ${avg.needsPercent}% (target ${rule.needs}%) → ${avg.needsDeviation > 0 ? 'OVER by ' + avg.needsDeviation + '% = ₹' + Math.round((avg.needsDeviation/100) * avg.income).toLocaleString() : 'OK'}\n`;
+            budgetText += `• Wants: ${avg.wantsPercent}% (target ${rule.wants}%) → ${avg.wantsDeviation > 0 ? 'OVER by ' + avg.wantsDeviation + '% = ₹' + Math.round((avg.wantsDeviation/100) * avg.income).toLocaleString() : 'OK'}\n`;
+            budgetText += `• Invest: ${avg.investPercent}% (target ${rule.invest}%) → ${avg.investDeviation < 0 ? 'UNDER by ' + Math.abs(avg.investDeviation) + '% = ₹' + Math.round((Math.abs(avg.investDeviation)/100) * avg.income).toLocaleString() + ' gap' : 'OK'}`;
+        }
+        
+        return `You are a personal finance advisor analyzing detailed spending data. Provide SPECIFIC, ACTIONABLE insights based on the actual expense names and amounts below.
+
+## BUDGET RULE ANALYSIS (${data.budgetAnalysis?.targetRule?.needs || 50}/${data.budgetAnalysis?.targetRule?.wants || 30}/${data.budgetAnalysis?.targetRule?.invest || 20} Rule)
+${budgetText || 'No budget data'}
+
+## EXPENSE TREND (Last 3 Months)
+${data.historicalExpenses.map(h => `• ${h.label}: ₹${Math.round(h.amount).toLocaleString()}`).join('\n')}
+→ Monthly Average: ₹${Math.round(data.projectedAverage).toLocaleString()}
+
+## DETAILED CATEGORY BREAKDOWN (with individual expenses)
+${categoryDetailText || 'No category data'}
+
+## TOP 15 INDIVIDUAL EXPENSES (by monthly spend)
+${topExpensesText || 'No individual expense data'}
+
+## FIXED MONTHLY OBLIGATIONS
+Recurring (Total: ₹${Math.round(data.insights.totalRecurring).toLocaleString()}/month):
+${recurringText || 'None'}
+
+Loans (Total: ₹${Math.round(data.insights.totalLoans).toLocaleString()}/month):
+${loansText}
+
+Card EMIs (Total: ₹${Math.round(data.insights.totalEmis).toLocaleString()}/month):
+${emisText}
+
+## INVESTMENTS (Last 3 Months)
+${investText || 'No investment data'}
+→ Monthly Avg: ₹${Math.round(data.investments?.monthlyAvg || 0).toLocaleString()}
+
+## PROJECTION FOR ${monthName.toUpperCase()}
+• Avg Monthly Income: ₹${Math.round(data.insights.avgMonthlyIncome || 0).toLocaleString()}
+• Fixed costs: ₹${Math.round(data.insights.totalFixed).toLocaleString()}
+• Variable (est): ₹${Math.round(data.insights.variableExpenses).toLocaleString()}
+• Total Expected: ₹${Math.round(data.insights.totalProjected).toLocaleString()}
+
+---
+RESPOND IN THIS EXACT FORMAT. Use bullet points (•) for each item. Each section must have multiple bullet points on SEPARATE LINES for easy readability.
+
+**📊 BUDGET HEALTH ANALYSIS**
+• Needs Category: [X% actual vs Y% target] - [OVER/UNDER by Z%]
+• Wants Category: [X% actual vs Y% target] - [OVER/UNDER by Z%]
+• Invest Category: [X% actual vs Y% target] - [OVER/UNDER by Z%]
+• Amount Over Budget: ₹[amount] in [category]
+• Key Issue: [One-line summary of main budget problem]
+
+**💡 REALISTIC EXPENSE REDUCTIONS FOR ${monthName.toUpperCase()}**
+Focus ONLY on discretionary spending the USER can personally limit:
+• [Expense Name]: Currently ₹X/month → Target ₹Y/month (save ₹Z)
+  - How: [Specific actionable tip - e.g., "Cook at home 3 days more per week"]
+• [Expense Name]: Currently ₹X/month → Target ₹Y/month (save ₹Z)
+  - How: [Specific actionable tip]
+• [List 3-5 expenses that USER can control through their own habits]
+• **Total Potential Savings: ₹X/month**
+
+**🔄 SUBSCRIPTION & LIFESTYLE REVIEW**
+• [Subscription 1]: ₹X/month - [Keep/Pause/Cancel recommendation with reason]
+• [Subscription 2]: ₹X/month - [Keep/Pause/Cancel recommendation with reason]
+• Redundant subscriptions found: [List if multiple similar services]
+• Potential subscription savings: ₹X/month
+
+**🏦 LOAN & EMI ANALYSIS**
+For each loan/EMI from the data above, analyze:
+• **[Loan/EMI Name]**: ₹X/month EMI
+  - Progress: [X/Y EMIs paid]
+  - Interest Rate: [X%] - [GOOD/ACCEPTABLE/HIGH based on loan type]
+  - Recommendation: [Keep paying/Consider pre-closure if high interest]
+  - Pre-closure advice: [Only if interest rate is HIGH - suggest pre-closing with lump sum if possible]
+
+LOAN INTEREST BENCHMARKS (for reference):
+- Home Loan: Below 9% is good, 9-10% acceptable, above 10% is high
+- Personal Loan: Below 12% is good, 12-15% acceptable, above 15% is high
+- Credit Card EMI: All are typically 12-18%, focus on completing quickly
+- Any loan above 18%: Consider pre-closure priority
+
+**📈 INVESTMENT OPTIMIZATION**
+• Current Investment: ₹X/month ([Y%] of income)
+• Target Investment: ₹Z/month ([${data.budgetAnalysis?.targetRule?.invest || 20}%] of income)
+• Gap to Fill: ₹[amount]/month
+• Investment Breakdown:
+  - [Type 1]: ₹X (accumulated across months)
+  - [Type 2]: ₹Y (accumulated across months)
+• Recommendation: [Specific suggestion based on portfolio mix]
+
+**✅ PRIORITY ACTIONS FOR ${monthName.toUpperCase()}**
+List 5 specific actions in order of priority:
+1. **[Action]**: Save/Invest ₹X by [specific method]
+2. **[Action]**: Save/Invest ₹X by [specific method]
+3. **[Action]**: Save/Invest ₹X by [specific method]
+4. **[Action]**: Save/Invest ₹X by [specific method]
+5. **[Action]**: Save/Invest ₹X by [specific method]
+
+**Total Monthly Impact: ₹X potential savings/additional investment**
+
+═══════════════════════════════════════════════════════════════
+CRITICAL RULES FOR AI:
+═══════════════════════════════════════════════════════════════
+
+FORMATTING:
+• Use bullet points (•) for EVERY item
+• Each bullet point on a NEW LINE
+• Use **bold** for expense names and key numbers
+• Keep each section clearly separated
+• No long paragraphs - break into bullet points
+
+NEVER SUGGEST REDUCING (these are MANDATORY):
+• Insurance premiums (health, life, vehicle)
+• Maintenance (vehicle, home, society)
+• Medical/Healthcare expenses
+• Rent or Housing EMI
+• Utilities (electricity, water, gas, internet)
+• Education fees
+• Basic groceries
+• Fuel for daily commute
+
+ONLY SUGGEST REDUCING (USER's personal choices):
+• Food delivery (Swiggy, Zomato) - user can cook more
+• Online shopping (Amazon, Flipkart) - user can avoid impulse buys
+• Entertainment (movies, OTT, gaming) - user can limit
+• Dining out - user can eat at home
+• Lifestyle subscriptions - user can pause/cancel
+• Fashion/clothing beyond basics - user can defer
+• Gadgets and electronics - user can postpone
+• Travel/vacation - user can plan budget trips
+• Coffee shops, snacks - user can reduce frequency
+
+LOAN ADVICE:
+• Only suggest pre-closure for HIGH INTEREST loans (above benchmarks)
+• Never suggest pre-closing low-interest loans (waste of opportunity cost)
+• Consider remaining tenure when advising pre-closure
+• Personal loans with <12% interest are NOT bad loans
+• Home loans with <9% interest are NOT bad loans
+
+DATA USAGE:
+• USE EXACT names from the data provided
+• Reference actual EMI progress (X/Y paid) from data
+• Use actual investment amounts per month from data
+• Categories show accumulated spending - don't negotiate, advise user to limit`;
     },
     
     /**
@@ -3429,12 +4472,25 @@ const Dashboard = {
                     // EMI due date is same day of month as first EMI
                     const emiDueDay = firstDate.getDate();
                     const emiDueDate = new Date(year, targetMonth, emiDueDay);
+                    
+                    // Format: BankName: LoanType
+                    const loanTypeDisplay = loan.loanType === 'Other' && loan.customLoanType 
+                        ? loan.customLoanType 
+                        : (loan.loanType || 'Loan');
+                    const displayName = `${loan.bankName}: ${loanTypeDisplay}`;
+                    
                     items.push({
-                        name: loan.reason || loan.type || 'Loan',
+                        name: displayName,
                         category: 'Loan EMI',
                         amount: parseFloat(emiAmount),
                         date: emiDueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-                        sortDate: emiDueDate.getTime()
+                        sortDate: emiDueDate.getTime(),
+                        // Additional fields for enhanced display
+                        type: 'loan',
+                        paidCount: remaining.emisPaid,
+                        totalCount: loan.tenure,
+                        description: loan.reason || null,
+                        progress: Math.round((remaining.emisPaid / loan.tenure) * 100)
                     });
                 }
             }
@@ -3445,6 +4501,11 @@ const Dashboard = {
             
             if (card.emis && card.emis.length > 0) {
                 card.emis.forEach(emi => {
+                    // Auto-update EMI progress
+                    if (window.Cards && window.Cards.updateEMIProgress) {
+                        window.Cards.updateEMIProgress(emi);
+                    }
+                    
                     if (emi.firstEmiDate) {
                         const emiFirstDate = new Date(emi.firstEmiDate);
                         const emiFirstMonth = new Date(emiFirstDate.getFullYear(), emiFirstDate.getMonth(), 1);
@@ -3462,12 +4523,22 @@ const Dashboard = {
                         const emiFirstDate = emi.firstEmiDate ? new Date(emi.firstEmiDate) : null;
                         const emiDueDay = emiFirstDate ? emiFirstDate.getDate() : (card.billDueDate || 1);
                         const emiDueDate = new Date(year, targetMonth, emiDueDay);
+                        
+                        // Format: CardName: EMI Reason
+                        const displayName = `${card.nickname || card.name}: ${emi.reason || 'EMI'}`;
+                        
                         items.push({
-                            name: `${card.nickname || card.name} - ${emi.reason || 'EMI'}`,
+                            name: displayName,
                             category: 'Card EMI',
                             amount: parseFloat(emi.emiAmount),
                             date: emiDueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-                            sortDate: emiDueDate.getTime()
+                            sortDate: emiDueDate.getTime(),
+                            // Additional fields for enhanced display
+                            type: 'card',
+                            paidCount: paidCount,
+                            totalCount: totalCount,
+                            description: emi.description || null,
+                            progress: Math.round((paidCount / totalCount) * 100)
                         });
                     }
                 });
@@ -3706,12 +4777,23 @@ const Dashboard = {
                 
                 if (remaining.emisRemaining > 0 && emiAmount) {
                     const emiDay = firstDate.getDate();
+                    
+                    // Format: BankName: LoanType
+                    const loanTypeDisplay = loan.loanType === 'Other' && loan.customLoanType 
+                        ? loan.customLoanType 
+                        : (loan.loanType || 'Loan');
+                    const displayName = `${loan.bankName}: ${loanTypeDisplay}`;
+                    
                     items.push({
-                        title: `${loan.bankName} ${loan.loanType || 'Loan'}`,
+                        title: displayName,
                         category: 'Loan EMI',
                         amount: parseFloat(emiAmount),
                         date: `Day ${emiDay}`,
-                        type: 'loan'
+                        type: 'loan',
+                        paidCount: remaining.emisPaid,
+                        totalCount: loan.tenure,
+                        description: loan.reason || null,
+                        progress: Math.round((remaining.emisPaid / loan.tenure) * 100)
                     });
                 }
             }
@@ -3723,6 +4805,11 @@ const Dashboard = {
             
             if (card.emis && card.emis.length > 0) {
                 card.emis.forEach(emi => {
+                    // Auto-update EMI progress
+                    if (window.Cards && window.Cards.updateEMIProgress) {
+                        window.Cards.updateEMIProgress(emi);
+                    }
+                    
                     if (emi.firstEmiDate) {
                         const emiFirstDate = new Date(emi.firstEmiDate);
                         const emiFirstMonth = new Date(emiFirstDate.getFullYear(), emiFirstDate.getMonth(), 1);
@@ -3738,12 +4825,19 @@ const Dashboard = {
                     const remaining = totalCount - paidCount;
                     
                     if (!emi.completed && remaining > 0 && emi.emiAmount) {
+                        // Format: CardName: EMI Reason
+                        const displayName = `${card.nickname || card.name}: ${emi.reason || 'EMI'}`;
+                        
                         items.push({
-                            title: `${card.name || card.bankName} - ${emi.description || 'EMI'}`,
+                            title: displayName,
                             category: 'Credit Card EMI',
                             amount: parseFloat(emi.emiAmount),
                             date: `${paidCount}/${totalCount} paid`,
-                            type: 'card'
+                            type: 'card',
+                            paidCount: paidCount,
+                            totalCount: totalCount,
+                            description: emi.description || null,
+                            progress: Math.round((paidCount / totalCount) * 100)
                         });
                     }
                 });
@@ -3825,16 +4919,53 @@ const Dashboard = {
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
         modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
         
+        // Check if this is EMI list
+        const isEmiList = type === 'emis';
+        
         const itemsHtml = items.length > 0 
-            ? items.map(item => `
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-800 truncate">${Utils.escapeHtml(item.title)}</p>
-                        <p class="text-xs text-gray-500">${item.category} • ${item.date}</p>
+            ? items.map(item => {
+                // Enhanced display for EMI items
+                if (isEmiList && item.paidCount !== undefined && item.totalCount !== undefined) {
+                    const progressColor = item.type === 'loan' ? 'blue' : 'purple';
+                    return `
+                        <div class="py-3 border-b border-gray-100 last:border-0">
+                            <!-- Title and Amount -->
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="font-semibold text-gray-800 text-sm truncate flex-1 mr-2">${Utils.escapeHtml(item.title)}</div>
+                                <div class="text-sm font-bold text-${progressColor}-600 flex-shrink-0">₹${Utils.formatIndianNumber(item.amount)}</div>
+                            </div>
+                            
+                            <!-- Progress Bar -->
+                            <div class="mb-2">
+                                <div class="flex justify-between items-center text-xs text-gray-600 mb-1">
+                                    <span class="font-medium">${item.paidCount}/${item.totalCount} EMIs paid</span>
+                                    <span>${item.progress}%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-1.5">
+                                    <div class="bg-${progressColor}-500 h-1.5 rounded-full transition-all" style="width: ${item.progress}%"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Date and Description -->
+                            <div class="flex items-center gap-2 text-xs text-gray-500">
+                                <span>📅 ${item.date}</span>
+                                ${item.description ? `<span>•</span><span class="italic truncate">${Utils.escapeHtml(item.description)}</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // Default display for non-EMI items
+                return `
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-800 truncate">${Utils.escapeHtml(item.title)}</p>
+                            <p class="text-xs text-gray-500">${item.category} • ${item.date}</p>
+                        </div>
+                        <span class="text-sm font-semibold text-gray-700 ml-2">₹${Utils.formatIndianNumber(item.amount)}</span>
                     </div>
-                    <span class="text-sm font-semibold text-gray-700 ml-2">₹${Utils.formatIndianNumber(item.amount)}</span>
-                </div>
-            `).join('')
+                `;
+            }).join('')
             : `<p class="text-center text-gray-500 py-4">No items for this month</p>`;
         
         modal.innerHTML = `
