@@ -277,12 +277,13 @@ const Expenses = {
 
     /**
      * Get filtered expenses based on date range and search
-     * Uses budget month for filtering (not transaction date)
+     * Uses actual expense date for day-based filters (Today, Last 7 Days)
+     * Uses budget month for month/year-based filters (This Month, This Year, Custom Range)
      */
     getFilteredExpenses() {
         let filtered = window.DB.expenses;
         
-        // Apply date filter based on budget month
+        // Apply date filter
         if (this.startDate && this.endDate) {
             const start = new Date(this.startDate);
             const end = new Date(this.endDate);
@@ -291,16 +292,32 @@ const Expenses = {
             const endMonth = end.getMonth() + 1;
             const endYear = end.getFullYear();
             
+            // Check if this is a day-based filter (same day or within 7 days)
+            const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+            const isDayBasedFilter = daysDiff <= 7; // Today or Last 7 Days
+            
             filtered = filtered.filter(e => {
-                // Use budget month if available, otherwise fall back to expense date
-                const { month, year } = this.getExpenseBudgetMonth(e);
-                
-                // Check if budget month falls within the date range
-                const budgetDate = new Date(year, month - 1, 15); // Use middle of month for comparison
-                const startOfRange = new Date(startYear, startMonth - 1, 1);
-                const endOfRange = new Date(endYear, endMonth, 0); // Last day of end month
-                
-                return budgetDate >= startOfRange && budgetDate <= endOfRange;
+                if (isDayBasedFilter) {
+                    // For day-based filters, use actual expense date
+                    const expenseDate = new Date(e.date);
+                    expenseDate.setHours(0, 0, 0, 0);
+                    const startDate = new Date(start);
+                    startDate.setHours(0, 0, 0, 0);
+                    const endDate = new Date(end);
+                    endDate.setHours(23, 59, 59, 999);
+                    
+                    return expenseDate >= startDate && expenseDate <= endDate;
+                } else {
+                    // For month/year-based filters, use budget month
+                    const { month, year } = this.getExpenseBudgetMonth(e);
+                    
+                    // Check if budget month falls within the date range
+                    const budgetDate = new Date(year, month - 1, 15); // Use middle of month for comparison
+                    const startOfRange = new Date(startYear, startMonth - 1, 1);
+                    const endOfRange = new Date(endYear, endMonth, 0); // Last day of end month
+                    
+                    return budgetDate >= startOfRange && budgetDate <= endOfRange;
+                }
             });
         }
         

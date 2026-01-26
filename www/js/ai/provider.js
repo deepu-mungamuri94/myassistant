@@ -18,9 +18,28 @@ const AIProvider = {
         switch(context.mode) {
             case 'credit_cards':
                 return `You are a credit card advisor. Use ONLY the stored benefit information provided. DO NOT search online.
-Analyze the stored benefits data to recommend the best card for user queries.
+
+CRITICAL INSTRUCTIONS FOR RESPONSES:
+1. **Compare ALL cards** provided in the context
+2. **Select TOP 3 cards** that offer the best benefits for the user's query
+3. **Present ONLY these top 3 cards** with detailed benefits comparison
+4. **Provide a final recommendation** at the end with ONE best card and clear reasoning
+
+RESPONSE FORMAT:
+- Start with: "📊 **TOP 3 CARDS COMPARISON**"
+- For each of the top 3 cards:
+  - Card name
+  - Key benefits relevant to the query
+  - Reward rate/cashback for the specific category
+  - Any special offers or milestone benefits
+- End with: "✅ **FINAL RECOMMENDATION**" followed by:
+  - The single best card to use
+  - Clear reasoning why this card is best
+  - Expected value/rewards for this transaction
+
 Focus on: reward rates, category-specific benefits, cashback, milestone bonuses.
-Never ask for or reference sensitive information like card numbers or CVV.`;
+Never ask for or reference sensitive information like card numbers or CVV.
+DO NOT list all cards - only show the top 3 with comparison and final recommendation.`;
                 
             case 'expenses':
                 return `You are an expense analysis expert. Analyze the expense data provided to answer user queries.
@@ -302,14 +321,16 @@ Use Indian Rupee (₹) for all amounts.`;
                 };
                 
             case 'cards':
-                // Cards mode always sends full data (it's already minimal)
+                // Cards mode - ONLY sends non-sensitive data
+                // SECURITY: Sensitive fields are EXCLUDED: cardNumber, CVV, expiry, creditLimit, outstanding, statementDate, billDate, emis
                 const creditCards = window.DB.cards.filter(c => !c.cardType || c.cardType === 'credit');
                 return {
                     mode: 'credit_cards',
                     available_cards: creditCards.map(c => ({
-                        name: c.name,
-                        benefits: c.benefits || 'Benefits not yet fetched',
-                        benefitsFetchedAt: c.benefitsFetchedAt || null
+                        name: c.name, // Card name only (e.g., "HDFC Regalia")
+                        benefits: c.benefits || 'Benefits not yet fetched', // Public benefit info from bank websites
+                        benefitsFetchedAt: c.benefitsFetchedAt || null // When benefits were fetched
+                        // NOTE: No sensitive data (cardNumber, CVV, expiry, etc.) is ever sent to AI
                     }))
                 };
                 
@@ -409,6 +430,8 @@ Use Indian Rupee (₹) for all amounts.`;
         const context = this.prepareContext();
         
         // Build card details with stored benefits
+        // NOTE: Only non-sensitive data is included (name, benefits, benefitsFetchedAt)
+        // Sensitive data (cardNumber, CVV, expiry, creditLimit, outstanding, etc.) is NEVER sent to AI
         let cardsInfo = 'MY CREDIT CARDS WITH BENEFITS:\n\n';
         context.available_cards.forEach((card, idx) => {
             cardsInfo += `${idx + 1}. **${card.name}**\n`;
@@ -420,9 +443,6 @@ Use Indian Rupee (₹) for all amounts.`;
             } else {
                 cardsInfo += `   ⚠️ Benefits not yet loaded for this card.\n`;
             }
-            if (card.notes && card.notes !== 'No specific notes') {
-                cardsInfo += `   Personal notes: ${card.notes}\n`;
-            }
             cardsInfo += '\n';
         });
         
@@ -430,22 +450,26 @@ Use Indian Rupee (₹) for all amounts.`;
 
 ${cardsInfo}
 
-Based on the benefits data I have for each card, which card should I use for this specific spending?
+Based on the benefits data I have for each card, compare ALL cards and provide:
 
-Analyze:
-1. **Reward points/cashback rate** for the "${category}" category
-2. **Category-specific benefits** 
-3. **Milestone benefits** if this spending helps reach them
-4. **Exclusions or restrictions** that might apply
-5. **Best value** for this transaction
+📊 **TOP 3 CARDS COMPARISON**
+- Compare all cards and select the top 3 that offer the best benefits for this spending
+- For each of the top 3 cards, show:
+  1. Card name
+  2. Reward points/cashback rate for "${category}" category
+  3. Category-specific benefits
+  4. Milestone benefits if this spending helps reach them
+  5. Expected rewards value for ₹${amount}
+  6. Any exclusions or restrictions
 
-Provide:
-- ✅ **Recommended Card** with clear reasoning
-- 💰 **Expected Rewards**: Estimated cashback/points value
-- 📊 **Comparison**: Brief comparison with other cards (if applicable)
-- ⚠️ **Important Notes**: Any conditions, exclusions, or tips
+✅ **FINAL RECOMMENDATION**
+- The single best card to use for this transaction
+- Clear reasoning why this card is best
+- Expected cashback/points value
+- Any important conditions, exclusions, or tips
 
-If benefits are not available for any card, mention that and provide general guidance.`;
+If benefits are not available for any card, mention that and provide general guidance.
+DO NOT list all cards - only show the top 3 with comparison and final recommendation.`;
         
         return await this.call(prompt, null);
     }

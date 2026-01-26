@@ -3286,10 +3286,10 @@ const Dashboard = {
                 // For future months, show projection explanation
                 title = `Regular Expenses (Estimate)`;
                 isProjected = true;
-                const projectionData = this.getProjectedRegularExpensesWithDetails();
+                const projectionData = this.getProjectedRegularExpensesWithDetails(6);
                 total = projectionData.average;
                 items = projectionData.monthlyData; // Reuse items for the breakdown
-                projectionNote = 'This is an estimated amount based on your average regular expenses from the last 3 months.';
+                projectionNote = 'This is an estimated amount based on your average regular expenses from the last 6 months.';
             } else {
                 title = `Regular Expenses`;
                 items = this.getRegularExpenseItemsForMonth(year, month);
@@ -3553,42 +3553,53 @@ const Dashboard = {
         modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
         
         modal.innerHTML = `
-            <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
                 <!-- Header -->
-                <div class="p-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white flex items-center justify-between flex-shrink-0">
+                <div class="p-5 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 text-white flex items-center justify-between flex-shrink-0">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
+                            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/>
                             </svg>
                         </div>
                         <div>
-                            <h3 class="font-bold text-lg">AI Insights</h3>
-                            <p class="text-xs text-white/80">${monthName} • ${this.formatRelativeTime(cached.timestamp)}</p>
+                            <h3 class="font-bold text-xl">AI Financial Insights</h3>
+                            <p class="text-xs text-white/90 mt-0.5">${monthName} • ${this.formatRelativeTime(cached.timestamp)}</p>
                         </div>
                     </div>
                     <button onclick="document.getElementById('ai-insights-modal').classList.add('hidden')" 
-                            class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white text-lg transition-colors">
+                            class="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center text-white text-xl transition-all hover:scale-110">
                         ×
                     </button>
                 </div>
                 
                 <!-- Content -->
-                <div class="flex-1 overflow-y-auto p-4">
-                    <div class="prose prose-sm text-gray-700 max-w-none ai-insights-text">
+                <div class="flex-1 overflow-y-auto p-5 bg-gray-50">
+                    <div class="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+                        <div class="flex items-start gap-2">
+                            <span class="text-blue-500 text-sm">ℹ️</span>
+                            <div class="text-xs text-blue-700">
+                                <span class="font-semibold">Data Period:</span> Projections based on last 6 months of expenses + Year-over-Year comparison
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ai-insights-text">
                         ${formattedInsights}
                     </div>
                 </div>
                 
                 <!-- Footer -->
-                <div class="p-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between flex-shrink-0">
-                    <span class="text-[10px] text-gray-400">Based on your last 3 months data</span>
+                <div class="p-4 border-t border-gray-200 bg-white flex items-center justify-between flex-shrink-0">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-medium text-gray-700">📊 Projections based on last 6 months of data</span>
+                        <span class="text-[10px] text-gray-400 mt-0.5">Includes Year-over-Year comparison and annual patterns</span>
+                    </div>
                     <button onclick="document.getElementById('ai-insights-modal').classList.add('hidden'); Dashboard.reloadAIInsights(${year}, ${month})" 
-                            class="flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            class="flex items-center gap-2 px-4 py-2 text-xs bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all shadow-sm hover:shadow-md">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                         </svg>
-                        refresh insights
+                        Refresh Insights
                     </button>
                 </div>
             </div>
@@ -3598,81 +3609,291 @@ const Dashboard = {
     },
     
     /**
-     * Format AI insights text with proper HTML (with bullet points)
+     * Format AI insights text with beautiful, structured HTML
      */
     formatAIInsightsCollapsible(text) {
         if (!text) return '';
         
         // Split by section headers (emoji + bold text pattern)
-        const headerPattern = /(\*\*[📊💡🔄🏦📈✅].*?\*\*)/g;
+        const headerPattern = /(\*\*[📊💡🔄🏦📈✅🎂].*?\*\*)/g;
         const sections = text.split(headerPattern).filter(s => s.trim());
         
         let html = '';
         
-        sections.forEach(section => {
+        sections.forEach((section, sectionIndex) => {
             // Check if this is a header (starts with ** and contains emoji)
-            if (section.match(/^\*\*[📊💡🔄🏦📈✅]/)) {
-                const header = section.replace(/\*\*/g, '');
-                html += `<div class="font-bold text-purple-700 mt-4 mb-2 text-sm border-b border-purple-200 pb-1">${header}</div>`;
+            if (section.match(/^\*\*[📊💡🔄🏦📈✅🎂]/)) {
+                const header = section.replace(/\*\*/g, '').trim();
+                // Extract emoji - check if first character is an emoji
+                let emoji = '';
+                let title = header;
+                
+                // Try to extract emoji by checking first character
+                // Common emojis used in headers
+                const emojiChars = ['📊', '💡', '🔄', '🏦', '📈', '✅', '🎂'];
+                for (const emojiChar of emojiChars) {
+                    if (header.startsWith(emojiChar)) {
+                        emoji = emojiChar;
+                        title = header.substring(emojiChar.length).trim();
+                        break;
+                    }
+                }
+                
+                // If no emoji found, try regex approach
+                if (!emoji) {
+                    const emojiRegex = /^([\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}])/u;
+                    const match = header.match(emojiRegex);
+                    if (match) {
+                        emoji = match[1];
+                        title = header.substring(match[0].length).trim();
+                    }
+                }
+                
+                // Determine card color based on section type
+                let cardColor = 'purple';
+                let bgGradient = 'from-purple-50 to-purple-100';
+                let borderColor = 'border-purple-200';
+                
+                if (header.includes('BUDGET') || header.includes('HEALTH')) {
+                    cardColor = 'blue';
+                    bgGradient = 'from-blue-50 to-blue-100';
+                    borderColor = 'border-blue-200';
+                } else if (header.includes('EXPENSE REDUCTIONS') || header.includes('EXPECTED')) {
+                    cardColor = 'orange';
+                    bgGradient = 'from-orange-50 to-orange-100';
+                    borderColor = 'border-orange-200';
+                } else if (header.includes('SUBSCRIPTION') || header.includes('LIFESTYLE')) {
+                    cardColor = 'pink';
+                    bgGradient = 'from-pink-50 to-pink-100';
+                    borderColor = 'border-pink-200';
+                } else if (header.includes('LOAN') || header.includes('EMI')) {
+                    cardColor = 'indigo';
+                    bgGradient = 'from-indigo-50 to-indigo-100';
+                    borderColor = 'border-indigo-200';
+                } else if (header.includes('INVESTMENT')) {
+                    cardColor = 'emerald';
+                    bgGradient = 'from-emerald-50 to-emerald-100';
+                    borderColor = 'border-emerald-200';
+                } else if (header.includes('PRIORITY') || header.includes('ACTION')) {
+                    cardColor = 'green';
+                    bgGradient = 'from-green-50 to-green-100';
+                    borderColor = 'border-green-200';
+                }
+                
+                // Clean title - remove any remaining emoji characters
+                const cleanTitle = title.replace(/[📊💡🔄🏦📈✅🎂]/g, '').trim();
+                
+                html += `
+                    <div class="mt-4 mb-3 bg-gradient-to-r ${bgGradient} border ${borderColor} rounded-xl p-3 shadow-sm">
+                        <div class="flex items-center gap-2 mb-2">
+                            ${emoji ? `<span class="text-xl" aria-hidden="true">${emoji}</span>` : ''}
+                            <h3 class="font-bold text-${cardColor}-800 text-sm">${this.formatInlineText(cleanTitle)}</h3>
+                        </div>
+                `;
             } else {
-                // This is content - convert to bullet points
-                // Split by newlines, handling various bullet formats
+                // This is content - parse and format beautifully
                 const lines = section
                     .trim()
                     .split(/\n/)
                     .map(line => line.trim())
-                    .filter(line => line.length > 0);
+                    .filter(line => line.length > 0 && !line.match(/^(IF|ELSE|IF ALL|IF PROBLEMS|IF BELOW|IF AT|IF HIGH|IF LOANS)/i));
                 
                 if (lines.length > 0) {
-                    html += `<ul class="space-y-2 pl-0 mb-3">`;
-                    lines.forEach(line => {
-                        // Check if this is a numbered item (1., 2., etc.)
-                        const numberedMatch = line.match(/^(\d+)\.\s*(.+)/);
-                        // Check if this line starts with - or • already
-                        const isBullet = line.match(/^[-•]\s*/);
+                    html += `<div class="space-y-2.5">`;
+                    
+                    let i = 0;
+                    while (i < lines.length) {
+                        const line = lines[i];
+                        const originalLine = line; // Keep original for fallback
                         
-                        // Clean up the line
-                        let cleanLine = line
-                            .replace(/^[-•]\s*/, '') // Remove existing bullets/dashes
-                            .replace(/^\d+\.\s*/, '') // Remove numbered list markers
-                            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-800">$1</strong>')
-                            .replace(/₹(\d[\d,]*)/g, '<span class="text-green-600 font-bold">₹$1</span>')
-                            .replace(/→/g, '<span class="text-blue-500">→</span>');
+                        // Check for numbered items (1., 2., etc.) with full content
+                        const numberedMatch = line.match(/^(\d+)\.\s*\*\*(.+?)\*\*\s*:\s*(.+)/);
+                        const numberedSimple = line.match(/^(\d+)\.\s*(.+)/);
+                        
+                        // Check for bullet with bold title - but capture the ENTIRE line content
+                        const bulletWithBold = line.match(/^•\s*\*\*(.+?)\*\*\s*(?:\((.+?)\))?\s*(.*)/);
+                        
+                        // Check for arrow sub-items (→)
+                        const arrowMatch = line.match(/^\s*→\s*(.+)/);
+                        
+                        // Check for key: value format (like "Needs: 55% actual vs 50% target")
+                        const keyValueMatch = line.match(/^•\s*\*\*(.+?)\*\*\s*:\s*(.+)/);
+                        const simpleKeyValue = line.match(/^•\s*(.+?):\s*(.+)/);
                         
                         if (numberedMatch) {
-                            // Numbered item with special styling
+                            // Numbered action item with title and description
+                            const formattedDesc = this.formatInlineText(numberedMatch[3]);
                             html += `
-                                <li class="flex items-start gap-2 text-[12px] text-gray-700 leading-relaxed bg-gray-50 p-2 rounded-lg">
-                                    <span class="bg-purple-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold flex-shrink-0">${numberedMatch[1]}</span>
-                                    <span class="flex-1">${cleanLine}</span>
-                                </li>
+                                <div class="bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
+                                    <div class="flex items-start gap-3">
+                                        <span class="bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">${numberedMatch[1]}</span>
+                                        <div class="flex-1">
+                                            <div class="font-semibold text-gray-800 text-sm mb-1">${this.formatInlineText(numberedMatch[2])}</div>
+                                            <div class="text-xs text-gray-600 leading-relaxed">${formattedDesc}</div>
+                                        </div>
+                                    </div>
+                                </div>
                             `;
-                        } else if (cleanLine.includes(':') && cleanLine.indexOf(':') < 30) {
-                            // This looks like a key: value format
-                            const [key, ...valueParts] = cleanLine.split(':');
-                            const value = valueParts.join(':').trim();
+                            i++;
+                        } else if (numberedSimple && !numberedMatch) {
+                            // Simple numbered item - preserve full content
+                            const formattedContent = this.formatInlineText(numberedSimple[2]);
                             html += `
-                                <li class="flex items-start gap-2 text-[12px] text-gray-700 leading-relaxed">
-                                    <span class="text-purple-500 mt-0.5 flex-shrink-0">▸</span>
-                                    <span><strong class="text-gray-800">${key}:</strong> ${value}</span>
-                                </li>
+                                <div class="flex items-start gap-2 pl-1">
+                                    <span class="bg-purple-100 text-purple-700 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">${numberedSimple[1]}</span>
+                                    <span class="text-xs text-gray-700 leading-relaxed flex-1">${formattedContent}</span>
+                                </div>
                             `;
-                        } else {
-                            // Regular bullet point
+                            i++;
+                        } else if (keyValueMatch) {
+                            // Bullet with bold key and value (like "**Needs**: 55% actual vs 50% target")
+                            const key = this.formatInlineText(keyValueMatch[1]);
+                            const value = this.formatInlineText(keyValueMatch[2]);
                             html += `
-                                <li class="flex items-start gap-2 text-[12px] text-gray-700 leading-relaxed">
+                                <div class="flex items-start gap-2 text-xs text-gray-700 bg-white rounded-lg p-2 border border-gray-100">
                                     <span class="text-purple-500 mt-0.5 flex-shrink-0">•</span>
-                                    <span>${cleanLine}</span>
-                                </li>
+                                    <div class="flex-1">
+                                        <span class="font-semibold text-gray-800">${key}:</span>
+                                        <span class="ml-1">${value}</span>
+                                    </div>
+                                </div>
                             `;
+                            i++;
+                        } else if (simpleKeyValue) {
+                            // Simple key: value format
+                            const key = this.formatInlineText(simpleKeyValue[1]);
+                            const value = this.formatInlineText(simpleKeyValue[2]);
+                            html += `
+                                <div class="flex items-start gap-2 text-xs text-gray-700 bg-white rounded-lg p-2 border border-gray-100">
+                                    <span class="text-purple-500 mt-0.5 flex-shrink-0">•</span>
+                                    <div class="flex-1">
+                                        <span class="font-semibold text-gray-800">${key}:</span>
+                                        <span class="ml-1">${value}</span>
+                                    </div>
+                                </div>
+                            `;
+                            i++;
+                        } else if (bulletWithBold) {
+                            // Main category/item - capture title, subtitle, AND any remaining content on same line
+                            const mainTitle = this.formatInlineText(bulletWithBold[1]);
+                            const subtitle = bulletWithBold[2] ? `(${bulletWithBold[2]})` : '';
+                            const remainingContent = bulletWithBold[3] ? bulletWithBold[3].trim() : '';
+                            
+                            html += `
+                                <div class="bg-white rounded-lg p-2.5 border border-gray-200">
+                                    <div class="font-semibold text-gray-800 text-sm mb-1.5">
+                                        <span class="text-purple-500 mr-1.5">•</span>
+                                        ${mainTitle}
+                                        ${subtitle ? `<span class="text-gray-500 text-xs font-normal ml-1">${subtitle}</span>` : ''}
+                                        ${remainingContent ? `<span class="text-gray-600 text-xs font-normal ml-1">${this.formatInlineText(remainingContent)}</span>` : ''}
+                                    </div>
+                            `;
+                            
+                            // Collect sub-items (lines starting with →)
+                            let subItems = [];
+                            i++;
+                            while (i < lines.length) {
+                                const nextLine = lines[i];
+                                if (nextLine.match(/^\s*→/)) {
+                                    subItems.push(nextLine.trim());
+                                    i++;
+                                } else if (nextLine.match(/^•/) || nextLine.match(/^\d+\./)) {
+                                    // Next main item
+                                    break;
+                                } else if (nextLine.trim().length === 0) {
+                                    // Empty line
+                                    i++;
+                                } else {
+                                    // Continuation or other content - include it
+                                    subItems.push(nextLine);
+                                    i++;
+                                }
+                            }
+                            
+                            if (subItems.length > 0) {
+                                html += `<div class="ml-4 space-y-1.5 mt-1.5">`;
+                                subItems.forEach(subItem => {
+                                    const isArrow = subItem.match(/^→\s*(.+)/);
+                                    const content = isArrow ? isArrow[1] : subItem.replace(/^→\s*/, '').trim();
+                                    if (content) {
+                                        const formattedContent = this.formatInlineText(content);
+                                        html += `
+                                            <div class="text-xs text-gray-600 leading-relaxed flex items-start gap-1.5">
+                                                <span class="text-blue-500 mt-0.5 flex-shrink-0">→</span>
+                                                <span class="flex-1">${formattedContent}</span>
+                                            </div>
+                                        `;
+                                    }
+                                });
+                                html += `</div>`;
+                            }
+                            html += `</div>`;
+                        } else if (arrowMatch && i > 0) {
+                            // Standalone arrow item
+                            const formattedContent = this.formatInlineText(arrowMatch[1]);
+                            html += `
+                                <div class="text-xs text-gray-600 leading-relaxed flex items-start gap-1.5 ml-4">
+                                    <span class="text-blue-500 mt-0.5 flex-shrink-0">→</span>
+                                    <span class="flex-1">${formattedContent}</span>
+                                </div>
+                            `;
+                            i++;
+                        } else {
+                            // Regular bullet point or any other line - preserve ALL content
+                            // Remove bullet marker but keep everything else
+                            const cleanLine = line.replace(/^[-•]\s*/, '').trim();
+                            if (cleanLine) {
+                                const formattedLine = this.formatInlineText(cleanLine);
+                                html += `
+                                    <div class="flex items-start gap-2 text-xs text-gray-700 leading-relaxed">
+                                        <span class="text-purple-500 mt-0.5 flex-shrink-0">•</span>
+                                        <span class="flex-1">${formattedLine}</span>
+                                    </div>
+                                `;
+                            }
+                            i++;
                         }
-                    });
-                    html += `</ul>`;
+                    }
+                    
+                    html += `</div></div>`; // Close content div and card div
+                } else {
+                    html += `</div>`; // Close card if no content
                 }
             }
         });
         
         return html || this.formatAIInsights(text);
+    },
+    
+    /**
+     * Format inline text with proper styling while preserving all content
+     */
+    formatInlineText(text) {
+        if (!text) return '';
+        
+        // First handle markdown formatting (before HTML escaping)
+        // Format bold text (**text**)
+        text = text.replace(/\*\*(.*?)\*\*/g, '___BOLD_START___$1___BOLD_END___');
+        
+        // Now escape HTML to prevent XSS
+        text = Utils.escapeHtml(text);
+        
+        // Restore bold formatting with HTML tags
+        text = text.replace(/___BOLD_START___/g, '<strong class="text-gray-800 font-semibold">');
+        text = text.replace(/___BOLD_END___/g, '</strong>');
+        
+        // Format currency (₹ followed by numbers) - after escaping
+        text = text.replace(/₹(\d[\d,]*)/g, '<span class="text-green-600 font-bold">₹$1</span>');
+        
+        // Format arrows (→) - preserve the actual arrow character
+        text = text.replace(/→/g, '<span class="text-blue-500 mx-0.5">→</span>');
+        
+        // Format percentages
+        text = text.replace(/(\d+)%/g, '<span class="font-semibold">$1%</span>');
+        
+        // Emojis will display correctly as Unicode characters
+        
+        return text;
     },
     
     /**
@@ -4060,9 +4281,10 @@ const Dashboard = {
             const monthItems = this.getMonthInvestmentItems ? this.getMonthInvestmentItems(monthValue) : [];
             const types = {};
             monthItems.forEach(item => {
-                // Only include non-zero values
-                if (item.amount && item.amount > 0) {
-                    types[item.type] = (types[item.type] || 0) + item.amount;
+                // Only include non-zero values with valid type
+                if (item.amount && item.amount > 0 && item.type) {
+                    const typeKey = item.type || 'Other';
+                    types[typeKey] = (types[typeKey] || 0) + item.amount;
                 }
             });
             
@@ -4439,31 +4661,71 @@ const Dashboard = {
                 .join('\n');
         }
         
-        // Build loans summary with actual names and detailed info
-        let loansText = data.loans.length > 0 
-            ? data.loans.map(l => {
-                let text = `• **${l.name}**: ₹${Math.round(l.emiAmount).toLocaleString()}/month EMI`;
-                text += `\n  - Progress: ${l.paidEmis}/${l.totalTenure} EMIs paid (${l.remainingMonths} remaining)`;
-                text += `\n  - Balance: ₹${Math.round(l.remainingAmount).toLocaleString()} of ₹${Math.round(l.totalAmount).toLocaleString()}`;
-                text += `\n  - Interest Rate: ${l.interestRate}% p.a.`;
-                if (l.loanCategory === 'high-interest') {
-                    text += ` ⚠️ HIGH INTEREST`;
-                }
-                if (l.reason) text += `\n  - Purpose: ${l.reason}`;
-                return text;
-            }).join('\n\n')
-            : 'None';
+        // Build loans summary - separate into problem loans and healthy loans
+        const problemLoans = data.loans.filter(l => l.loanCategory === 'high-interest');
+        const healthyLoans = data.loans.filter(l => l.loanCategory !== 'high-interest');
+        const endingSoonLoans = data.loans.filter(l => l.remainingMonths <= 3 && l.remainingMonths > 0);
         
-        // Build EMIs summary with actual names and detailed info
-        let emisText = data.emis.length > 0
-            ? data.emis.map(e => {
-                let text = `• **${e.name}**: ₹${Math.round(e.emiAmount).toLocaleString()}/month`;
-                text += `\n  - Progress: ${e.paidEmis}/${e.totalEmis} EMIs paid (${e.remainingEmis} remaining)`;
-                text += `\n  - Total Value: ₹${Math.round(e.totalAmount).toLocaleString()}`;
-                if (e.description) text += `\n  - Description: ${e.description}`;
-                return text;
-            }).join('\n\n')
-            : 'None';
+        let loansText = '';
+        if (data.loans.length > 0) {
+            // Quick summary line
+            loansText = `**Summary**: ${data.loans.length} active loan(s), Total EMI: ₹${Math.round(data.insights.totalLoans).toLocaleString()}/month\n\n`;
+            
+            // Only show detailed info for problem loans
+            if (problemLoans.length > 0) {
+                loansText += `⚠️ **NEEDS ATTENTION** (High Interest):\n`;
+                loansText += problemLoans.map(l => {
+                    let text = `• ${l.name}: ₹${Math.round(l.emiAmount).toLocaleString()}/month @ **${l.interestRate}%** (${l.paidEmis}/${l.totalTenure} paid)`;
+                    text += `\n  → Balance: ₹${Math.round(l.remainingAmount).toLocaleString()} | Consider pre-closure`;
+                    return text;
+                }).join('\n');
+                loansText += '\n\n';
+            }
+            
+            // Show loans ending soon
+            if (endingSoonLoans.length > 0) {
+                loansText += `🎉 **ENDING SOON** (≤3 months left):\n`;
+                loansText += endingSoonLoans.map(l => 
+                    `• ${l.name}: ${l.remainingMonths} EMI(s) left (₹${Math.round(l.remainingAmount).toLocaleString()} remaining)`
+                ).join('\n');
+                loansText += '\n\n';
+            }
+            
+            // Brief list of healthy loans (no action needed)
+            if (healthyLoans.length > 0 && problemLoans.length === 0) {
+                loansText += `✓ **On Track**: `;
+                loansText += healthyLoans.map(l => `${l.name} (${l.interestRate}%)`).join(', ');
+                loansText += ' - No action needed';
+            }
+        } else {
+            loansText = 'No active loans ✓';
+        }
+        
+        // Build EMIs summary - similar approach
+        const endingSoonEmis = data.emis.filter(e => e.remainingEmis <= 2 && e.remainingEmis > 0);
+        
+        let emisText = '';
+        if (data.emis.length > 0) {
+            emisText = `**Summary**: ${data.emis.length} active EMI(s), Total: ₹${Math.round(data.insights.totalEmis).toLocaleString()}/month\n\n`;
+            
+            // Show EMIs ending soon
+            if (endingSoonEmis.length > 0) {
+                emisText += `🎉 **ENDING SOON**:\n`;
+                emisText += endingSoonEmis.map(e => 
+                    `• ${e.name}: ${e.remainingEmis} EMI(s) left`
+                ).join('\n');
+                emisText += '\n\n';
+            }
+            
+            // Brief list of ongoing EMIs
+            const ongoingEmis = data.emis.filter(e => e.remainingEmis > 2);
+            if (ongoingEmis.length > 0) {
+                emisText += `📋 **Ongoing**: `;
+                emisText += ongoingEmis.map(e => `${e.name} (${e.paidEmis}/${e.totalEmis})`).join(', ');
+            }
+        } else {
+            emisText = 'No active card EMIs ✓';
+        }
         
         // Build investments summary - only show months with actual investments
         let investText = '';
@@ -4474,8 +4736,8 @@ const Dashboard = {
                     let text = `• **${month}**: ₹${Math.round(info.total).toLocaleString()} total`;
                     if (Object.keys(info.types).length > 0) {
                         const typeBreakdown = Object.entries(info.types)
-                            .filter(([_, amt]) => amt > 0)
-                            .map(([t, amt]) => `  - ${t}: ₹${Math.round(amt).toLocaleString()}`)
+                            .filter(([t, amt]) => t && t !== 'undefined' && t !== 'null' && amt > 0)
+                            .map(([t, amt]) => `  - ${t || 'Other'}: ₹${Math.round(amt).toLocaleString()}`)
                             .join('\n');
                         if (typeBreakdown) {
                             text += `\n${typeBreakdown}`;
@@ -4488,28 +4750,68 @@ const Dashboard = {
             }
         }
         
-        // Build budget rule analysis
+        // Build budget rule analysis - only show problematic categories
         let budgetText = '';
         if (data.budgetAnalysis && data.budgetAnalysis.monthlyBreakdown) {
             const rule = data.budgetAnalysis.targetRule;
-            budgetText = `Target: ${rule.needs}% Needs / ${rule.wants}% Wants / ${rule.invest}% Invest\n\n`;
-            
-            data.budgetAnalysis.monthlyBreakdown.forEach(m => {
-                const needsStatus = m.needsDeviation > 0 ? `⚠️ OVER +${m.needsDeviation}%` : `✓ OK`;
-                const wantsStatus = m.wantsDeviation > 0 ? `⚠️ OVER +${m.wantsDeviation}%` : `✓ OK`;
-                const investStatus = m.investDeviation < 0 ? `⚠️ UNDER ${m.investDeviation}%` : `✓ OK`;
-                budgetText += `• ${m.month} (Income: ₹${Math.round(m.income).toLocaleString()}):\n`;
-                budgetText += `  - Needs: ${m.needs.percent}% = ₹${Math.round(m.needs.amount).toLocaleString()} ${needsStatus}\n`;
-                budgetText += `  - Wants: ${m.wants.percent}% = ₹${Math.round(m.wants.amount).toLocaleString()} ${wantsStatus}\n`;
-                budgetText += `  - Invest: ${m.invest.percent}% = ₹${Math.round(m.invest.amount).toLocaleString()} ${investStatus}\n`;
-            });
-            
             const avg = data.budgetAnalysis.averages;
-            budgetText += `\n3-MONTH AVERAGE:\n`;
-            budgetText += `• Income: ₹${Math.round(avg.income).toLocaleString()}/month\n`;
-            budgetText += `• Needs: ${avg.needsPercent}% (target ${rule.needs}%) → ${avg.needsDeviation > 0 ? 'OVER by ' + avg.needsDeviation + '% = ₹' + Math.round((avg.needsDeviation/100) * avg.income).toLocaleString() : 'OK'}\n`;
-            budgetText += `• Wants: ${avg.wantsPercent}% (target ${rule.wants}%) → ${avg.wantsDeviation > 0 ? 'OVER by ' + avg.wantsDeviation + '% = ₹' + Math.round((avg.wantsDeviation/100) * avg.income).toLocaleString() : 'OK'}\n`;
-            budgetText += `• Invest: ${avg.investPercent}% (target ${rule.invest}%) → ${avg.investDeviation < 0 ? 'UNDER by ' + Math.abs(avg.investDeviation) + '% = ₹' + Math.round((Math.abs(avg.investDeviation)/100) * avg.income).toLocaleString() + ' gap' : 'OK'}`;
+            
+            budgetText = `Target Budget: ${rule.needs}% Needs / ${rule.wants}% Wants / ${rule.invest}% Invest\n`;
+            budgetText += `Average Income (${analysisMonths} months): ₹${Math.round(avg.income).toLocaleString()}/month\n\n`;
+            
+            // Only show categories that are problematic
+            const problems = [];
+            
+            if (avg.needsDeviation > 0) {
+                problems.push({
+                    category: 'Needs',
+                    actual: avg.needsPercent,
+                    target: rule.needs,
+                    deviation: avg.needsDeviation,
+                    amount: Math.round((avg.needsDeviation/100) * avg.income),
+                    type: 'over'
+                });
+            }
+            
+            if (avg.wantsDeviation > 0) {
+                problems.push({
+                    category: 'Wants',
+                    actual: avg.wantsPercent,
+                    target: rule.wants,
+                    deviation: avg.wantsDeviation,
+                    amount: Math.round((avg.wantsDeviation/100) * avg.income),
+                    type: 'over'
+                });
+            }
+            
+            if (avg.investDeviation < 0) {
+                problems.push({
+                    category: 'Invest',
+                    actual: avg.investPercent,
+                    target: rule.invest,
+                    deviation: Math.abs(avg.investDeviation),
+                    amount: Math.round((Math.abs(avg.investDeviation)/100) * avg.income),
+                    type: 'under'
+                });
+            }
+            
+            if (problems.length > 0) {
+                budgetText += `⚠️ **BUDGET ISSUES DETECTED**:\n`;
+                problems.forEach(p => {
+                    if (p.type === 'over') {
+                        budgetText += `• ${p.category}: ${p.actual}% actual vs ${p.target}% target → **OVER by ${p.deviation}%** (₹${p.amount.toLocaleString()}/month)\n`;
+                    } else {
+                        budgetText += `• ${p.category}: ${p.actual}% actual vs ${p.target}% target → **UNDER by ${p.deviation}%** (₹${p.amount.toLocaleString()}/month gap)\n`;
+                    }
+                });
+            } else {
+                budgetText += `✓ **All categories within budget** - Great job!\n`;
+            }
+            
+            // Show investment appreciation if above target
+            if (avg.investDeviation > 0) {
+                budgetText += `\n🎉 **Investment**: ${avg.investPercent}% actual vs ${rule.invest}% target → **EXCEEDING by ${avg.investDeviation}%** (₹${Math.round((avg.investDeviation/100) * avg.income).toLocaleString()}/month extra) - Excellent!\n`;
+            }
         }
         
         // Build Year-over-Year comparison text
@@ -4569,6 +4871,8 @@ const Dashboard = {
         
         return `You are a personal finance advisor analyzing detailed spending data. Provide SPECIFIC, ACTIONABLE insights based on the actual expense names and amounts below.
 
+**IMPORTANT**: All projections and averages are based on the last ${analysisMonths} months of actual expense data, plus Year-over-Year comparison from previous years for the same month.
+
 ## BUDGET RULE ANALYSIS (${data.budgetAnalysis?.targetRule?.needs || 50}/${data.budgetAnalysis?.targetRule?.wants || 30}/${data.budgetAnalysis?.targetRule?.invest || 20} Rule)
 ${budgetText || 'No budget data'}
 
@@ -4610,34 +4914,49 @@ ${investText || 'No investment data'}
 • Total Expected: ₹${Math.round(data.insights.totalProjected).toLocaleString()}
 
 ---
-RESPOND IN THIS EXACT FORMAT. Use bullet points (•) for each item. Each section must have multiple bullet points on SEPARATE LINES for easy readability.
+RESPOND IN THIS EXACT FORMAT. Use proper hierarchical bullet points with indentation. DO NOT use HTML tables.
 
 **📊 BUDGET HEALTH ANALYSIS**
-• Needs Category: [X% actual vs Y% target] - [OVER/UNDER by Z%]
-• Wants Category: [X% actual vs Y% target] - [OVER/UNDER by Z%]
-• Invest Category: [X% actual vs Y% target] - [OVER/UNDER by Z%]
-• Amount Over Budget: ₹[amount] in [category]
-• Key Issue: [One-line summary of main budget problem]
+(Only mention categories that are problematic - over budget for spending, under for investment)
+
+IF PROBLEMS EXIST:
+• **Needs**: X% actual vs Y% target → ⚠️ **OVER by Z%** = ₹[amount]/month
+• **Wants**: X% actual vs Y% target → ⚠️ **OVER by Z%** = ₹[amount]/month
+• **Invest**: X% actual vs Y% target → ⚠️ **UNDER by Z%** = ₹[amount]/month gap
+• **Key Issue**: [One-line summary of main budget problem]
+• **Total Over Budget**: ₹[amount]/month across all categories
+
+IF INVESTMENT EXCEEDS TARGET:
+• 🎉 **Investment**: X% actual vs Y% target → **EXCEEDING by Z%** (₹[amount]/month extra) - Excellent!
+
+IF ALL GOOD:
+• ✓ All categories within budget - Great job!
 
 **🎂 EXPECTED ANNUAL EVENTS FOR ${monthName.toUpperCase()}**
 Based on Year-over-Year data and detected patterns, list expected expenses:
-• [Event/Occasion]: ~₹X expected (based on [year] data)
-  - Last year spent: ₹Y on [category/items]
-  - Recommendation: [Budget accordingly / Set aside funds]
-• [Recurring Annual Expense]: ~₹X expected
-  - Pattern: Occurs every ${monthName.split(' ')[0]}
-  - Tip: [Plan in advance / Compare prices]
+• **[Event/Occasion]**: ~₹X expected (based on [year] data)
+  → Last year spent: ₹Y on [category/items]
+  → **Recommendation**: [Budget accordingly / Set aside funds]
+• **[Recurring Annual Expense]**: ~₹X expected
+  → Pattern: Occurs every ${monthName.split(' ')[0]}
+  → **Tip**: [Plan in advance / Compare prices]
 • **Total Expected Annual Expenses This Month: ~₹X**
 (If no patterns detected, state: "No specific annual patterns detected for this month")
 
 **💡 REALISTIC EXPENSE REDUCTIONS FOR ${monthName.toUpperCase()}**
-Focus ONLY on discretionary spending the USER can personally limit:
-• [Expense Name]: Currently ₹X/month → Target ₹Y/month (save ₹Z)
-  - How: [Specific actionable tip - e.g., "Cook at home 3 days more per week"]
-• [Expense Name]: Currently ₹X/month → Target ₹Y/month (save ₹Z)
-  - How: [Specific actionable tip]
-• [List 3-5 expenses that USER can control through their own habits]
-• **Total Potential Savings: ₹X/month**
+Focus ONLY on discretionary spending the USER can personally limit. Group each expense with its action plan using proper indentation:
+
+• **Swiggy** (Food Delivery)
+  → Current: ₹5,000/month | Target: ₹3,000/month | Savings: ₹2,000/month
+  → **Action**: Cook at home 3 days more per week instead of ordering
+
+• **Amazon** (Online Shopping)
+  → Current: ₹8,000/month | Target: ₹5,000/month | Savings: ₹3,000/month
+  → **Action**: Create wishlist, wait 48 hours before purchasing, avoid impulse buys
+
+(List 3-5 expenses that USER can control through their own habits)
+
+**Total Potential Savings: ₹X/month**
 
 **🔄 SUBSCRIPTION & LIFESTYLE REVIEW**
 • [Subscription 1]: ₹X/month - [Keep/Pause/Cancel recommendation with reason]
@@ -4645,28 +4964,45 @@ Focus ONLY on discretionary spending the USER can personally limit:
 • Redundant subscriptions found: [List if multiple similar services]
 • Potential subscription savings: ₹X/month
 
-**🏦 LOAN & EMI ANALYSIS**
-For each loan/EMI from the data above, analyze:
-• **[Loan/EMI Name]**: ₹X/month EMI
-  - Progress: [X/Y EMIs paid]
-  - Interest Rate: [X%] - [GOOD/ACCEPTABLE/HIGH based on loan type]
-  - Recommendation: [Keep paying/Consider pre-closure if high interest]
-  - Pre-closure advice: [Only if interest rate is HIGH - suggest pre-closing with lump sum if possible]
+**🏦 LOAN & EMI STATUS**
+(Only include this section if there are actionable items - high interest loans, pre-closure opportunities, or loans ending soon)
 
-LOAN INTEREST BENCHMARKS (for reference):
-- Home Loan: Below 9% is good, 9-10% acceptable, above 10% is high
-- Personal Loan: Below 12% is good, 12-15% acceptable, above 15% is high
-- Credit Card EMI: All are typically 12-18%, focus on completing quickly
-- Any loan above 18%: Consider pre-closure priority
+IF HIGH INTEREST LOANS EXIST:
+• **⚠️ [Loan Name]**: Consider pre-closure
+  → Current rate: X% (above Y% benchmark for this loan type)
+  → Balance: ₹Z remaining
+  → **Action**: [Specific pre-closure advice with amount if lump sum available]
+
+IF LOANS ENDING SOON (≤3 months):
+• **🎉 [Loan Name]**: Almost done!
+  → X EMI(s) remaining
+  → **Tip**: [e.g., "After this, redirect ₹X to investments"]
+
+IF ALL LOANS ARE HEALTHY:
+• ✓ All loans on track with competitive interest rates - no action needed
+
+LOAN INTEREST BENCHMARKS:
+→ Home: <9% good | Personal: <12% good | Card EMI: 12-18% typical | >18%: Pre-close priority
 
 **📈 INVESTMENT OPTIMIZATION**
-• Current Investment: ₹X/month ([Y%] of income)
-• Target Investment: ₹Z/month ([${data.budgetAnalysis?.targetRule?.invest || 20}%] of income)
-• Gap to Fill: ₹[amount]/month
-• Investment Breakdown:
-  - [Type 1]: ₹X (accumulated across months)
-  - [Type 2]: ₹Y (accumulated across months)
-• Recommendation: [Specific suggestion based on portfolio mix]
+(Only show if investment is below target OR if you have optimization suggestions)
+
+IF BELOW TARGET:
+• **Current**: ₹X/month (Y% of income)
+• **Target**: ₹Y/month (${data.budgetAnalysis?.targetRule?.invest || 20}% of income)
+• **Gap**: ₹Z/month (Z% short)
+• **Investment Breakdown** (from data above):
+  → [Type Name]: ₹X/month average
+  → [Type Name]: ₹Y/month average
+  (Only list types that exist in the data - skip undefined/null/empty types)
+• **Recommendation**: [Specific suggestion based on portfolio mix and gap]
+
+IF AT/ABOVE TARGET:
+• 🎉 **Current**: ₹X/month (Y% of income) - Meeting/Exceeding target!
+• **Investment Breakdown**:
+  → [Type Name]: ₹X/month
+  → [Type Name]: ₹Y/month
+• **Recommendation**: [Maintain or optimize allocation]
 
 **✅ PRIORITY ACTIONS FOR ${monthName.toUpperCase()}**
 List 5 specific actions in order of priority:
@@ -4682,12 +5018,23 @@ List 5 specific actions in order of priority:
 CRITICAL RULES FOR AI:
 ═══════════════════════════════════════════════════════════════
 
-FORMATTING:
-• Use bullet points (•) for EVERY item
-• Each bullet point on a NEW LINE
-• Use **bold** for expense names and key numbers
-• Keep each section clearly separated
-• No long paragraphs - break into bullet points
+FORMATTING RULES (CRITICAL):
+• **DO NOT use HTML tables** - they break the UI. Use simple bullet points with arrows (→) for comparisons
+• **Use hierarchical structure** with proper indentation:
+  - Main bullet (•) for category/expense name
+  - Sub-bullets with arrows (→) for details, indented with 2 spaces
+  - Example:
+    • **Swiggy** (Food Delivery)
+      → Current: ₹X/month | Target: ₹Y/month | Savings: ₹Z/month
+      → **Action**: [specific tip]
+• **Group related information together**:
+  - Category spending and its reduction action MUST be in the same bullet group
+  - Loan details and pre-closure advice MUST be in the same bullet group
+• Use **bold** for expense names, key numbers, and action items
+• Use arrows (→) for sub-items and comparisons
+• Each main bullet point on a NEW LINE
+• Keep sections clearly separated
+• No long paragraphs - break into structured bullet points
 
 NEVER SUGGEST REDUCING (these are MANDATORY):
 • Insurance premiums (health, life, vehicle)
@@ -4717,11 +5064,16 @@ LOAN ADVICE:
 • Personal loans with <12% interest are NOT bad loans
 • Home loans with <9% interest are NOT bad loans
 
-DATA USAGE:
+DATA USAGE & FILTERING:
 • USE EXACT names from the data provided
 • Reference actual EMI progress (X/Y paid) from data
 • Use actual investment amounts per month from data
+• **ONLY SHOW PROBLEMATIC CATEGORIES**:
+  - Spending categories: Only if OVER budget (don't mention if under/on target)
+  - Investment: Only if UNDER target (appreciate if above target)
+  - Loans: Only if high-interest or ending soon (skip healthy loans)
 • Categories show accumulated spending - don't negotiate, advise user to limit
+• Skip investment types that are undefined/null/empty in the data
 
 YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
 • If YoY data shows higher spending in same month last year, MENTION IT
@@ -4959,10 +5311,10 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
     
     /**
      * Get projected regular expenses for next month based on historical average
-     * Uses the average of the last 3 completed months (excluding current month)
+     * Uses the average of the last 6 completed months (excluding current month)
      */
     getProjectedRegularExpenses() {
-        return this.getProjectedRegularExpensesWithDetails().average;
+        return this.getProjectedRegularExpensesWithDetails(6).average;
     },
     
     /**
