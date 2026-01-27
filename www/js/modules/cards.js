@@ -1376,6 +1376,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         const today = new Date();
         const currentYear = today.getFullYear();
         const currentMonth = today.getMonth() + 1;
+        const currentMonthName = today.toLocaleDateString('en-US', { month: 'short' });
         
         if (window.Dashboard && window.Dashboard.getEmiItemsForMonth) {
             const currentMonthEMIs = window.Dashboard.getEmiItemsForMonth(currentYear, currentMonth);
@@ -1387,28 +1388,28 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             <!-- Row 1: Credit Limit & Outstanding -->
             <div class="grid grid-cols-2 gap-4 mb-3">
                 <div>
-                    <p class="text-xs opacity-70">Credit Limit</p>
-                    <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(summary.totalCreditLimit)}</p>
+                    <p class="text-xs opacity-90">Credit Limit</p>
+                    <p class="text-base font-bold">₹${Utils.formatIndianNumber(summary.totalCreditLimit)}</p>
                 </div>
                 <div class="text-right">
-                    <p class="text-xs opacity-70">Outstanding</p>
-                    <p class="text-2xl font-bold ${summary.totalOutstanding > 0 ? 'text-yellow-200' : ''}">₹${Utils.formatIndianNumber(summary.totalOutstanding)}</p>
+                    <p class="text-xs opacity-90">Outstanding</p>
+                    <p class="text-base font-bold ${summary.totalOutstanding > 0 ? 'text-yellow-200' : ''}">₹${Utils.formatIndianNumber(summary.totalOutstanding)}</p>
                 </div>
             </div>
             
             <!-- Row 2: Bills Due & EMIs -->
-            <div class="grid grid-cols-2 gap-3 border-t border-white border-opacity-20 pt-3">
+            <div class="grid grid-cols-2 gap-4 border-t border-white border-opacity-20 pt-3">
                 <div>
                     <div class="flex items-center gap-2">
-                        <span class="text-xs opacity-70">Bills Due ${summary.unpaidBillsCount > 0 ? `(${summary.unpaidBillsCount})` : ''}</span>
+                        <span class="text-xs opacity-90">Bills Due ${summary.unpaidBillsCount > 0 ? `(${summary.unpaidBillsCount})` : ''}</span>
                         <button onclick="Cards.getAllBills()" class="text-[10px] bg-white bg-opacity-25 hover:bg-opacity-40 px-1.5 py-0.5 rounded transition-all">📥 Get</button>
                         <button onclick="Cards.showGroupsModal()" class="text-[10px] bg-white bg-opacity-25 hover:bg-opacity-40 px-1.5 py-0.5 rounded transition-all" title="Manage Card Groups">🔗</button>
                     </div>
-                    <p class="font-bold text-lg ${summary.totalBillsDue > 0 ? 'text-orange-200' : ''}">₹${Utils.formatIndianNumber(summary.totalBillsDue)}</p>
+                    <p class="text-sm font-bold ${summary.totalBillsDue > 0 ? 'text-orange-200' : ''}">₹${Utils.formatIndianNumber(summary.totalBillsDue)}</p>
                 </div>
                 <div class="text-right">
-                    <p class="text-xs opacity-70">EMIs ${summary.activeEmiCount > 0 ? `(${summary.activeEmiCount})` : ''}</p>
-                    <p class="font-bold text-lg">₹${Utils.formatIndianNumber(summary.totalEmis)}</p>
+                    <p class="text-xs opacity-90">EMIs ${summary.activeEmiCount > 0 ? `(${summary.activeEmiCount})` : ''}</p>
+                    <p class="text-sm font-bold">₹${Utils.formatIndianNumber(summary.totalEmis)}</p>
                 </div>
             </div>
             
@@ -1416,8 +1417,8 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             ${currentMonthEMIAmount > 0 ? `
             <div class="border-t border-white border-opacity-20 pt-3 mt-3">
                 <div class="flex items-center justify-between">
-                    <p class="text-xs opacity-70">This Month EMI</p>
-                    <p class="font-bold text-lg">₹${Utils.formatIndianNumber(currentMonthEMIAmount)}</p>
+                    <p class="text-xs opacity-90">${currentMonthName} EMI</p>
+                    <p class="text-base font-bold">₹${Utils.formatIndianNumber(currentMonthEMIAmount)}</p>
                 </div>
             </div>
             ` : ''}

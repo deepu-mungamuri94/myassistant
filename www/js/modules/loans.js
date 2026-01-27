@@ -473,6 +473,21 @@ const Loans = {
             activeLoans.sort((a, b) => new Date(a.firstEmiDate) - new Date(b.firstEmiDate));
             closedLoans.sort((a, b) => new Date(a.firstEmiDate) - new Date(b.firstEmiDate));
             
+            // Calculate current month EMI amount for loans
+            let currentMonthEMIAmount = 0;
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth() + 1;
+            const currentMonthName = today.toLocaleDateString('en-US', { month: 'short' });
+            
+            if (window.Dashboard && window.Dashboard.getEmiItemsForMonth) {
+                const currentMonthEMIs = window.Dashboard.getEmiItemsForMonth(currentYear, currentMonth);
+                // Filter only loan EMIs (not card EMIs)
+                currentMonthEMIAmount = currentMonthEMIs
+                    .filter(emi => emi.type === 'loan')
+                    .reduce((sum, emi) => sum + (parseFloat(emi.amount) || 0), 0);
+            }
+            
             // Render summary for borrowed
             borrowedSummary = `
                 <div class="mb-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl p-4 shadow-lg">
@@ -481,7 +496,7 @@ const Loans = {
                             <p class="text-xs opacity-90">Total Borrowed</p>
                             <p class="text-base font-bold">₹${Utils.formatIndianNumber(totalAmountTaken)}</p>
                         </div>
-                        <div>
+                        <div class="text-right">
                             <p class="text-xs opacity-90">Remaining to Pay</p>
                             <p class="text-base font-bold">₹${Utils.formatIndianNumber(totalRemainingAmount)}</p>
                         </div>
@@ -492,12 +507,20 @@ const Loans = {
                             <p class="text-sm font-bold text-yellow-200">₹${Utils.formatIndianNumber(Math.round(totalInterestPaidSoFar))}</p>
                         </div>
                         ${latestClosureDate ? `
-                            <div>
+                            <div class="text-right">
                                 <p class="text-xs opacity-90">Last EMI Date</p>
                                 <p class="text-sm font-bold">${latestClosureDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
                             </div>
                         ` : '<div></div>'}
                     </div>
+                    ${currentMonthEMIAmount > 0 ? `
+                    <div class="border-t border-white border-opacity-20 pt-3 mt-3">
+                        <div class="flex items-center justify-between">
+                            <p class="text-xs opacity-90">${currentMonthName} EMI</p>
+                            <p class="text-base font-bold">₹${Utils.formatIndianNumber(currentMonthEMIAmount)}</p>
+                        </div>
+                    </div>
+                    ` : ''}
                 </div>
             `;
             

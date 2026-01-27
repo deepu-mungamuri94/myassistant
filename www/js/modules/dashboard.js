@@ -6442,7 +6442,7 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         
         // Initialize expanded sections state
         if (!settlementData.expandedSections) {
-            settlementData.expandedSections = { cards: false, recurring: false, loans: false, custom: false };
+            settlementData.expandedSections = { cards: false, recurring: false, loans: false, custom: false, summary: false };
         }
         
         // Calculate totals
@@ -6486,19 +6486,10 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
                         <!-- Summary Section: Income and Balance -->
                         <div class="grid grid-cols-2 gap-3 mb-4">
                             <!-- Income Summary -->
-                            <div class="bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-lg p-3">
+                            <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-3">
+                                <!-- First line: Income label on left, Month filter on right -->
                                 <div class="flex items-center justify-between mb-2">
-                                    <p class="text-xs text-blue-600 font-medium">Income</p>
-                                    <div class="text-xl">💰</div>
-                                </div>
-                                <p class="text-xl font-bold text-blue-900 mb-1">₹${Utils.formatIndianNumber(income)}</p>
-                                ${isEstimatedIncome ? `
-                                    <p class="text-[9px] text-blue-500 mb-1">~ Estimated from payslip</p>
-                                ` : income > 0 ? `
-                                    <p class="text-[9px] text-blue-500 mb-1">✓ Actual salary</p>
-                                ` : ''}
-                                <div class="flex items-center gap-1.5">
-                                    <label class="text-[10px] text-blue-600">Month:</label>
+                                    <p class="text-xs text-green-600 font-medium">Income</p>
                                     <div class="relative">
                                         <input type="month" id="settlement-income-month-selector" 
                                                value="${settlementData.incomeMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`}"
@@ -6506,42 +6497,38 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
                                                class="absolute opacity-0 pointer-events-none">
                                         <button id="settlement-income-month-button" 
                                                 onclick="document.getElementById('settlement-income-month-selector').showPicker()"
-                                                class="px-2 py-1 border border-blue-300 rounded text-[10px] font-medium text-blue-700 hover:bg-blue-50 transition-all whitespace-nowrap">
+                                                class="px-2 py-1 border border-green-300 rounded text-[10px] font-medium text-green-700 hover:bg-green-50 transition-all whitespace-nowrap">
                                             ${this.getFormattedMonth(settlementData.incomeMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`)} ▼
                                         </button>
                                     </div>
                                 </div>
+                                <!-- Second line: Amount -->
+                                <p class="text-xl font-bold text-green-900 mb-1">₹${Utils.formatIndianNumber(income)}</p>
+                                <!-- Below: Info text -->
+                                ${isEstimatedIncome ? `
+                                    <p class="text-[9px] text-green-500">~ Estimated from payslip</p>
+                                ` : income > 0 ? `
+                                    <p class="text-[9px] text-green-500">✓ Actual salary</p>
+                                ` : ''}
                             </div>
                             
                             <!-- Final Balance Summary -->
-                            <div class="bg-gradient-to-r ${balance >= 0 ? 'from-green-500 to-emerald-600' : 'from-red-500 to-pink-600'} rounded-lg p-3 text-white relative overflow-hidden">
-                                <div class="flex items-center justify-between mb-2 relative z-10">
-                                    <p class="text-xs opacity-90">Final Balance</p>
-                                    <div class="relative">
-                                        ${balance >= 0 ? `
-                                            <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30 shadow-md">
-                                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                                                </svg>
-                                            </div>
-                                        ` : `
-                                            <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30 shadow-md">
-                                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                                </svg>
-                                            </div>
-                                        `}
-                                    </div>
+                            <div class="bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-lg p-3">
+                                <!-- First line: Final Balance label -->
+                                <div class="mb-2">
+                                    <p class="text-xs text-blue-600 font-medium">Final Balance</p>
                                 </div>
-                                <p class="text-xl font-bold relative z-10">₹${Utils.formatIndianNumber(balance)}</p>
-                                <p class="text-[10px] opacity-80 mt-1 relative z-10">Income - Deductions</p>
+                                <!-- Second line: Amount -->
+                                <p class="text-xl font-bold text-blue-900 mb-1">₹${Utils.formatIndianNumber(balance)}</p>
+                                <!-- Below: Info text -->
+                                <p class="text-[10px] text-blue-500">Income - Deductions</p>
                             </div>
                         </div>
                         
                         <!-- Credit Card Bills (Collapsible) -->
-                        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
                             <button onclick="Dashboard.toggleSettlementSection('cards', ${year}, ${month})" 
-                                    class="w-full flex items-center justify-between p-2.5 hover:bg-gray-50 transition-colors">
+                                    class="w-full flex items-center justify-between p-2.5 hover:bg-gray-100 transition-colors">
                                 <div class="flex items-center gap-2">
                                     <span class="text-sm">💳</span>
                                     <div class="text-left">
@@ -6620,9 +6607,9 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
                         </div>
                         
                         <!-- Recurring Payments (Collapsible) -->
-                        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
                             <button onclick="Dashboard.toggleSettlementSection('recurring', ${year}, ${month})" 
-                                    class="w-full flex items-center justify-between p-2.5 hover:bg-gray-50 transition-colors">
+                                    class="w-full flex items-center justify-between p-2.5 hover:bg-gray-100 transition-colors">
                                 <div class="flex items-center gap-2">
                                     <span class="text-sm">🔄</span>
                                     <div class="text-left">
@@ -6676,9 +6663,9 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
                         </div>
                         
                         <!-- Loan EMIs (Collapsible) -->
-                        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
                             <button onclick="Dashboard.toggleSettlementSection('loans', ${year}, ${month})" 
-                                    class="w-full flex items-center justify-between p-2.5 hover:bg-gray-50 transition-colors">
+                                    class="w-full flex items-center justify-between p-2.5 hover:bg-gray-100 transition-colors">
                                 <div class="flex items-center gap-2">
                                     <span class="text-sm">🏦</span>
                                     <div class="text-left">
@@ -6732,9 +6719,9 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
                         </div>
                         
                         <!-- Custom Items (Collapsible) -->
-                        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
                             <button onclick="Dashboard.toggleSettlementSection('custom', ${year}, ${month})" 
-                                    class="w-full flex items-center justify-between p-2.5 hover:bg-gray-50 transition-colors">
+                                    class="w-full flex items-center justify-between p-2.5 hover:bg-gray-100 transition-colors">
                                 <div class="flex items-center gap-2">
                                     <span class="text-sm">➕</span>
                                     <div class="text-left">
@@ -6775,29 +6762,40 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
                             </div>
                         </div>
                         
-                        <!-- Summary -->
-                        <div class="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-300 rounded-lg p-2.5">
-                            <div class="space-y-1">
-                                <div class="flex justify-between text-xs">
-                                    <span class="text-gray-600">Credit Card Bills:</span>
-                                    <span class="font-semibold text-gray-900">₹${Utils.formatIndianNumber(cardsTotal)}</span>
+                        <!-- Summary (Collapsible) -->
+                        <div class="bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-lg overflow-hidden">
+                            <button onclick="Dashboard.toggleSettlementSection('summary', ${year}, ${month})" 
+                                    class="w-full flex items-center justify-between p-2.5 hover:bg-red-100 transition-colors">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm">📊</span>
+                                    <div class="text-left">
+                                        <p class="text-xs font-semibold text-red-600">Total Deductions</p>
+                                    </div>
                                 </div>
-                                <div class="flex justify-between text-xs">
-                                    <span class="text-gray-600">Recurring Payments:</span>
-                                    <span class="font-semibold text-gray-900">₹${Utils.formatIndianNumber(recurringTotal)}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold text-red-600">₹${Utils.formatIndianNumber(totalDeductions)}</span>
+                                    <svg id="summary-arrow" class="w-4 h-4 text-red-500 transform transition-transform ${settlementData.expandedSections?.summary ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
                                 </div>
-                                <div class="flex justify-between text-xs">
-                                    <span class="text-gray-600">Loan EMIs:</span>
-                                    <span class="font-semibold text-gray-900">₹${Utils.formatIndianNumber(loansTotal)}</span>
-                                </div>
-                                <div class="flex justify-between text-xs">
-                                    <span class="text-gray-600">Custom Items:</span>
-                                    <span class="font-semibold text-gray-900">₹${Utils.formatIndianNumber(customItemsTotal)}</span>
-                                </div>
-                                <div class="border-t border-gray-300 pt-1 mt-1">
-                                    <div class="flex justify-between text-xs font-bold">
-                                        <span class="text-gray-700">Total Deductions:</span>
-                                        <span class="text-gray-900">₹${Utils.formatIndianNumber(totalDeductions)}</span>
+                            </button>
+                            <div id="summary-content" class="${settlementData.expandedSections?.summary ? '' : 'hidden'} px-3 pb-3 pt-3 space-y-1 border-t border-red-200">
+                                <div class="space-y-1">
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-red-600">Credit Card Bills:</span>
+                                        <span class="font-semibold text-red-700">₹${Utils.formatIndianNumber(cardsTotal)}</span>
+                                    </div>
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-red-600">Recurring Payments:</span>
+                                        <span class="font-semibold text-red-700">₹${Utils.formatIndianNumber(recurringTotal)}</span>
+                                    </div>
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-red-600">Loan EMIs:</span>
+                                        <span class="font-semibold text-red-700">₹${Utils.formatIndianNumber(loansTotal)}</span>
+                                    </div>
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-red-600">Custom Items:</span>
+                                        <span class="font-semibold text-red-700">₹${Utils.formatIndianNumber(customItemsTotal)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -6830,10 +6828,10 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
         if (!window.DB.settlementData) window.DB.settlementData = {};
         if (!window.DB.settlementData[monthKey]) {
-            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: false, recurring: false, loans: false, custom: false } };
+            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: false, recurring: false, loans: false, custom: false, summary: false } };
         }
         if (!window.DB.settlementData[monthKey].expandedSections) {
-            window.DB.settlementData[monthKey].expandedSections = { cards: false, recurring: false, loans: false, custom: false };
+            window.DB.settlementData[monthKey].expandedSections = { cards: false, recurring: false, loans: false, custom: false, summary: false };
         }
         
         // Toggle the state
@@ -6862,17 +6860,17 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
         if (!window.DB.settlementData) window.DB.settlementData = {};
         if (!window.DB.settlementData[monthKey]) {
-            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledCards: [], customItems: [], expandedSections: { cards: true, recurring: false, custom: false } };
+            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: true, recurring: false, loans: false, custom: false, summary: false } };
         }
         if (!Array.isArray(window.DB.settlementData[monthKey].enabledCards)) {
             window.DB.settlementData[monthKey].enabledCards = [];
         }
         if (!window.DB.settlementData[monthKey].expandedSections) {
-            window.DB.settlementData[monthKey].expandedSections = { cards: true, recurring: false, custom: false };
+            window.DB.settlementData[monthKey].expandedSections = { cards: true, recurring: false, loans: false, custom: false, summary: false };
         }
         
         // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: true, recurring: false, loans: false, custom: false };
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: true, recurring: false, loans: false, custom: false, summary: false };
         
         const enabledCards = window.DB.settlementData[monthKey].enabledCards || [];
         const cardIdStr = String(cardId);
@@ -6928,7 +6926,7 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         }
         
         // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: true, loans: false, custom: false };
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: true, loans: false, custom: false, summary: false };
         
         window.DB.settlementData[monthKey].recurringMonth = recurringMonthValue;
         window.DB.settlementData[monthKey].expandedSections = expandedState;
@@ -6954,7 +6952,7 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         }
         
         // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: false, loans: true, custom: false };
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: false, loans: true, custom: false, summary: false };
         
         window.DB.settlementData[monthKey].loansMonth = loansMonthValue;
         window.DB.settlementData[monthKey].expandedSections = expandedState;
@@ -6976,17 +6974,17 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
         if (!window.DB.settlementData) window.DB.settlementData = {};
         if (!window.DB.settlementData[monthKey]) {
-            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: false, recurring: false, loans: true, custom: false } };
+            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: false, recurring: false, loans: true, custom: false, summary: false } };
         }
         if (!window.DB.settlementData[monthKey].enabledLoanEmis) {
             window.DB.settlementData[monthKey].enabledLoanEmis = [];
         }
         if (!window.DB.settlementData[monthKey].expandedSections) {
-            window.DB.settlementData[monthKey].expandedSections = { cards: false, recurring: false, loans: true, custom: false };
+            window.DB.settlementData[monthKey].expandedSections = { cards: false, recurring: false, loans: true, custom: false, summary: false };
         }
         
         // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: false, loans: true, custom: false };
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: false, loans: true, custom: false, summary: false };
         
         const enabledLoanEmis = window.DB.settlementData[monthKey].enabledLoanEmis;
         const index = enabledLoanEmis.indexOf(itemName);
@@ -7029,7 +7027,7 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         }).filter(card => card.billAmount > 0 || card.outstandingAmount > 0); // Skip cards with both amounts as 0
         
         // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: true, recurring: false, loans: false, custom: false };
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: true, recurring: false, loans: false, custom: false, summary: false };
         
         // Save current data as loaded data
         window.DB.settlementData[monthKey].savedCardData = currentCardData;
@@ -7050,7 +7048,7 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         }
         
         // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: true, recurring: false, loans: false, custom: false };
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: true, recurring: false, loans: false, custom: false, summary: false };
         
         // Revert to saved data
         window.DB.settlementData[monthKey].cardDataLoaded = false;
@@ -7067,17 +7065,17 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
         if (!window.DB.settlementData) window.DB.settlementData = {};
         if (!window.DB.settlementData[monthKey]) {
-            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: true, recurring: false, loans: false, custom: false } };
+            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: true, recurring: false, loans: false, custom: false, summary: false } };
         }
         if (!window.DB.settlementData[monthKey].cardSelections) {
             window.DB.settlementData[monthKey].cardSelections = {};
         }
         if (!window.DB.settlementData[monthKey].expandedSections) {
-            window.DB.settlementData[monthKey].expandedSections = { cards: true, recurring: false, loans: false, custom: false };
+            window.DB.settlementData[monthKey].expandedSections = { cards: true, recurring: false, loans: false, custom: false, summary: false };
         }
         
         // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: true, recurring: false, loans: false, custom: false };
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: true, recurring: false, loans: false, custom: false, summary: false };
         
         window.DB.settlementData[monthKey].cardSelections[cardId] = selectionType;
         window.DB.settlementData[monthKey].expandedSections = expandedState;
@@ -7092,17 +7090,17 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
         if (!window.DB.settlementData) window.DB.settlementData = {};
         if (!window.DB.settlementData[monthKey]) {
-            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: false, recurring: true, loans: false, custom: false } };
+            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: false, recurring: true, loans: false, custom: false, summary: false } };
         }
         if (!window.DB.settlementData[monthKey].enabledRecurring) {
             window.DB.settlementData[monthKey].enabledRecurring = [];
         }
         if (!window.DB.settlementData[monthKey].expandedSections) {
-            window.DB.settlementData[monthKey].expandedSections = { cards: false, recurring: true, loans: false, custom: false };
+            window.DB.settlementData[monthKey].expandedSections = { cards: false, recurring: true, loans: false, custom: false, summary: false };
         }
         
         // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: true, loans: false, custom: false };
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: true, loans: false, custom: false, summary: false };
         
         const enabledRecurring = window.DB.settlementData[monthKey].enabledRecurring;
         const index = enabledRecurring.indexOf(itemName);
@@ -7212,7 +7210,7 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
             window.DB.settlementData[monthKey].customItems = [];
         }
         // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: false, custom: true };
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: false, loans: false, custom: true, summary: false };
         
         window.DB.settlementData[monthKey].customItems.push({ name: name, amount: amount });
         window.DB.settlementData[monthKey].expandedSections = expandedState;
