@@ -1159,12 +1159,19 @@
                 <div id="expense-modal-title-error" class="text-red-600 text-xs mt-1 hidden"></div>
             </div>
             
-            <div class="mb-3">
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
-                    <input type="number" id="expense-modal-amount" placeholder="Amount (e.g., 100)" step="0.01" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" oninput="clearFieldError('expense-modal-amount')">
+            <!-- Amount and Date on same line -->
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
+                        <input type="number" id="expense-modal-amount" placeholder="Amount (e.g., 100)" step="0.01" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" oninput="clearFieldError('expense-modal-amount')">
+                    </div>
+                    <div id="expense-modal-amount-error" class="text-red-600 text-xs mt-1 hidden"></div>
                 </div>
-                <div id="expense-modal-amount-error" class="text-red-600 text-xs mt-1 hidden"></div>
+                <div>
+                    <input type="date" id="expense-modal-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" onchange="clearFieldError('expense-modal-date'); updateExpenseBudgetMonthSuggestion()">
+                    <div id="expense-modal-date-error" class="text-red-600 text-xs mt-1 hidden"></div>
+                </div>
             </div>
             
             <div class="mb-3">
@@ -1188,9 +1195,15 @@
                 <div id="expense-modal-category-error" class="text-red-600 text-xs mt-1 hidden"></div>
             </div>
             
+            <!-- Need/Want Dropdown -->
             <div class="mb-3">
-                <input type="date" id="expense-modal-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" onchange="clearFieldError('expense-modal-date'); updateExpenseBudgetMonthSuggestion()">
-                <div id="expense-modal-date-error" class="text-red-600 text-xs mt-1 hidden"></div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Need/Want</label>
+                <select id="expense-modal-need-want" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <option value="">Auto (based on category)</option>
+                    <option value="need">Need</option>
+                    <option value="want">Want</option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">Used for budget analysis. Leave as "Auto" to use category-based classification.</p>
             </div>
             
             <!-- Budget Month Selector -->
@@ -4294,6 +4307,7 @@
             document.getElementById('expense-category-btn').innerHTML = '<span class="text-gray-500">Select Category</span><svg class=\'w-5 h-5 text-gray-400 flex-shrink-0\' fill=\'none\' stroke=\'currentColor\' viewBox=\'0 0 24 24\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M9 5l7 7-7 7\'/></svg>';
             document.getElementById('expense-modal-date').value = today;
             document.getElementById('expense-modal-event').value = '';
+            document.getElementById('expense-modal-need-want').value = '';
             document.getElementById('expense-payment-method-type').value = '';
             document.getElementById('expense-payment-method-id').value = '';
             document.getElementById('expense-payment-method-name').value = '';
@@ -4830,6 +4844,7 @@
             const date = document.getElementById('expense-modal-date').value;
             const description = document.getElementById('expense-modal-description').value.trim();
             const event = document.getElementById('expense-modal-event').value.trim();
+            const needWant = document.getElementById('expense-modal-need-want').value.trim() || null; // null if empty (use category fallback)
             const budgetMonth = parseInt(document.getElementById('expense-budget-month').value);
             const budgetYear = parseInt(document.getElementById('expense-budget-year').value);
             const paymentMethodType = document.getElementById('expense-payment-method-type').value;
@@ -4946,6 +4961,7 @@
                         expense.date = date;
                         expense.description = description;
                         expense.event = event || null;
+                        expense.needWant = needWant; // 'need', 'want', or null (for category fallback)
                         expense.budgetMonth = budgetMonth;
                         expense.budgetYear = budgetYear;
                         expense.paymentMethod = paymentMethod;
@@ -4956,6 +4972,7 @@
                     // Add new expense with budget month
                     const newExpense = Expenses.add(title, amount, category, date, description, null, event);
                     if (newExpense) {
+                        newExpense.needWant = needWant; // 'need', 'want', or null (for category fallback)
                         newExpense.budgetMonth = budgetMonth;
                         newExpense.budgetYear = budgetYear;
                         newExpense.paymentMethod = paymentMethod;

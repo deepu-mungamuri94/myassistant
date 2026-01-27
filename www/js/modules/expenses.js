@@ -29,7 +29,7 @@ const Expenses = {
     /**
      * Add a new expense
      */
-    add(title, amount, category, date, description = '', suggestedCard = null, event = null) {
+    add(title, amount, category, date, description = '', suggestedCard = null, event = null, needWant = null) {
         if (!title || !amount || !category || !date) {
             throw new Error('Please fill in all required fields');
         }
@@ -43,6 +43,7 @@ const Expenses = {
             date,
             suggestedCard,
             event: event || null, // Optional event tag for grouping related expenses
+            needWant: needWant || null, // 'need', 'want', or null (for category fallback)
             createdAt: Utils.getCurrentTimestamp()
         };
         
@@ -69,6 +70,7 @@ const Expenses = {
         if (updates.description !== undefined) expense.description = updates.description;
         if (updates.suggestedCard !== undefined) expense.suggestedCard = updates.suggestedCard;
         if (updates.event !== undefined) expense.event = updates.event || null;
+        if (updates.needWant !== undefined) expense.needWant = updates.needWant || null;
         
         window.Storage.save();
         return expense;

@@ -2001,6 +2001,26 @@ const Dashboard = {
                 if (expYear !== year || expMonth !== month) {
                     return false;
                 }
+                
+                // Check needWant first (if set), then fallback to category
+                if (exp.needWant) {
+                    if (exp.needWant === 'need') {
+                        // Check loan EMI exclusion
+                        if (!includeLoanEmis) {
+                            const category = exp.category || 'Other';
+                            if (category.toLowerCase() === 'loan emi' || category.toLowerCase() === 'emi') {
+                                if (this.isLoanEmi(exp)) {
+                                    return false; // Exclude loan EMIs
+                                }
+                            }
+                        }
+                        return true;
+                    } else {
+                        return false; // Explicitly marked as 'want'
+                    }
+                }
+                
+                // Fallback to category-based classification
                 const category = exp.category || 'Other';
                 
                 // Check if this is a Needs category
@@ -2042,6 +2062,13 @@ const Dashboard = {
                 if (expYear !== year || expMonth !== month) {
                     return false;
                 }
+                
+                // Check needWant first (if set), then fallback to category
+                if (exp.needWant) {
+                    return exp.needWant === 'want';
+                }
+                
+                // Fallback to category-based classification
                 const category = exp.category || 'Other';
                 return this.wantsCategories.some(c => c.toLowerCase() === category.toLowerCase());
             })
@@ -2127,6 +2154,26 @@ const Dashboard = {
                 if (expYear !== year || expMonth !== month) {
                     return false;
                 }
+                
+                // Check needWant first (if set), then fallback to category
+                if (exp.needWant) {
+                    if (exp.needWant === 'need') {
+                        // Check loan EMI exclusion
+                        if (!includeLoanEmis) {
+                            const category = exp.category || 'Other';
+                            if (category.toLowerCase() === 'loan emi' || category.toLowerCase() === 'emi') {
+                                if (this.isLoanEmi(exp)) {
+                                    return false; // Exclude loan EMIs
+                                }
+                            }
+                        }
+                        return true;
+                    } else {
+                        return false; // Explicitly marked as 'want'
+                    }
+                }
+                
+                // Fallback to category-based classification
                 const category = exp.category || 'Other';
                 
                 // Check if this is a Needs category
@@ -2161,6 +2208,13 @@ const Dashboard = {
                 if (expYear !== year || expMonth !== month) {
                     return false;
                 }
+                
+                // Check needWant first (if set), then fallback to category
+                if (exp.needWant) {
+                    return exp.needWant === 'want';
+                }
+                
+                // Fallback to category-based classification
                 const category = exp.category || 'Other';
                 return this.wantsCategories.some(c => c.toLowerCase() === category.toLowerCase());
             })
@@ -4346,24 +4400,28 @@ const Dashboard = {
         
         // Find highest and lowest months
         const amounts = investmentMonths.map(m => m.amount);
-        const maxAmount = Math.max(...amounts);
-        const minAmount = Math.min(...amounts);
+        const maxAmount = amounts.length > 0 ? Math.max(...amounts) : 0;
+        const minAmount = amounts.length > 0 ? Math.min(...amounts) : 0;
         const maxMonth = investmentMonths.find(m => m.amount === maxAmount);
         const minMonth = investmentMonths.find(m => m.amount === minAmount);
         const variation = maxAmount - minAmount;
         const variationPercent = minAmount > 0 ? Math.round((variation / minAmount) * 100) : 0;
         
+        // Create investments object with fluctuation data
+        const totalInvestments = Object.values(investmentsByMonth).reduce((sum, m) => sum + (m.total || 0), 0);
+        const monthlyAvg = ANALYSIS_MONTHS > 0 ? Math.round(totalInvestments / ANALYSIS_MONTHS) : 0;
+        
         data.investments = {
             byMonth: investmentsByMonth,
-            totalLastMonths: Object.values(investmentsByMonth).reduce((sum, m) => sum + m.total, 0),
-            monthlyAvg: Math.round(Object.values(investmentsByMonth).reduce((sum, m) => sum + m.total, 0) / ANALYSIS_MONTHS),
+            totalLastMonths: totalInvestments,
+            monthlyAvg: monthlyAvg,
             // Fluctuation analysis
-            fluctuations: fluctuations,
-            highestMonth: maxMonth ? { month: maxMonth.month, amount: maxAmount } : null,
-            lowestMonth: minMonth ? { month: minMonth.month, amount: minAmount } : null,
-            variation: variation,
-            variationPercent: variationPercent,
-            monthlyBreakdown: investmentMonths
+            fluctuations: fluctuations || [],
+            highestMonth: maxMonth && maxAmount > 0 ? { month: maxMonth.month, amount: maxAmount } : null,
+            lowestMonth: minMonth && minAmount > 0 ? { month: minMonth.month, amount: minAmount } : null,
+            variation: variation || 0,
+            variationPercent: variationPercent || 0,
+            monthlyBreakdown: investmentMonths || []
         };
         
         // Budget Rule Analysis (Needs/Wants/Invest) for last 6 months
@@ -4423,6 +4481,54 @@ const Dashboard = {
             wantsDeviation: avgWants - budgetRule.wants,
             investDeviation: avgInvest - budgetRule.invest
         };
+        
+        // Calculate target comparison for investments (AFTER budgetAnalysis is created)
+        const investTargetPercent = budgetRule.invest; // e.g., 20%
+        const targetComparisons = [];
+        let targetMisses = 0;
+        let targetHits = 0;
+        
+        // Match investment months with budget analysis months for target comparison
+        if (data.budgetAnalysis && data.budgetAnalysis.monthlyBreakdown) {
+            data.budgetAnalysis.monthlyBreakdown.forEach(monthData => {
+                const investData = investmentMonths.find(m => m.month === monthData.month);
+                const actualInvest = investData ? investData.amount : 0;
+                const actualPercent = monthData.invest.percent;
+                const targetAmount = monthData.income > 0 ? Math.round((monthData.income * investTargetPercent) / 100) : 0;
+                const missedTarget = actualPercent < investTargetPercent;
+                
+                if (missedTarget) targetMisses++;
+                else if (actualPercent >= investTargetPercent) targetHits++;
+                
+                targetComparisons.push({
+                    month: monthData.month,
+                    income: monthData.income,
+                    actualAmount: actualInvest,
+                    actualPercent: actualPercent,
+                    targetAmount: targetAmount,
+                    targetPercent: investTargetPercent,
+                    missedTarget: missedTarget,
+                    deviation: actualPercent - investTargetPercent,
+                    gapAmount: Math.max(0, targetAmount - actualInvest)
+                });
+            });
+        }
+        
+        // Calculate severity metrics
+        const totalMonths = targetComparisons.length;
+        const missRate = totalMonths > 0 ? (targetMisses / totalMonths) * 100 : 0;
+        const severity = missRate >= 50 ? 'critical' : missRate >= 30 ? 'serious' : missRate > 0 ? 'moderate' : 'none';
+        
+        // Add target comparison to investments object (ensure it exists first)
+        if (!data.investments) {
+            data.investments = {};
+        }
+        data.investments.targetPercent = investTargetPercent;
+        data.investments.targetComparisons = targetComparisons;
+        data.investments.targetMisses = targetMisses;
+        data.investments.targetHits = targetHits;
+        data.investments.missRate = Math.round(missRate);
+        data.investments.severity = severity;
         
         // Calculate insights
         const totalRecurring = data.recurringPayments.reduce((sum, r) => sum + r.amount, 0);
@@ -4987,20 +5093,16 @@ ${data.investments?.variation ? `• Variation Range: ₹${Math.round(data.inves
 RESPOND IN THIS EXACT FORMAT. Use proper hierarchical bullet points with indentation. DO NOT use HTML tables.
 
 **📊 BUDGET HEALTH ANALYSIS**
-(Only mention categories that are problematic - over budget for spending, under for investment)
+(Only mention categories that are problematic - over budget for spending)
 
 IF PROBLEMS EXIST:
 • **Needs**: X% actual vs Y% target → ⚠️ **OVER by Z%** = ₹[amount]/month
 • **Wants**: X% actual vs Y% target → ⚠️ **OVER by Z%** = ₹[amount]/month
-• **Invest**: X% actual vs Y% target → ⚠️ **UNDER by Z%** = ₹[amount]/month gap
 • **Key Issue**: [One-line summary of main budget problem]
 • **Total Over Budget**: ₹[amount]/month across all categories
 
-IF INVESTMENT EXCEEDS TARGET:
-• 🎉 **Investment**: X% actual vs Y% target → **EXCEEDING by Z%** (₹[amount]/month extra) - Excellent!
-
 IF ALL GOOD:
-• ✓ All categories within budget - Great job!
+• ✓ All spending categories within budget - Great job!
 
 **🎂 EXPECTED ANNUAL EVENTS FOR ${monthName.toUpperCase()}**
 Based on Year-over-Year data and detected patterns, list expected expenses:
@@ -5054,42 +5156,102 @@ IF ALL LOANS ARE HEALTHY:
 LOAN INTEREST BENCHMARKS:
 → Home: <9% good | Personal: <12% good | Card EMI: 12-18% typical | >18%: Pre-close priority
 
-**📈 INVESTMENT ANALYSIS & FLUCTUATIONS**
-(Always analyze investment patterns, fluctuations, and deviations from budget rule)
+**📈 INVESTMENT HEALTH ANALYSIS**
+(Focus on fluctuation patterns, target comparison, and investment health)
 
-CRITICAL ANALYSIS REQUIRED:
-1. **Identify Fluctuations**: 
-   - Which months had significant increases/decreases?
-   - What caused the fluctuations? (e.g., "Dec dropped 40% due to holiday spending")
-   - Is there a pattern? (e.g., "Consistently lower in first 3 months")
+CRITICAL TARGET COMPARISON ANALYSIS REQUIRED:
+1. **Target Miss Analysis**:
+   - Compare each month's investment % against target ${data.investments?.targetPercent || 20}%
+   - Count how many months missed the target: ${data.investments?.targetMisses || 0} out of ${data.investments?.targetComparisons?.length || 0} months
+   - Calculate miss rate: ${data.investments?.missRate || 0}%
+   - Identify severity level based on miss rate:
+     * **Critical (≥50% misses)**: Serious planning issue - investment discipline is severely lacking
+     * **Serious (30-49% misses)**: Significant planning gaps - needs immediate attention
+     * **Moderate (1-29% misses)**: Occasional misses - investigate root causes
+     * **None (0% misses)**: Excellent - all months met target
 
-2. **Budget Rule Deviations**:
-   - Show month-by-month: Actual % vs Target ${data.budgetAnalysis?.targetRule?.invest || 20}%
-   - Highlight months where investment % was below target
-   - Calculate average deviation from target
+2. **Month-by-Month Target Comparison**:
+${data.investments?.targetComparisons && data.investments.targetComparisons.length > 0 ? data.investments.targetComparisons.map(tc => {
+    const status = tc.missedTarget ? '❌ MISSED' : '✅ MET';
+    const gap = tc.missedTarget ? ` (Gap: ₹${Math.round(tc.gapAmount).toLocaleString()})` : '';
+    return `   → ${tc.month}: ${tc.actualPercent}% actual vs ${tc.targetPercent}% target ${status}${gap}`;
+}).join('\n') : '   → No investment data available'}
 
-3. **What's Wrong**:
-   - If investments are inconsistent: "Your investments fluctuate ₹X to ₹Y - this indicates irregular saving habits"
-   - If consistently below target: "You're investing only X% vs target Y% - missing ₹Z/month"
-   - If declining trend: "Investments decreased from ₹X to ₹Y over 3 months - need to reverse this"
+3. **Severity Assessment**:
+   - Current Severity: **${data.investments?.severity ? data.investments.severity.toUpperCase() : 'UNKNOWN'}**
+   - Miss Rate: ${data.investments?.missRate || 0}% (${data.investments?.targetMisses || 0} months missed out of ${data.investments?.targetComparisons?.length || 0})
+   - Interpretation:
+     ${data.investments?.severity === 'critical' ? '⚠️ **CRITICAL**: More than half the months missed target - this indicates a serious planning issue. Investment discipline needs immediate correction.' : ''}
+     ${data.investments?.severity === 'serious' ? '⚠️ **SERIOUS**: Significant portion of months missed target - planning gaps need attention.' : ''}
+     ${data.investments?.severity === 'moderate' ? 'ℹ️ **MODERATE**: Occasional target misses - investigate root causes for those specific months.' : ''}
+     ${data.investments?.severity === 'none' ? '✅ **EXCELLENT**: All months met or exceeded target - great investment discipline!' : ''}
 
-4. **Specific Recommendations**:
-   - Address the root cause of fluctuations (e.g., "Set up auto-SIP to avoid missing months")
-   - Quantify the gap: "You need ₹X more per month to meet ${data.budgetAnalysis?.targetRule?.invest || 20}% target"
-   - Suggest concrete actions: "Increase SIP by ₹Y starting next month"
+CRITICAL FLUCTUATION ANALYSIS REQUIRED:
+1. **Month-to-Month Changes**: 
+   - Identify each significant fluctuation with exact amounts
+   - Example: "Nov → Dec: Dropped ₹15,000 (40% decrease) - likely due to holiday spending"
+   - Example: "Jan → Feb: Increased ₹8,000 (25% increase) - good recovery"
+   - Highlight consecutive months with same trend (e.g., "3 months of decline")
 
-FORMAT:
-• **Fluctuation Pattern**: [Describe the trend - increasing/decreasing/irregular]
-• **Budget Rule Status**: 
-  → Target: ${data.budgetAnalysis?.targetRule?.invest || 20}% of income
-  → Actual Average: X% (deviation: +Y% or -Y%)
-  → Months Below Target: [List months with actual %]
-• **Key Issues**:
-  → [Issue 1 with specific numbers]
-  → [Issue 2 with specific numbers]
-• **Action Plan**:
-  → [Specific action 1 with amount]
-  → [Specific action 2 with amount]
+2. **Fluctuation Pattern Assessment**:
+   - **Consistent Pattern**: "Investments stable at ₹X/month - excellent discipline"
+   - **Increasing Trend**: "Investments growing from ₹X to ₹Y over ${analysisMonths} months - positive momentum"
+   - **Decreasing Trend**: "Investments declining from ₹X to ₹Y - needs immediate attention"
+   - **Irregular Pattern**: "Investments vary ₹X to ₹Y - indicates inconsistent saving habits"
+
+3. **Health Diagnosis** (Be Specific):
+   - **Peak Performance**: "Highest investment ₹X in [month] - replicate this month's approach"
+   - **Lowest Point**: "Lowest investment ₹X in [month] - identify what caused the drop"
+   - **Volatility**: "Variation range ₹X (Y% difference) - [High/Moderate/Low] volatility indicates [assessment]"
+   - **Consistency Score**: "X out of ${analysisMonths} months show consistent investment - [Good/Needs Improvement]"
+
+4. **Root Cause Analysis**:
+   - If declining: "Decline started in [month] - check if expenses increased or income decreased"
+   - If irregular: "No consistent pattern - likely manual investments without automation"
+   - If increasing: "Positive trend suggests improving financial discipline"
+
+5. **Specific Actionable Recommendations**:
+   - Address fluctuation root cause: "Set up auto-SIP of ₹X/month to eliminate ₹Y variation"
+   - Stabilize pattern: "Your investments range ₹X-₹Y - aim for consistent ₹Z/month (mid-point)"
+   - Build on success: "You invested ₹X in [best month] - maintain this level monthly"
+   - Fix decline: "Reverse the ₹X/month decline by reducing [specific expense category] by ₹Y"
+
+FORMAT (Use exact data from fluctuations):
+• **Fluctuation Pattern**: [Increasing/Decreasing/Irregular/Stable] trend
+  → Highest: ₹${data.investments?.highestMonth ? Math.round(data.investments.highestMonth.amount).toLocaleString() : 'N/A'} in ${data.investments?.highestMonth?.month || 'N/A'}
+  → Lowest: ₹${data.investments?.lowestMonth ? Math.round(data.investments.lowestMonth.amount).toLocaleString() : 'N/A'} in ${data.investments?.lowestMonth?.month || 'N/A'}
+  → Variation: ₹${data.investments?.variation ? Math.round(data.investments.variation).toLocaleString() : 'N/A'} (${data.investments?.variationPercent !== undefined ? data.investments.variationPercent : 'N/A'}% difference)
+
+• **Month-by-Month Changes**:
+${data.investments?.fluctuations && data.investments.fluctuations.length > 0 ? data.investments.fluctuations.map(f => 
+    `  → ${f.from} → ${f.to}: ${f.change >= 0 ? '+' : ''}₹${Math.round(f.change).toLocaleString()} (${f.changePercent >= 0 ? '+' : ''}${f.changePercent}%) - ${f.trend}`
+).join('\n') : '  → No significant fluctuations (consistent pattern)'}
+
+• **Target Performance Summary**:
+  → Target: ${data.investments?.targetPercent || 20}% of income
+  → Months Met Target: ${data.investments?.targetHits || 0} out of ${data.investments?.targetComparisons?.length || 0}
+  → Months Missed Target: ${data.investments?.targetMisses || 0} out of ${data.investments?.targetComparisons?.length || 0}
+  → Severity: **${data.investments?.severity ? data.investments.severity.toUpperCase() : 'UNKNOWN'}** (${data.investments?.missRate || 0}% miss rate)
+  ${data.investments?.targetComparisons && data.investments.targetComparisons.length > 0 ? `→ Average Gap: ₹${Math.round(data.investments.targetComparisons.filter(tc => tc.missedTarget).reduce((sum, tc) => sum + tc.gapAmount, 0) / Math.max(1, data.investments.targetMisses)).toLocaleString()}/month when missed` : ''}
+
+• **Health Assessment**:
+  → [Specific diagnosis based on pattern AND target performance: e.g., "Irregular saving habits detected with ${data.investments?.missRate || 0}% target miss rate" OR "Excellent consistency but ${data.investments?.targetMisses || 0} months missed target" OR "Declining trend needs reversal - critical planning issue"]
+  → [Root cause: e.g., "Manual investments without automation" OR "Expense pressure reducing investment capacity" OR "Target miss rate of ${data.investments?.missRate || 0}% indicates systematic planning gaps"]
+  ${data.investments?.severity === 'critical' ? '  → **CRITICAL ISSUE**: More than 50% of months missed target - this is a serious planning problem requiring immediate action' : ''}
+  ${data.investments?.severity === 'serious' ? '  → **SERIOUS ISSUE**: Significant portion of months missed target - planning discipline needs improvement' : ''}
+  ${data.investments?.severity === 'moderate' ? '  → **MODERATE ISSUE**: Some months missed target - investigate specific causes for those months' : ''}
+
+• **Action Plan** (Prioritize based on severity):
+  ${data.investments?.severity === 'critical' ? '  → **URGENT**: Set up auto-SIP of ₹X/month (target amount) to ensure consistent investments\n  → **URGENT**: Review and reduce expenses by ₹Y/month to free up investment capacity\n  → **URGENT**: Create monthly investment reminder/automation to prevent misses' : ''}
+  ${data.investments?.severity === 'serious' ? '  → Set up auto-SIP of ₹X/month to improve consistency\n  → Review months that missed target and identify common causes\n  → Adjust budget to prioritize investments' : ''}
+  ${data.investments?.severity === 'moderate' ? (() => {
+    const missedMonths = data.investments?.targetComparisons?.filter(tc => tc.missedTarget).map(tc => tc.month).join(', ') || 'N/A';
+    return `  → Investigate specific months that missed target (${missedMonths})\n  → Set up reminders for investment deadlines\n  → Consider auto-SIP to prevent future misses`;
+  })() : ''}
+  → [Specific action 1 with exact amount: e.g., "Set up ₹X/month auto-SIP to stabilize pattern"]
+  → [Specific action 2: e.g., "Maintain ₹Y/month (your highest month) consistently"]
+  → [Specific action 3: e.g., "Reduce variation from ₹X-₹Y to consistent ₹Z/month"]
+  ${data.investments?.targetComparisons && data.investments.targetComparisons.filter(tc => tc.missedTarget).length > 0 ? `→ **Address Target Gaps**: Total gap of ₹${Math.round(data.investments.targetComparisons.filter(tc => tc.missedTarget).reduce((sum, tc) => sum + tc.gapAmount, 0)).toLocaleString()} across missed months - prioritize closing this gap` : ''}
 
 **✅ PRIORITY ACTIONS FOR ${monthName.toUpperCase()}**
 List 5 specific actions in order of priority:
@@ -6333,6 +6495,27 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
      * Show Settlement Calculations Modal
      */
     showSettlementModal(year, month) {
+        // Save scroll positions before re-rendering
+        const scrollPositions = {};
+        const existingModal = document.getElementById('settlement-modal');
+        if (existingModal) {
+            // Cards content scrolls the entire content div
+            const cardsContent = existingModal.querySelector('#cards-content');
+            if (cardsContent) scrollPositions.cards = cardsContent.scrollTop;
+            
+            // Recurring content has nested scrollable div
+            const recurringScrollable = existingModal.querySelector('#recurring-content .max-h-48.overflow-y-auto');
+            if (recurringScrollable) scrollPositions.recurring = recurringScrollable.scrollTop;
+            
+            // Loans content has nested scrollable div
+            const loansScrollable = existingModal.querySelector('#loans-content .max-h-48.overflow-y-auto');
+            if (loansScrollable) scrollPositions.loans = loansScrollable.scrollTop;
+            
+            // Custom content scrolls the entire content div
+            const customContent = existingModal.querySelector('#custom-content');
+            if (customContent) scrollPositions.custom = customContent.scrollTop;
+        }
+        
         // Calculate default income/recurring month based on pay schedule
         const paySchedule = window.DB.settings.paySchedule || 'first_week';
         let defaultIncomeYear = year;
@@ -6806,11 +6989,46 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         `;
         
         // Remove existing modal if any
-        const existingModal = document.getElementById('settlement-modal');
-        if (existingModal) existingModal.remove();
+        const modalToRemove = document.getElementById('settlement-modal');
+        if (modalToRemove) modalToRemove.remove();
         
         // Add modal to body
         document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Restore scroll positions after a brief delay to ensure DOM is ready
+        setTimeout(() => {
+            const newModal = document.getElementById('settlement-modal');
+            if (newModal) {
+                if (scrollPositions.cards !== undefined) {
+                    // Cards content scrolls the entire content div
+                    const cardsContent = newModal.querySelector('#cards-content');
+                    if (cardsContent) {
+                        cardsContent.scrollTop = scrollPositions.cards;
+                    }
+                }
+                if (scrollPositions.recurring !== undefined) {
+                    // Recurring content has nested scrollable div
+                    const recurringContent = newModal.querySelector('#recurring-content .max-h-48.overflow-y-auto');
+                    if (recurringContent) {
+                        recurringContent.scrollTop = scrollPositions.recurring;
+                    }
+                }
+                if (scrollPositions.loans !== undefined) {
+                    // Loans content has nested scrollable div
+                    const loansContent = newModal.querySelector('#loans-content .max-h-48.overflow-y-auto');
+                    if (loansContent) {
+                        loansContent.scrollTop = scrollPositions.loans;
+                    }
+                }
+                if (scrollPositions.custom !== undefined) {
+                    // Custom content scrolls the entire content div
+                    const customContent = newModal.querySelector('#custom-content');
+                    if (customContent) {
+                        customContent.scrollTop = scrollPositions.custom;
+                    }
+                }
+            }
+        }, 10);
     },
     
     /**
