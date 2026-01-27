@@ -1371,8 +1371,9 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             summary.totalOutstanding = creditCards.reduce((sum, c) => sum + (parseFloat(c.outstanding) || 0), 0);
         }
         
-        // Calculate current month EMI amount
+        // Calculate current month EMI amount (only credit card EMIs, not loans)
         let currentMonthEMIAmount = 0;
+        let currentMonthEMICount = 0;
         const today = new Date();
         const currentYear = today.getFullYear();
         const currentMonth = today.getMonth() + 1;
@@ -1380,8 +1381,42 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         
         if (window.Dashboard && window.Dashboard.getEmiItemsForMonth) {
             const currentMonthEMIs = window.Dashboard.getEmiItemsForMonth(currentYear, currentMonth);
-            currentMonthEMIAmount = currentMonthEMIs.reduce((sum, emi) => sum + (parseFloat(emi.amount) || 0), 0);
+            // Filter only credit card EMIs (type === 'card'), exclude loan EMIs
+            const cardEMIs = currentMonthEMIs.filter(emi => emi.type === 'card');
+            currentMonthEMIAmount = cardEMIs.reduce((sum, emi) => sum + (parseFloat(emi.amount) || 0), 0);
+            currentMonthEMICount = cardEMIs.length;
         }
+        
+        // Calculate latest end EMI date from all active credit card EMIs
+        let latestEndEmiDate = null;
+        const creditCards = window.DB.cards.filter(c => c.cardType === 'credit' && !c.isPlaceholder);
+        creditCards.forEach(card => {
+            if (card.emis && card.emis.length > 0) {
+                card.emis.forEach(emi => {
+                    if (!emi.completed && emi.firstEmiDate && emi.totalCount) {
+                        // Auto-update EMI progress
+                        if (window.Cards && window.Cards.updateEMIProgress) {
+                            window.Cards.updateEMIProgress(emi);
+                        }
+                        
+                        const paidCount = emi.paidCount || 0;
+                        const totalCount = emi.totalCount || emi.totalEmis || 0;
+                        const remaining = totalCount - paidCount;
+                        
+                        if (remaining > 0) {
+                            // Calculate end date: firstEmiDate + (totalCount - 1) months
+                            const firstDate = new Date(emi.firstEmiDate);
+                            const endDate = new Date(firstDate);
+                            endDate.setMonth(endDate.getMonth() + totalCount - 1);
+                            
+                            if (!latestEndEmiDate || endDate > latestEndEmiDate) {
+                                latestEndEmiDate = endDate;
+                            }
+                        }
+                    }
+                });
+            }
+        });
         
         return `
         <div class="mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl p-4 shadow-lg">
@@ -1408,8 +1443,8 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     <p class="text-sm font-bold ${summary.totalBillsDue > 0 ? 'text-orange-200' : ''}">₹${Utils.formatIndianNumber(summary.totalBillsDue)}</p>
                 </div>
                 <div class="text-right">
-                    <p class="text-xs opacity-90">EMIs ${summary.activeEmiCount > 0 ? `(${summary.activeEmiCount})` : ''}</p>
-                    <p class="text-sm font-bold">₹${Utils.formatIndianNumber(summary.totalEmis)}</p>
+                    <p class="text-xs opacity-90">End EMI Date</p>
+                    <p class="text-sm font-bold">${latestEndEmiDate ? latestEndEmiDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}</p>
                 </div>
             </div>
             
@@ -1417,7 +1452,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             ${currentMonthEMIAmount > 0 ? `
             <div class="border-t border-white border-opacity-20 pt-3 mt-3">
                 <div class="flex items-center justify-between">
-                    <p class="text-xs opacity-90">${currentMonthName} EMI</p>
+                    <p class="text-xs opacity-90">${currentMonthName} EMI${currentMonthEMICount > 0 ? ` (${currentMonthEMICount})` : ''}</p>
                     <p class="text-base font-bold">₹${Utils.formatIndianNumber(currentMonthEMIAmount)}</p>
                 </div>
             </div>

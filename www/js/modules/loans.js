@@ -475,6 +475,7 @@ const Loans = {
             
             // Calculate current month EMI amount for loans
             let currentMonthEMIAmount = 0;
+            let currentMonthEMICount = 0;
             const today = new Date();
             const currentYear = today.getFullYear();
             const currentMonth = today.getMonth() + 1;
@@ -483,9 +484,9 @@ const Loans = {
             if (window.Dashboard && window.Dashboard.getEmiItemsForMonth) {
                 const currentMonthEMIs = window.Dashboard.getEmiItemsForMonth(currentYear, currentMonth);
                 // Filter only loan EMIs (not card EMIs)
-                currentMonthEMIAmount = currentMonthEMIs
-                    .filter(emi => emi.type === 'loan')
-                    .reduce((sum, emi) => sum + (parseFloat(emi.amount) || 0), 0);
+                const loanEMIs = currentMonthEMIs.filter(emi => emi.type === 'loan');
+                currentMonthEMIAmount = loanEMIs.reduce((sum, emi) => sum + (parseFloat(emi.amount) || 0), 0);
+                currentMonthEMICount = loanEMIs.length;
             }
             
             // Render summary for borrowed
@@ -516,7 +517,7 @@ const Loans = {
                     ${currentMonthEMIAmount > 0 ? `
                     <div class="border-t border-white border-opacity-20 pt-3 mt-3">
                         <div class="flex items-center justify-between">
-                            <p class="text-xs opacity-90">${currentMonthName} EMI</p>
+                            <p class="text-xs opacity-90">${currentMonthName} EMI${currentMonthEMICount > 0 ? ` (${currentMonthEMICount})` : ''}</p>
                             <p class="text-base font-bold">₹${Utils.formatIndianNumber(currentMonthEMIAmount)}</p>
                         </div>
                     </div>
