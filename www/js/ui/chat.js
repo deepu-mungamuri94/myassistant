@@ -307,21 +307,20 @@ Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
     formatAIResponse(text) {
         if (!text) return '';
         
-        // Remove markdown formatting
-        text = text.replace(/\*\*/g, ''); // Remove bold **
-        text = text.replace(/\*/g, ''); // Remove italic *
-        text = text.replace(/#{1,6}\s/g, ''); // Remove headers #
-        text = text.replace(/`/g, ''); // Remove code blocks
-        
         const lines = text.split('\n');
         let html = '';
         let inList = false;
         let inRecommendation = false;
+        let inCardComparison = false;
+        let inCardSection = false; // Track if we're inside a card section
+        let currentCardName = '';
+        let cardNumber = 0;
         
         for (let line of lines) {
+            const originalLine = line;
             line = line.trim();
             if (!line) {
-                if (inList) {
+                if (inList && !inCardComparison) {
                     html += '</ul></div>';
                     inList = false;
                 }
@@ -330,6 +329,89 @@ Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
                     inRecommendation = false;
                 }
                 continue;
+            }
+            
+            // TOP 3 CARDS COMPARISON header
+            if (line.match(/^📊\s*\*\*TOP\s*3\s*CARDS\s*COMPARISON\*\*/i) || line.match(/^TOP\s*3\s*CARDS\s*COMPARISON/i)) {
+                if (inList) html += '</ul></div>';
+                if (inRecommendation) html += '</div>';
+                html += `<div class="mt-3 mb-2">
+                    <div class="bg-gradient-to-r from-indigo-100 to-purple-100 border-2 border-indigo-300 px-3 py-2 rounded-lg">
+                        <h3 class="font-bold text-indigo-900 text-sm flex items-center gap-2">
+                            <span>📊</span>
+                            <span>TOP 3 CARDS COMPARISON</span>
+                        </h3>
+                    </div>
+                </div>`;
+                inCardComparison = true;
+                cardNumber = 0;
+                continue;
+            }
+            
+            // FINAL RECOMMENDATION header
+            if (line.match(/^✅\s*\*\*FINAL\s*RECOMMENDATION\*\*/i) || line.match(/^FINAL\s*RECOMMENDATION/i)) {
+                if (inList) html += '</ul></div>';
+                if (inCardComparison) {
+                    html += '</div>';
+                    inCardComparison = false;
+                }
+                if (inRecommendation) html += '</div>';
+                html += `<div class="mt-4 mb-2">
+                    <div class="bg-gradient-to-r from-green-100 to-emerald-100 border-2 border-green-400 px-3 py-2 rounded-lg">
+                        <h3 class="font-bold text-green-900 text-sm flex items-center gap-2">
+                            <span>✅</span>
+                            <span>FINAL RECOMMENDATION</span>
+                        </h3>
+                    </div>
+                </div>`;
+                inRecommendation = true;
+                continue;
+            }
+            
+            // Card name detection (lines starting with number + card name pattern, or bold card names)
+            if (inCardComparison && (line.match(/^\d+\.\s*\*\*[^*]+\*\*/) || line.match(/^\*\*[^*]+\*\*$/))) {
+                // Close previous card section if open
+                if (inCardSection) {
+                    if (inList) {
+                        html += '</ul></div>';
+                        inList = false;
+                    }
+                    html += '</div></div>'; // Close card content div and card div
+                    inCardSection = false;
+                }
+                
+                if (inList) {
+                    html += '</ul></div>';
+                    inList = false;
+                }
+                
+                // Extract card name
+                currentCardName = line.replace(/^\d+\.\s*/, '').replace(/\*\*/g, '').trim();
+                cardNumber++;
+                html += `<div class="mb-3 mt-3 bg-white border-2 border-indigo-200 rounded-lg p-3 shadow-sm">
+                    <div class="flex items-center gap-2 mb-2 pb-2 border-b-2 border-indigo-100">
+                        <span class="text-lg">💳</span>
+                        <h4 class="font-bold text-indigo-900 text-sm">${Utils.escapeHtml(currentCardName)}</h4>
+                    </div>
+                    <div class="ml-7">`;
+                inCardSection = true;
+                continue;
+            }
+            
+            // Close card comparison section if we hit final recommendation
+            if (inCardComparison && (line.match(/^✅|FINAL/i))) {
+                // Close current card section if open
+                if (inCardSection) {
+                    if (inList) {
+                        html += '</ul></div>';
+                        inList = false;
+                    }
+                    html += '</div></div>'; // Close card content div and card div
+                    inCardSection = false;
+                }
+                if (inList) html += '</ul></div>';
+                html += '</div>'; // Close card comparison container
+                inCardComparison = false;
             }
             
             // Recommendation cards (RECOMMENDED: or USE:)
@@ -338,30 +420,31 @@ Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
                     html += '</ul></div>';
                     inList = false;
                 }
+                if (inCardComparison) {
+                    html += '</div>';
+                    inCardComparison = false;
+                }
                 if (inRecommendation) {
                     html += '</div>';
                 }
                 const cardName = line.replace(/^(RECOMMENDED:|USE:|BEST CARD:|SUGGESTION:)\s*/i, '');
-                html += `<div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-300 rounded-lg p-2 mb-2">
-                    <div class="flex items-center gap-1.5 mb-1">
+                html += `<div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-300 rounded-lg p-3 mb-2">
+                    <div class="flex items-center gap-2 mb-2 pb-2 border-b border-green-200">
                         <span class="text-lg">💳</span>
-                        <span class="font-bold text-green-800 text-xs">${Utils.escapeHtml(cardName)}</span>
-                    </div>`;
+                        <span class="font-bold text-green-800 text-sm">${Utils.escapeHtml(cardName)}</span>
+                    </div>
+                    <div class="ml-7">`;
                 inRecommendation = true;
                 continue;
             }
             
             // Section headers (ALL CAPS or ending with : and short)
-            if (line.match(/^[A-Z\s&]{8,}:?$/) || (line.endsWith(':') && line.length < 60 && line.length > 5 && line.split(' ').length <= 6)) {
+            if (!inCardComparison && !inRecommendation && (line.match(/^[A-Z\s&]{8,}:?$/) || (line.endsWith(':') && line.length < 60 && line.length > 5 && line.split(' ').length <= 6))) {
                 if (inList) {
                     html += '</ul></div>';
                     inList = false;
                 }
-                if (inRecommendation) {
-                    html += '</div>';
-                    inRecommendation = false;
-                }
-                const headerText = line.replace(/:$/, '');
+                const headerText = line.replace(/:$/, '').replace(/\*\*/g, '');
                 html += `<div class="mt-2 mb-1.5">
                     <div class="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 px-2 py-1.5 rounded-lg">
                         <h3 class="font-bold text-indigo-800 text-xs uppercase tracking-wide">${Utils.escapeHtml(headerText)}</h3>
@@ -371,14 +454,14 @@ Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
             }
             
             // List items with various formats
-            if (line.match(/^[-*•►▪]\s/) || line.match(/^\d+[\.)]\s/)) {
+            if (line.match(/^[-*•►▪→]\s/) || line.match(/^\d+[\.)]\s/)) {
                 if (!inList) {
                     html += '<div class="ml-1"><ul class="space-y-1.5">';
                     inList = true;
                 }
-                let content = line.replace(/^[-*•►▪]\s/, '').replace(/^\d+[\.)]\s/, '');
+                let content = line.replace(/^[-*•►▪→]\s/, '').replace(/^\d+[\.)]\s/, '').replace(/\*\*/g, '');
                 
-                // Highlight card names or amounts
+                // Highlight amounts
                 content = content.replace(/(₹[\d,]+)/g, '<span class="font-bold text-green-700">$1</span>');
                 
                 // Check if it's a benefit line (has : in middle)
@@ -386,48 +469,63 @@ Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
                     const parts = content.split(':');
                     const key = parts[0].trim();
                     const value = parts.slice(1).join(':').trim();
-                    html += `<li class="flex items-start gap-1.5 text-xs bg-white border border-gray-200 p-1.5 rounded">
-                        <span class="text-indigo-600 flex-shrink-0 mt-0.5 text-xs">✓</span>
+                    html += `<li class="flex items-start gap-1.5 text-xs bg-gray-50 border border-gray-200 p-2 rounded">
+                        <span class="text-indigo-600 flex-shrink-0 mt-0.5 text-xs">→</span>
                         <div class="flex-1">
                             <span class="font-semibold text-gray-800">${Utils.escapeHtml(key)}:</span>
-                            <span class="text-gray-700 ml-1">${value}</span>
+                            <span class="text-gray-700 ml-1">${Utils.escapeHtml(value)}</span>
                         </div>
                     </li>`;
                 } else {
-                    html += `<li class="flex items-start gap-1.5 text-xs bg-white border border-gray-200 p-1.5 rounded">
-                        <span class="text-indigo-600 flex-shrink-0 mt-0.5 text-xs">✓</span>
-                        <span class="text-gray-700">${content}</span>
+                    html += `<li class="flex items-start gap-1.5 text-xs bg-gray-50 border border-gray-200 p-2 rounded">
+                        <span class="text-indigo-600 flex-shrink-0 mt-0.5 text-xs">→</span>
+                        <span class="text-gray-700">${Utils.escapeHtml(content)}</span>
                     </li>`;
                 }
                 continue;
             }
             
             // Sub-headers
-            if (line.endsWith(':')) {
+            if (line.endsWith(':') && !inCardComparison && !inRecommendation) {
                 if (inList) {
                     html += '</ul></div>';
                     inList = false;
                 }
+                const subHeader = line.replace(/:$/, '').replace(/\*\*/g, '');
                 html += `<div class="mt-1.5 mb-1">
-                    <h4 class="font-semibold text-indigo-700 text-xs">${Utils.escapeHtml(line)}</h4>
+                    <h4 class="font-semibold text-indigo-700 text-xs">${Utils.escapeHtml(subHeader)}</h4>
                 </div>`;
                 continue;
             }
             
             // Regular paragraphs
-            if (inList) {
+            if (inList && !inCardComparison && !inRecommendation) {
                 html += '</ul></div>';
                 inList = false;
             }
             
             // Highlight amounts and card names in paragraphs
-            line = line.replace(/(₹[\d,]+)/g, '<span class="font-bold text-green-700">$1</span>');
+            let formattedLine = line.replace(/\*\*/g, '');
+            formattedLine = formattedLine.replace(/(₹[\d,]+)/g, '<span class="font-bold text-green-700">$1</span>');
             
-            html += `<p class="text-xs text-gray-700 mb-1.5 leading-relaxed">${line}</p>`;
+            html += `<p class="text-xs text-gray-700 mb-1.5 leading-relaxed">${formattedLine}</p>`;
+        }
+        
+        // Close any open card section
+        if (inCardSection) {
+            if (inList) {
+                html += '</ul></div>';
+                inList = false;
+            }
+            html += '</div></div>'; // Close card content div and card div
+            inCardSection = false;
         }
         
         if (inList) {
             html += '</ul></div>';
+        }
+        if (inCardComparison) {
+            html += '</div>'; // Close card comparison container
         }
         if (inRecommendation) {
             html += '</div>';

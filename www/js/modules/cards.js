@@ -1371,6 +1371,17 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             summary.totalOutstanding = creditCards.reduce((sum, c) => sum + (parseFloat(c.outstanding) || 0), 0);
         }
         
+        // Calculate current month EMI amount
+        let currentMonthEMIAmount = 0;
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth() + 1;
+        
+        if (window.Dashboard && window.Dashboard.getEmiItemsForMonth) {
+            const currentMonthEMIs = window.Dashboard.getEmiItemsForMonth(currentYear, currentMonth);
+            currentMonthEMIAmount = currentMonthEMIs.reduce((sum, emi) => sum + (parseFloat(emi.amount) || 0), 0);
+        }
+        
         return `
         <div class="mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl p-4 shadow-lg">
             <!-- Row 1: Credit Limit & Outstanding -->
@@ -1400,6 +1411,16 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     <p class="font-bold text-lg">₹${Utils.formatIndianNumber(summary.totalEmis)}</p>
                 </div>
             </div>
+            
+            <!-- Row 3: Current Month EMI -->
+            ${currentMonthEMIAmount > 0 ? `
+            <div class="border-t border-white border-opacity-20 pt-3 mt-3">
+                <div class="flex items-center justify-between">
+                    <p class="text-xs opacity-70">This Month EMI</p>
+                    <p class="font-bold text-lg">₹${Utils.formatIndianNumber(currentMonthEMIAmount)}</p>
+                </div>
+            </div>
+            ` : ''}
         </div>
         `;
     },

@@ -335,8 +335,39 @@ const Dashboard = {
                     </div>
                 </div>
             </div>
+            ${isCurrent ? this.renderSettlementSection(targetYear, targetMonth) : ''}
             ${!isCurrent ? this.renderAIInsightsSection(targetYear, targetMonth) : ''}
         </div>
+        `;
+    },
+    
+    /**
+     * Render Settlement Calculations Section for current month
+     */
+    renderSettlementSection(year, month) {
+        return `
+            <div class="mt-3 pt-3 border-t border-gray-200">
+                <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-green-400 to-emerald-400 flex items-center justify-center shadow-sm">
+                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <span class="text-xs font-medium text-green-700">Settlement Calculations</span>
+                        </div>
+                    </div>
+                    <button onclick="Dashboard.showSettlementModal(${year}, ${month})" 
+                            class="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors shadow-sm">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        view
+                    </button>
+                </div>
+            </div>
         `;
     },
     
@@ -3490,6 +3521,12 @@ const Dashboard = {
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
+                        <button onclick="Dashboard.reloadAIInsights(${cached.year || new Date().getFullYear()}, ${cached.month || new Date().getMonth() + 2})" 
+                                class="flex items-center gap-1 px-2 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-lg transition-colors">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                        </button>
                         <button onclick="Dashboard.showAIInsightsModal(${cached.year || new Date().getFullYear()}, ${cached.month || new Date().getMonth() + 2})" 
                                 class="flex items-center gap-1 px-3 py-1.5 text-xs bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors shadow-sm">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3497,12 +3534,6 @@ const Dashboard = {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                             </svg>
                             view
-                        </button>
-                        <button onclick="Dashboard.reloadAIInsights(${cached.year || new Date().getFullYear()}, ${cached.month || new Date().getMonth() + 2})" 
-                                class="flex items-center gap-1 px-2 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-lg transition-colors">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                            </svg>
                         </button>
                     </div>
                 </div>
@@ -3553,7 +3584,7 @@ const Dashboard = {
         modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
         
         modal.innerHTML = `
-            <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden relative">
                 <!-- Header -->
                 <div class="p-5 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 text-white flex items-center justify-between flex-shrink-0">
                     <div class="flex items-center gap-3">
@@ -3574,7 +3605,7 @@ const Dashboard = {
                 </div>
                 
                 <!-- Content -->
-                <div class="flex-1 overflow-y-auto p-5 bg-gray-50">
+                <div class="flex-1 overflow-y-auto px-3 py-5 bg-gray-50 pb-20">
                     <div class="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-2.5">
                         <div class="flex items-start gap-2">
                             <span class="text-blue-500 text-sm">ℹ️</span>
@@ -3588,20 +3619,14 @@ const Dashboard = {
                     </div>
                 </div>
                 
-                <!-- Footer -->
-                <div class="p-4 border-t border-gray-200 bg-white flex items-center justify-between flex-shrink-0">
-                    <div class="flex flex-col">
-                        <span class="text-xs font-medium text-gray-700">📊 Projections based on last 6 months of data</span>
-                        <span class="text-[10px] text-gray-400 mt-0.5">Includes Year-over-Year comparison and annual patterns</span>
-                    </div>
-                    <button onclick="document.getElementById('ai-insights-modal').classList.add('hidden'); Dashboard.reloadAIInsights(${year}, ${month})" 
-                            class="flex items-center gap-2 px-4 py-2 text-xs bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all shadow-sm hover:shadow-md">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                        </svg>
-                        Refresh Insights
-                    </button>
-                </div>
+                <!-- Floating Refresh Button -->
+                <button onclick="document.getElementById('ai-insights-modal').classList.add('hidden'); Dashboard.reloadAIInsights(${year}, ${month})" 
+                        class="absolute bottom-4 right-4 w-14 h-14 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-10 hover:scale-110"
+                        title="Refresh Insights">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                </button>
             </div>
         `;
         
@@ -3684,7 +3709,7 @@ const Dashboard = {
                 const cleanTitle = title.replace(/[📊💡🔄🏦📈✅🎂]/g, '').trim();
                 
                 html += `
-                    <div class="mt-4 mb-3 bg-gradient-to-r ${bgGradient} border ${borderColor} rounded-xl p-3 shadow-sm">
+                    <div class="mt-4 mb-3 bg-gradient-to-r ${bgGradient} border ${borderColor} rounded-xl px-3 py-2.5 shadow-sm">
                         <div class="flex items-center gap-2 mb-2">
                             ${emoji ? `<span class="text-xl" aria-hidden="true">${emoji}</span>` : ''}
                             <h3 class="font-bold text-${cardColor}-800 text-sm">${this.formatInlineText(cleanTitle)}</h3>
@@ -4298,10 +4323,47 @@ const Dashboard = {
             }
         }
         
+        // Calculate investment fluctuations and deviations
+        const investmentMonths = Object.entries(investmentsByMonth)
+            .map(([month, info]) => ({ month, amount: info.total, types: info.types }))
+            .sort((a, b) => a.month.localeCompare(b.month));
+        
+        // Calculate fluctuations (month-to-month changes)
+        const fluctuations = [];
+        for (let i = 1; i < investmentMonths.length; i++) {
+            const prev = investmentMonths[i - 1];
+            const curr = investmentMonths[i];
+            const change = curr.amount - prev.amount;
+            const changePercent = prev.amount > 0 ? Math.round((change / prev.amount) * 100) : 0;
+            fluctuations.push({
+                from: prev.month,
+                to: curr.month,
+                change: change,
+                changePercent: changePercent,
+                trend: change > 0 ? 'increasing' : change < 0 ? 'decreasing' : 'stable'
+            });
+        }
+        
+        // Find highest and lowest months
+        const amounts = investmentMonths.map(m => m.amount);
+        const maxAmount = Math.max(...amounts);
+        const minAmount = Math.min(...amounts);
+        const maxMonth = investmentMonths.find(m => m.amount === maxAmount);
+        const minMonth = investmentMonths.find(m => m.amount === minAmount);
+        const variation = maxAmount - minAmount;
+        const variationPercent = minAmount > 0 ? Math.round((variation / minAmount) * 100) : 0;
+        
         data.investments = {
             byMonth: investmentsByMonth,
             totalLastMonths: Object.values(investmentsByMonth).reduce((sum, m) => sum + m.total, 0),
-            monthlyAvg: Math.round(Object.values(investmentsByMonth).reduce((sum, m) => sum + m.total, 0) / ANALYSIS_MONTHS)
+            monthlyAvg: Math.round(Object.values(investmentsByMonth).reduce((sum, m) => sum + m.total, 0) / ANALYSIS_MONTHS),
+            // Fluctuation analysis
+            fluctuations: fluctuations,
+            highestMonth: maxMonth ? { month: maxMonth.month, amount: maxAmount } : null,
+            lowestMonth: minMonth ? { month: minMonth.month, amount: minAmount } : null,
+            variation: variation,
+            variationPercent: variationPercent,
+            monthlyBreakdown: investmentMonths
         };
         
         // Budget Rule Analysis (Needs/Wants/Invest) for last 6 months
@@ -4905,7 +4967,15 @@ ${emisText}
 
 ## INVESTMENTS (Last ${analysisMonths} Months)
 ${investText || 'No investment data'}
-→ Monthly Avg: ₹${Math.round(data.investments?.monthlyAvg || 0).toLocaleString()}
+
+Investment Fluctuations Analysis:
+${data.investments?.fluctuations && data.investments.fluctuations.length > 0 ? data.investments.fluctuations.map(f => 
+    `• ${f.from} → ${f.to}: ${f.change >= 0 ? '+' : ''}₹${Math.round(f.change).toLocaleString()} (${f.changePercent >= 0 ? '+' : ''}${f.changePercent}%) - ${f.trend}`
+).join('\n') : '• No fluctuations detected (consistent investments)'}
+
+${data.investments?.highestMonth ? `• Highest: ${data.investments.highestMonth.month} - ₹${Math.round(data.investments.highestMonth.amount).toLocaleString()}` : ''}
+${data.investments?.lowestMonth ? `• Lowest: ${data.investments.lowestMonth.month} - ₹${Math.round(data.investments.lowestMonth.amount).toLocaleString()}` : ''}
+${data.investments?.variation ? `• Variation Range: ₹${Math.round(data.investments.variation).toLocaleString()} (${data.investments.variationPercent >= 0 ? '+' : ''}${data.investments.variationPercent}% difference)` : ''}
 
 ## PROJECTION FOR ${monthName.toUpperCase()}
 • Avg Monthly Income: ₹${Math.round(data.insights.avgMonthlyIncome || 0).toLocaleString()}
@@ -4984,25 +5054,42 @@ IF ALL LOANS ARE HEALTHY:
 LOAN INTEREST BENCHMARKS:
 → Home: <9% good | Personal: <12% good | Card EMI: 12-18% typical | >18%: Pre-close priority
 
-**📈 INVESTMENT OPTIMIZATION**
-(Only show if investment is below target OR if you have optimization suggestions)
+**📈 INVESTMENT ANALYSIS & FLUCTUATIONS**
+(Always analyze investment patterns, fluctuations, and deviations from budget rule)
 
-IF BELOW TARGET:
-• **Current**: ₹X/month (Y% of income)
-• **Target**: ₹Y/month (${data.budgetAnalysis?.targetRule?.invest || 20}% of income)
-• **Gap**: ₹Z/month (Z% short)
-• **Investment Breakdown** (from data above):
-  → [Type Name]: ₹X/month average
-  → [Type Name]: ₹Y/month average
-  (Only list types that exist in the data - skip undefined/null/empty types)
-• **Recommendation**: [Specific suggestion based on portfolio mix and gap]
+CRITICAL ANALYSIS REQUIRED:
+1. **Identify Fluctuations**: 
+   - Which months had significant increases/decreases?
+   - What caused the fluctuations? (e.g., "Dec dropped 40% due to holiday spending")
+   - Is there a pattern? (e.g., "Consistently lower in first 3 months")
 
-IF AT/ABOVE TARGET:
-• 🎉 **Current**: ₹X/month (Y% of income) - Meeting/Exceeding target!
-• **Investment Breakdown**:
-  → [Type Name]: ₹X/month
-  → [Type Name]: ₹Y/month
-• **Recommendation**: [Maintain or optimize allocation]
+2. **Budget Rule Deviations**:
+   - Show month-by-month: Actual % vs Target ${data.budgetAnalysis?.targetRule?.invest || 20}%
+   - Highlight months where investment % was below target
+   - Calculate average deviation from target
+
+3. **What's Wrong**:
+   - If investments are inconsistent: "Your investments fluctuate ₹X to ₹Y - this indicates irregular saving habits"
+   - If consistently below target: "You're investing only X% vs target Y% - missing ₹Z/month"
+   - If declining trend: "Investments decreased from ₹X to ₹Y over 3 months - need to reverse this"
+
+4. **Specific Recommendations**:
+   - Address the root cause of fluctuations (e.g., "Set up auto-SIP to avoid missing months")
+   - Quantify the gap: "You need ₹X more per month to meet ${data.budgetAnalysis?.targetRule?.invest || 20}% target"
+   - Suggest concrete actions: "Increase SIP by ₹Y starting next month"
+
+FORMAT:
+• **Fluctuation Pattern**: [Describe the trend - increasing/decreasing/irregular]
+• **Budget Rule Status**: 
+  → Target: ${data.budgetAnalysis?.targetRule?.invest || 20}% of income
+  → Actual Average: X% (deviation: +Y% or -Y%)
+  → Months Below Target: [List months with actual %]
+• **Key Issues**:
+  → [Issue 1 with specific numbers]
+  → [Issue 2 with specific numbers]
+• **Action Plan**:
+  → [Specific action 1 with amount]
+  → [Specific action 2 with amount]
 
 **✅ PRIORITY ACTIONS FOR ${monthName.toUpperCase()}**
 List 5 specific actions in order of priority:
@@ -6240,6 +6327,913 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
                 </div>
             </div>
         `;
+    },
+    
+    /**
+     * Show Settlement Calculations Modal
+     */
+    showSettlementModal(year, month) {
+        // Calculate default income/recurring month based on pay schedule
+        const paySchedule = window.DB.settings.paySchedule || 'first_week';
+        let defaultIncomeYear = year;
+        let defaultIncomeMonth = month;
+        
+        if (paySchedule === 'last_week') {
+            // If last week pay schedule, income is from next month
+            defaultIncomeMonth = month === 12 ? 1 : month + 1;
+            defaultIncomeYear = month === 12 ? year + 1 : year;
+        }
+        
+        // Initialize settlement data in DB if not exists
+        if (!window.DB.settlementData) {
+            window.DB.settlementData = {};
+        }
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        const settlementData = window.DB.settlementData[monthKey] || {
+            cardSelections: {}, // { cardId: 'bill' | 'outstanding' }
+            enabledRecurring: [], // Array of enabled recurring item names
+            enabledLoanEmis: [], // Array of enabled loan EMI names
+            customItems: [],
+            incomeMonth: `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`,
+            recurringMonth: `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`,
+            loansMonth: null // Will default to incomeMonth
+        };
+        
+        // Get income for selected month
+        const incomeMonthKey = settlementData.incomeMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`;
+        const [incomeYear, incomeMonth] = incomeMonthKey.split('-').map(Number);
+        const incomeData = this.getIncomeForExpenseComparison(incomeYear, incomeMonth);
+        const income = incomeData.income || 0;
+        
+        // Check if using actual salary or estimated payslip
+        const salaries = window.DB.salaries || [];
+        const actualSalary = salaries.find(s => s.year === incomeYear && s.month === incomeMonth);
+        const isEstimatedIncome = !actualSalary && income > 0;
+        
+        // Get credit cards with outstanding and bill amounts
+        const creditCards = (window.DB.cards || []).filter(c => c.cardType === 'credit' && !c.isPlaceholder);
+        const unpaidBills = (window.DB.cardBills || []).filter(b => !b.isPaid);
+        
+        // Calculate current bill amounts per card
+        const currentCardData = creditCards.map(card => {
+            const cardBills = unpaidBills.filter(b => String(b.cardId) === String(card.id));
+            const billAmount = cardBills.reduce((sum, b) => sum + (parseFloat(b.amount) || 0), 0);
+            const outstandingAmount = parseFloat(card.outstanding) || 0;
+            return {
+                id: card.id,
+                name: card.name,
+                billAmount: billAmount,
+                outstandingAmount: outstandingAmount,
+                hasBills: billAmount > 0,
+                hasOutstanding: outstandingAmount > 0
+            };
+        }).filter(card => card.billAmount > 0 || card.outstandingAmount > 0); // Skip cards with both amounts as 0
+        
+        // Use saved card data if exists and not loaded, otherwise use current data
+        const hasSavedData = settlementData.savedCardData && settlementData.savedCardData.length > 0;
+        const cardData = (hasSavedData && !settlementData.cardDataLoaded) ? settlementData.savedCardData : currentCardData;
+        
+        // If no saved data exists, initialize with current data
+        if (!hasSavedData) {
+            settlementData.savedCardData = currentCardData;
+            settlementData.cardDataLoaded = false;
+        }
+        
+        // Get individual recurring payments for selected month
+        const recurringMonthKey = settlementData.recurringMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`;
+        const [recurringYear, recurringMonth] = recurringMonthKey.split('-').map(Number);
+        const recurringItems = this.getRecurringExpenseItemsForMonth(recurringYear, recurringMonth);
+        
+        // Initialize enabled recurring if not exists
+        if (!settlementData.enabledRecurring || settlementData.enabledRecurring.length === 0) {
+            settlementData.enabledRecurring = recurringItems.map(r => r.name);
+        }
+        
+        // Get individual loan EMIs for selected month (only loan EMIs, not card EMIs)
+        const loansMonthKey = settlementData.loansMonth || settlementData.incomeMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`;
+        const [loansYear, loansMonth] = loansMonthKey.split('-').map(Number);
+        const loanEmiItems = this.getEmiItemsForMonth(loansYear, loansMonth).filter(emi => emi.type === 'loan');
+        
+        // Initialize enabled loan EMIs if not exists (all enabled by default)
+        if (!settlementData.enabledLoanEmis || settlementData.enabledLoanEmis.length === 0) {
+            settlementData.enabledLoanEmis = loanEmiItems.map(emi => emi.name);
+        }
+        
+        // Initialize card selections if not exists
+        cardData.forEach(card => {
+            if (!settlementData.cardSelections[card.id]) {
+                // Default to bill if available, otherwise outstanding
+                settlementData.cardSelections[card.id] = card.hasBills ? 'bill' : 'outstanding';
+            }
+        });
+        
+        // Initialize enabled recurring if not exists
+        if (!settlementData.enabledRecurring) {
+            settlementData.enabledRecurring = recurringItems.map(r => r.name);
+        }
+        
+        // Initialize enabled cards if not exists (all cards enabled by default)
+        // Only initialize if the property doesn't exist at all, not if it's empty
+        if (settlementData.enabledCards === undefined) {
+            settlementData.enabledCards = cardData.map(c => String(c.id));
+        } else if (!Array.isArray(settlementData.enabledCards)) {
+            settlementData.enabledCards = cardData.map(c => String(c.id));
+        }
+        
+        // Initialize expanded sections state
+        if (!settlementData.expandedSections) {
+            settlementData.expandedSections = { cards: false, recurring: false, loans: false, custom: false };
+        }
+        
+        // Calculate totals
+        const cardsTotal = cardData
+            .filter(card => (settlementData.enabledCards || []).some(id => String(id) === String(card.id)))
+            .reduce((sum, card) => {
+                const selection = settlementData.cardSelections[card.id] || 'bill';
+                return sum + (selection === 'bill' ? card.billAmount : card.outstandingAmount);
+            }, 0);
+        
+        const recurringTotal = recurringItems
+            .filter(r => settlementData.enabledRecurring.includes(r.name))
+            .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+        
+        // Calculate loan EMIs total
+        const loansTotal = loanEmiItems
+            .filter(emi => settlementData.enabledLoanEmis.includes(emi.name))
+            .reduce((sum, emi) => sum + (parseFloat(emi.amount) || 0), 0);
+        
+        const customItemsTotal = (settlementData.customItems || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+        
+        const totalDeductions = cardsTotal + recurringTotal + loansTotal + customItemsTotal;
+        const balance = income - totalDeductions;
+        
+        const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        
+        // Build modal HTML
+        const modalHTML = `
+            <div id="settlement-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) Dashboard.closeSettlementModal()">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div class="sticky top-0 bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 flex justify-between items-center rounded-t-2xl z-10">
+                        <h2 class="text-xl font-bold text-white">Settlement Calculations</h2>
+                        <button onclick="Dashboard.closeSettlementModal()" class="text-white hover:text-gray-200 p-1">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="p-4 space-y-3">
+                        <!-- Summary Section: Income and Balance -->
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <!-- Income Summary -->
+                            <div class="bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-lg p-3">
+                                <div class="flex items-center justify-between mb-2">
+                                    <p class="text-xs text-blue-600 font-medium">Income</p>
+                                    <div class="text-xl">💰</div>
+                                </div>
+                                <p class="text-xl font-bold text-blue-900 mb-1">₹${Utils.formatIndianNumber(income)}</p>
+                                ${isEstimatedIncome ? `
+                                    <p class="text-[9px] text-blue-500 mb-1">~ Estimated from payslip</p>
+                                ` : income > 0 ? `
+                                    <p class="text-[9px] text-blue-500 mb-1">✓ Actual salary</p>
+                                ` : ''}
+                                <div class="flex items-center gap-1.5">
+                                    <label class="text-[10px] text-blue-600">Month:</label>
+                                    <div class="relative">
+                                        <input type="month" id="settlement-income-month-selector" 
+                                               value="${settlementData.incomeMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`}"
+                                               onchange="Dashboard.updateSettlementIncomeMonth(${year}, ${month}, this.value)"
+                                               class="absolute opacity-0 pointer-events-none">
+                                        <button id="settlement-income-month-button" 
+                                                onclick="document.getElementById('settlement-income-month-selector').showPicker()"
+                                                class="px-2 py-1 border border-blue-300 rounded text-[10px] font-medium text-blue-700 hover:bg-blue-50 transition-all whitespace-nowrap">
+                                            ${this.getFormattedMonth(settlementData.incomeMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`)} ▼
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Final Balance Summary -->
+                            <div class="bg-gradient-to-r ${balance >= 0 ? 'from-green-500 to-emerald-600' : 'from-red-500 to-pink-600'} rounded-lg p-3 text-white relative overflow-hidden">
+                                <div class="flex items-center justify-between mb-2 relative z-10">
+                                    <p class="text-xs opacity-90">Final Balance</p>
+                                    <div class="relative">
+                                        ${balance >= 0 ? `
+                                            <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30 shadow-md">
+                                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                                </svg>
+                                            </div>
+                                        ` : `
+                                            <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30 shadow-md">
+                                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                                </svg>
+                                            </div>
+                                        `}
+                                    </div>
+                                </div>
+                                <p class="text-xl font-bold relative z-10">₹${Utils.formatIndianNumber(balance)}</p>
+                                <p class="text-[10px] opacity-80 mt-1 relative z-10">Income - Deductions</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Credit Card Bills (Collapsible) -->
+                        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                            <button onclick="Dashboard.toggleSettlementSection('cards', ${year}, ${month})" 
+                                    class="w-full flex items-center justify-between p-2.5 hover:bg-gray-50 transition-colors">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm">💳</span>
+                                    <div class="text-left">
+                                        <p class="text-xs font-semibold text-gray-700">Credit Card Bills</p>
+                                        <p class="text-[10px] text-gray-500">${cardData.length} card(s)</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold text-gray-900">₹${Utils.formatIndianNumber(cardsTotal)}</span>
+                                    <svg id="cards-arrow" class="w-4 h-4 text-gray-500 transform transition-transform ${settlementData.expandedSections?.cards ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </div>
+                            </button>
+                            <div id="cards-content" class="${settlementData.expandedSections?.cards ? '' : 'hidden'} px-3 pb-3 pt-3 space-y-2 border-t border-gray-200">
+                                <div class="flex items-start gap-2 mb-2 pb-2 border-b border-gray-200" onclick="event.stopPropagation()">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-[10px] text-gray-600 leading-tight mb-0.5">${settlementData.cardDataLoaded ? 'Showing current bills from credit cards page' : 'Showing last saved data'}</p>
+                                        <p class="text-[9px] text-gray-500">${settlementData.cardDataLoaded ? 'Click revert to restore saved data' : 'Click load to fetch current bills'}</p>
+                                    </div>
+                                    ${settlementData.cardDataLoaded ? `
+                                        <button onclick="event.stopPropagation(); Dashboard.revertCardData(${year}, ${month})" 
+                                                class="p-1.5 border border-gray-300 rounded hover:bg-gray-50 transition-all flex-shrink-0 mt-0.5"
+                                                title="Revert to saved data">
+                                            <svg class="w-3.5 h-3.5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                            </svg>
+                                        </button>
+                                    ` : `
+                                        <button onclick="event.stopPropagation(); Dashboard.loadCardData(${year}, ${month})" 
+                                                class="p-1.5 border border-gray-300 rounded hover:bg-gray-50 transition-all flex-shrink-0 mt-0.5"
+                                                title="Load current bills">
+                                            <svg class="w-3.5 h-3.5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                            </svg>
+                                        </button>
+                                    `}
+                                </div>
+                                ${cardData.length > 0 ? cardData.map(card => {
+                                    const isEnabled = (settlementData.enabledCards || []).some(id => String(id) === String(card.id));
+                                    const selection = settlementData.cardSelections[card.id] || 'bill';
+                                    return `
+                                        <div class="bg-gray-50 rounded p-2" onclick="event.stopPropagation()">
+                                            <div class="flex items-center gap-2 mb-1.5">
+                                                <input type="checkbox" id="card-checkbox-${card.id}" ${isEnabled ? 'checked' : ''}
+                                                       onchange="event.stopPropagation(); Dashboard.toggleCardEnabled(${year}, ${month}, '${card.id}', this.checked)"
+                                                       class="w-3.5 h-3.5 text-green-600 border-gray-300 rounded">
+                                                <p class="text-xs font-semibold text-gray-700 flex-1">${Utils.escapeHtml(card.name)}</p>
+                                            </div>
+                                            ${isEnabled ? `
+                                                <div class="flex items-center gap-3 ml-5">
+                                                    <label class="flex items-center gap-1.5 cursor-pointer">
+                                                        <input type="radio" name="card-${card.id}" value="bill" 
+                                                               ${selection === 'bill' ? 'checked' : ''}
+                                                               onchange="event.stopPropagation(); Dashboard.updateCardSelection(${year}, ${month}, '${card.id}', 'bill')"
+                                                               class="w-3.5 h-3.5 text-green-600 border-gray-300">
+                                                        <span class="text-[10px] text-gray-700">
+                                                            Bill: ₹${Utils.formatIndianNumber(card.billAmount)}
+                                                        </span>
+                                                    </label>
+                                                    <label class="flex items-center gap-1.5 cursor-pointer">
+                                                        <input type="radio" name="card-${card.id}" value="outstanding" 
+                                                               ${selection === 'outstanding' ? 'checked' : ''}
+                                                               onchange="event.stopPropagation(); Dashboard.updateCardSelection(${year}, ${month}, '${card.id}', 'outstanding')"
+                                                               class="w-3.5 h-3.5 text-green-600 border-gray-300">
+                                                        <span class="text-[10px] text-gray-700">
+                                                            Outstanding: ₹${Utils.formatIndianNumber(card.outstandingAmount)}
+                                                        </span>
+                                                    </label>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    `;
+                                }).join('') : '<p class="text-[10px] text-gray-500 text-center py-1.5">No credit cards available</p>'}
+                            </div>
+                        </div>
+                        
+                        <!-- Recurring Payments (Collapsible) -->
+                        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                            <button onclick="Dashboard.toggleSettlementSection('recurring', ${year}, ${month})" 
+                                    class="w-full flex items-center justify-between p-2.5 hover:bg-gray-50 transition-colors">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm">🔄</span>
+                                    <div class="text-left">
+                                        <p class="text-xs font-semibold text-gray-700">Recurring Payments</p>
+                                        <p class="text-[10px] text-gray-500">${recurringItems.length} item(s)</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold text-gray-900">₹${Utils.formatIndianNumber(recurringTotal)}</span>
+                                    <svg id="recurring-arrow" class="w-4 h-4 text-gray-500 transform transition-transform ${settlementData.expandedSections?.recurring ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </div>
+                            </button>
+                            <div id="recurring-content" class="${settlementData.expandedSections?.recurring ? '' : 'hidden'} px-3 pb-3 pt-3 space-y-1.5 border-t border-gray-200">
+                                <div class="flex items-start gap-2 mb-2 pb-2 border-b border-gray-200" onclick="event.stopPropagation()">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-[10px] text-gray-600 leading-tight mb-0.5">Select month for recurring payments</p>
+                                        <p class="text-[9px] text-gray-500">Default: Based on income pay schedule</p>
+                                    </div>
+                                    <div class="relative flex-shrink-0 mt-0.5">
+                                        <input type="month" id="settlement-recurring-month-selector" 
+                                               value="${settlementData.recurringMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`}"
+                                               onchange="Dashboard.updateSettlementRecurringMonth(${year}, ${month}, this.value)"
+                                               class="absolute opacity-0 pointer-events-none">
+                                        <button id="settlement-recurring-month-button" 
+                                                onclick="event.stopPropagation(); document.getElementById('settlement-recurring-month-selector').showPicker()"
+                                                class="px-2 py-1 border border-gray-300 rounded text-[10px] font-medium text-gray-700 hover:bg-gray-50 transition-all whitespace-nowrap">
+                                            ${this.getFormattedMonth(settlementData.recurringMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`)} ▼
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="max-h-48 overflow-y-auto">
+                                ${recurringItems.length > 0 ? recurringItems.map(item => {
+                                    const isEnabled = settlementData.enabledRecurring.includes(item.name);
+                                    return `
+                                        <label class="flex items-center gap-2 p-1.5 bg-gray-50 rounded cursor-pointer hover:bg-gray-100" onclick="event.stopPropagation()">
+                                            <input type="checkbox" ${isEnabled ? 'checked' : ''}
+                                                   onchange="event.stopPropagation(); Dashboard.toggleRecurringItem(${year}, ${month}, '${Utils.escapeHtml(item.name)}')"
+                                                   class="w-3.5 h-3.5 text-green-600 border-gray-300 rounded">
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-[10px] font-medium text-gray-700 truncate">${Utils.escapeHtml(item.name)}</p>
+                                                <p class="text-[10px] text-gray-500 truncate">${item.category || 'Uncategorized'}</p>
+                                            </div>
+                                            <span class="text-[10px] font-bold text-gray-900 flex-shrink-0">₹${Utils.formatIndianNumber(item.amount)}</span>
+                                        </label>
+                                    `;
+                                }).join('') : '<p class="text-[10px] text-gray-500 text-center py-1.5">No recurring payments for this month</p>'}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Loan EMIs (Collapsible) -->
+                        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                            <button onclick="Dashboard.toggleSettlementSection('loans', ${year}, ${month})" 
+                                    class="w-full flex items-center justify-between p-2.5 hover:bg-gray-50 transition-colors">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm">🏦</span>
+                                    <div class="text-left">
+                                        <p class="text-xs font-semibold text-gray-700">Loan EMIs</p>
+                                        <p class="text-[10px] text-gray-500">${loanEmiItems.length} EMI(s)</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold text-gray-900">₹${Utils.formatIndianNumber(loansTotal)}</span>
+                                    <svg id="loans-arrow" class="w-4 h-4 text-gray-500 transform transition-transform ${settlementData.expandedSections?.loans ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </div>
+                            </button>
+                            <div id="loans-content" class="${settlementData.expandedSections?.loans ? '' : 'hidden'} px-3 pb-3 pt-3 space-y-1.5 border-t border-gray-200">
+                                <div class="flex items-start gap-2 mb-2 pb-2 border-b border-gray-200" onclick="event.stopPropagation()">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-[10px] text-gray-600 leading-tight mb-0.5">Select month for loan EMIs</p>
+                                        <p class="text-[9px] text-gray-500">Default: Same as income month</p>
+                                    </div>
+                                    <div class="relative flex-shrink-0 mt-0.5">
+                                        <input type="month" id="settlement-loans-month-selector" 
+                                               value="${settlementData.loansMonth || settlementData.incomeMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`}"
+                                               onchange="Dashboard.updateSettlementLoansMonth(${year}, ${month}, this.value)"
+                                               class="absolute opacity-0 pointer-events-none">
+                                        <button id="settlement-loans-month-button" 
+                                                onclick="event.stopPropagation(); document.getElementById('settlement-loans-month-selector').showPicker()"
+                                                class="px-2 py-1 border border-gray-300 rounded text-[10px] font-medium text-gray-700 hover:bg-gray-50 transition-all whitespace-nowrap">
+                                            ${this.getFormattedMonth(settlementData.loansMonth || settlementData.incomeMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`)} ▼
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="max-h-48 overflow-y-auto">
+                                ${loanEmiItems.length > 0 ? loanEmiItems.map(emi => {
+                                    const isEnabled = settlementData.enabledLoanEmis.includes(emi.name);
+                                    return `
+                                        <label class="flex items-center gap-2 p-1.5 bg-gray-50 rounded cursor-pointer hover:bg-gray-100" onclick="event.stopPropagation()">
+                                            <input type="checkbox" ${isEnabled ? 'checked' : ''}
+                                                   onchange="event.stopPropagation(); Dashboard.toggleLoanEmiItem(${year}, ${month}, '${Utils.escapeHtml(emi.name)}')"
+                                                   class="w-3.5 h-3.5 text-green-600 border-gray-300 rounded">
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-[10px] font-medium text-gray-700 truncate">${Utils.escapeHtml(emi.name)}</p>
+                                                <p class="text-[10px] text-gray-500 truncate">${emi.date}${emi.description ? ' • ' + Utils.escapeHtml(emi.description) : ''}</p>
+                                            </div>
+                                            <span class="text-[10px] font-bold text-gray-900 flex-shrink-0">₹${Utils.formatIndianNumber(emi.amount)}</span>
+                                        </label>
+                                    `;
+                                }).join('') : '<p class="text-[10px] text-gray-500 text-center py-1.5">No loan EMIs for this month</p>'}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Custom Items (Collapsible) -->
+                        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                            <button onclick="Dashboard.toggleSettlementSection('custom', ${year}, ${month})" 
+                                    class="w-full flex items-center justify-between p-2.5 hover:bg-gray-50 transition-colors">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm">➕</span>
+                                    <div class="text-left">
+                                        <p class="text-xs font-semibold text-gray-700">Custom Items</p>
+                                        <p class="text-[10px] text-gray-500">${(settlementData.customItems || []).length} item(s)</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold text-gray-900">₹${Utils.formatIndianNumber(customItemsTotal)}</span>
+                                    <svg id="custom-arrow" class="w-4 h-4 text-gray-500 transform transition-transform ${settlementData.expandedSections?.custom ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </div>
+                            </button>
+                            <div id="custom-content" class="${settlementData.expandedSections?.custom ? '' : 'hidden'} px-3 pb-3 pt-3 space-y-1.5 border-t border-gray-200">
+                                <div id="custom-items-list" class="space-y-1.5">
+                                    ${(settlementData.customItems || []).length > 0 ? (settlementData.customItems || []).map((item, idx) => `
+                                        <div class="flex items-center gap-2 p-1.5 bg-gray-50 rounded">
+                                            <button onclick="event.stopPropagation(); Dashboard.removeCustomItem(${year}, ${month}, ${idx})" 
+                                                    class="px-1.5 py-0.5 text-[10px] bg-red-500 hover:bg-red-600 text-white rounded flex-shrink-0 transition-all"
+                                                    title="Remove item">
+                                                ×
+                                            </button>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-[10px] font-medium text-gray-700 truncate">${Utils.escapeHtml(item.name)}</p>
+                                            </div>
+                                            <span class="text-[10px] font-bold text-gray-900 flex-shrink-0">₹${Utils.formatIndianNumber(item.amount)}</span>
+                                        </div>
+                                    `).join('') : '<p class="text-[10px] text-gray-500 text-center py-1.5">No custom items added</p>'}
+                                </div>
+                                <button onclick="event.stopPropagation(); Dashboard.showAddCustomItemModal(${year}, ${month})" 
+                                        class="w-full flex items-center justify-center p-1.5 border-2 border-dashed border-green-400 rounded hover:border-green-500 hover:bg-green-50 transition-all"
+                                        title="Add custom item">
+                                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Summary -->
+                        <div class="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-300 rounded-lg p-2.5">
+                            <div class="space-y-1">
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-gray-600">Credit Card Bills:</span>
+                                    <span class="font-semibold text-gray-900">₹${Utils.formatIndianNumber(cardsTotal)}</span>
+                                </div>
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-gray-600">Recurring Payments:</span>
+                                    <span class="font-semibold text-gray-900">₹${Utils.formatIndianNumber(recurringTotal)}</span>
+                                </div>
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-gray-600">Loan EMIs:</span>
+                                    <span class="font-semibold text-gray-900">₹${Utils.formatIndianNumber(loansTotal)}</span>
+                                </div>
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-gray-600">Custom Items:</span>
+                                    <span class="font-semibold text-gray-900">₹${Utils.formatIndianNumber(customItemsTotal)}</span>
+                                </div>
+                                <div class="border-t border-gray-300 pt-1 mt-1">
+                                    <div class="flex justify-between text-xs font-bold">
+                                        <span class="text-gray-700">Total Deductions:</span>
+                                        <span class="text-gray-900">₹${Utils.formatIndianNumber(totalDeductions)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if any
+        const existingModal = document.getElementById('settlement-modal');
+        if (existingModal) existingModal.remove();
+        
+        // Add modal to body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    },
+    
+    /**
+     * Close Settlement Modal
+     */
+    closeSettlementModal() {
+        const modal = document.getElementById('settlement-modal');
+        if (modal) modal.remove();
+    },
+    
+    /**
+     * Toggle settlement section (collapsible) - preserves state
+     */
+    toggleSettlementSection(section, year, month) {
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        if (!window.DB.settlementData) window.DB.settlementData = {};
+        if (!window.DB.settlementData[monthKey]) {
+            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: false, recurring: false, loans: false, custom: false } };
+        }
+        if (!window.DB.settlementData[monthKey].expandedSections) {
+            window.DB.settlementData[monthKey].expandedSections = { cards: false, recurring: false, loans: false, custom: false };
+        }
+        
+        // Toggle the state
+        const currentState = window.DB.settlementData[monthKey].expandedSections[section] || false;
+        window.DB.settlementData[monthKey].expandedSections[section] = !currentState;
+        window.Storage.save();
+        
+        // Update UI
+        const content = document.getElementById(`${section}-content`);
+        const arrow = document.getElementById(`${section}-arrow`);
+        if (content && arrow) {
+            if (!currentState) {
+                content.classList.remove('hidden');
+                arrow.classList.add('rotate-180');
+            } else {
+                content.classList.add('hidden');
+                arrow.classList.remove('rotate-180');
+            }
+        }
+    },
+    
+    /**
+     * Toggle card enabled/disabled - preserves expanded state
+     */
+    toggleCardEnabled(year, month, cardId, checked) {
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        if (!window.DB.settlementData) window.DB.settlementData = {};
+        if (!window.DB.settlementData[monthKey]) {
+            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledCards: [], customItems: [], expandedSections: { cards: true, recurring: false, custom: false } };
+        }
+        if (!Array.isArray(window.DB.settlementData[monthKey].enabledCards)) {
+            window.DB.settlementData[monthKey].enabledCards = [];
+        }
+        if (!window.DB.settlementData[monthKey].expandedSections) {
+            window.DB.settlementData[monthKey].expandedSections = { cards: true, recurring: false, custom: false };
+        }
+        
+        // Preserve expanded state
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: true, recurring: false, loans: false, custom: false };
+        
+        const enabledCards = window.DB.settlementData[monthKey].enabledCards || [];
+        const cardIdStr = String(cardId);
+        const index = enabledCards.findIndex(id => String(id) === cardIdStr);
+        
+        if (checked) {
+            // Add to enabled cards (check) - only if not already present
+            if (index === -1) {
+                enabledCards.push(cardIdStr);
+            }
+        } else {
+            // Remove from enabled cards (uncheck)
+            if (index > -1) {
+                enabledCards.splice(index, 1);
+            }
+        }
+        
+        window.DB.settlementData[monthKey].enabledCards = enabledCards;
+        window.DB.settlementData[monthKey].expandedSections = expandedState;
+        window.Storage.save();
+        this.showSettlementModal(year, month);
+    },
+    
+    /**
+     * Update settlement income month
+     */
+    updateSettlementIncomeMonth(year, month, incomeMonthValue) {
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        if (!window.DB.settlementData) window.DB.settlementData = {};
+        if (!window.DB.settlementData[monthKey]) {
+            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: {} };
+        }
+        window.DB.settlementData[monthKey].incomeMonth = incomeMonthValue;
+        window.Storage.save();
+        
+        // Update button text
+        const button = document.getElementById('settlement-income-month-button');
+        if (button) {
+            button.innerHTML = this.getFormattedMonth(incomeMonthValue) + ' ▼';
+        }
+        
+        this.showSettlementModal(year, month);
+    },
+    
+    /**
+     * Update settlement recurring month
+     */
+    updateSettlementRecurringMonth(year, month, recurringMonthValue) {
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        if (!window.DB.settlementData) window.DB.settlementData = {};
+        if (!window.DB.settlementData[monthKey]) {
+            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: {} };
+        }
+        
+        // Preserve expanded state
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: true, loans: false, custom: false };
+        
+        window.DB.settlementData[monthKey].recurringMonth = recurringMonthValue;
+        window.DB.settlementData[monthKey].expandedSections = expandedState;
+        window.Storage.save();
+        
+        // Update button text
+        const button = document.getElementById('settlement-recurring-month-button');
+        if (button) {
+            button.innerHTML = this.getFormattedMonth(recurringMonthValue) + ' ▼';
+        }
+        
+        this.showSettlementModal(year, month);
+    },
+    
+    /**
+     * Update settlement loans month
+     */
+    updateSettlementLoansMonth(year, month, loansMonthValue) {
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        if (!window.DB.settlementData) window.DB.settlementData = {};
+        if (!window.DB.settlementData[monthKey]) {
+            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: {} };
+        }
+        
+        // Preserve expanded state
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: false, loans: true, custom: false };
+        
+        window.DB.settlementData[monthKey].loansMonth = loansMonthValue;
+        window.DB.settlementData[monthKey].expandedSections = expandedState;
+        window.Storage.save();
+        
+        // Update button text
+        const button = document.getElementById('settlement-loans-month-button');
+        if (button) {
+            button.innerHTML = this.getFormattedMonth(loansMonthValue) + ' ▼';
+        }
+        
+        this.showSettlementModal(year, month);
+    },
+    
+    /**
+     * Toggle loan EMI item enable/disable - preserves expanded state
+     */
+    toggleLoanEmiItem(year, month, itemName) {
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        if (!window.DB.settlementData) window.DB.settlementData = {};
+        if (!window.DB.settlementData[monthKey]) {
+            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: false, recurring: false, loans: true, custom: false } };
+        }
+        if (!window.DB.settlementData[monthKey].enabledLoanEmis) {
+            window.DB.settlementData[monthKey].enabledLoanEmis = [];
+        }
+        if (!window.DB.settlementData[monthKey].expandedSections) {
+            window.DB.settlementData[monthKey].expandedSections = { cards: false, recurring: false, loans: true, custom: false };
+        }
+        
+        // Preserve expanded state
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: false, loans: true, custom: false };
+        
+        const enabledLoanEmis = window.DB.settlementData[monthKey].enabledLoanEmis;
+        const index = enabledLoanEmis.indexOf(itemName);
+        if (index > -1) {
+            enabledLoanEmis.splice(index, 1);
+        } else {
+            enabledLoanEmis.push(itemName);
+        }
+        window.DB.settlementData[monthKey].expandedSections = expandedState;
+        window.Storage.save();
+        this.showSettlementModal(year, month);
+    },
+    
+    /**
+     * Load current card data from credit cards page
+     */
+    loadCardData(year, month) {
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        if (!window.DB.settlementData) window.DB.settlementData = {};
+        if (!window.DB.settlementData[monthKey]) {
+            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: {} };
+        }
+        
+        // Get current credit cards data
+        const creditCards = (window.DB.cards || []).filter(c => c.cardType === 'credit' && !c.isPlaceholder);
+        const unpaidBills = (window.DB.cardBills || []).filter(b => !b.isPaid);
+        
+        const currentCardData = creditCards.map(card => {
+            const cardBills = unpaidBills.filter(b => String(b.cardId) === String(card.id));
+            const billAmount = cardBills.reduce((sum, b) => sum + (parseFloat(b.amount) || 0), 0);
+            const outstandingAmount = parseFloat(card.outstanding) || 0;
+            return {
+                id: card.id,
+                name: card.name,
+                billAmount: billAmount,
+                outstandingAmount: outstandingAmount,
+                hasBills: billAmount > 0,
+                hasOutstanding: outstandingAmount > 0
+            };
+        }).filter(card => card.billAmount > 0 || card.outstandingAmount > 0); // Skip cards with both amounts as 0
+        
+        // Preserve expanded state
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: true, recurring: false, loans: false, custom: false };
+        
+        // Save current data as loaded data
+        window.DB.settlementData[monthKey].savedCardData = currentCardData;
+        window.DB.settlementData[monthKey].cardDataLoaded = true;
+        window.DB.settlementData[monthKey].expandedSections = expandedState;
+        window.Storage.save();
+        
+        this.showSettlementModal(year, month);
+    },
+    
+    /**
+     * Revert to saved card data
+     */
+    revertCardData(year, month) {
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        if (!window.DB.settlementData || !window.DB.settlementData[monthKey]) {
+            return;
+        }
+        
+        // Preserve expanded state
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: true, recurring: false, loans: false, custom: false };
+        
+        // Revert to saved data
+        window.DB.settlementData[monthKey].cardDataLoaded = false;
+        window.DB.settlementData[monthKey].expandedSections = expandedState;
+        window.Storage.save();
+        
+        this.showSettlementModal(year, month);
+    },
+    
+    /**
+     * Update card selection (bill or outstanding) - preserves expanded state
+     */
+    updateCardSelection(year, month, cardId, selectionType) {
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        if (!window.DB.settlementData) window.DB.settlementData = {};
+        if (!window.DB.settlementData[monthKey]) {
+            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: true, recurring: false, loans: false, custom: false } };
+        }
+        if (!window.DB.settlementData[monthKey].cardSelections) {
+            window.DB.settlementData[monthKey].cardSelections = {};
+        }
+        if (!window.DB.settlementData[monthKey].expandedSections) {
+            window.DB.settlementData[monthKey].expandedSections = { cards: true, recurring: false, loans: false, custom: false };
+        }
+        
+        // Preserve expanded state
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: true, recurring: false, loans: false, custom: false };
+        
+        window.DB.settlementData[monthKey].cardSelections[cardId] = selectionType;
+        window.DB.settlementData[monthKey].expandedSections = expandedState;
+        window.Storage.save();
+        this.showSettlementModal(year, month);
+    },
+    
+    /**
+     * Toggle recurring item enable/disable - preserves expanded state
+     */
+    toggleRecurringItem(year, month, itemName) {
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        if (!window.DB.settlementData) window.DB.settlementData = {};
+        if (!window.DB.settlementData[monthKey]) {
+            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: false, recurring: true, loans: false, custom: false } };
+        }
+        if (!window.DB.settlementData[monthKey].enabledRecurring) {
+            window.DB.settlementData[monthKey].enabledRecurring = [];
+        }
+        if (!window.DB.settlementData[monthKey].expandedSections) {
+            window.DB.settlementData[monthKey].expandedSections = { cards: false, recurring: true, loans: false, custom: false };
+        }
+        
+        // Preserve expanded state
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: true, loans: false, custom: false };
+        
+        const enabledRecurring = window.DB.settlementData[monthKey].enabledRecurring;
+        const index = enabledRecurring.indexOf(itemName);
+        if (index > -1) {
+            enabledRecurring.splice(index, 1);
+        } else {
+            enabledRecurring.push(itemName);
+        }
+        window.DB.settlementData[monthKey].expandedSections = expandedState;
+        window.Storage.save();
+        this.showSettlementModal(year, month);
+    },
+    
+    /**
+     * Show modal to add custom settlement item
+     */
+    showAddCustomItemModal(year, month) {
+        const modalHTML = `
+            <div id="add-custom-item-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[10001] flex items-center justify-center p-4" onclick="if(event.target===this) Dashboard.closeAddCustomItemModal()">
+                <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Add Custom Item</h3>
+                        <button onclick="Dashboard.closeAddCustomItemModal()" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Item Name</label>
+                            <input type="text" id="custom-item-name" 
+                                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                                   placeholder="e.g., Medical expenses, Shopping">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Amount</label>
+                            <input type="number" id="custom-item-amount" 
+                                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                                   placeholder="0" min="0" step="0.01">
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button onclick="Dashboard.closeAddCustomItemModal()" 
+                                    class="flex-1 px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                                Cancel
+                            </button>
+                            <button onclick="Dashboard.saveCustomItem(${year}, ${month})" 
+                                    class="flex-1 px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if any
+        const existingModal = document.getElementById('add-custom-item-modal');
+        if (existingModal) existingModal.remove();
+        
+        // Add modal to body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Focus on name input
+        setTimeout(() => {
+            const nameInput = document.getElementById('custom-item-name');
+            if (nameInput) nameInput.focus();
+        }, 100);
+    },
+    
+    /**
+     * Close add custom item modal
+     */
+    closeAddCustomItemModal() {
+        const modal = document.getElementById('add-custom-item-modal');
+        if (modal) modal.remove();
+    },
+    
+    /**
+     * Save custom item from modal
+     */
+    saveCustomItem(year, month) {
+        const nameInput = document.getElementById('custom-item-name');
+        const amountInput = document.getElementById('custom-item-amount');
+        
+        if (!nameInput || !amountInput) return;
+        
+        const name = nameInput.value.trim();
+        const amount = parseFloat(amountInput.value) || 0;
+        
+        if (!name) {
+            alert('Please enter an item name');
+            return;
+        }
+        
+        if (amount <= 0) {
+            alert('Please enter a valid amount');
+            return;
+        }
+        
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        if (!window.DB.settlementData) window.DB.settlementData = {};
+        if (!window.DB.settlementData[monthKey]) {
+            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], customItems: [] };
+        }
+        if (!window.DB.settlementData[monthKey].customItems) {
+            window.DB.settlementData[monthKey].customItems = [];
+        }
+        // Preserve expanded state
+        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: false, custom: true };
+        
+        window.DB.settlementData[monthKey].customItems.push({ name: name, amount: amount });
+        window.DB.settlementData[monthKey].expandedSections = expandedState;
+        window.Storage.save();
+        
+        this.closeAddCustomItemModal();
+        this.showSettlementModal(year, month);
+    },
+    
+    
+    /**
+     * Remove custom item
+     */
+    removeCustomItem(year, month, index) {
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        if (!window.DB.settlementData || !window.DB.settlementData[monthKey] || !window.DB.settlementData[monthKey].customItems) {
+            return;
+        }
+        window.DB.settlementData[monthKey].customItems.splice(index, 1);
+        window.Storage.save();
+        this.showSettlementModal(year, month);
     }
 };
 
