@@ -85,8 +85,12 @@ const Chat = {
         if (input) input.value = '';
         
         // Add loading indicator
+        // Pass rawHtml=true so the <span class="loading-dots"> survives the
+        // formatAIResponse pipeline (which now escapes HTML for XSS safety).
+        // Without this flag, the span gets escaped to literal text and the
+        // two-phase query path can't find .loading-dots to update.
         const loadingId = 'loading-' + Date.now();
-        this.addMessage('assistant', '<span class="loading-dots">Thinking</span>', loadingId);
+        this.addMessage('assistant', '<span class="loading-dots">Thinking</span>', loadingId, true);
         
         try {
             // Suppress AI provider info messages during chat (reduces UI clutter)
@@ -152,9 +156,8 @@ const Chat = {
         
         // Update loading message
         const loading = document.getElementById(loadingId);
-        if (loading) {
-            loading.querySelector('.loading-dots').textContent = 'Analyzing query structure';
-        }
+        const dots1 = loading?.querySelector('.loading-dots');
+        if (dots1) dots1.textContent = 'Analyzing query structure';
         
         // Build phase 1 prompt (always includes metadata for chat)
         const phase1Prompt = this.buildPhase1Prompt(userQuery, mode, metadataContext);
@@ -174,9 +177,8 @@ const Chat = {
             
             // Update loading message
             const loading = document.getElementById(loadingId);
-            if (loading) {
-                loading.querySelector('.loading-dots').textContent = 'Executing query on local data';
-            }
+            const dots2 = loading?.querySelector('.loading-dots');
+            if (dots2) dots2.textContent = 'Executing query on local data';
             
             // PHASE 2: Execute query locally
             const queryResult = window.QueryEngine.executeQuery(queryObj, mode);
@@ -188,9 +190,8 @@ const Chat = {
             console.log('✅ Query Result:', queryResult);
             
             // Update loading message
-            if (loading) {
-                loading.querySelector('.loading-dots').textContent = 'Analyzing results';
-            }
+            const dots3 = loading?.querySelector('.loading-dots');
+            if (dots3) dots3.textContent = 'Analyzing results';
             
             // PHASE 3: Send results to AI for analysis
             const phase2Prompt = this.buildPhase2Prompt(userQuery, queryResult, mode);
@@ -279,7 +280,7 @@ Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
     /**
      * Add a message to the chat
      */
-    addMessage(role, content, id = null) {
+    addMessage(role, content, id = null, rawHtml = false) {
         const chatMessages = document.getElementById('chat-messages');
         if (!chatMessages) return;
         
@@ -287,8 +288,17 @@ Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
         messageDiv.className = `message p-2.5 rounded-lg mb-2 ${role === 'user' ? 'bg-blue-50 border border-blue-200 ml-8' : 'bg-gray-50 border border-gray-300 mr-8'}`;
         if (id) messageDiv.id = id;
         
-        // Format assistant messages for better readability
-        const formattedContent = role === 'assistant' ? this.formatAIResponse(content) : Utils.escapeHtml(content);
+        // Format assistant messages for better readability.
+        // rawHtml=true bypasses formatting for trusted internal HTML
+        // (e.g. the loading-dots bubble); never use it for AI output.
+        let formattedContent;
+        if (rawHtml) {
+            formattedContent = content;
+        } else if (role === 'assistant') {
+            formattedContent = this.formatAIResponse(content);
+        } else {
+            formattedContent = Utils.escapeHtml(content);
+        }
         
         messageDiv.innerHTML = `
             <div class="font-semibold text-xs mb-1.5 ${role === 'user' ? 'text-blue-700' : 'text-indigo-700'}">
