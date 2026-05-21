@@ -81,6 +81,50 @@ Use Indian Rupee (₹) for all amounts.`;
     },
     
     /**
+     * Format a context object as compact plain text (mode-aware) instead of
+     * pretty-printed JSON. Used by Groq / ChatGPT / Perplexity providers to
+     * keep token usage bounded — pretty JSON adds ~30% bloat.
+     */
+    formatContextText(ctx) {
+        try {
+            const mode = ctx && ctx.mode;
+            if (mode === 'credit_cards' && Array.isArray(ctx.available_cards)) {
+                const lines = [`MY CREDIT CARDS (${ctx.available_cards.length}):`];
+                ctx.available_cards.forEach((c, i) => {
+                    lines.push(`\n${i + 1}. ${c.name}`);
+                    if (c.benefits && c.benefits !== 'Benefits not yet fetched') {
+                        lines.push(c.benefits);
+                    } else {
+                        lines.push('   (benefits not yet fetched)');
+                    }
+                });
+                return lines.join('\n');
+            }
+            if (mode === 'expenses' && Array.isArray(ctx.expenses)) {
+                const head = `EXPENSES (${ctx.expenses.length} items, total ₹${(ctx.total || 0).toFixed(2)})`;
+                const rows = ctx.expenses.map(e =>
+                    `${e.date || ''} | ${e.category || ''} | ${e.title || ''} | ₹${e.amount}`
+                );
+                return `${head}\n${rows.join('\n')}`;
+            }
+            if (mode === 'investments' && Array.isArray(ctx.investments)) {
+                const head = `INVESTMENTS (${ctx.investments.length} items, total ₹${(ctx.total || 0).toFixed(2)}, USD/INR ${ctx.exchangeRate})`;
+                const rows = ctx.investments.map(inv =>
+                    `${inv.type || ''} | ${inv.name || ''} | goal=${inv.goal || ''} | ₹${Math.round(inv.amount || 0)}`
+                );
+                return `${head}\n${rows.join('\n')}`;
+            }
+        } catch (e) {
+            // fall through
+        }
+        try {
+            return JSON.stringify(ctx);
+        } catch (e) {
+            return String(ctx);
+        }
+    },
+
+    /**
      * Get all available providers (with API keys configured)
      */
     getAvailableProviders() {
@@ -138,16 +182,26 @@ Use Indian Rupee (₹) for all amounts.`;
     },
 
     /**
-     * Check if error is a rate limit error
+     * Check if error is a rate limit / capacity error that warrants falling back
+     * to another provider. Includes per-minute token (TPM) over-limit errors,
+     * which Groq returns as "Request too large for the model ... tokens per minute"
+     * even though the HTTP status may not be 429.
      */
     isRateLimitError(error) {
-        const errorMsg = error.message || error.toString();
+        const errorMsg = (error.message || error.toString() || '').toLowerCase();
         return (
             errorMsg.includes('429') ||
             errorMsg.includes('rate limit') ||
+            errorMsg.includes('rate_limit') ||
             errorMsg.includes('quota') ||
-            errorMsg.includes('RESOURCE_EXHAUSTED') ||
-            errorMsg.includes('Resources exhausted')
+            errorMsg.includes('resource_exhausted') ||
+            errorMsg.includes('resources exhausted') ||
+            errorMsg.includes('request too large') ||
+            errorMsg.includes('tokens per minute') ||
+            errorMsg.includes('tpm') ||
+            errorMsg.includes('context window') ||
+            errorMsg.includes('context_length_exceeded') ||
+            errorMsg.includes('too many tokens')
         );
     },
 
@@ -324,14 +378,22 @@ Use Indian Rupee (₹) for all amounts.`;
                 // Cards mode - ONLY sends non-sensitive data
                 // SECURITY: Sensitive fields are EXCLUDED: cardNumber, CVV, expiry, creditLimit, outstanding, statementDate, billDate, emis
                 const creditCards = window.DB.cards.filter(c => !c.cardType || c.cardType === 'credit');
+                // Per-card benefits cap to keep total prompt within small-context model limits (e.g. Groq 12k TPM).
+                // 1500 chars ≈ 375 tokens per card; with 10 cards that's ~3750 tokens for benefits + system prompt + headroom.
+                const MAX_BENEFITS_CHARS = 1500;
                 return {
                     mode: 'credit_cards',
-                    available_cards: creditCards.map(c => ({
-                        name: c.name, // Card name only (e.g., "HDFC Regalia")
-                        benefits: c.benefits || 'Benefits not yet fetched', // Public benefit info from bank websites
-                        benefitsFetchedAt: c.benefitsFetchedAt || null // When benefits were fetched
-                        // NOTE: No sensitive data (cardNumber, CVV, expiry, etc.) is ever sent to AI
-                    }))
+                    available_cards: creditCards.map(c => {
+                        const raw = c.benefits || 'Benefits not yet fetched';
+                        const trimmed = (typeof raw === 'string' && raw.length > MAX_BENEFITS_CHARS)
+                            ? raw.slice(0, MAX_BENEFITS_CHARS) + '\n…[truncated]'
+                            : raw;
+                        return {
+                            name: c.name,
+                            benefits: trimmed,
+                            benefitsFetchedAt: c.benefitsFetchedAt || null
+                        };
+                    })
                 };
                 
             case 'expenses':

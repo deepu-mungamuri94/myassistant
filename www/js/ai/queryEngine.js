@@ -53,7 +53,8 @@ const QueryEngine = {
                     { name: 'date', type: 'string', description: 'Expense date (YYYY-MM-DD format)' },
                     { name: 'createdAt', type: 'number', description: 'Timestamp when expense was added' },
                     { name: 'suggestedCard', type: 'string', description: 'Suggested card for this expense (optional)' },
-                    { name: 'recurringId', type: 'number', description: 'Link to recurring expense (optional)' }
+                    { name: 'recurringId', type: 'number', description: 'Link to recurring expense (optional)' },
+                    { name: 'cardName', type: 'string', description: 'Credit card name if paid through credit card (e.g., "IDFC First", "HDFC Regalia") - null if not paid via card' }
                 ],
                 availableCategories: categories,
                 sampleStructure: {
@@ -61,7 +62,8 @@ const QueryEngine = {
                     title: 'string (e.g., "Grocery Shopping")',
                     amount: 'number (e.g., 5000)',
                     category: `string (one of: ${categories.join(', ')})`,
-                    date: 'string (e.g., "2024-11-22")'
+                    date: 'string (e.g., "2024-11-22")',
+                    cardName: 'string | null (e.g., "IDFC First" if paid via credit card, null otherwise)'
                 }
             },
             statistics: {
@@ -97,11 +99,22 @@ Examples:
 3. Expenses above ₹5000:
    { "operation": "filter", "filterCode": "e => e.amount > 5000", "aggregation": "none" }
 
+4. All expenses paid through credit cards (any card):
+   { "operation": "filter", "filterCode": "e => e.cardName !== null", "aggregation": "sum", "aggregationField": "amount" }
+
+5. Expenses paid through IDFC First card in January 2025:
+   { "operation": "filter", "filterCode": "e => e.cardName && e.cardName.toLowerCase().includes('idfc') && new Date(e.date).getMonth() === 0 && new Date(e.date).getFullYear() === 2025", "aggregation": "sum", "aggregationField": "amount" }
+
+6. All expenses paid through a specific card:
+   { "operation": "filter", "filterCode": "e => e.cardName && e.cardName.toLowerCase().includes('hdfc')", "aggregation": "none" }
+
 Important:
 - Use JavaScript arrow function syntax
-- Access fields as e.fieldName (e.g., e.amount, e.category)
+- Access fields as e.fieldName (e.g., e.amount, e.category, e.cardName)
 - For dates, use new Date(e.date)
 - Month is 0-indexed (Jan=0, Dec=11)
+- cardName field contains the credit card name (e.g., "IDFC First", "HDFC Regalia") or null if not paid via card
+- Use e.cardName to filter expenses by credit card (e.g., e.cardName && e.cardName.toLowerCase().includes('idfc'))
 - Return ONLY valid JavaScript that works with Array.filter()
 `
         };
@@ -378,7 +391,7 @@ Important:
             }
             
             // Execute filter
-            const filtered = data.filter(item => {
+            let filtered = data.filter(item => {
                 try {
                     return filterFn(item);
                 } catch (e) {
@@ -386,6 +399,23 @@ Important:
                     return false;
                 }
             });
+            
+            // Enrich expenses with card name if paid through credit card
+            if (mode === 'expenses') {
+                filtered = filtered.map(expense => {
+                    const enriched = { ...expense };
+                    
+                    // Add card name if payment method is credit card
+                    if (expense.paymentMethod && expense.paymentMethod.type === 'credit_card' && expense.paymentMethod.id) {
+                        const card = (window.DB.cards || []).find(c => String(c.id) === String(expense.paymentMethod.id));
+                        if (card) {
+                            enriched.cardName = card.nickname || card.name || null;
+                        }
+                    }
+                    
+                    return enriched;
+                });
+            }
 
             // Helper to get field value (with calculation for investment amounts)
             const getFieldValue = (item, field) => {

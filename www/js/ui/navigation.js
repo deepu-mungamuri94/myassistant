@@ -280,6 +280,13 @@ const Navigation = {
                 });
             }
             
+            // Populate cloud backup section
+            const clientIdInput = document.getElementById('cloud-backup-client-id');
+            if (clientIdInput) {
+                clientIdInput.value = window.DB.cloudBackup?.clientId || '';
+            }
+            this.refreshCloudBackupUI();
+
             modal.classList.remove('hidden');
         }
     },
@@ -310,7 +317,16 @@ const Navigation = {
             
             window.DB.security.masterPassword = masterPassword;
         }
-        
+
+        // Persist cloud backup Client ID (does not trigger sign-in)
+        const clientIdInput = document.getElementById('cloud-backup-client-id');
+        if (clientIdInput) {
+            const newClientId = clientIdInput.value.trim();
+            if (newClientId !== (window.DB.cloudBackup.clientId || '')) {
+                window.DB.cloudBackup.clientId = newClientId;
+            }
+        }
+
         // Handle biometric toggle
         const biometricCheckbox = document.getElementById('biometric-enabled-checkbox');
         if (biometricCheckbox && window.Security) {
@@ -940,7 +956,181 @@ const Navigation = {
         // Show mandatory backup confirmation modal (step 1)
         this.showBackupConfirm();
     },
-    
+
+    // ===================================================================
+    // Cloud Backup (Google Drive) — handlers wired to Settings + Restore UI
+    // ===================================================================
+
+    /**
+     * Refresh the cloud-backup status + action buttons inside the Settings modal.
+     * Called whenever connection state / last-backup state changes.
+     */
+    refreshCloudBackupUI() {
+        const statusEl = document.getElementById('cloud-backup-status');
+        const actionsEl = document.getElementById('cloud-backup-actions');
+        if (!statusEl || !actionsEl || !window.CloudBackup) return;
+
+        const cb = window.DB.cloudBackup || {};
+        const connected = window.CloudBackup.isReady();
+
+        // ---- Status block ----
+        let statusHtml = '';
+        if (!cb.clientId) {
+            statusHtml = `<div class="text-gray-600">Paste a Google OAuth Client ID above and tap <b>Save</b>, then <b>Connect Google Drive</b>.</div>`;
+        } else if (!connected) {
+            statusHtml = `<div class="text-gray-700">Not connected. Tap <b>Connect Google Drive</b> to sign in.</div>`;
+        } else {
+            const last = cb.lastBackupAt
+                ? new Date(cb.lastBackupAt).toLocaleString()
+                : 'never';
+            const sizeKb = cb.bytesUploaded ? (cb.bytesUploaded / 1024).toFixed(1) + ' KB' : '-';
+            const statusBadge =
+                cb.lastBackupStatus === 'error'
+                    ? '<span class="text-red-600 font-semibold">⚠ Error</span>'
+                    : cb.lastBackupStatus === 'uploading'
+                        ? '<span class="text-blue-600 font-semibold">⏳ Uploading…</span>'
+                        : cb.lastBackupAt
+                            ? '<span class="text-green-600 font-semibold">✓ Healthy</span>'
+                            : '<span class="text-gray-600">Idle</span>';
+
+            statusHtml = `
+                <div class="space-y-1">
+                    <div><b>Account:</b> ${cb.userEmail || '(connected)'}</div>
+                    <div><b>Status:</b> ${statusBadge}</div>
+                    <div><b>Last backup:</b> ${last}</div>
+                    <div><b>Last size:</b> ${sizeKb} · keeps last ${cb.keepCount || 10} versions</div>
+                    ${cb.lastError ? `<div class="text-red-600 mt-1 break-words"><b>Error:</b> ${cb.lastError}</div>` : ''}
+                </div>`;
+        }
+        statusEl.innerHTML = statusHtml;
+
+        // ---- Action buttons ----
+        // `flex-1 min-w-0` makes each button share width equally and shrink as
+        // needed; `truncate` keeps the label on a single line.
+        const btn = (label, handler, classes) =>
+            `<button onclick="${handler}" class="${classes} flex-1 min-w-0 px-2 py-2 text-xs rounded-lg font-semibold transition-all truncate">${label}</button>`;
+
+        let actionsHtml = '';
+        if (!connected) {
+            actionsHtml = btn(
+                '🔗 Connect Google Drive',
+                'Navigation.cloudBackupSignIn()',
+                'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:shadow-lg'
+            );
+        } else {
+            actionsHtml = [
+                btn('☁️ Backup', 'Navigation.cloudBackupNow()',
+                    'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-lg'),
+                btn('📥 Restore', 'Navigation.openCloudRestoreModal()',
+                    'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:shadow-lg'),
+                btn('🚪 Sign Out', 'Navigation.cloudBackupSignOut()',
+                    'bg-gray-200 text-gray-800 hover:bg-gray-300')
+            ].join('');
+        }
+        actionsEl.innerHTML = actionsHtml;
+    },
+
+    async cloudBackupSignIn() {
+        try {
+            // Pull the latest Client ID from the input in case user hasn't tapped Save
+            const clientIdInput = document.getElementById('cloud-backup-client-id');
+            if (clientIdInput) {
+                window.DB.cloudBackup.clientId = clientIdInput.value.trim();
+                window.Storage.save();
+            }
+            await window.CloudBackup.signIn();
+            // OAuth completes asynchronously via the appUrlOpen listener.
+        } catch (e) {
+            window.Utils.showError('❌ Sign-in failed!\n\n' + (e.message || e));
+        }
+    },
+
+    async cloudBackupSignOut() {
+        try {
+            await window.CloudBackup.signOut();
+            window.Utils.showSuccess('✅ Signed out of Google Drive.');
+            this.refreshCloudBackupUI();
+        } catch (e) {
+            window.Utils.showError('❌ Sign-out failed!\n\n' + (e.message || e));
+        }
+    },
+
+    async cloudBackupNow() {
+        try {
+            if (window.Loading) window.Loading.show('Uploading backup to Google Drive…');
+            await window.CloudBackup.uploadNow();
+            if (window.Loading) window.Loading.hide();
+            window.Utils.showSuccess('✅ Backup uploaded to Google Drive.');
+            this.refreshCloudBackupUI();
+        } catch (e) {
+            if (window.Loading) window.Loading.hide();
+            window.Utils.showError('❌ Upload failed!\n\n' + (e.message || e));
+        }
+    },
+
+    async openCloudRestoreModal() {
+        const modal = document.getElementById('cloud-restore-modal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+
+        const list = document.getElementById('cloud-restore-list');
+        const passwordInput = document.getElementById('cloud-restore-password');
+        if (passwordInput) {
+            passwordInput.value = window.DB.security.masterPassword || '';
+        }
+        if (list) list.innerHTML = '<div class="p-3 text-sm text-gray-500 text-center">Loading…</div>';
+
+        try {
+            const files = await window.CloudBackup.listBackups();
+            if (!files.length) {
+                list.innerHTML = '<div class="p-3 text-sm text-gray-500 text-center">No backups found yet.</div>';
+                return;
+            }
+            list.innerHTML = files.map(f => {
+                const date = f.createdTime ? new Date(f.createdTime).toLocaleString() : '';
+                const sizeKb = f.size ? (parseInt(f.size, 10) / 1024).toFixed(1) + ' KB' : '';
+                return `
+                    <div class="p-3 flex items-center justify-between gap-2 hover:bg-gray-50">
+                        <div class="min-w-0 flex-1">
+                            <div class="text-xs font-mono truncate">${f.name}</div>
+                            <div class="text-[10px] text-gray-500">${date}${sizeKb ? ' · ' + sizeKb : ''}</div>
+                        </div>
+                        <button onclick="Navigation.restoreFromCloud('${f.id}')" class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold flex-shrink-0">Restore</button>
+                    </div>`;
+            }).join('');
+        } catch (e) {
+            list.innerHTML = `<div class="p-3 text-sm text-red-600">Failed to load: ${e.message || e}</div>`;
+        }
+    },
+
+    closeCloudRestoreModal() {
+        const modal = document.getElementById('cloud-restore-modal');
+        if (modal) modal.classList.add('hidden');
+        const passwordInput = document.getElementById('cloud-restore-password');
+        if (passwordInput) passwordInput.value = '';
+    },
+
+    async restoreFromCloud(fileId) {
+        const passwordInput = document.getElementById('cloud-restore-password');
+        const password = passwordInput?.value || '';
+        if (!password) {
+            window.Utils.showError('⚠️ Enter the master password used at the time of backup.');
+            return;
+        }
+        try {
+            if (window.Loading) window.Loading.show('Downloading & decrypting backup…');
+            await window.CloudBackup.restoreFromBackup(fileId, password);
+            if (window.Loading) window.Loading.hide();
+            this.closeCloudRestoreModal();
+            this.closeSettings();
+            window.Utils.showSuccess('✅ Restore complete! Reloading…', 2500);
+            setTimeout(() => window.location.reload(), 1500);
+        } catch (e) {
+            if (window.Loading) window.Loading.hide();
+            window.Utils.showError('❌ Restore failed!\n\n' + (e.message || e));
+        }
+    },
+
 };
 
 // Export for use in other modules

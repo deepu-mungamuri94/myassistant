@@ -89,6 +89,13 @@ const Income = {
         if (window.DB.income.insuranceMonths === undefined) window.DB.income.insuranceMonths = [];
         // Ensure leave encashment fields exist
         if (window.DB.income.leaveDays === undefined) window.DB.income.leaveDays = 0;
+        // Ensure bonus multipliers exist (default 1.0 = no change to base 25/75 split)
+        if (window.DB.income.bonusMidYearMultiplier === undefined || window.DB.income.bonusMidYearMultiplier === null) {
+            window.DB.income.bonusMidYearMultiplier = 1.0;
+        }
+        if (window.DB.income.bonusYearEndMultiplier === undefined || window.DB.income.bonusYearEndMultiplier === null) {
+            window.DB.income.bonusYearEndMultiplier = 1.0;
+        }
         
         return window.DB.income;
     },
@@ -298,6 +305,12 @@ const Income = {
             ...existingData,
             ctc: parseFloat(data.ctc) || 0,
             bonusPercent: parseFloat(data.bonusPercent) || 0,
+            bonusMidYearMultiplier: (data.bonusMidYearMultiplier !== undefined && data.bonusMidYearMultiplier !== null && !isNaN(parseFloat(data.bonusMidYearMultiplier)))
+                ? parseFloat(data.bonusMidYearMultiplier)
+                : 1.0,
+            bonusYearEndMultiplier: (data.bonusYearEndMultiplier !== undefined && data.bonusYearEndMultiplier !== null && !isNaN(parseFloat(data.bonusYearEndMultiplier)))
+                ? parseFloat(data.bonusYearEndMultiplier)
+                : 1.0,
             esppPercentCycle1: parseFloat(data.esppPercentCycle1) || 0,
             esppPercentCycle2: parseFloat(data.esppPercentCycle2) || 0,
             pfPercent: parseFloat(data.pfPercent) || 12,

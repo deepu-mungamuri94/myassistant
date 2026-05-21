@@ -70,7 +70,13 @@ const GeminiAI = {
         let formattedContext = '';
         
         if (mode === 'credit_cards') {
-            formattedContext = `MY CREDIT CARDS:\n${JSON.stringify(context.available_cards, null, 2)}`;
+            const cards = (context.available_cards || []).map((c, i) => {
+                const benefits = (c.benefits && c.benefits !== 'Benefits not yet fetched')
+                    ? c.benefits
+                    : '(benefits not yet fetched)';
+                return `${i + 1}. ${c.name}\n${benefits}`;
+            }).join('\n\n');
+            formattedContext = `MY CREDIT CARDS (${(context.available_cards || []).length}):\n${cards}`;
         } else if (mode === 'expenses') {
             formattedContext = `EXPENSE DATA (${context.expenses.length} transactions, Total: ₹${context.total.toFixed(2)}):\n${JSON.stringify(context.expenses, null, 2)}`;
         } else if (mode === 'investments') {

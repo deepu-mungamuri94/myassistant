@@ -2852,9 +2852,10 @@ const Dashboard = {
             return expYear === year && expMonth === month;
         });
         
-        // Get all recurring expenses for the selected month
-        const recurringExpenses = window.DB.recurringExpenses.filter(rec => {
-            const scheduleDay = rec.dayOfMonth;
+        // Get all recurring expenses for the selected month (exclude suspended/inactive)
+        const recurringExpenses = (window.DB.recurringExpenses || []).filter(rec => {
+            if (!window.RecurringExpenses || !window.RecurringExpenses.isEffectivelyActive(rec)) return false;
+            const scheduleDay = rec.day || rec.dayOfMonth || 1;
             const expDate = new Date(year, month - 1, scheduleDay);
             return expDate <= new Date();
         });
@@ -3119,8 +3120,8 @@ const Dashboard = {
         
         allRecurring.forEach((recurring, i) => {
             
-            // Skip inactive
-            if (recurring.isActive === false) {
+            // Skip inactive or suspended
+            if (!window.RecurringExpenses.isEffectivelyActive(recurring)) {
                 return;
             }
             
@@ -3237,8 +3238,8 @@ const Dashboard = {
         let total = 0;
         
         allRecurring.forEach(recurring => {
-            // Skip inactive
-            if (recurring.isActive === false) {
+            // Skip inactive or suspended
+            if (!window.RecurringExpenses.isEffectivelyActive(recurring)) {
                 return;
             }
             
@@ -4234,11 +4235,11 @@ const Dashboard = {
                 };
             });
         
-        // Recurring payments with actual names
+        // Recurring payments with actual names (exclude suspended)
         if (window.RecurringExpenses) {
             const recurring = window.RecurringExpenses.getAll();
             data.recurringPayments = recurring
-                .filter(r => r.isActive !== false)
+                .filter(r => window.RecurringExpenses.isEffectivelyActive(r))
                 .filter(r => !excludeCategories.some(g => (r.category || '').toLowerCase().includes(g.toLowerCase())))
                 .map(r => ({
                     name: r.title || r.name || 'Subscription',
@@ -5343,7 +5344,7 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         const items = [];
         
         allRecurring.forEach(recurring => {
-            if (recurring.isActive === false) return;
+            if (!window.RecurringExpenses.isEffectivelyActive(recurring)) return;
             
             if (recurring.endDate) {
                 const endDate = new Date(recurring.endDate);
@@ -5357,7 +5358,7 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
                 const category = recurring.category || '';
                 if (category !== 'Loan EMI' && category !== 'Credit Card EMI') {
                     // Determine due date for this month
-                    const dayOfMonth = recurring.dayOfMonth || 1;
+                    const dayOfMonth = recurring.day || recurring.dayOfMonth || 1;
                     const dueDate = new Date(year, month - 1, dayOfMonth);
                     items.push({
                         name: recurring.name,
@@ -5642,8 +5643,8 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         const items = [];
         
         allRecurring.forEach(recurring => {
-            // Skip inactive
-            if (recurring.isActive === false) {
+            // Skip inactive or suspended
+            if (!window.RecurringExpenses.isEffectivelyActive(recurring)) {
                 return;
             }
             
@@ -5667,7 +5668,7 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
                         title: recurring.title || recurring.name || 'Recurring',
                         category: category || 'Other',
                         amount: parseFloat(recurring.amount) || 0,
-                        date: `Day ${recurring.dayOfMonth || '-'}`
+                        date: `Day ${recurring.day || recurring.dayOfMonth || '-'}`
                     });
                 }
             }
@@ -6499,9 +6500,9 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         const scrollPositions = {};
         const existingModal = document.getElementById('settlement-modal');
         if (existingModal) {
-            // Cards content scrolls the entire content div
-            const cardsContent = existingModal.querySelector('#cards-content');
-            if (cardsContent) scrollPositions.cards = cardsContent.scrollTop;
+            // Save main modal container scroll position (this is the main scrollable area)
+            const modalContent = existingModal.querySelector('#settlement-modal-content');
+            if (modalContent) scrollPositions.modal = modalContent.scrollTop;
             
             // Recurring content has nested scrollable div
             const recurringScrollable = existingModal.querySelector('#recurring-content .max-h-48.overflow-y-auto');
@@ -6510,10 +6511,6 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
             // Loans content has nested scrollable div
             const loansScrollable = existingModal.querySelector('#loans-content .max-h-48.overflow-y-auto');
             if (loansScrollable) scrollPositions.loans = loansScrollable.scrollTop;
-            
-            // Custom content scrolls the entire content div
-            const customContent = existingModal.querySelector('#custom-content');
-            if (customContent) scrollPositions.custom = customContent.scrollTop;
         }
         
         // Calculate default income/recurring month based on pay schedule
@@ -6549,8 +6546,9 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         const income = incomeData.income || 0;
         
         // Check if using actual salary or estimated payslip
+        // Use the actual month/year that getIncomeForExpenseComparison used (may be adjusted by pay schedule)
         const salaries = window.DB.salaries || [];
-        const actualSalary = salaries.find(s => s.year === incomeYear && s.month === incomeMonth);
+        const actualSalary = salaries.find(s => s.year === incomeData.year && s.month === incomeData.month);
         const isEstimatedIncome = !actualSalary && income > 0;
         
         // Get credit cards with outstanding and bill amounts
@@ -6655,7 +6653,7 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         // Build modal HTML
         const modalHTML = `
             <div id="settlement-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) Dashboard.closeSettlementModal()">
-                <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div id="settlement-modal-content" class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                     <div class="sticky top-0 bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 flex justify-between items-center rounded-t-2xl z-10">
                         <h2 class="text-xl font-bold text-white">Settlement Calculations</h2>
                         <button onclick="Dashboard.closeSettlementModal()" class="text-white hover:text-gray-200 p-1">
@@ -6999,32 +6997,24 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         setTimeout(() => {
             const newModal = document.getElementById('settlement-modal');
             if (newModal) {
-                if (scrollPositions.cards !== undefined) {
-                    // Cards content scrolls the entire content div
-                    const cardsContent = newModal.querySelector('#cards-content');
-                    if (cardsContent) {
-                        cardsContent.scrollTop = scrollPositions.cards;
+                // Restore main modal container scroll position (most important for checkbox UX)
+                if (scrollPositions.modal !== undefined) {
+                    const modalContent = newModal.querySelector('#settlement-modal-content');
+                    if (modalContent) {
+                        modalContent.scrollTop = scrollPositions.modal;
                     }
                 }
+                // Restore nested scrollable areas
                 if (scrollPositions.recurring !== undefined) {
-                    // Recurring content has nested scrollable div
                     const recurringContent = newModal.querySelector('#recurring-content .max-h-48.overflow-y-auto');
                     if (recurringContent) {
                         recurringContent.scrollTop = scrollPositions.recurring;
                     }
                 }
                 if (scrollPositions.loans !== undefined) {
-                    // Loans content has nested scrollable div
                     const loansContent = newModal.querySelector('#loans-content .max-h-48.overflow-y-auto');
                     if (loansContent) {
                         loansContent.scrollTop = scrollPositions.loans;
-                    }
-                }
-                if (scrollPositions.custom !== undefined) {
-                    // Custom content scrolls the entire content div
-                    const customContent = newModal.querySelector('#custom-content');
-                    if (customContent) {
-                        customContent.scrollTop = scrollPositions.custom;
                     }
                 }
             }

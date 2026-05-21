@@ -22,8 +22,11 @@ const Perplexity = {
         let userMessage = prompt;
         
         if (context) {
-            // Append context data to system message
-            systemMessage += '\n\nContext Data:\n' + JSON.stringify(context, null, 2);
+            // Use compact text formatting (saves ~30% tokens vs pretty JSON)
+            const ctxText = window.AIProvider && window.AIProvider.formatContextText
+                ? window.AIProvider.formatContextText(context)
+                : JSON.stringify(context);
+            systemMessage += '\n\nContext Data:\n' + ctxText;
             userMessage = `User Query: ${prompt}\n\nProvide helpful insights based on the context data provided in the system message.`;
         }
         

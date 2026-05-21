@@ -22,9 +22,8 @@ const DB = {
     goldRatePerGram: 11400, // Gold rate in INR per gram (default)
     settlementData: {}, // Settlement calculations data: { "2024-12": { autoFetchBills: true, autoFetchRecurring: true, selectedBills: [], customItems: [] } }
     
-    // Credit Card Bills from SMS
-    cardBills: [], // Bill records: { id, cardId, cardLast4, amount, originalAmount, dueDate, minDue, isPaid, paidAmount, paidType, paidAt, smsId, smsBody, parsedAt }
-    processedSmsIds: [], // Track already processed SMS IDs to avoid duplicates
+    // Credit Card Bills (managed manually from the Cards page)
+    cardBills: [], // Bill records: { id, cardId, cardLast4, amount, originalAmount, dueDate, minDue, isPaid, paidAmount, paidType, paidAt, parsedAt }
     
     // Card Groups - for cards sharing credit limit/billing
     // { id, name, sharedLimit, primaryCardId, shareBill (bool), cardIds[] }
@@ -56,6 +55,20 @@ const DB = {
         biometricEnabled: false, // Whether biometric is enabled
         isSetup: false, // Whether security is set up
         masterPassword: '' // Master password for export/import encryption
+    },
+    // Cloud Backup (Google Drive, appDataFolder scope) - OAuth2 PKCE
+    // refreshToken is encrypted at rest with the master password.
+    cloudBackup: {
+        enabled: false,
+        clientId: '', // Google OAuth2 Client ID (configured once by the user)
+        refreshTokenEnc: '', // refresh_token encrypted with master password
+        userEmail: '', // display only (e.g. "alice@gmail.com")
+        lastBackupAt: 0, // epoch ms of last successful upload
+        lastBackupStatus: '', // 'ok' | 'error' | 'uploading' | ''
+        lastError: '', // last error message (for diagnostics)
+        debounceMinutes: 5, // wait N minutes of inactivity before uploading
+        keepCount: 10, // rotate: keep newest N backups in Drive
+        bytesUploaded: 0 // size of last backup in bytes
     }
 };
 

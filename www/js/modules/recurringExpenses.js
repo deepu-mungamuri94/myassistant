@@ -4,6 +4,7 @@
  */
 
 const RecurringExpenses = {
+    currentTab: 'active', // 'active' | 'suspended' - like Loans active/closed
     /**
      * Add a new recurring expense
      * @param {string} name - Name of the recurring expense
@@ -118,6 +119,110 @@ const RecurringExpenses = {
     },
 
     /**
+     * Check if a recurring expense is effectively active (not ended, not suspended)
+     * Also auto-resumes if suspendedUntil date has passed
+     */
+    isEffectivelyActive(recurring) {
+        if (!recurring) return false;
+        if (recurring.isActive === false) return false;
+        
+        // Auto-resume if suspended with a resume date that has passed
+        if (recurring.suspended && recurring.suspendedUntil) {
+            const resumeDate = new Date(recurring.suspendedUntil);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            resumeDate.setHours(0, 0, 0, 0);
+            if (today >= resumeDate) {
+                const resumeDateStr = recurring.suspendedUntil;
+                if (recurring.suspendedFrom) {
+                    if (!recurring.suspensionPeriods) recurring.suspensionPeriods = [];
+                    recurring.suspensionPeriods.push({ from: recurring.suspendedFrom, to: resumeDateStr });
+                }
+                recurring.suspended = false;
+                recurring.suspendedUntil = null;
+                recurring.suspendedFrom = null;
+                window.Storage.save();
+                return true;
+            }
+        }
+        
+        return !recurring.suspended;
+    },
+
+    /**
+     * Suspend a recurring expense
+     * @param {number|string} id - Recurring expense ID
+     * @param {string|null} resumeDate - Resume date (YYYY-MM-DD), or null for indefinite until manual resume
+     */
+    suspend(id, resumeDate = null) {
+        const recurring = this.getById(id);
+        if (!recurring) {
+            throw new Error('Recurring expense not found');
+        }
+        const today = new Date();
+        recurring.suspended = true;
+        recurring.suspendedUntil = resumeDate || null;
+        recurring.suspendedFrom = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        window.Storage.save();
+        return recurring;
+    },
+
+    /**
+     * Check if a due date fell within any past suspension period
+     * Works for any frequency (daily, weekly, monthly, yearly) - date-based check
+     * @param {object} recurring - Recurring expense
+     * @param {Date} dueDate - The due date to check
+     * @returns {boolean} - true if we should skip adding (due date was during suspension)
+     */
+    _wasDueDateDuringSuspension(recurring, dueDate) {
+        // Backward compat: old skippedMonths (month-key based)
+        if (recurring.skippedMonths && recurring.skippedMonths.length > 0) {
+            const monthKey = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}`;
+            if (recurring.skippedMonths.includes(monthKey)) return true;
+        }
+        
+        const periods = recurring.suspensionPeriods || [];
+        dueDate.setHours(0, 0, 0, 0);
+        
+        for (const period of periods) {
+            const from = new Date(period.from);
+            const to = new Date(period.to);
+            from.setHours(0, 0, 0, 0);
+            to.setHours(0, 0, 0, 0);
+            if (dueDate >= from && dueDate <= to) {
+                return true;
+            }
+        }
+        
+        return false;
+    },
+
+    /**
+     * Resume a suspended recurring expense
+     * @param {number|string} id - Recurring expense ID
+     */
+    resume(id) {
+        const recurring = this.getById(id);
+        if (!recurring) {
+            throw new Error('Recurring expense not found');
+        }
+        const today = new Date();
+        const resumeDateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        
+        // Record this suspension period for future add-time checks
+        if (recurring.suspendedFrom) {
+            if (!recurring.suspensionPeriods) recurring.suspensionPeriods = [];
+            recurring.suspensionPeriods.push({ from: recurring.suspendedFrom, to: resumeDateStr });
+        }
+        
+        recurring.suspended = false;
+        recurring.suspendedUntil = null;
+        recurring.suspendedFrom = null;
+        window.Storage.save();
+        return recurring;
+    },
+
+    /**
      * Get recurring expense by ID
      */
     getById(id) {
@@ -161,8 +266,8 @@ const RecurringExpenses = {
         const upcoming = [];
         
         this.getAll().forEach(recurring => {
-            // Skip inactive
-            if (recurring.isActive === false) return;
+            // Skip inactive or suspended
+            if (!this.isEffectivelyActive(recurring)) return;
             
             // Check if due this month
             if (!this.isDueInMonth(recurring, currentYear, currentMonth)) {
@@ -195,8 +300,8 @@ const RecurringExpenses = {
         const completed = [];
         
         this.getAll().forEach(recurring => {
-            // Skip inactive
-            if (recurring.isActive === false) return;
+            // Skip inactive or suspended
+            if (!this.isEffectivelyActive(recurring)) return;
             
             // Check if due this month
             if (!this.isDueInMonth(recurring, currentYear, currentMonth)) {
@@ -225,8 +330,8 @@ const RecurringExpenses = {
         let total = 0;
         
         this.getAll().forEach(recurring => {
-            // Skip inactive
-            if (recurring.isActive === false) return;
+            // Skip inactive or suspended
+            if (!this.isEffectivelyActive(recurring)) return;
             
             // Skip if end date is before this month
             if (recurring.endDate) {
@@ -296,8 +401,8 @@ const RecurringExpenses = {
                 }
             }
             
-            // Skip inactive recurring expenses
-            if (!recurring.isActive) {
+            // Skip inactive or suspended recurring expenses (isEffectivelyActive also auto-resumes if suspendedUntil passed)
+            if (!this.isEffectivelyActive(recurring)) {
                 return;
             }
             
@@ -342,6 +447,11 @@ const RecurringExpenses = {
                     }
                     
                     const dueDateStr = Utils.formatLocalDate(dueDate);
+                    
+                    // Skip if due date fell during a suspension period (works for any frequency)
+                    if (this._wasDueDateDuringSuspension(recurring, new Date(year, month - 1, recurring.day))) {
+                        continue;
+                    }
                     
                     // Check if dismissed by user (pass recurringId for better tracking)
                     const isDismissed = window.Expenses && window.Expenses.isDismissed(recurring.name, dueDateStr, recurring.amount, recurring.id);
@@ -472,6 +582,123 @@ const RecurringExpenses = {
     },
     
     /**
+     * Show suspend modal for a recurring expense
+     */
+    showSuspendModal(id) {
+        const recurring = this.getById(id);
+        if (!recurring) {
+            Utils.showError('Recurring expense not found');
+            return;
+        }
+        
+        const modalHtml = `
+            <div id="recurring-suspend-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-[1002] flex items-center justify-center p-4" onclick="if(event.target===this) RecurringExpenses.closeSuspendModal()">
+                <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full" onclick="event.stopPropagation()">
+                    <h2 class="text-xl font-bold mb-2 text-amber-700">Suspend Recurring Expense</h2>
+                    <p class="text-sm text-gray-600 mb-4">"${Utils.escapeHtml(recurring.name)}" will not be added to expenses while suspended.</p>
+                    
+                    <div class="mb-4">
+                        <label class="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-lg hover:border-amber-300 mb-2">
+                            <input type="radio" name="suspend-type" value="indefinite" checked>
+                            <span class="text-sm font-medium">Suspend indefinitely</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-lg hover:border-amber-300">
+                            <input type="radio" name="suspend-type" value="until-date">
+                            <span class="text-sm font-medium">Resume on date</span>
+                        </label>
+                    </div>
+                    
+                    <div id="suspend-date-wrapper" class="mb-4 hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Resume Date</label>
+                        <input type="date" id="suspend-resume-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                    
+                    <div class="flex gap-2 justify-end">
+                        <button onclick="RecurringExpenses.closeSuspendModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                        <button onclick="RecurringExpenses.confirmSuspend(${id})" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg">Suspend</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const existing = document.getElementById('recurring-suspend-modal');
+        if (existing) existing.remove();
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Toggle date input visibility
+        document.querySelectorAll('input[name="suspend-type"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                const wrapper = document.getElementById('suspend-date-wrapper');
+                wrapper.classList.toggle('hidden', document.querySelector('input[name="suspend-type"]:checked').value !== 'until-date');
+            });
+        });
+    },
+    
+    /**
+     * Confirm and apply suspend
+     */
+    confirmSuspend(id) {
+        const resumeDateInput = document.getElementById('suspend-resume-date');
+        const isUntilDate = document.querySelector('input[name="suspend-type"]:checked').value === 'until-date';
+        const resumeDate = isUntilDate && resumeDateInput && resumeDateInput.value ? resumeDateInput.value : null;
+        
+        if (isUntilDate && (!resumeDateInput || !resumeDateInput.value)) {
+            Utils.showError('Please select a resume date');
+            return;
+        }
+        
+        try {
+            this.suspend(id, resumeDate);
+            this.closeSuspendModal();
+            this.render();
+            Utils.showSuccess(resumeDate ? `Suspended until ${new Date(resumeDate).toLocaleDateString()}` : 'Suspended indefinitely');
+        } catch (error) {
+            Utils.showError(error.message);
+        }
+    },
+    
+    /**
+     * Close suspend modal
+     */
+    closeSuspendModal() {
+        const modal = document.getElementById('recurring-suspend-modal');
+        if (modal) modal.remove();
+    },
+    
+    /**
+     * Switch between Active and Suspended tabs (like Loans active/closed)
+     */
+    switchRecurringStatusTab(tab) {
+        this.currentTab = tab;
+        
+        const activeTab = document.getElementById('recurring-status-tab-active');
+        const suspendedTab = document.getElementById('recurring-status-tab-suspended');
+        const activeContent = document.getElementById('recurring-content-active');
+        const suspendedContent = document.getElementById('recurring-content-suspended');
+        
+        if (tab === 'active') {
+            if (activeTab) {
+                activeTab.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-orange-500 text-orange-600 flex items-center justify-center gap-2';
+            }
+            if (suspendedTab) {
+                suspendedTab.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center justify-center gap-2';
+            }
+            if (activeContent) activeContent.classList.remove('hidden');
+            if (suspendedContent) suspendedContent.classList.add('hidden');
+        } else if (tab === 'suspended') {
+            if (activeTab) {
+                activeTab.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center justify-center gap-2';
+            }
+            if (suspendedTab) {
+                suspendedTab.className = 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-gray-300 text-gray-700 flex items-center justify-center gap-2';
+            }
+            if (activeContent) activeContent.classList.add('hidden');
+            if (suspendedContent) suspendedContent.classList.remove('hidden');
+        }
+    },
+    
+    /**
      * Render recurring expense for view modal
      */
     renderRecurringForModal(recurring) {
@@ -541,7 +768,14 @@ const RecurringExpenses = {
                 ` : ''}
                 
                 <!-- Status -->
-                ${recurring.isActive !== false ? `
+                ${recurring.suspended ? `
+                <div class="mt-3 flex items-center gap-2 text-amber-600">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1zm0 4a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                    <span class="text-sm font-semibold">Suspended${recurring.suspendedUntil ? ` until ${new Date(recurring.suspendedUntil).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ' (until you resume)'}</span>
+                </div>
+                ` : recurring.isActive !== false ? `
                 <div class="mt-3 flex items-center gap-2 text-green-700">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
@@ -591,9 +825,12 @@ const RecurringExpenses = {
         const currentMonthName = monthNames[currentMonth - 1];
         const nextMonthName = monthNames[nextMonth - 1];
         
-        // Separate active and inactive, sort by day of month ascending
+        // Separate active, suspended, and inactive (ended), sort by day of month ascending
         const activeExpenses = recurringExpenses
-            .filter(r => r.isActive !== false)
+            .filter(r => r.isActive !== false && !r.suspended)
+            .sort((a, b) => a.day - b.day);
+        const suspendedExpenses = recurringExpenses
+            .filter(r => r.isActive !== false && r.suspended)
             .sort((a, b) => a.day - b.day);
         const inactiveExpenses = recurringExpenses
             .filter(r => r.isActive === false)
@@ -617,6 +854,53 @@ const RecurringExpenses = {
             </div>
         `;
         
+        // Tab container (Active | Suspended) - like Loans
+        const activeCount = activeExpenses.length + inactiveExpenses.length;
+        const suspendedCount = suspendedExpenses.length;
+        
+        // Default to suspended tab when only suspended items exist
+        if (activeCount === 0 && suspendedCount > 0) {
+            this.currentTab = 'suspended';
+        }
+        
+        if (activeCount > 0 || suspendedCount > 0) {
+            const activeTabClass = this.currentTab === 'active' 
+                ? 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-orange-500 text-orange-600 flex items-center justify-center gap-2'
+                : 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center justify-center gap-2';
+            const suspendedTabClass = this.currentTab === 'suspended'
+                ? 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-gray-300 text-gray-700 flex items-center justify-center gap-2'
+                : 'flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center justify-center gap-2';
+            
+            html += `
+                <div class="bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-4">
+                    <div class="border-b border-gray-200">
+                        <div class="flex justify-evenly">
+                            ${activeCount > 0 ? `
+                                <button onclick="RecurringExpenses.switchRecurringStatusTab('active')" 
+                                        id="recurring-status-tab-active"
+                                        class="${activeTabClass}">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Active (${activeCount})
+                                </button>
+                            ` : ''}
+                            <button onclick="RecurringExpenses.switchRecurringStatusTab('suspended')" 
+                                    id="recurring-status-tab-suspended"
+                                    class="${suspendedTabClass}">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6"/>
+                                </svg>
+                                Suspended (${suspendedCount})
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Content: Active (includes inactive/ended) -->
+                    <div id="recurring-content-active" class="p-3 ${this.currentTab !== 'active' ? 'hidden' : ''}">
+            `;
+        }
+        
         // Group active expenses by day of month
         const groupedByDay = {};
         activeExpenses.forEach(recurring => {
@@ -627,8 +911,8 @@ const RecurringExpenses = {
             groupedByDay[day].push(recurring);
         });
         
-        // Render active expenses grouped by day
-        if (activeExpenses.length > 0) {
+        // Render active expenses grouped by day (inside Active tab content)
+        if (activeExpenses.length > 0 && (activeCount > 0 || suspendedCount > 0)) {
             // Add expand/collapse all button
             html += `
                 <div class="flex justify-end mb-3">
@@ -645,20 +929,20 @@ const RecurringExpenses = {
                 const groupTotal = groupExpenses.reduce((sum, r) => sum + parseFloat(r.amount), 0);
                 
                 html += `
-                    <details class="recurring-day-group mb-0" open>
-                        <summary class="cursor-pointer bg-orange-50 hover:bg-orange-100 border border-orange-200 p-3 transition-all list-none">
+                    <details class="recurring-day-group mb-4 last:mb-0 rounded-lg overflow-hidden border border-orange-200 shadow-sm" open>
+                        <summary class="cursor-pointer bg-orange-200 hover:bg-orange-300 border-b border-orange-300 p-3 transition-all list-none font-semibold">
                             <div class="flex justify-between items-center">
                                 <div class="flex items-center gap-2">
-                                    <svg class="w-4 h-4 transition-transform details-arrow text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 transition-transform details-arrow text-orange-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                     </svg>
                                     <span class="font-bold text-sm text-orange-900">${day}${this.getOrdinalSuffix(day)} of Month</span>
-                                    <span class="text-xs text-orange-600">(${groupExpenses.length})</span>
+                                    <span class="text-xs text-orange-700 font-medium">(${groupExpenses.length})</span>
                                 </div>
                                 <span class="font-bold text-sm text-orange-900">₹${Utils.formatIndianNumber(groupTotal)}</span>
                             </div>
                         </summary>
-                        <div class="border-l border-r border-b border-orange-200">
+                        <div class="bg-white border-l border-r border-b border-orange-200">
                 `;
                 
                 html += groupExpenses.map((recurring, index) => {
@@ -685,7 +969,7 @@ const RecurringExpenses = {
                 }
                 
                 return `
-                    <div class="p-3 bg-white hover:bg-orange-50 transition-all ${!isLast ? 'border-b border-orange-100' : ''}">
+                    <div class="p-3 bg-orange-50 hover:bg-orange-100 transition-all ${!isLast ? 'border-b border-orange-100' : ''}">
                         <!-- First Line: Name + Category | Actions -->
                         <div class="flex justify-between items-start mb-2">
                             <div onclick="RecurringExpenses.showDetailsModal(${recurring.id})" class="flex items-center gap-2 flex-wrap cursor-pointer flex-1">
@@ -694,6 +978,11 @@ const RecurringExpenses = {
                                 ${recurring.category ? `<span class="text-xs bg-orange-200 text-orange-800 px-1.5 py-0.5 rounded">${Utils.escapeHtml(recurring.category)}</span>` : ''}
                             </div>
                             <div class="flex gap-2 ml-4">
+                                    <button onclick="RecurringExpenses.showSuspendModal(${recurring.id})" class="text-amber-600 hover:text-amber-800 p-0.5" title="Suspend">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </button>
                                     <button onclick="openRecurringExpenseModal(${recurring.id})" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
@@ -731,12 +1020,12 @@ const RecurringExpenses = {
             });
         }
         
-        // Render inactive expenses (collapsed)
+        // Render inactive (ended) expenses - inside Active tab, collapsed
         if (inactiveExpenses.length > 0) {
             html += `
                 <details class="mt-4">
                     <summary class="text-sm font-semibold text-gray-500 cursor-pointer p-3 bg-gray-100 rounded-lg hover:bg-gray-200">
-                        Inactive Recurring Expenses (${inactiveExpenses.length})
+                        Inactive / Ended (${inactiveExpenses.length})
                     </summary>
                     <div class="mt-2 space-y-2">
                         ${inactiveExpenses.map(recurring => {
@@ -752,13 +1041,12 @@ const RecurringExpenses = {
                                 const monthsList = recurring.months.map(m => monthNames[m - 1]).join(', ');
                                 frequencyText = `${monthsList} ${recurring.day}${this.getOrdinalSuffix(recurring.day)}`;
                             }
-                            
                             return `
                                 <div class="p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-300 opacity-75">
                                     <div class="flex justify-between items-start mb-2">
                                         <div class="flex-1">
                                             <div class="flex items-center gap-2 flex-wrap mb-0.5">
-                                            <h4 class="font-semibold text-gray-700 text-sm">${Utils.escapeHtml(recurring.name)} <span class="text-xs text-gray-500">(Ended)</span></h4>
+                                                <h4 class="font-semibold text-gray-700 text-sm">${Utils.escapeHtml(recurring.name)} <span class="text-xs text-gray-500">(Ended)</span></h4>
                                                 ${recurring.category ? `<span class="text-xs bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded">${Utils.escapeHtml(recurring.category)}</span>` : ''}
                                             </div>
                                             ${recurring.description ? `<p class="text-xs text-gray-500 mt-0.5">${Utils.escapeHtml(recurring.description)}</p>` : ''}
@@ -772,14 +1060,95 @@ const RecurringExpenses = {
                                             </button>
                                         </div>
                                     </div>
-                                    <div class="text-xs text-gray-500">
-                                        📅 ${frequencyText}
-                                    </div>
+                                    <div class="text-xs text-gray-500">📅 ${frequencyText}</div>
                                 </div>
                             `;
                         }).join('')}
                     </div>
                 </details>
+            `;
+        }
+        
+        // Close Active tab content and add Suspended tab content
+        if (activeCount > 0 || suspendedCount > 0) {
+            html += `
+                    </div>
+                    
+                    <!-- Tab Content: Suspended -->
+                    <div id="recurring-content-suspended" class="p-3 space-y-2 ${this.currentTab !== 'suspended' ? 'hidden' : ''}">
+            `;
+        }
+        
+        // Render suspended expenses (inside Suspended tab) or empty state
+        if (suspendedExpenses.length > 0) {
+            html += suspendedExpenses.map((recurring, index) => {
+                            const isLast = index === suspendedExpenses.length - 1;
+                            let frequencyText = '';
+                            if (recurring.frequency === 'monthly') {
+                                frequencyText = `Monthly on ${recurring.day}${this.getOrdinalSuffix(recurring.day)}`;
+                            } else if (recurring.frequency === 'yearly') {
+                                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                const monthName = recurring.months && recurring.months[0] ? monthNames[recurring.months[0] - 1] : '';
+                                frequencyText = `Yearly on ${monthName} ${recurring.day}${this.getOrdinalSuffix(recurring.day)}`;
+                            } else if (recurring.frequency === 'custom') {
+                                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                const monthsList = recurring.months.map(m => monthNames[m - 1]).join(', ');
+                                frequencyText = `${monthsList} ${recurring.day}${this.getOrdinalSuffix(recurring.day)}`;
+                            }
+                            const resumeText = recurring.suspendedUntil 
+                                ? `Resumes ${new Date(recurring.suspendedUntil).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                                : 'Suspended indefinitely';
+                            return `
+                                <div class="p-3 bg-gray-50 hover:bg-gray-100 transition-all ${!isLast ? 'border-b border-gray-200' : ''}">
+                                    <!-- First Line: Name + Category | Actions (Resume, Delete) -->
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div onclick="RecurringExpenses.showDetailsModal(${recurring.id})" class="flex items-center gap-2 flex-wrap cursor-pointer flex-1">
+                                            ${recurring.paymentMethod ? this.getPaymentMethodIcon(recurring.paymentMethod) : ''}
+                                            <h4 class="font-bold text-gray-800 text-sm">${Utils.escapeHtml(this.truncateName(recurring.name, 22))}</h4>
+                                            ${recurring.category ? `<span class="text-xs bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded">${Utils.escapeHtml(recurring.category)}</span>` : ''}
+                                        </div>
+                                        <div class="flex gap-2 ml-4">
+                                            <button onclick="RecurringExpenses.resume(${recurring.id}); RecurringExpenses.render(); Utils.showSuccess('Resumed!');" class="text-green-600 hover:text-green-800 p-0.5" title="Resume">
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M8 5v14l11-7z"/>
+                                                </svg>
+                                            </button>
+                                            <button onclick="openRecurringExpenseModal(${recurring.id})" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                </svg>
+                                            </button>
+                                            <button onclick="RecurringExpenses.deleteWithConfirm(${recurring.id})" class="text-red-600 hover:text-red-800 p-0.5" title="Delete">
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <!-- Second Line: Description | Amount (same as active) -->
+                                    <div onclick="RecurringExpenses.showDetailsModal(${recurring.id})" class="flex justify-between items-center cursor-pointer">
+                                        <div class="flex-1">
+                                            ${recurring.description ? `<p class="text-xs text-gray-600">${Utils.escapeHtml(recurring.description)}</p>` : '<p class="text-xs text-gray-400 italic">No description</p>'}
+                                        </div>
+                                        <p class="text-base font-bold text-gray-700 ml-4">₹${Utils.formatIndianNumber(recurring.amount)}</p>
+                                    </div>
+                                    <!-- Frequency and End Date on same line -->
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="text-gray-600 font-medium">📅 ${frequencyText}</span>
+                                        <span class="text-gray-500">${resumeText}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+        } else {
+            html += `<p class="text-gray-500 text-center py-8 text-sm">No suspended items. Use the pause button on any active item to suspend it.</p>`;
+        }
+        
+        // Close Suspended tab content and tab container
+        if (activeCount > 0 || suspendedCount > 0) {
+            html += `
+                    </div>
+                </div>
             `;
         }
         

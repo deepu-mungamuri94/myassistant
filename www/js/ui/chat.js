@@ -438,16 +438,56 @@ Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
                 continue;
             }
             
+            // Markdown headings (# ## ### ####)
+            const markdownHeadingMatch = line.match(/^(#{1,4})\s+(.+)$/);
+            if (markdownHeadingMatch) {
+                if (inList) {
+                    html += '</ul></div>';
+                    inList = false;
+                }
+                const level = markdownHeadingMatch[1].length;
+                let headingText = markdownHeadingMatch[2].replace(/\*\*/g, '').trim();
+                headingText = Utils.escapeHtml(headingText);
+                
+                if (level === 1) {
+                    // # Main heading - large prominent style
+                    html += `<div class="mt-3 mb-2">
+                        <div class="bg-gradient-to-r from-indigo-100 to-purple-100 border-2 border-indigo-300 px-3 py-2 rounded-lg">
+                            <h2 class="font-bold text-indigo-900 text-sm">${headingText}</h2>
+                        </div>
+                    </div>`;
+                } else if (level === 2) {
+                    // ## Sub heading - medium style
+                    html += `<div class="mt-2.5 mb-1.5">
+                        <div class="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 px-2.5 py-1.5 rounded-lg">
+                            <h3 class="font-bold text-indigo-800 text-xs">${headingText}</h3>
+                        </div>
+                    </div>`;
+                } else if (level === 3) {
+                    // ### Smaller sub heading
+                    html += `<div class="mt-2 mb-1">
+                        <h4 class="font-semibold text-indigo-700 text-xs border-b border-indigo-100 pb-1">${headingText}</h4>
+                    </div>`;
+                } else {
+                    // #### Smallest heading
+                    html += `<div class="mt-1.5 mb-1">
+                        <h5 class="font-medium text-indigo-600 text-xs">${headingText}</h5>
+                    </div>`;
+                }
+                continue;
+            }
+            
             // Section headers (ALL CAPS or ending with : and short)
             if (!inCardComparison && !inRecommendation && (line.match(/^[A-Z\s&]{8,}:?$/) || (line.endsWith(':') && line.length < 60 && line.length > 5 && line.split(' ').length <= 6))) {
                 if (inList) {
                     html += '</ul></div>';
                     inList = false;
                 }
-                const headerText = line.replace(/:$/, '').replace(/\*\*/g, '');
+                let headerText = line.replace(/:$/, '').replace(/\*\*/g, '');
+                headerText = Utils.escapeHtml(headerText);
                 html += `<div class="mt-2 mb-1.5">
                     <div class="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 px-2 py-1.5 rounded-lg">
-                        <h3 class="font-bold text-indigo-800 text-xs uppercase tracking-wide">${Utils.escapeHtml(headerText)}</h3>
+                        <h3 class="font-bold text-indigo-800 text-xs uppercase tracking-wide">${headerText}</h3>
                     </div>
                 </div>`;
                 continue;
@@ -461,25 +501,29 @@ Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
                 }
                 let content = line.replace(/^[-*•►▪→]\s/, '').replace(/^\d+[\.)]\s/, '').replace(/\*\*/g, '');
                 
-                // Highlight amounts
-                content = content.replace(/(₹[\d,]+)/g, '<span class="font-bold text-green-700">$1</span>');
-                
                 // Check if it's a benefit line (has : in middle)
                 if (content.includes(':') && content.indexOf(':') > 5 && content.indexOf(':') < content.length - 5) {
                     const parts = content.split(':');
-                    const key = parts[0].trim();
-                    const value = parts.slice(1).join(':').trim();
+                    let key = parts[0].trim();
+                    let value = parts.slice(1).join(':').trim();
+                    // Escape first, then highlight amounts
+                    key = Utils.escapeHtml(key);
+                    value = Utils.escapeHtml(value);
+                    value = value.replace(/(₹[\d,]+)/g, '<span class="font-bold text-green-700">$1</span>');
                     html += `<li class="flex items-start gap-1.5 text-xs bg-gray-50 border border-gray-200 p-2 rounded">
                         <span class="text-indigo-600 flex-shrink-0 mt-0.5 text-xs">→</span>
                         <div class="flex-1">
-                            <span class="font-semibold text-gray-800">${Utils.escapeHtml(key)}:</span>
-                            <span class="text-gray-700 ml-1">${Utils.escapeHtml(value)}</span>
+                            <span class="font-semibold text-gray-800">${key}:</span>
+                            <span class="text-gray-700 ml-1">${value}</span>
                         </div>
                     </li>`;
                 } else {
+                    // Escape first, then highlight amounts
+                    content = Utils.escapeHtml(content);
+                    content = content.replace(/(₹[\d,]+)/g, '<span class="font-bold text-green-700">$1</span>');
                     html += `<li class="flex items-start gap-1.5 text-xs bg-gray-50 border border-gray-200 p-2 rounded">
                         <span class="text-indigo-600 flex-shrink-0 mt-0.5 text-xs">→</span>
-                        <span class="text-gray-700">${Utils.escapeHtml(content)}</span>
+                        <span class="text-gray-700">${content}</span>
                     </li>`;
                 }
                 continue;
@@ -491,9 +535,10 @@ Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
                     html += '</ul></div>';
                     inList = false;
                 }
-                const subHeader = line.replace(/:$/, '').replace(/\*\*/g, '');
+                let subHeader = line.replace(/:$/, '').replace(/\*\*/g, '');
+                subHeader = Utils.escapeHtml(subHeader);
                 html += `<div class="mt-1.5 mb-1">
-                    <h4 class="font-semibold text-indigo-700 text-xs">${Utils.escapeHtml(subHeader)}</h4>
+                    <h4 class="font-semibold text-indigo-700 text-xs">${subHeader}</h4>
                 </div>`;
                 continue;
             }
@@ -504,8 +549,9 @@ Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
                 inList = false;
             }
             
-            // Highlight amounts and card names in paragraphs
+            // Escape first, then highlight amounts in paragraphs
             let formattedLine = line.replace(/\*\*/g, '');
+            formattedLine = Utils.escapeHtml(formattedLine);
             formattedLine = formattedLine.replace(/(₹[\d,]+)/g, '<span class="font-bold text-green-700">$1</span>');
             
             html += `<p class="text-xs text-gray-700 mb-1.5 leading-relaxed">${formattedLine}</p>`;

@@ -14,6 +14,14 @@ const App = {
             
             // Load data from storage
             window.Storage.load();
+
+            // Wire up the OAuth deep-link listener for cloud backups.
+            // Safe no-op if CloudBackup module / @capacitor/app plugin are missing.
+            if (window.CloudBackup && typeof window.CloudBackup.init === 'function') {
+                window.CloudBackup.init().catch((e) => {
+                    console.warn('CloudBackup.init failed:', e);
+                });
+            }
             
             // Run migrations for backward compatibility
             if (window.RecurringExpenses && window.RecurringExpenses.migrateCategories) {
@@ -23,6 +31,13 @@ const App = {
             // Migrate recurring expenses in Expenses module to use actual categories
             if (window.Expenses && window.Expenses.migrateRecurringCategories) {
                 window.Expenses.migrateRecurringCategories();
+            }
+            
+            // Migrate cardBills: ensure every record has a usable id and string cardId.
+            // Legacy bills (especially restored from old backups) sometimes lack an id,
+            // which silently breaks "find by id" so they can never be marked paid.
+            if (window.Cards && typeof window.Cards.migrateCardBills === 'function') {
+                window.Cards.migrateCardBills();
             }
             
             // Check security status FIRST

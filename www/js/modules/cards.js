@@ -8,6 +8,50 @@ const Cards = {
     currentEMITabs: {}, // Track current tab for each card's EMI modal: {cardId: 'active' or 'completed'}
     
     /**
+     * One-time data integrity check for window.DB.cardBills.
+     * Ensures every record has an `id` (so find-by-id works) and that
+     * `cardId` is a string. Without this, legacy bills (especially after
+     * a backup-restore) silently fall through and can never be marked paid.
+     */
+    migrateCardBills() {
+        const bills = window.DB && window.DB.cardBills;
+        if (!Array.isArray(bills) || bills.length === 0) return;
+        let changed = false;
+        const seenIds = new Set();
+        for (const b of bills) {
+            if (!b || typeof b !== 'object') continue;
+            // Generate id if missing or duplicate
+            if (b.id == null || b.id === '' || seenIds.has(String(b.id))) {
+                b.id = (window.Utils && typeof window.Utils.generateId === 'function')
+                    ? window.Utils.generateId()
+                    : 'bill_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+                changed = true;
+            }
+            seenIds.add(String(b.id));
+            // Normalise cardId to string for consistent lookups
+            if (b.cardId != null && typeof b.cardId !== 'string') {
+                b.cardId = String(b.cardId);
+                changed = true;
+            }
+            // Coerce amounts to numbers (legacy SMS sync sometimes stored strings)
+            if (b.amount != null && typeof b.amount !== 'number') {
+                const n = parseFloat(String(b.amount).replace(/[₹,\s]/g, ''));
+                b.amount = isNaN(n) ? 0 : n;
+                changed = true;
+            }
+            if (b.paidAmount != null && typeof b.paidAmount !== 'number') {
+                const n = parseFloat(String(b.paidAmount).replace(/[₹,\s]/g, ''));
+                b.paidAmount = isNaN(n) ? 0 : n;
+                changed = true;
+            }
+        }
+        if (changed && window.Storage && typeof window.Storage.save === 'function') {
+            window.Storage.save();
+            console.log('🛠 Cards.migrateCardBills: fixed up cardBills data');
+        }
+    },
+    
+    /**
      * Auto-update EMI progress based on elapsed months
      * @param {Object} emi - The EMI object to update
      * @returns {boolean} - Whether the EMI was updated
@@ -1032,12 +1076,30 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         this.saveBankGroupOrder(savedOrder);
         
         // Render grouped cards
+        const isCreditTab = this.currentTab === 'credit';
         const groupsHtml = savedOrder.map((bankName, groupIndex) => {
             const cards = bankGroups[bankName];
             if (!cards || cards.length === 0) return '';
             
             const isExpanded = this.expandedBankGroups.has(bankName);
             const cardCount = cards.length;
+            
+            // Per-bank totals (credit tab only): outstanding across all cards in
+            // this bank, plus a count of unpaid bills so the user can see at a
+            // glance whether anything still needs attention without expanding.
+            let bankOutstanding = 0;
+            let bankUnpaidBillCount = 0;
+            if (isCreditTab) {
+                const billsByCard = (window.DB.cardBills || []);
+                cards.forEach(card => {
+                    if (card.isPlaceholder) return;
+                    const os = parseFloat(String(card.outstanding).replace(/[₹,\s]/g, '')) || 0;
+                    bankOutstanding += os;
+                    bankUnpaidBillCount += billsByCard.filter(b =>
+                        String(b.cardId) === String(card.id) && !b.isPaid
+                    ).length;
+                });
+            }
             
             const cardsInGroupHtml = cards.map(card => this.renderSingleCard(card)).join('');
             
@@ -1046,24 +1108,31 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 <!-- Bank Group Header -->
                 <div class="flex items-center justify-between bg-gradient-to-r from-slate-200 to-slate-300 px-3 py-2.5 cursor-pointer hover:from-slate-300 hover:to-slate-400 transition-all"
                      onclick="Cards.toggleBankGroup('${bankName}')">
-                    <div class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-slate-600 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <svg class="w-4 h-4 text-slate-600 transition-transform duration-200 shrink-0 ${isExpanded ? 'rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                         </svg>
-                        <span class="font-bold text-slate-700">${Utils.escapeHtml(bankName)}</span>
-                        <span class="text-xs text-white bg-slate-500 px-2 py-0.5 rounded-full font-medium">${cardCount}</span>
+                        <span class="font-bold text-slate-700 truncate">${Utils.escapeHtml(bankName)}</span>
+                        <span class="text-xs text-white bg-slate-500 px-2 py-0.5 rounded-full font-medium shrink-0">${cardCount}</span>
                     </div>
-                    <div class="flex items-center gap-1" onclick="event.stopPropagation()">
-                        ${groupIndex > 0 ? `
-                        <button onclick="Cards.moveBankGroup('${bankName}', 'up')" class="p-1 text-slate-500 hover:text-slate-700 hover:bg-white hover:bg-opacity-50 rounded" title="Move up">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
-                        </button>
+                    <div class="flex items-center gap-2 shrink-0">
+                        ${isCreditTab ? `
+                        <span class="text-[10px] font-light ${bankOutstanding > 0 ? 'text-slate-600' : 'text-slate-400'}" title="Total outstanding across ${cardCount} card(s) in ${Utils.escapeHtml(bankName)}${bankUnpaidBillCount > 0 ? ` • ${bankUnpaidBillCount} unpaid bill(s)` : ''}" style="font-variant-numeric: tabular-nums;">
+                            O/S ₹${Utils.formatIndianNumber(bankOutstanding)}${bankUnpaidBillCount > 0 ? ` · ${bankUnpaidBillCount} unpaid` : ''}
+                        </span>
                         ` : ''}
-                        ${groupIndex < savedOrder.length - 1 ? `
-                        <button onclick="Cards.moveBankGroup('${bankName}', 'down')" class="p-1 text-slate-500 hover:text-slate-700 hover:bg-white hover:bg-opacity-50 rounded" title="Move down">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                        </button>
-                        ` : ''}
+                        <div class="flex items-center gap-1" onclick="event.stopPropagation()">
+                            ${groupIndex > 0 ? `
+                            <button onclick="Cards.moveBankGroup('${bankName}', 'up')" class="p-1 text-slate-500 hover:text-slate-700 hover:bg-white hover:bg-opacity-50 rounded" title="Move up">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                            </button>
+                            ` : ''}
+                            ${groupIndex < savedOrder.length - 1 ? `
+                            <button onclick="Cards.moveBankGroup('${bankName}', 'down')" class="p-1 text-slate-500 hover:text-slate-700 hover:bg-white hover:bg-opacity-50 rounded" title="Move down">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                            ` : ''}
+                        </div>
                     </div>
                 </div>
                 <!-- Cards in Group -->
@@ -1116,7 +1185,12 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             
             // Check if there's a bill that needs to be paid (amount > 0 and not paid)
             const hasBillToPay = unpaidBill && unpaidBill.amount > 0 && !unpaidBill.isPaid;
-            const outstandingAmt = card.outstanding || 0;
+            const outstandingAmt = parseFloat(String(card.outstanding).replace(/[₹,\s]/g, '')) || 0;
+            
+            // Stale-bill detection: more than one unpaid bill on this card means
+            // there are leftovers from the old SMS sync still hanging around.
+            const unpaidBillsForCard = cardBills.filter(b => !b.isPaid);
+            const staleUnpaidCount = Math.max(0, unpaidBillsForCard.length - 1);
             
             // Check if bill is paid (for showing green tick)
             const billIsPaid = unpaidBill && unpaidBill.isPaid;
@@ -1165,13 +1239,6 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                         ` : ''}
                     </div>
                     <div class="flex gap-1">
-                        ${isCredit && !isPlaceholder ? `
-                        <button onclick="Cards.getBillForCard('${cardIdStr}')" class="text-green-600 hover:text-green-800 p-0.5" title="Sync Bill from SMS">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                            </svg>
-                        </button>
-                        ` : ''}
                         ${!isPlaceholder ? `
                         <button onclick="Cards.toggleCardDetailsSecure('${cardIdStr}')" class="text-indigo-600 hover:text-indigo-800 p-0.5" title="Show/Hide card details">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1209,13 +1276,12 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                         ${isCredit ? `
                         <div class="flex items-center gap-2 text-xs text-slate-500 mt-1">
                             <span>${card.statementDate ? `Statement: Day ${card.statementDate}` : (latestBill && latestBill.parsedAt ? `Billed: ${new Date(latestBill.parsedAt).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'})}` : '')}</span>
-                            ${cardBills.length > 0 ? `
-                            <button onclick="Cards.showPaymentHistory('${cardIdStr}')" class="text-purple-600 hover:text-purple-800" title="Payment History">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <button onclick="Cards.showBillsManager('${billCardId}')" class="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 font-medium px-2 py-0.5 rounded inline-flex items-center gap-1" title="Manage all bills for this card">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
+                                Bills${cardBills.length > 0 ? ` (${cardBills.length})` : ''}
                             </button>
-                            ` : ''}
                         </div>
                         ` : ''}
                         ` : ''}
@@ -1238,6 +1304,15 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                                 <td class="font-bold text-slate-800 text-right">₹${Utils.formatIndianNumber(unpaidBill.amount)}</td>
                                 <td class="pl-1"><button onclick="Cards.showEditBillModal('${unpaidBillId}', '${cardIdStr}')" class="text-blue-500 hover:text-blue-700" title="Edit bill">✎</button></td>
                             </tr>
+                            ${staleUnpaidCount > 0 ? `
+                            <tr>
+                                <td colspan="3" class="text-right">
+                                    <button onclick="Cards.confirmClearStaleBills('${billCardId}', '${unpaidBillId}')" class="text-[10px] bg-amber-100 hover:bg-amber-200 text-amber-700 font-medium px-2 py-0.5 rounded mt-0.5" title="Clear ${staleUnpaidCount} duplicate/stale unpaid bill(s) from old SMS sync">
+                                        ⚠ ${staleUnpaidCount} stale — clear
+                                    </button>
+                                </td>
+                            </tr>
+                            ` : ''}
                             ` : latestBillIsPaid ? `
                             <tr>
                                 <td class="text-slate-500 text-right pr-1">Bill:</td>
@@ -1437,7 +1512,6 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 <div>
                     <div class="flex items-center gap-2">
                         <span class="text-xs opacity-90">Bills Due ${summary.unpaidBillsCount > 0 ? `(${summary.unpaidBillsCount})` : ''}</span>
-                        <button onclick="Cards.getAllBills()" class="text-[10px] bg-white bg-opacity-25 hover:bg-opacity-40 px-1.5 py-0.5 rounded transition-all">📥 Get</button>
                         <button onclick="Cards.showGroupsModal()" class="text-[10px] bg-white bg-opacity-25 hover:bg-opacity-40 px-1.5 py-0.5 rounded transition-all" title="Manage Card Groups">🔗</button>
                     </div>
                     <p class="text-sm font-bold ${summary.totalBillsDue > 0 ? 'text-orange-200' : ''}">₹${Utils.formatIndianNumber(summary.totalBillsDue)}</p>
@@ -1552,28 +1626,6 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
     },
     
     /**
-     * Get bills for a specific card
-     */
-    async getBillForCard(cardId) {
-        if (window.SmsBills) {
-            await window.SmsBills.getBills(cardId);
-        } else {
-            Utils.showError('SMS Bills module not loaded');
-        }
-    },
-    
-    /**
-     * Get bills for all cards
-     */
-    async getAllBills() {
-        if (window.SmsBills) {
-            await window.SmsBills.getBills();
-        } else {
-            Utils.showError('SMS Bills module not loaded');
-        }
-    },
-    
-    /**
      * Show edit bill modal
      */
     showEditBillModal(billId, cardId) {
@@ -1614,6 +1666,10 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 <div class="flex border-t">
                     <button onclick="document.getElementById('edit-bill-modal').remove()" 
                             class="flex-1 py-3 text-gray-500 hover:bg-gray-50 transition-colors text-sm">Cancel</button>
+                    ${bill ? `
+                    <button onclick="Cards.deleteBill('${billIdStr}', '${cardIdStr}')" 
+                            class="flex-1 py-3 text-white bg-red-500 hover:bg-red-600 transition-colors text-sm font-medium" title="Remove this bill record">Delete</button>
+                    ` : ''}
                     <button onclick="Cards.saveBillAmount('${billIdStr}', '${cardIdStr}')" 
                             class="flex-1 py-3 text-white bg-blue-500 hover:bg-blue-600 transition-colors text-sm font-medium">Save</button>
                 </div>
@@ -1629,7 +1685,66 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
     },
     
     /**
+     * Delete a single bill record (used to clean up stale entries)
+     */
+    deleteBill(billId, cardId) {
+        const billIdStr = String(billId);
+        const modal = document.getElementById('edit-bill-modal');
+        const bills = window.DB.cardBills || [];
+        const idx = bills.findIndex(b => String(b.id) === billIdStr);
+        if (idx === -1) {
+            Utils.showError('Bill not found');
+            return;
+        }
+        const removed = bills[idx];
+        const wasUnpaid = !removed.isPaid;
+        const removedAmount = parseFloat(removed.amount) || 0;
+        bills.splice(idx, 1);
+        
+        // If the deleted bill was unpaid, also pull its amount out of card.outstanding
+        // so the totals stay consistent.
+        if (wasUnpaid && removedAmount > 0) {
+            const card = window.DB.cards?.find(c => String(c.id) === String(cardId));
+            if (card) {
+                const currentOutstanding = parseFloat(card.outstanding) || 0;
+                card.outstanding = Math.max(0, currentOutstanding - removedAmount);
+            }
+        }
+        
+        window.Storage.save();
+        if (modal) modal.remove();
+        this.render();
+        Utils.showSuccess('Bill deleted');
+    },
+    
+    /**
+     * Clear all stale unpaid bills on a card (the "X stale — clear" button).
+     * Keeps the most recent unpaid bill, marks the rest as 'cleared'. Useful
+     * after the buggy SMS sync left several leftover unpaid records behind.
+     */
+    confirmClearStaleBills(cardId, keepBillId) {
+        const cardIdStr = String(cardId);
+        const keepIdStr = keepBillId ? String(keepBillId) : '';
+        const unpaid = (window.DB.cardBills || []).filter(b =>
+            String(b.cardId) === cardIdStr && !b.isPaid && String(b.id) !== keepIdStr
+        );
+        if (unpaid.length === 0) {
+            Utils.showInfo('No stale bills to clear');
+            return;
+        }
+        if (!confirm(`Clear ${unpaid.length} stale unpaid bill(s) on this card? They\'ll be marked as cleared in payment history. This does not change your outstanding amount.`)) {
+            return;
+        }
+        const cleared = this.clearOtherUnpaidBills(cardIdStr, keepIdStr, new Date().toISOString());
+        window.Storage.save();
+        this.render();
+        Utils.showSuccess(`${cleared} stale bill(s) cleared`);
+    },
+    
+    /**
      * Save bill amount from modal
+     * Manual edits keep card.outstanding in sync by applying the delta
+     * (new amount - old amount), so reducing the bill also reduces O/S.
      */
     saveBillAmount(billId, cardId) {
         const billIdStr = String(billId);
@@ -1650,8 +1765,9 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         let bill = window.DB.cardBills?.find(b => String(b.id) === billIdStr);
         const card = window.DB.cards?.find(c => String(c.id) === cardIdStr);
         
+        let previousBillAmount = 0;
+        
         if (!bill && card) {
-            // Create new bill
             if (!window.DB.cardBills) window.DB.cardBills = [];
             bill = {
                 id: Utils.generateId(),
@@ -1665,21 +1781,19 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 paidAmount: null,
                 paidType: null,
                 paidAt: null,
-                smsId: null,
-                smsBody: 'Manual entry',
                 parsedAt: new Date().toISOString()
             };
             window.DB.cardBills.push(bill);
             Utils.showSuccess('Bill added');
         } else if (bill) {
-            // Update existing bill
+            // Treat a previously-paid bill as having 0 contribution to O/S
+            previousBillAmount = bill.isPaid ? 0 : (parseFloat(bill.amount) || 0);
             bill.amount = amount;
-            bill.parsedAt = new Date().toISOString(); // Update timestamp
+            bill.parsedAt = new Date().toISOString();
             if (amount === 0) {
                 bill.isPaid = true;
                 bill.paidAt = new Date().toISOString();
             } else {
-                // If adding amount to a paid bill, mark as unpaid
                 bill.isPaid = false;
                 bill.paidAmount = null;
                 bill.paidType = null;
@@ -1688,9 +1802,14 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             Utils.showSuccess('Bill updated');
         }
         
-        // Update card's outstanding if it's 0 or null and bill has value
-        if (card && amount > 0 && (!card.outstanding || card.outstanding === 0)) {
-            card.outstanding = amount;
+        // Keep outstanding in sync with the bill change
+        if (card) {
+            const currentOutstanding = parseFloat(card.outstanding) || 0;
+            const delta = amount - previousBillAmount;
+            // When user lowers a bill, lower outstanding too; when they raise it, raise outstanding.
+            // Clamp at 0 so we never go negative.
+            const nextOutstanding = Math.max(0, currentOutstanding + delta);
+            card.outstanding = nextOutstanding;
         }
         
         window.Storage.save();
@@ -1756,7 +1875,11 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
     },
     
     /**
-     * Save outstanding amount from modal
+     * Save outstanding amount from modal.
+     * If the user lowers outstanding below the sum of currently-unpaid bills,
+     * the excess unpaid bills are 'cleared' so the card reflects the user's
+     * intent (typical case: bills were paid in the bank app and the user is
+     * just syncing the in-app state).
      */
     saveOutstanding(cardId) {
         const cardIdStr = String(cardId);
@@ -1782,10 +1905,33 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         
         card.outstanding = amount;
         
+        // If the new outstanding is less than the total currently-unpaid bills,
+        // clear the stale ones so the bill row matches reality.
+        const unpaidBills = (window.DB.cardBills || []).filter(b => 
+            String(b.cardId) === cardIdStr && !b.isPaid
+        );
+        const totalUnpaid = unpaidBills.reduce((s, b) => s + (parseFloat(b.amount) || 0), 0);
+        let cleared = 0;
+        if (totalUnpaid > amount) {
+            const nowIso = new Date().toISOString();
+            // Keep at most one bill that fits within the new outstanding.
+            // Sort newest-first so we keep the most recent bill if any survives.
+            const sorted = [...unpaidBills].sort((a, b) =>
+                new Date(b.dueDate || b.parsedAt || 0) - new Date(a.dueDate || a.parsedAt || 0)
+            );
+            const keepId = amount > 0 && sorted.length > 0 ? String(sorted[0].id) : '';
+            cleared = this.clearOtherUnpaidBills(cardIdStr, keepId, nowIso);
+            // If we kept one, ensure its amount matches the new outstanding so totals line up
+            if (keepId && amount > 0) {
+                const keep = (window.DB.cardBills || []).find(b => String(b.id) === keepId);
+                if (keep) keep.amount = amount;
+            }
+        }
+        
         window.Storage.save();
         if (modal) modal.remove();
         this.render();
-        Utils.showSuccess('Outstanding updated');
+        Utils.showSuccess(`Outstanding updated${cleared > 0 ? ` (${cleared} stale bill(s) cleared)` : ''}`);
     },
     
     /**
@@ -1802,9 +1948,15 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         if (existing) existing.remove();
         
         const cardName = card ? card.name : 'Card';
-        const outstandingAmt = card && card.outstanding > 0 ? card.outstanding : 0;
+        // Force numeric so inline onclick handlers can't be broken by legacy
+        // string amounts like "5,000.00" left over from the old SMS sync.
+        const billAmount = parseFloat(String(bill.amount).replace(/[₹,\s]/g, '')) || 0;
+        const outstandingAmt = card ? Math.max(0, parseFloat(String(card.outstanding).replace(/[₹,\s]/g, '')) || 0) : 0;
         
-        // Default to today's date
+        // Count other unpaid bills so we can warn the user about the cleanup
+        const allCardBills = (window.DB.cardBills || []).filter(b => String(b.cardId) === cardIdStr);
+        const otherUnpaidCount = allCardBills.filter(b => !b.isPaid && String(b.id) !== billIdStr).length;
+        
         const today = new Date().toISOString().split('T')[0];
         
         const modal = document.createElement('div');
@@ -1818,6 +1970,11 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     <p class="text-green-100 text-xs">${Utils.escapeHtml(cardName)}</p>
                 </div>
                 <div class="p-3 space-y-2">
+                    ${otherUnpaidCount > 0 ? `
+                    <div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 p-2 rounded">
+                        ⚠️ ${otherUnpaidCount} other stale unpaid bill(s) on this card will be auto-cleared.
+                    </div>
+                    ` : ''}
                     <!-- Payment Date Selector -->
                     <div class="flex items-center gap-2 pb-2 border-b">
                         <label class="text-xs text-gray-500">Payment Date:</label>
@@ -1826,16 +1983,16 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     </div>
                     
                     <!-- Pay Bill Option -->
-                    <button onclick="Cards.markBillPaidWithDate('${billIdStr}', 'bill', ${bill.amount})" 
+                    <button onclick="Cards.markBillPaidWithDate('${billIdStr}', 'bill', ${billAmount})" 
                             class="w-full flex justify-between items-center p-3 rounded-lg border-2 border-green-200 hover:border-green-400 hover:bg-green-50 transition-all">
                         <div class="text-left">
                             <p class="font-medium text-gray-800">Pay Bill Amount</p>
                             <p class="text-xs text-gray-500">Statement bill</p>
                         </div>
-                        <span class="text-lg font-bold text-green-600">₹${Utils.formatIndianNumber(bill.amount)}</span>
+                        <span class="text-lg font-bold text-green-600">₹${Utils.formatIndianNumber(billAmount)}</span>
                     </button>
                     
-                    ${outstandingAmt > 0 && outstandingAmt !== bill.amount ? `
+                    ${outstandingAmt > 0 && outstandingAmt !== billAmount ? `
                     <!-- Pay Outstanding Option -->
                     <button onclick="Cards.markBillPaidWithDate('${billIdStr}', 'outstanding', ${outstandingAmt})" 
                             class="w-full flex justify-between items-center p-3 rounded-lg border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-50 transition-all">
@@ -1881,8 +2038,13 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         const card = window.DB.cards?.find(c => String(c.id) === cardIdStr);
         if (!card) { Utils.showError('Card not found'); return; }
         
-        const outstandingAmt = card.outstanding || 0;
+        // Defensive numeric coercion (legacy data may store strings like "5,000")
+        const outstandingAmt = Math.max(0, parseFloat(String(card.outstanding).replace(/[₹,\s]/g, '')) || 0);
         if (outstandingAmt <= 0) { Utils.showError('No outstanding amount'); return; }
+        
+        const otherUnpaidCount = (window.DB.cardBills || []).filter(b => 
+            String(b.cardId) === cardIdStr && !b.isPaid
+        ).length;
         
         const existing = document.getElementById('pay-outstanding-modal');
         if (existing) existing.remove();
@@ -1900,6 +2062,11 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     <p class="text-blue-100 text-xs">${Utils.escapeHtml(card.name)}</p>
                 </div>
                 <div class="p-3 space-y-2">
+                    ${otherUnpaidCount > 0 ? `
+                    <div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 p-2 rounded">
+                        ⚠️ ${otherUnpaidCount} stale unpaid bill(s) on this card will be auto-cleared.
+                    </div>
+                    ` : ''}
                     <!-- Payment Date Selector -->
                     <div class="flex items-center gap-2 pb-2 border-b">
                         <label class="text-xs text-gray-500">Payment Date:</label>
@@ -1949,17 +2116,15 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
     payOutstandingAmount(cardId, amount) {
         const dateInput = document.getElementById('os-payment-date-input');
         const paidDateStr = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
-        // Convert to ISO date format like markBillPaid does
         const paidAt = new Date(paidDateStr + 'T12:00:00').toISOString();
         
         const card = window.DB.cards?.find(c => String(c.id) === String(cardId));
         if (!card) { Utils.showError('Card not found'); return; }
         
-        // Update outstanding
+        const numericAmount = parseFloat(amount) || 0;
         const currentOutstanding = parseFloat(card.outstanding) || 0;
-        card.outstanding = Math.max(0, currentOutstanding - amount);
+        card.outstanding = Math.max(0, currentOutstanding - numericAmount);
         
-        // Record in bill history
         if (!window.DB.cardBills) window.DB.cardBills = [];
         window.DB.cardBills.push({
             id: Utils.generateId(),
@@ -1967,20 +2132,36 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             amount: 0,
             dueDate: null,
             isPaid: true,
-            paidAmount: amount,
+            paidAmount: numericAmount,
             paidAt: paidAt,
             paidType: 'outstanding',
             originalBillAmount: 0,
             createdAt: Utils.getCurrentTimestamp()
         });
         
+        // Sweep up any stale unpaid bills hanging around on this card
+        let clearedCount = this.clearOtherUnpaidBills(cardId, null, paidAt);
+        
+        // For grouped cards with shared billing, settle and sweep linked cards too
+        const group = this.getCardGroup(cardId);
+        if (group && group.shareBill) {
+            const otherCardIds = group.cardIds.filter(id => String(id) !== String(cardId));
+            otherCardIds.forEach(otherCardId => {
+                const otherCard = this.getById(otherCardId);
+                if (otherCard) {
+                    const otherOutstanding = parseFloat(otherCard.outstanding) || 0;
+                    otherCard.outstanding = Math.max(0, otherOutstanding - numericAmount);
+                }
+                clearedCount += this.clearOtherUnpaidBills(otherCardId, null, paidAt);
+            });
+        }
+        
         window.Storage.save();
         
-        // Close modal
         const modal = document.getElementById('pay-outstanding-modal');
         if (modal) modal.remove();
         
-        Utils.showSuccess(`Paid ₹${Utils.formatIndianNumber(amount)} towards outstanding`);
+        Utils.showSuccess(`Paid ₹${Utils.formatIndianNumber(numericAmount)} towards outstanding${clearedCount > 0 ? ` (${clearedCount} stale bill(s) cleared)` : ''}`);
         this.render();
     },
     
@@ -2098,6 +2279,14 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             console.log(`Updated outstanding: ${currentOutstanding} - ${paidAmount} = ${card.outstanding}`);
         }
         
+        // Auto-clear EVERY OTHER unpaid bill for this card. Stale bills left
+        // over from old SMS imports often share dueDates or have inconsistent
+        // parsedAt timestamps, so any "older than" heuristic misses them.
+        // When the user marks a bill paid we treat that as settling everything
+        // outstanding on the card; the cleanups are tagged paidType 'cleared'
+        // with paidAmount 0 so payment-history totals stay accurate.
+        let clearedCount = this.clearOtherUnpaidBills(bill.cardId, bill.id, paidAtDate);
+        
         // Check if card is in a group with shared billing
         const group = this.getCardGroup(bill.cardId);
         if (group && group.shareBill) {
@@ -2131,11 +2320,14 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                         otherCard.outstanding = Math.max(0, otherOutstanding - paidAmount);
                     }
                 }
+                
+                // Also clear every other unpaid bill on linked cards
+                clearedCount += this.clearOtherUnpaidBills(otherCardId, bill.id, paidAtDate);
             });
             
-            Utils.showSuccess(`Bill paid for ${group.cardIds.length} linked cards!`);
+            Utils.showSuccess(`Bill paid for ${group.cardIds.length} linked cards!${clearedCount > 0 ? ` (${clearedCount} stale bill(s) cleared)` : ''}`);
         } else {
-            Utils.showSuccess('Bill marked as paid!');
+            Utils.showSuccess(`Bill marked as paid!${clearedCount > 0 ? ` (${clearedCount} stale bill(s) cleared)` : ''}`);
         }
         
         window.Storage.save();
@@ -2143,119 +2335,240 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
     },
     
     /**
-     * Show payment history (bills paid and their payment details)
+     * Clear every unpaid bill for a card except the specified one.
+     * Used after a payment to sweep up stale duplicates left behind by the
+     * old SMS sync. Cleared bills get paidType 'cleared' / paidAmount 0 so
+     * payment-history totals are unaffected.
+     *
+     * @param {string} cardId - Card whose unpaid bills should be cleared
+     * @param {string} keepBillId - Bill id to skip (e.g. the one just paid)
+     * @param {string} paidAtDate - ISO timestamp to record on cleared bills
+     * @returns {number} How many bills were cleared
      */
-    showPaymentHistory(cardId) {
+    clearOtherUnpaidBills(cardId, keepBillId, paidAtDate) {
+        if (!window.DB.cardBills) return 0;
+        const cardIdStr = String(cardId);
+        const keepIdStr = keepBillId == null ? '' : String(keepBillId);
+        let cleared = 0;
+        window.DB.cardBills.forEach(b => {
+            if (String(b.cardId) !== cardIdStr) return;
+            if (b.isPaid) return;
+            if (keepIdStr && String(b.id) === keepIdStr) return;
+            b.isPaid = true;
+            b.paidAmount = 0;
+            b.paidType = 'cleared';
+            b.paidAt = paidAtDate;
+            cleared++;
+        });
+        return cleared;
+    },
+    
+    /**
+     * Show the Bills Manager for a card.
+     * Lists every bill (paid + cleared + unpaid) with per-row actions so the
+     * user can fully manage stale records left behind by the old SMS sync.
+     * Top-level controls let them clear all unpaid or wipe the card's bills
+     * completely. Also kept reachable as `showPaymentHistory` for backward
+     * compatibility with anywhere it's still referenced.
+     */
+    showBillsManager(cardId) {
         const cardIdStr = String(cardId);
         const card = window.DB.cards?.find(c => String(c.id) === cardIdStr);
-        const bills = window.DB.cardBills?.filter(b => String(b.cardId) === cardIdStr) || [];
+        if (!card) { Utils.showError('Card not found'); return; }
         
-        if (bills.length === 0) { 
-            Utils.showInfo('No payment history'); 
-            return; 
-        }
+        if (!Array.isArray(window.DB.cardBills)) window.DB.cardBills = [];
         
-        // Sort by paid date (most recent first), then by parsed date for unpaid
+        // Defensive integrity: any bill on this card without an id gets one
+        // so the per-row actions below can find it.
+        let needSave = false;
+        window.DB.cardBills.forEach(b => {
+            if (b && String(b.cardId) === cardIdStr && (!b.id || b.id === '')) {
+                b.id = (window.Utils && Utils.generateId)
+                    ? Utils.generateId()
+                    : 'bill_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+                needSave = true;
+            }
+        });
+        if (needSave) window.Storage.save();
+        
+        const bills = window.DB.cardBills.filter(b => String(b.cardId) === cardIdStr);
+        
+        // Newest first by due date, falling back to paid/parsed
         bills.sort((a, b) => {
-            const dateA = a.paidAt || a.dueDate || a.parsedAt || 0;
-            const dateB = b.paidAt || b.dueDate || b.parsedAt || 0;
-            return new Date(dateB) - new Date(dateA);
+            const da = new Date(a.dueDate || a.paidAt || a.parsedAt || 0).getTime();
+            const db = new Date(b.dueDate || b.paidAt || b.parsedAt || 0).getTime();
+            return db - da;
         });
         
-        // Group by year
-        const currentYear = new Date().getFullYear();
-        const billsByYear = {};
+        const unpaidCount = bills.filter(b => !b.isPaid).length;
+        const outstandingAmt = parseFloat(String(card.outstanding).replace(/[₹,\s]/g, '')) || 0;
         
-        bills.forEach(b => {
-            const date = b.paidAt || b.dueDate || b.parsedAt;
-            const year = date ? new Date(date).getFullYear() : currentYear;
-            if (!billsByYear[year]) billsByYear[year] = [];
-            billsByYear[year].push(b);
-        });
+        const fmt = (n) => Utils.formatIndianNumber(n);
+        const formatDate = (v) => v ? new Date(v).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
         
-        // Sort years descending
-        const sortedYears = Object.keys(billsByYear).sort((a, b) => b - a);
-        
-        // Generate HTML grouped by year
-        const html = sortedYears.map(year => {
-            const yearBills = billsByYear[year];
-            const isCurrentYear = parseInt(year) === currentYear;
-            const totalPaid = yearBills.filter(b => b.isPaid).reduce((sum, b) => sum + (parseFloat(b.paidAmount) || parseFloat(b.amount) || 0), 0);
+        const rowsHtml = bills.length === 0 ? `
+            <p class="text-gray-500 text-sm text-center py-6">No bills on this card.</p>
+        ` : bills.map(b => {
+            const billIdStr = String(b.id || '');
+            const isCleared = b.paidType === 'cleared';
+            const isPaid = !!b.isPaid;
+            const amount = parseFloat(b.amount) || 0;
+            const paidAmount = parseFloat(b.paidAmount) || 0;
+            const due = formatDate(b.dueDate);
+            const paid = formatDate(b.paidAt || b.paidDate);
+            const status = isCleared ? 'CLEARED' : isPaid ? 'PAID' : 'UNPAID';
+            const statusClasses = isCleared ? 'bg-gray-100 text-gray-600'
+                : isPaid ? 'bg-green-100 text-green-700'
+                : 'bg-orange-100 text-orange-700';
+            const amountClasses = isCleared ? 'text-gray-500'
+                : isPaid ? 'text-green-600'
+                : 'text-orange-600';
+            const labelType = isCleared ? 'Cleared (stale)'
+                : b.paidType === 'outstanding' ? 'Outstanding'
+                : b.paidType === 'custom' ? 'Custom' : 'Bill';
             
-            const billsHtml = yearBills.map(b => {
-                // Check paidAt first, fallback to paidDate for legacy records
-                const paidDateValue = b.paidAt || b.paidDate;
-                const paidDate = paidDateValue ? new Date(paidDateValue).toLocaleDateString('en-IN', {day: 'numeric', month: 'short', year: 'numeric'}) : '';
-                const dueDate = b.dueDate ? new Date(b.dueDate).toLocaleDateString('en-IN', {day: 'numeric', month: 'short', year: 'numeric'}) : '';
-                const paidTypeLabel = b.paidType === 'outstanding' ? 'Outstanding' : (b.paidType === 'custom' ? 'Custom' : 'Bill');
-                
-                return `
-                <div class="py-3 border-b last:border-b-0 pl-3">
-                    ${b.isPaid ? `
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-sm font-bold text-green-600">₹${Utils.formatIndianNumber(b.paidAmount || b.amount)}</p>
-                                <p class="text-xs text-gray-500">Paid on ${paidDate}</p>
-                                <p class="text-xs text-gray-400">${paidTypeLabel} payment</p>
-                            </div>
-                            <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">PAID</span>
-                        </div>
-                        <div class="mt-1 text-xs text-gray-400">
-                            Bill: ₹${Utils.formatIndianNumber(b.amount)} ${dueDate ? `• Due: ${dueDate}` : ''}
-                        </div>
-                    ` : `
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-sm font-bold text-orange-600">₹${Utils.formatIndianNumber(b.amount)}</p>
-                                <p class="text-xs text-gray-500">${dueDate ? `Due: ${dueDate}` : 'Pending'}</p>
-                            </div>
-                            <span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">UNPAID</span>
-                        </div>
-                    `}
-                </div>
-                `;
-            }).join('');
+            const displayAmount = isCleared ? 0 : (isPaid ? (paidAmount || amount) : amount);
             
             return `
-            <div class="mb-2">
-                <button onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('svg').classList.toggle('rotate-180')" 
-                        class="w-full flex justify-between items-center py-2 px-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                    <div class="flex items-center gap-2">
-                        <span class="font-bold text-gray-700">${year}</span>
-                        <span class="text-xs text-gray-500">(${yearBills.length} payment${yearBills.length > 1 ? 's' : ''})</span>
+            <div class="py-2 px-3 border-b last:border-b-0">
+                <div class="flex justify-between items-start gap-2">
+                    <div class="min-w-0">
+                        <p class="text-sm font-bold ${amountClasses}">₹${fmt(displayAmount)}</p>
+                        <p class="text-xs text-gray-500 truncate">${isPaid ? `${isCleared ? 'Cleared' : 'Paid'} on ${paid}` : (due ? `Due: ${due}` : 'Pending')}</p>
+                        <p class="text-[10px] text-gray-400">${labelType}${!isPaid ? '' : ''} • Bill ₹${fmt(amount)}${due ? ` • Due ${due}` : ''}</p>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs font-medium text-green-600">₹${Utils.formatIndianNumber(totalPaid)}</span>
-                        <svg class="w-4 h-4 text-gray-500 transition-transform ${isCurrentYear ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
+                    <div class="flex flex-col items-end gap-1 shrink-0">
+                        <span class="text-[10px] ${statusClasses} px-2 py-0.5 rounded-full">${status}</span>
+                        <div class="flex gap-1">
+                            ${!isPaid ? `
+                            <button onclick="Cards.markBillPaidFromManager('${billIdStr}')" class="text-[10px] bg-green-500 hover:bg-green-600 text-white px-2 py-0.5 rounded" title="Mark this bill as paid">Mark Paid</button>
+                            ` : ''}
+                            <button onclick="Cards.deleteBillFromManager('${billIdStr}', '${cardIdStr}')" class="text-[10px] bg-red-500 hover:bg-red-600 text-white px-2 py-0.5 rounded" title="Delete this bill record">Delete</button>
+                        </div>
                     </div>
-                </button>
-                <div class="${isCurrentYear ? '' : 'hidden'} mt-1">
-                    ${billsHtml}
                 </div>
             </div>
             `;
         }).join('');
         
-        const existing = document.getElementById('payment-history-modal');
+        const existing = document.getElementById('bills-manager-modal');
         if (existing) existing.remove();
         
         const modal = document.createElement('div');
-        modal.id = 'payment-history-modal';
+        modal.id = 'bills-manager-modal';
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-[10001] flex items-center justify-center p-4';
         modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
         modal.innerHTML = `
-            <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full max-h-[70vh] overflow-hidden">
+            <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full max-h-[80vh] overflow-hidden flex flex-col">
                 <div class="bg-gradient-to-r from-purple-500 to-indigo-600 px-4 py-3">
-                    <h3 class="text-white font-bold text-sm">💰 Payment History</h3>
-                    <p class="text-purple-100 text-xs">${card?.name || 'Card'}</p>
+                    <h3 class="text-white font-bold text-sm">💰 Bills Manager</h3>
+                    <p class="text-purple-100 text-xs">${Utils.escapeHtml(card.name)} • ${bills.length} record(s) • O/S ₹${fmt(outstandingAmt)}</p>
                 </div>
-                <div class="p-3 overflow-y-auto max-h-[50vh]">${html || '<p class="text-gray-500 text-sm text-center py-4">No payments yet</p>'}</div>
-                <button onclick="document.getElementById('payment-history-modal').remove()" class="w-full py-2.5 text-gray-500 hover:bg-gray-50 text-sm border-t transition-colors">Close</button>
+                ${unpaidCount > 0 ? `
+                <div class="px-3 py-2 bg-amber-50 border-b border-amber-100 flex items-center justify-between gap-2">
+                    <p class="text-xs text-amber-700">${unpaidCount} unpaid bill(s) on this card</p>
+                    <button onclick="Cards.clearAllUnpaidFromManager('${cardIdStr}')" class="text-[11px] bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded font-medium" title="Mark all unpaid as cleared (stale)">Clear All Unpaid</button>
+                </div>
+                ` : ''}
+                <div class="flex-1 overflow-y-auto">${rowsHtml}</div>
+                <div class="border-t flex">
+                    <button onclick="Cards.resetAllBillsFromManager('${cardIdStr}')" class="flex-1 py-2.5 text-red-600 hover:bg-red-50 text-sm font-medium" title="Delete every bill record on this card and zero outstanding">🗑 Reset All Bills</button>
+                    <button onclick="document.getElementById('bills-manager-modal').remove()" class="flex-1 py-2.5 text-gray-500 hover:bg-gray-50 text-sm">Close</button>
+                </div>
             </div>
         `;
         document.body.appendChild(modal);
+    },
+    
+    // Backward-compat: anywhere code still calls showPaymentHistory
+    showPaymentHistory(cardId) { return this.showBillsManager(cardId); },
+    
+    /**
+     * Bills Manager action: mark a single unpaid bill paid (no auto-clear of others).
+     */
+    markBillPaidFromManager(billId) {
+        const bill = (window.DB.cardBills || []).find(b => String(b.id) === String(billId));
+        if (!bill) { Utils.showError('Bill not found'); return; }
+        const cardId = bill.cardId;
+        const amount = parseFloat(bill.amount) || 0;
+        const paidAt = new Date().toISOString();
+        bill.isPaid = true;
+        bill.paidAmount = amount;
+        bill.paidType = bill.paidType === 'outstanding' ? 'outstanding' : 'bill';
+        bill.paidAt = paidAt;
+        const card = (window.DB.cards || []).find(c => String(c.id) === String(cardId));
+        if (card) {
+            const cur = parseFloat(String(card.outstanding).replace(/[₹,\s]/g, '')) || 0;
+            card.outstanding = Math.max(0, cur - amount);
+        }
+        window.Storage.save();
+        Utils.showSuccess('Bill marked as paid');
+        this.render();
+        // Refresh the manager modal so the user sees the updated row
+        this.showBillsManager(cardId);
+    },
+    
+    /**
+     * Bills Manager action: delete one bill (manager handles re-render).
+     */
+    deleteBillFromManager(billId, cardId) {
+        const idStr = String(billId);
+        const bills = window.DB.cardBills || [];
+        const idx = bills.findIndex(b => String(b.id) === idStr);
+        if (idx === -1) { Utils.showError('Bill not found'); return; }
+        const removed = bills[idx];
+        bills.splice(idx, 1);
+        // If we removed an unpaid bill, also pull its amount out of card.outstanding
+        if (removed && !removed.isPaid) {
+            const removedAmt = parseFloat(removed.amount) || 0;
+            const card = (window.DB.cards || []).find(c => String(c.id) === String(cardId));
+            if (card && removedAmt > 0) {
+                const cur = parseFloat(String(card.outstanding).replace(/[₹,\s]/g, '')) || 0;
+                card.outstanding = Math.max(0, cur - removedAmt);
+            }
+        }
+        window.Storage.save();
+        Utils.showSuccess('Bill deleted');
+        this.render();
+        this.showBillsManager(cardId);
+    },
+    
+    /**
+     * Bills Manager action: mark every unpaid bill on the card as cleared.
+     * Does not record any payment; outstanding is left alone (use the
+     * outstanding pencil ✎ to adjust separately).
+     */
+    clearAllUnpaidFromManager(cardId) {
+        const cardIdStr = String(cardId);
+        const cleared = this.clearOtherUnpaidBills(cardIdStr, null, new Date().toISOString());
+        window.Storage.save();
+        Utils.showSuccess(`${cleared} unpaid bill(s) cleared`);
+        this.render();
+        this.showBillsManager(cardId);
+    },
+    
+    /**
+     * Bills Manager action: nuke every bill record on this card and zero out
+     * the card's outstanding. The escape hatch when SMS sync left the data
+     * in an unrecoverable state. Confirms first.
+     */
+    resetAllBillsFromManager(cardId) {
+        const cardIdStr = String(cardId);
+        const card = (window.DB.cards || []).find(c => String(c.id) === cardIdStr);
+        const cardName = card ? card.name : 'this card';
+        const removed = (window.DB.cardBills || []).filter(b => String(b.cardId) === cardIdStr).length;
+        if (!confirm(`Delete ALL ${removed} bill record(s) on ${cardName} and reset outstanding to ₹0?\n\nThis cannot be undone.`)) {
+            return;
+        }
+        if (Array.isArray(window.DB.cardBills)) {
+            window.DB.cardBills = window.DB.cardBills.filter(b => String(b.cardId) !== cardIdStr);
+        }
+        if (card) card.outstanding = 0;
+        window.Storage.save();
+        Utils.showSuccess('All bills reset');
+        this.render();
+        const modal = document.getElementById('bills-manager-modal');
+        if (modal) modal.remove();
     },
 
     /**

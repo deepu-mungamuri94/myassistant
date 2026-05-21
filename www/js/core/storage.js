@@ -14,6 +14,10 @@ const Storage = {
         try {
             // JSON.stringify serializes ENTIRE DB object with all current and future fields
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(window.DB));
+            // Trigger debounced cloud backup (no-op if not configured / signed in)
+            if (window.CloudBackup && typeof window.CloudBackup.scheduleUpload === 'function') {
+                try { window.CloudBackup.scheduleUpload(); } catch (e) { /* never let backup break save */ }
+            }
             return true;
         } catch (e) {
             console.error('Storage error:', e);

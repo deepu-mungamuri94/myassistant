@@ -1011,7 +1011,33 @@
                         <span>Store this password safely! Without it, you cannot decrypt your backups.</span>
                     </p>
                 </div>
-                
+
+                <!-- Cloud Backup Section -->
+                <div class="border-t pt-4">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        ☁️ Cloud Backup (Google Drive)
+                        <span class="text-xs font-normal text-gray-500 block mt-1">
+                            Automatic, end-to-end encrypted backups to a hidden folder in your Google Drive.
+                        </span>
+                    </label>
+
+                    <div class="mb-3">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Google OAuth Client ID</label>
+                        <input type="text" id="cloud-backup-client-id" placeholder="123456-abc.apps.googleusercontent.com"
+                               class="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-mono">
+                        <p class="text-[10px] text-gray-500 mt-1">From Google Cloud Console → Credentials. One-time setup.</p>
+                    </div>
+
+                    <div id="cloud-backup-status" class="text-xs bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3">
+                        <!-- Populated by Navigation.refreshCloudBackupUI() -->
+                        Not connected.
+                    </div>
+
+                    <div id="cloud-backup-actions" class="flex gap-2">
+                        <!-- Populated by Navigation.refreshCloudBackupUI() -->
+                    </div>
+                </div>
+
                 <div class="flex space-x-3 pt-4">
                     <button onclick="Navigation.saveSettings()" class="flex-1 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
                         Save
@@ -1021,6 +1047,41 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- CLOUD RESTORE MODAL -->
+    <div id="cloud-restore-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-[10001] flex items-center justify-center p-4" onclick="if(event.target===this) Navigation.closeCloudRestoreModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent flex items-center gap-2">
+                ☁️ Restore from Google Drive
+            </h2>
+            <p class="text-gray-600 text-sm mb-4">Pick a backup version to restore. Your current data will be replaced.</p>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Master Password</label>
+                <div class="relative">
+                    <input type="password" id="cloud-restore-password" placeholder="Master password used at the time of backup"
+                           class="w-full p-3 pr-12 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="button" onclick="togglePasswordVisibility('cloud-restore-password')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Available Backups</label>
+                <div id="cloud-restore-list" class="border-2 border-gray-200 rounded-lg divide-y max-h-64 overflow-y-auto">
+                    <div class="p-3 text-sm text-gray-500 text-center">Loading…</div>
+                </div>
+            </div>
+
+            <button onclick="Navigation.closeCloudRestoreModal()" class="w-full mt-4 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
+                Cancel
+            </button>
         </div>
     </div>
     
@@ -3561,6 +3622,7 @@
     <script src="js/utils/validators.js"></script>
     <script src="js/utils/calculations.js"></script>
     <script src="js/core/storage.js"></script>
+    <script src="js/core/cloudBackup.js"></script>
     <script src="js/core/security.js"></script>
     <script src="js/core/loading.js"></script>
     <script src="js/core/stockapi.js"></script>

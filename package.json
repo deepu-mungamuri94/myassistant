@@ -6,7 +6,8 @@
   "scripts": {
     "sync": "npx cap sync",
     "open:android": "npx cap open android",
-    "build": "npx cap copy && npx cap sync"
+    "build": "npx cap copy && npx cap sync",
+    "watch": "npx chokidar-cli \"www/**/*\" -c \"npm run build\""
   },
   "keywords": [
     "personal-assistant",
@@ -21,6 +22,8 @@
     "@capacitor-community/sqlite": "^7.0.2",
     "@capacitor-mlkit/barcode-scanning": "^7.3.0",
     "@capacitor/android": "^7.4.4",
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/browser": "^7.0.5",
     "@capacitor/cli": "^7.4.4",
     "@capacitor/core": "^7.4.4",
     "@capacitor/filesystem": "^7.1.4",
@@ -28,6 +31,7 @@
     "@capacitor/status-bar": "^7.0.3"
   },
   "devDependencies": {
+    "chokidar-cli": "^3.0.0",
     "autoprefixer": "^10.4.22",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.1"

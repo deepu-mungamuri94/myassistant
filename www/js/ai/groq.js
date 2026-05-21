@@ -28,8 +28,10 @@ const GroqAI = {
             if (typeof systemInstructions === 'object' && systemInstructions !== null) {
                 // Use common system instruction for this mode
                 systemMessage = window.AIProvider.getSystemInstruction(systemInstructions);
-                // Append context data
-                systemMessage += '\n\nContext Data:\n' + JSON.stringify(systemInstructions, null, 2);
+                // Build a compact text representation. Pretty-printed JSON balloons token
+                // count by ~30% (quotes, indentation, escaping) which can blow past Groq's
+                // 12k TPM limit on llama-3.3-70b-versatile for users with many cards.
+                systemMessage += '\n\nContext Data:\n' + window.AIProvider.formatContextText(systemInstructions);
             } else if (typeof systemInstructions === 'string') {
                 systemMessage = systemInstructions;
             }
