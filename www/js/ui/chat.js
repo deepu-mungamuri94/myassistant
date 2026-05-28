@@ -263,16 +263,21 @@ For portfolio analysis questions, provide:
 - Action steps for rebalancing if needed`
             : '';
 
+        // Add explanation of what was queried if available
+        const queryExplanation = queryResult.explanation ? `\n\nQuery executed: ${queryResult.explanation}` : '';
+
         return `User asked: "${userQuery}"
 
 I executed a query on my ${datasetName} database and got these results:
 
-${resultSummary}
+${resultSummary}${queryExplanation}
 
 Please provide a clear, helpful analysis of these results that directly answers the user's question. Format your response with:
 - Key insights and numbers (with percentages for ${isInvestments ? 'asset allocation' : 'spending patterns'})
 - Breakdowns or comparisons if relevant
 - Actionable recommendations if applicable${analysisGuidance}
+
+${queryResult.result.count === 0 ? 'NOTE: Zero results found. Suggest alternative search terms or broader criteria the user could try.' : ''}
 
 Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
     },

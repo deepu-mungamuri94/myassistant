@@ -46,15 +46,17 @@ const QueryEngine = {
             schema: {
                 fields: [
                     { name: 'id', type: 'number', description: 'Unique expense ID' },
-                    { name: 'title', type: 'string', description: 'Expense title/name' },
-                    { name: 'description', type: 'string', description: 'Additional details (optional)' },
+                    { name: 'title', type: 'string', description: 'Expense title/name - SEARCHABLE TEXT (use .toLowerCase().includes() for keyword search)' },
+                    { name: 'description', type: 'string', description: 'Additional details - SEARCHABLE TEXT (may be null, always check with e.description && ...)' },
                     { name: 'amount', type: 'number', description: 'Expense amount in INR' },
                     { name: 'category', type: 'string', description: 'Expense category', values: categories },
                     { name: 'date', type: 'string', description: 'Expense date (YYYY-MM-DD format)' },
                     { name: 'createdAt', type: 'number', description: 'Timestamp when expense was added' },
                     { name: 'suggestedCard', type: 'string', description: 'Suggested card for this expense (optional)' },
                     { name: 'recurringId', type: 'number', description: 'Link to recurring expense (optional)' },
-                    { name: 'cardName', type: 'string', description: 'Credit card name if paid through credit card (e.g., "IDFC First", "HDFC Regalia") - null if not paid via card' }
+                    { name: 'cardName', type: 'string', description: 'Credit card name if paid through credit card (e.g., "IDFC First", "HDFC Regalia") - null if not paid via card' },
+                    { name: 'event', type: 'string', description: 'Event tag for grouping related expenses (e.g., "Birthday Party", "Trip") - null if not tagged' },
+                    { name: 'needWant', type: 'string', description: 'Expense classification: "need" or "want" - null if not classified' }
                 ],
                 availableCategories: categories,
                 sampleStructure: {
@@ -63,7 +65,9 @@ const QueryEngine = {
                     amount: 'number (e.g., 5000)',
                     category: `string (one of: ${categories.join(', ')})`,
                     date: 'string (e.g., "2024-11-22")',
-                    cardName: 'string | null (e.g., "IDFC First" if paid via credit card, null otherwise)'
+                    cardName: 'string | null (e.g., "IDFC First" if paid via credit card, null otherwise)',
+                    event: 'string | null (e.g., "Birthday Party")',
+                    needWant: 'string | null ("need" or "want")'
                 }
             },
             statistics: {
@@ -90,32 +94,64 @@ To query expenses data, return a JSON object with this structure:
 }
 
 Examples:
+
+CATEGORY-BASED QUERIES:
 1. Total groceries in November 2024:
    { "operation": "filter", "filterCode": "e => e.category === 'Groceries' && new Date(e.date).getMonth() === 10 && new Date(e.date).getFullYear() === 2024", "aggregation": "sum", "aggregationField": "amount" }
 
 2. Count expenses by category:
    { "operation": "filter", "filterCode": "e => true", "aggregation": "group", "groupBy": "category", "aggregationField": "amount" }
 
+AMOUNT-BASED QUERIES:
 3. Expenses above ₹5000:
    { "operation": "filter", "filterCode": "e => e.amount > 5000", "aggregation": "none" }
 
+CREDIT CARD QUERIES:
 4. All expenses paid through credit cards (any card):
    { "operation": "filter", "filterCode": "e => e.cardName !== null", "aggregation": "sum", "aggregationField": "amount" }
 
 5. Expenses paid through IDFC First card in January 2025:
    { "operation": "filter", "filterCode": "e => e.cardName && e.cardName.toLowerCase().includes('idfc') && new Date(e.date).getMonth() === 0 && new Date(e.date).getFullYear() === 2025", "aggregation": "sum", "aggregationField": "amount" }
 
-6. All expenses paid through a specific card:
-   { "operation": "filter", "filterCode": "e => e.cardName && e.cardName.toLowerCase().includes('hdfc')", "aggregation": "none" }
+TEXT SEARCH QUERIES (extract keywords from user query and search in title/description):
+6. Find expenses with specific keyword in TITLE (e.g., "pharmacy", "baby", "BigBasket"):
+   { "operation": "filter", "filterCode": "e => e.title.toLowerCase().includes('pharmacy')", "aggregation": "sum", "aggregationField": "amount" }
 
-Important:
+7. Search across TITLE and DESCRIPTION (broader search):
+   { "operation": "filter", "filterCode": "e => e.title.toLowerCase().includes('baby') || (e.description && e.description.toLowerCase().includes('baby'))", "aggregation": "sum", "aggregationField": "amount" }
+
+8. Multiple keywords (OR logic - any match):
+   { "operation": "filter", "filterCode": "e => e.title.toLowerCase().includes('diaper') || e.title.toLowerCase().includes('lotion') || e.title.toLowerCase().includes('baby')", "aggregation": "sum", "aggregationField": "amount" }
+
+9. Multiple keywords (AND logic - all must match):
+   { "operation": "filter", "filterCode": "e => e.title.toLowerCase().includes('baby') && e.title.toLowerCase().includes('products')", "aggregation": "sum", "aggregationField": "amount" }
+
+10. Keyword search with date filter:
+    { "operation": "filter", "filterCode": "e => e.title.toLowerCase().includes('pharmacy') && new Date(e.date).getMonth() === 4 && new Date(e.date).getFullYear() === 2026", "aggregation": "sum", "aggregationField": "amount" }
+
+EVENT-BASED QUERIES:
+11. Expenses for a specific event:
+    { "operation": "filter", "filterCode": "e => e.event === 'Birthday Party'", "aggregation": "sum", "aggregationField": "amount" }
+
+12. All expenses with event tags:
+    { "operation": "filter", "filterCode": "e => e.event !== null", "aggregation": "group", "groupBy": "event", "aggregationField": "amount" }
+
+NEED vs WANT QUERIES:
+13. All "need" expenses:
+    { "operation": "filter", "filterCode": "e => e.needWant === 'need'", "aggregation": "sum", "aggregationField": "amount" }
+
+14. All "want" expenses by category:
+    { "operation": "filter", "filterCode": "e => e.needWant === 'want'", "aggregation": "group", "groupBy": "category", "aggregationField": "amount" }
+
+Important Rules:
 - Use JavaScript arrow function syntax
-- Access fields as e.fieldName (e.g., e.amount, e.category, e.cardName)
-- For dates, use new Date(e.date)
-- Month is 0-indexed (Jan=0, Dec=11)
-- cardName field contains the credit card name (e.g., "IDFC First", "HDFC Regalia") or null if not paid via card
-- Use e.cardName to filter expenses by credit card (e.g., e.cardName && e.cardName.toLowerCase().includes('idfc'))
+- Access fields as e.fieldName (e.g., e.amount, e.category, e.title)
+- For TEXT SEARCH: Always use .toLowerCase().includes('keyword') for case-insensitive matching
+- For DESCRIPTION: Always check null first: e.description && e.description.toLowerCase().includes('keyword')
+- Extract keywords from user's natural language query (e.g., "baby costs" → extract "baby")
+- For dates: use new Date(e.date), month is 0-indexed (Jan=0, Dec=11)
 - Return ONLY valid JavaScript that works with Array.filter()
+- When user asks about specific items/brands/keywords, use TEXT SEARCH (examples 6-10)
 `
         };
     },
@@ -173,14 +209,14 @@ Important:
             schema: {
                 fields: [
                     { name: 'id', type: 'number', description: 'Unique investment ID' },
-                    { name: 'name', type: 'string', description: 'Investment name (e.g., "Apple", "ICICI FD")' },
+                    { name: 'name', type: 'string', description: 'Investment name - SEARCHABLE TEXT (e.g., "Apple", "ICICI FD", "Gold")' },
                     { name: 'type', type: 'string', description: 'Investment type (SHARES, GOLD, FD, EPF)', values: types },
                     { name: 'goal', type: 'string', description: 'Investment goal/term (SHORT_TERM or LONG_TERM)', values: goals },
                     { name: 'amount', type: 'number', description: 'Total investment amount in INR (calculated as price × quantity for SHARES/GOLD)' },
                     { name: 'quantity', type: 'number', description: 'Quantity (for SHARES/GOLD)' },
                     { name: 'price', type: 'number', description: 'Unit price (for SHARES/GOLD)' },
                     { name: 'currency', type: 'string', description: 'Currency (INR or USD)', values: currencies },
-                    { name: 'description', type: 'string', description: 'Additional notes (optional)' },
+                    { name: 'description', type: 'string', description: 'Additional notes - SEARCHABLE TEXT (may be null)' },
                     { name: 'createdAt', type: 'number', description: 'Timestamp when added' },
                     { name: 'lastUpdated', type: 'number', description: 'Last update timestamp' }
                 ],
@@ -227,6 +263,8 @@ IMPORTANT - Field Clarifications:
   * For FD/EPF: amount = direct deposit amount
 
 Examples:
+
+TYPE & GOAL QUERIES:
 1. Total long-term investments:
    { "operation": "filter", "filterCode": "i => i.goal === 'LONG_TERM'", "aggregation": "sum", "aggregationField": "amount" }
 
@@ -239,16 +277,37 @@ Examples:
 4. Count investments by type:
    { "operation": "filter", "filterCode": "i => true", "aggregation": "group", "groupBy": "type", "aggregationField": "amount" }
 
+CURRENCY QUERIES:
 5. USD investments:
    { "operation": "filter", "filterCode": "i => i.currency === 'USD'", "aggregation": "none" }
 
-Important:
+TEXT SEARCH QUERIES (for specific stocks, companies, banks):
+6. Find investments with specific keyword in NAME (e.g., "Apple", "ICICI", "Tech"):
+   { "operation": "filter", "filterCode": "i => i.name.toLowerCase().includes('apple')", "aggregation": "sum", "aggregationField": "amount" }
+
+7. Search across NAME and DESCRIPTION:
+   { "operation": "filter", "filterCode": "i => i.name.toLowerCase().includes('tech') || (i.description && i.description.toLowerCase().includes('tech'))", "aggregation": "sum", "aggregationField": "amount" }
+
+8. Multiple company names (OR logic):
+   { "operation": "filter", "filterCode": "i => i.name.toLowerCase().includes('apple') || i.name.toLowerCase().includes('google') || i.name.toLowerCase().includes('microsoft')", "aggregation": "sum", "aggregationField": "amount" }
+
+9. Specific bank FDs:
+   { "operation": "filter", "filterCode": "i => i.type === 'FD' && i.name.toLowerCase().includes('icici')", "aggregation": "sum", "aggregationField": "amount" }
+
+10. Tech stocks only:
+    { "operation": "filter", "filterCode": "i => i.type === 'SHARES' && (i.name.toLowerCase().includes('tech') || (i.description && i.description.toLowerCase().includes('technology')))", "aggregation": "sum", "aggregationField": "amount" }
+
+Important Rules:
 - Use JavaScript arrow function syntax
-- Access fields as i.fieldName (e.g., i.amount, i.type, i.goal)
+- Access fields as i.fieldName (e.g., i.amount, i.type, i.goal, i.name)
 - Use i.goal for SHORT_TERM/LONG_TERM (not i.term or i.type!)
 - Use i.type for SHARES/GOLD/FD/EPF
+- For TEXT SEARCH: Always use .toLowerCase().includes('keyword') for case-insensitive matching
+- For DESCRIPTION: Always check null first: i.description && i.description.toLowerCase().includes('keyword')
+- Extract keywords from user's natural language query
 - Return ONLY valid JavaScript that works with Array.filter()
 - For USD to INR conversion, use exchangeRate: ${window.DB.exchangeRate?.rate || window.DB.exchangeRate || 83}
+- When user asks about specific companies/stocks/banks, use TEXT SEARCH (examples 6-10)
 `
         };
     },

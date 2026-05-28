@@ -138,6 +138,10 @@ const Investments = {
      */
     render() {
         this.renderPortfolioSection();
+        if (window.Sips) {
+            window.Sips.init();
+            window.Sips.render();
+        }
         this.renderMonthlySection();
     },
 

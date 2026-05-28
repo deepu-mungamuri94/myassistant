@@ -5038,161 +5038,63 @@ const Dashboard = {
             patternsText = 'No recurring annual patterns detected for this month (need more historical data).';
         }
         
-        return `You are a personal finance advisor analyzing detailed spending data. Provide SPECIFIC, ACTIONABLE insights based on the actual expense names and amounts below.
+        return `You are a personal finance advisor providing insights for ${monthName}. Be concise, specific, and actionable.
 
-**IMPORTANT**: All projections and averages are based on the last ${analysisMonths} months of actual expense data, plus Year-over-Year comparison from previous years for the same month.
+## CONTEXT (${analysisMonths}-month data)
+**Income**: ₹${Math.round(data.insights.avgMonthlyIncome || 0).toLocaleString()}/month average
+**Budget Rule**: ${data.budgetAnalysis?.targetRule?.needs || 50}% Needs / ${data.budgetAnalysis?.targetRule?.wants || 30}% Wants / ${data.budgetAnalysis?.targetRule?.invest || 20}% Invest
 
-## BUDGET RULE ANALYSIS (${data.budgetAnalysis?.targetRule?.needs || 50}/${data.budgetAnalysis?.targetRule?.wants || 30}/${data.budgetAnalysis?.targetRule?.invest || 20} Rule)
-${budgetText || 'No budget data'}
+**Recent Trend**:
+${data.historicalExpenses.slice(-3).map(h => `${h.label}: ₹${Math.round(h.amount).toLocaleString()}`).join(' → ')}
+→ Average: ₹${Math.round(data.projectedAverage).toLocaleString()}/month
 
-## EXPENSE TREND (Last ${analysisMonths} Months)
-${data.historicalExpenses.map(h => `• ${h.label}: ₹${Math.round(h.amount).toLocaleString()}`).join('\n')}
-→ Monthly Average: ₹${Math.round(data.projectedAverage).toLocaleString()}
+**Budget Status**:
+${budgetText || 'No budget issues detected'}
 
-## YEAR-OVER-YEAR COMPARISON (Same month from previous years)
-${yoyText}
+**Top Spending Areas** (${analysisMonths}-month avg):
+${data.topCategories.slice(0, 5).map(c => `• ${c.category}: ₹${Math.round(c.monthlyAvg).toLocaleString()}/month (${c.count} transactions)`).join('\n')}
 
-## DETECTED ANNUAL PATTERNS FOR ${monthName.toUpperCase()}
-These are recurring expenses/patterns detected in the same month from previous years:
-${patternsText}
+**Fixed Obligations** (₹${Math.round(data.insights.totalFixed).toLocaleString()}/month total):
+${recurringText ? `Subscriptions: ₹${Math.round(data.insights.totalRecurring).toLocaleString()}/month\n${recurringText.split('\n').slice(0, 3).join('\n')}${data.recurringPayments.length > 3 ? '\n... +' + (data.recurringPayments.length - 3) + ' more' : ''}` : 'None'}
+${data.loans.length > 0 ? `\nLoans: ₹${Math.round(data.insights.totalLoans).toLocaleString()}/month\n${loansText}` : ''}
+${data.emis.length > 0 ? `\nCard EMIs: ₹${Math.round(data.insights.totalEmis).toLocaleString()}/month\n${emisText}` : ''}
 
-## DETAILED CATEGORY BREAKDOWN (with individual expenses)
-${categoryDetailText || 'No category data'}
+${data.annualPatterns && data.annualPatterns.hasPatterns ? `**Annual Patterns for ${monthName.split(' ')[0]}**:\n${patternsText}` : ''}
 
-## TOP 15 INDIVIDUAL EXPENSES (by monthly spend)
-${topExpensesText || 'No individual expense data'}
+${data.yearOverYear && data.yearOverYear.hasData ? `**Last Year Same Month**:\n${yoyText.split('\n').slice(0, 3).join('\n')}` : ''}
 
-## FIXED MONTHLY OBLIGATIONS
-Recurring (Total: ₹${Math.round(data.insights.totalRecurring).toLocaleString()}/month):
-${recurringText || 'None'}
-
-Loans (Total: ₹${Math.round(data.insights.totalLoans).toLocaleString()}/month):
-${loansText}
-
-Card EMIs (Total: ₹${Math.round(data.insights.totalEmis).toLocaleString()}/month):
-${emisText}
-
-## INVESTMENTS (Last ${analysisMonths} Months)
-${investText || 'No investment data'}
-
-Investment Fluctuations Analysis:
-${data.investments?.fluctuations && data.investments.fluctuations.length > 0 ? data.investments.fluctuations.map(f => 
-    `• ${f.from} → ${f.to}: ${f.change >= 0 ? '+' : ''}₹${Math.round(f.change).toLocaleString()} (${f.changePercent >= 0 ? '+' : ''}${f.changePercent}%) - ${f.trend}`
-).join('\n') : '• No fluctuations detected (consistent investments)'}
-
-${data.investments?.highestMonth ? `• Highest: ${data.investments.highestMonth.month} - ₹${Math.round(data.investments.highestMonth.amount).toLocaleString()}` : ''}
-${data.investments?.lowestMonth ? `• Lowest: ${data.investments.lowestMonth.month} - ₹${Math.round(data.investments.lowestMonth.amount).toLocaleString()}` : ''}
-${data.investments?.variation ? `• Variation Range: ₹${Math.round(data.investments.variation).toLocaleString()} (${data.investments.variationPercent >= 0 ? '+' : ''}${data.investments.variationPercent}% difference)` : ''}
-
-## PROJECTION FOR ${monthName.toUpperCase()}
-• Avg Monthly Income: ₹${Math.round(data.insights.avgMonthlyIncome || 0).toLocaleString()}
-• Fixed costs: ₹${Math.round(data.insights.totalFixed).toLocaleString()}
-• Variable (est): ₹${Math.round(data.insights.variableExpenses).toLocaleString()}
-• Total Expected: ₹${Math.round(data.insights.totalProjected).toLocaleString()}
+**Investment Activity** (${data.investments?.targetPercent || 20}% target):
+${data.investments?.targetComparisons && data.investments.targetComparisons.length > 0
+    ? `Recent months: ${data.investments.targetComparisons.slice(-3).map(tc => `${tc.month.split(' ')[0]}: ${tc.actualPercent}%${tc.missedTarget ? '❌' : '✅'}`).join(' | ')}\nMiss rate: ${data.investments?.missRate || 0}% (${data.investments?.targetMisses || 0}/${data.investments?.targetComparisons?.length || 0} months)`
+    : 'No investment data'}
 
 ---
-RESPOND IN THIS EXACT FORMAT. Use proper hierarchical bullet points with indentation. DO NOT use HTML tables.
+RESPOND IN THIS FORMAT. Be concise but comprehensive (aim for 400-600 words). Use bullet points, not tables.
 
-**📊 BUDGET HEALTH ANALYSIS**
-(Only mention categories that are problematic - over budget for spending)
+**📊 QUICK HEALTH CHECK**
+${budgetText.includes('OVER') || budgetText.includes('UNDER') ? '(State main budget issues with specific amounts and percentages)' : '✓ Budget on track - All categories within limits'}
+${data.investments?.missRate > 30 ? '\n⚠️ Investment target missed ' + data.investments.missRate + '% of months - ' + (data.investments.missRate >= 50 ? 'CRITICAL' : 'needs attention') : ''}
 
-IF PROBLEMS EXIST:
-• **Needs**: X% actual vs Y% target → ⚠️ **OVER by Z%** = ₹[amount]/month
-• **Wants**: X% actual vs Y% target → ⚠️ **OVER by Z%** = ₹[amount]/month
-• **Key Issue**: [One-line summary of main budget problem]
-• **Total Over Budget**: ₹[amount]/month across all categories
+**🎯 TOP ACTIONS FOR ${monthName.toUpperCase()}**
+List the MOST IMPACTFUL things to focus on (3-5 items). Be specific with amounts, current vs target, and clear actions:
 
-IF ALL GOOD:
-• ✓ All spending categories within budget - Great job!
+1. **[Expense/Category Name]** - ₹X/month current → ₹Y/month target (₹Z savings)
+   → How: [Specific actionable step with frequency/method]
+   → Why: [Brief reason why this matters]
 
-**🎂 EXPECTED ANNUAL EVENTS FOR ${monthName.toUpperCase()}**
-Based on Year-over-Year data and detected patterns, list expected expenses:
-• **[Event/Occasion]**: ~₹X expected (based on [year] data)
-  → Last year spent: ₹Y on [category/items]
-  → **Recommendation**: [Budget accordingly / Set aside funds]
-• **[Recurring Annual Expense]**: ~₹X expected
-  → Pattern: Occurs every ${monthName.split(' ')[0]}
-  → **Tip**: [Plan in advance / Compare prices]
-• **Total Expected Annual Expenses This Month: ~₹X**
-(If no patterns detected, state: "No specific annual patterns detected for this month")
+2. **[Expense/Category Name]** - ₹X/month current → ₹Y/month target (₹Z savings)
+   → How: [Specific actionable step]
+   → Why: [Brief reason]
 
-**💡 REALISTIC EXPENSE REDUCTIONS FOR ${monthName.toUpperCase()}**
-Focus ONLY on discretionary spending the USER can personally limit. Group each expense with its action plan using proper indentation:
+(Continue for all high-impact items)
 
-• **Swiggy** (Food Delivery)
-  → Current: ₹5,000/month | Target: ₹3,000/month | Savings: ₹2,000/month
-  → **Action**: Cook at home 3 days more per week instead of ordering
+**Total potential savings: ₹XX,XXX/month**
 
-• **Amazon** (Online Shopping)
-  → Current: ₹8,000/month | Target: ₹5,000/month | Savings: ₹3,000/month
-  → **Action**: Create wishlist, wait 48 hours before purchasing, avoid impulse buys
+${data.annualPatterns && data.annualPatterns.hasPatterns ? `\n**🎂 UPCOMING ANNUAL EXPENSES**\nBased on past data for ${monthName.split(' ')[0]}:\n(List expected expenses with amounts, last year comparison, and prep tips)` : ''}
 
-(List 3-5 expenses that USER can control through their own habits)
+${problemLoans.length > 0 || endingSoonLoans.length > 0 ? `\n**🏦 LOAN ALERTS**\n${problemLoans.length > 0 ? problemLoans.map(l => '⚠️ ' + l.name + ' @ ' + l.interestRate + '% - ₹' + Math.round(l.remainingAmount/1000) + 'K left - Consider pre-closure').join('\\n') + '\\n' : ''}${endingSoonLoans.length > 0 ? endingSoonLoans.map(l => '🎉 ' + l.name + ' - ' + l.remainingMonths + ' EMI(s) left').join('\\n') : ''}` : ''}
 
-**Total Potential Savings: ₹X/month**
-
-**🔄 SUBSCRIPTION & LIFESTYLE REVIEW**
-• [Subscription 1]: ₹X/month - [Keep/Pause/Cancel recommendation with reason]
-• [Subscription 2]: ₹X/month - [Keep/Pause/Cancel recommendation with reason]
-• Redundant subscriptions found: [List if multiple similar services]
-• Potential subscription savings: ₹X/month
-
-**🏦 LOAN & EMI STATUS**
-(Only include this section if there are actionable items - high interest loans, pre-closure opportunities, or loans ending soon)
-
-IF HIGH INTEREST LOANS EXIST:
-• **⚠️ [Loan Name]**: Consider pre-closure
-  → Current rate: X% (above Y% benchmark for this loan type)
-  → Balance: ₹Z remaining
-  → **Action**: [Specific pre-closure advice with amount if lump sum available]
-
-IF LOANS ENDING SOON (≤3 months):
-• **🎉 [Loan Name]**: Almost done!
-  → X EMI(s) remaining
-  → **Tip**: [e.g., "After this, redirect ₹X to investments"]
-
-IF ALL LOANS ARE HEALTHY:
-• ✓ All loans on track with competitive interest rates - no action needed
-
-LOAN INTEREST BENCHMARKS:
-→ Home: <9% good | Personal: <12% good | Card EMI: 12-18% typical | >18%: Pre-close priority
-
-**📈 INVESTMENT HEALTH ANALYSIS**
-(Focus on fluctuation patterns, target comparison, and investment health)
-
-CRITICAL TARGET COMPARISON ANALYSIS REQUIRED:
-1. **Target Miss Analysis**:
-   - Compare each month's investment % against target ${data.investments?.targetPercent || 20}%
-   - Count how many months missed the target: ${data.investments?.targetMisses || 0} out of ${data.investments?.targetComparisons?.length || 0} months
-   - Calculate miss rate: ${data.investments?.missRate || 0}%
-   - Identify severity level based on miss rate:
-     * **Critical (≥50% misses)**: Serious planning issue - investment discipline is severely lacking
-     * **Serious (30-49% misses)**: Significant planning gaps - needs immediate attention
-     * **Moderate (1-29% misses)**: Occasional misses - investigate root causes
-     * **None (0% misses)**: Excellent - all months met target
-
-2. **Month-by-Month Target Comparison**:
-${data.investments?.targetComparisons && data.investments.targetComparisons.length > 0 ? data.investments.targetComparisons.map(tc => {
-    const status = tc.missedTarget ? '❌ MISSED' : '✅ MET';
-    const gap = tc.missedTarget ? ` (Gap: ₹${Math.round(tc.gapAmount).toLocaleString()})` : '';
-    return `   → ${tc.month}: ${tc.actualPercent}% actual vs ${tc.targetPercent}% target ${status}${gap}`;
-}).join('\n') : '   → No investment data available'}
-
-3. **Severity Assessment**:
-   - Current Severity: **${data.investments?.severity ? data.investments.severity.toUpperCase() : 'UNKNOWN'}**
-   - Miss Rate: ${data.investments?.missRate || 0}% (${data.investments?.targetMisses || 0} months missed out of ${data.investments?.targetComparisons?.length || 0})
-   - Interpretation:
-     ${data.investments?.severity === 'critical' ? '⚠️ **CRITICAL**: More than half the months missed target - this indicates a serious planning issue. Investment discipline needs immediate correction.' : ''}
-     ${data.investments?.severity === 'serious' ? '⚠️ **SERIOUS**: Significant portion of months missed target - planning gaps need attention.' : ''}
-     ${data.investments?.severity === 'moderate' ? 'ℹ️ **MODERATE**: Occasional target misses - investigate root causes for those specific months.' : ''}
-     ${data.investments?.severity === 'none' ? '✅ **EXCELLENT**: All months met or exceeded target - great investment discipline!' : ''}
-
-CRITICAL FLUCTUATION ANALYSIS REQUIRED:
-1. **Month-to-Month Changes**: 
-   - Identify each significant fluctuation with exact amounts
-   - Example: "Nov → Dec: Dropped ₹15,000 (40% decrease) - likely due to holiday spending"
-   - Example: "Jan → Feb: Increased ₹8,000 (25% increase) - good recovery"
-   - Highlight consecutive months with same trend (e.g., "3 months of decline")
+${data.recurringPayments.length > 3 ? `\n**🔄 SUBSCRIPTION REVIEW**\n(Review for unused/redundant services to pause or cancel)` : ''}
 
 2. **Fluctuation Pattern Assessment**:
    - **Consistent Pattern**: "Investments stable at ₹X/month - excellent discipline"
@@ -5265,73 +5167,13 @@ List 5 specific actions in order of priority:
 **Total Monthly Impact: ₹X potential savings/additional investment**
 
 ═══════════════════════════════════════════════════════════════
-CRITICAL RULES FOR AI:
-═══════════════════════════════════════════════════════════════
-
-FORMATTING RULES (CRITICAL):
-• **DO NOT use HTML tables** - they break the UI. Use simple bullet points with arrows (→) for comparisons
-• **Use hierarchical structure** with proper indentation:
-  - Main bullet (•) for category/expense name
-  - Sub-bullets with arrows (→) for details, indented with 2 spaces
-  - Example:
-    • **Swiggy** (Food Delivery)
-      → Current: ₹X/month | Target: ₹Y/month | Savings: ₹Z/month
-      → **Action**: [specific tip]
-• **Group related information together**:
-  - Category spending and its reduction action MUST be in the same bullet group
-  - Loan details and pre-closure advice MUST be in the same bullet group
-• Use **bold** for expense names, key numbers, and action items
-• Use arrows (→) for sub-items and comparisons
-• Each main bullet point on a NEW LINE
-• Keep sections clearly separated
-• No long paragraphs - break into structured bullet points
-
-NEVER SUGGEST REDUCING (these are MANDATORY):
-• Insurance premiums (health, life, vehicle)
-• Maintenance (vehicle, home, society)
-• Medical/Healthcare expenses
-• Rent or Housing EMI
-• Utilities (electricity, water, gas, internet)
-• Education fees
-• Basic groceries
-• Fuel for daily commute
-
-ONLY SUGGEST REDUCING (USER's personal choices):
-• Food delivery (Swiggy, Zomato) - user can cook more
-• Online shopping (Amazon, Flipkart) - user can avoid impulse buys
-• Entertainment (movies, OTT, gaming) - user can limit
-• Dining out - user can eat at home
-• Lifestyle subscriptions - user can pause/cancel
-• Fashion/clothing beyond basics - user can defer
-• Gadgets and electronics - user can postpone
-• Travel/vacation - user can plan budget trips
-• Coffee shops, snacks - user can reduce frequency
-
-LOAN ADVICE:
-• Only suggest pre-closure for HIGH INTEREST loans (above benchmarks)
-• Never suggest pre-closing low-interest loans (waste of opportunity cost)
-• Consider remaining tenure when advising pre-closure
-• Personal loans with <12% interest are NOT bad loans
-• Home loans with <9% interest are NOT bad loans
-
-DATA USAGE & FILTERING:
-• USE EXACT names from the data provided
-• Reference actual EMI progress (X/Y paid) from data
-• Use actual investment amounts per month from data
-• **ONLY SHOW PROBLEMATIC CATEGORIES**:
-  - Spending categories: Only if OVER budget (don't mention if under/on target)
-  - Investment: Only if UNDER target (appreciate if above target)
-  - Loans: Only if high-interest or ending soon (skip healthy loans)
-• Categories show accumulated spending - don't negotiate, advise user to limit
-• Skip investment types that are undefined/null/empty in the data
-
-YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
-• If YoY data shows higher spending in same month last year, MENTION IT
-• If annual patterns are detected (e.g., birthday, anniversary, festival), HIGHLIGHT them
-• Adjust projections based on historical patterns for this specific month
-• Example: "Based on last year's ${monthName}, expect ~₹X for [occasion]"
-• Recurring annual expenses should be EXPECTED, not flagged as overspending
-• Help user PLAN for these known annual expenses in advance`;
+**CRITICAL RULES**:
+• Focus on **discretionary spending** user controls (delivery, shopping, subscriptions, entertainment)
+• **NEVER** suggest reducing: rent, insurance, utilities, health, education, basic groceries, loans
+• Only mention **problems** - skip healthy categories
+• Use **exact expense names** from data (e.g., "Swiggy: ₹5K" not "reduce food")
+• Loans: Flag only if interest >12% (personal), >9% (home), or ≤3 months left
+• Aim for **400-600 words** - be comprehensive yet concise, specific with amounts and actions`;
     },
     
     /**
@@ -6599,6 +6441,18 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
         if (!settlementData.enabledLoanEmis || settlementData.enabledLoanEmis.length === 0) {
             settlementData.enabledLoanEmis = loanEmiItems.map(emi => emi.name);
         }
+
+        // Get active SIPs (planned monthly investments) for this settlement
+        const sipItems = (window.Sips && typeof window.Sips.getActiveForSettlement === 'function')
+            ? window.Sips.getActiveForSettlement()
+            : [];
+
+        // Initialize enabled SIPs on first render (all active SIPs enabled by default)
+        if (settlementData.enabledSips === undefined) {
+            settlementData.enabledSips = sipItems.map(s => s.name);
+        } else if (!Array.isArray(settlementData.enabledSips)) {
+            settlementData.enabledSips = sipItems.map(s => s.name);
+        }
         
         // Initialize card selections if not exists
         cardData.forEach(card => {
@@ -6644,9 +6498,41 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
             .reduce((sum, emi) => sum + (parseFloat(emi.amount) || 0), 0);
         
         const customItemsTotal = (settlementData.customItems || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-        
-        const totalDeductions = cardsTotal + recurringTotal + loansTotal + customItemsTotal;
+
+        const sipsTotal = sipItems
+            .filter(s => settlementData.enabledSips.includes(s.name))
+            .reduce((sum, s) => sum + (parseFloat(s.amount) || 0), 0);
+
+        const totalDeductions = cardsTotal + recurringTotal + loansTotal + sipsTotal + customItemsTotal;
         const balance = income - totalDeductions;
+
+        // Calculate financial health indicators
+        const sipsPercent = income > 0 ? (sipsTotal / income) * 100 : 0;
+        const loansPercent = income > 0 ? (loansTotal / income) * 100 : 0;
+
+        // Get user's budget rule (default 50/30/20)
+        const budgetRule = this.budgetRule || this.defaultBudgetRule;
+        const investmentTarget = budgetRule.invest || 20; // Target investment %
+
+        // Get loan limit from settings (default 40%)
+        const maxLoanPercent = window.DB.settings.maxLoanToIncomePercent || 40;
+
+        // Health indicators
+        const sipsHealthy = sipsPercent >= investmentTarget; // Should be >= investment target (or user's target)
+        const loansHealthy = loansPercent <= maxLoanPercent; // Should be <= max loan % (default 40%)
+
+        // Status messages
+        const sipsStatusIcon = sipsHealthy ? '✅' : '⚠️';
+        const sipsStatusText = sipsHealthy
+            ? `On track (${sipsPercent.toFixed(1)}% vs ${investmentTarget}% target)`
+            : `Below target (${sipsPercent.toFixed(1)}% vs ${investmentTarget}% target)`;
+        const sipsStatusColor = sipsHealthy ? 'text-green-600' : 'text-orange-600';
+
+        const loansStatusIcon = loansHealthy ? '✅' : '⚠️';
+        const loansStatusText = loansHealthy
+            ? `Healthy (${loansPercent.toFixed(1)}% vs ${maxLoanPercent}% safe limit)`
+            : `High (${loansPercent.toFixed(1)}% exceeds ${maxLoanPercent}% safe limit)`;
+        const loansStatusColor = loansHealthy ? 'text-green-600' : 'text-red-600';
         
         const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         
@@ -6845,7 +6731,7 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
                         
                         <!-- Loan EMIs (Collapsible) -->
                         <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
-                            <button onclick="Dashboard.toggleSettlementSection('loans', ${year}, ${month})" 
+                            <button onclick="Dashboard.toggleSettlementSection('loans', ${year}, ${month})"
                                     class="w-full flex items-center justify-between p-2.5 hover:bg-gray-100 transition-colors">
                                 <div class="flex items-center gap-2">
                                     <span class="text-sm">🏦</span>
@@ -6855,6 +6741,18 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2">
+                                    ${income > 0 && loanEmiItems.length > 0 ? `
+                                    <div class="flex items-center justify-center w-5 h-5 rounded-full ${loansHealthy ? 'bg-green-500' : 'bg-red-500'}" title="${loansStatusText}">
+                                        ${loansHealthy
+                                            ? `<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                               </svg>`
+                                            : `<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                               </svg>`
+                                        }
+                                    </div>
+                                    ` : ''}
                                     <span class="text-xs font-bold text-gray-900">₹${Utils.formatIndianNumber(loansTotal)}</span>
                                     <svg id="loans-arrow" class="w-4 h-4 text-gray-500 transform transition-transform ${settlementData.expandedSections?.loans ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -6868,17 +6766,31 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
                                         <p class="text-[9px] text-gray-500">Default: Same as income month</p>
                                     </div>
                                     <div class="relative flex-shrink-0 mt-0.5">
-                                        <input type="month" id="settlement-loans-month-selector" 
+                                        <input type="month" id="settlement-loans-month-selector"
                                                value="${settlementData.loansMonth || settlementData.incomeMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`}"
                                                onchange="Dashboard.updateSettlementLoansMonth(${year}, ${month}, this.value)"
                                                class="absolute opacity-0 pointer-events-none">
-                                        <button id="settlement-loans-month-button" 
+                                        <button id="settlement-loans-month-button"
                                                 onclick="event.stopPropagation(); document.getElementById('settlement-loans-month-selector').showPicker()"
                                                 class="px-2 py-1 border border-gray-300 rounded text-[10px] font-medium text-gray-700 hover:bg-gray-50 transition-all whitespace-nowrap">
                                             ${this.getFormattedMonth(settlementData.loansMonth || settlementData.incomeMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`)} ▼
                                         </button>
                                     </div>
                                 </div>
+                                ${income > 0 && loanEmiItems.length > 0 ? `
+                                <div class="mb-2 p-2 rounded-lg ${loansHealthy ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}">
+                                    <div class="flex items-center gap-1.5 mb-1">
+                                        <span class="text-sm">${loansStatusIcon}</span>
+                                        <p class="text-[10px] font-semibold ${loansStatusColor}">${loansHealthy ? 'Healthy Debt Level' : 'Debt Warning'}</p>
+                                    </div>
+                                    <p class="text-[10px] ${loansHealthy ? 'text-green-700' : 'text-red-700'}">
+                                        ${loansHealthy
+                                            ? `Your loan EMIs are ${loansPercent.toFixed(1)}% of income (safe limit: ${maxLoanPercent}%). Well managed! 👍`
+                                            : `Your loan EMIs are ${loansPercent.toFixed(1)}% of income (safe limit: ${maxLoanPercent}%). Consider restructuring or prepayment. ⚠️`
+                                        }
+                                    </p>
+                                </div>
+                                ` : ''}
                                 <div class="max-h-48 overflow-y-auto">
                                 ${loanEmiItems.length > 0 ? loanEmiItems.map(emi => {
                                     const isEnabled = settlementData.enabledLoanEmis.includes(emi.name);
@@ -6899,6 +6811,71 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
                             </div>
                         </div>
                         
+                        <!-- SIPs (Collapsible) - planned monthly investments -->
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
+                            <button onclick="Dashboard.toggleSettlementSection('sips', ${year}, ${month})"
+                                    class="w-full flex items-center justify-between p-2.5 hover:bg-gray-100 transition-colors">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm">📈</span>
+                                    <div class="text-left">
+                                        <p class="text-xs font-semibold text-gray-700">SIPs (Planned)</p>
+                                        <p class="text-[10px] text-gray-500">${sipItems.length} active SIP(s)</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    ${income > 0 ? `
+                                    <div class="flex items-center justify-center w-5 h-5 rounded-full ${sipsHealthy ? 'bg-green-500' : 'bg-orange-500'}" title="${sipsStatusText}">
+                                        ${sipsHealthy
+                                            ? `<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                               </svg>`
+                                            : `<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                               </svg>`
+                                        }
+                                    </div>
+                                    ` : ''}
+                                    <span class="text-xs font-bold text-gray-900">₹${Utils.formatIndianNumber(sipsTotal)}</span>
+                                    <svg id="sips-arrow" class="w-4 h-4 text-gray-500 transform transition-transform ${settlementData.expandedSections?.sips ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </div>
+                            </button>
+                            <div id="sips-content" class="${settlementData.expandedSections?.sips ? '' : 'hidden'} px-3 pb-3 pt-3 space-y-1.5 border-t border-gray-200">
+                                ${income > 0 ? `
+                                <div class="mb-2 p-2 rounded-lg ${sipsHealthy ? 'bg-green-50 border border-green-200' : 'bg-orange-50 border border-orange-200'}">
+                                    <div class="flex items-center gap-1.5 mb-1">
+                                        <span class="text-sm">${sipsStatusIcon}</span>
+                                        <p class="text-[10px] font-semibold ${sipsStatusColor}">${sipsHealthy ? 'Healthy Investment' : 'Investment Warning'}</p>
+                                    </div>
+                                    <p class="text-[10px] ${sipsHealthy ? 'text-green-700' : 'text-orange-700'}">
+                                        ${sipsHealthy
+                                            ? `Your SIPs are ${sipsPercent.toFixed(1)}% of income (target: ${investmentTarget}%). Keep it up! 🎯`
+                                            : `Your SIPs are ${sipsPercent.toFixed(1)}% of income (target: ${investmentTarget}%). Consider increasing investments. 📊`
+                                        }
+                                    </p>
+                                </div>
+                                ` : ''}
+                                <div class="max-h-48 overflow-y-auto">
+                                ${sipItems.length > 0 ? sipItems.map(sip => {
+                                    const isEnabled = settlementData.enabledSips.includes(sip.name);
+                                    return `
+                                        <label class="flex items-center gap-2 p-1.5 bg-gray-50 rounded cursor-pointer hover:bg-gray-100" onclick="event.stopPropagation()">
+                                            <input type="checkbox" ${isEnabled ? 'checked' : ''}
+                                                   onchange="event.stopPropagation(); Dashboard.toggleSipItem(${year}, ${month}, '${Utils.escapeHtml(sip.name).replace(/'/g, "\\'")}')"
+                                                   class="w-3.5 h-3.5 text-indigo-600 border-gray-300 rounded">
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-[10px] font-medium text-gray-700 truncate">${Utils.escapeHtml(sip.name)}</p>
+                                                <p class="text-[10px] text-gray-500">Monthly plan</p>
+                                            </div>
+                                            <span class="text-[10px] font-bold text-gray-900 flex-shrink-0">₹${Utils.formatIndianNumber(sip.amount)}</span>
+                                        </label>
+                                    `;
+                                }).join('') : `<p class="text-[10px] text-gray-500 text-center py-1.5">No active SIPs.<br><span class="text-gray-400">Add planned SIPs under Investments → SIPs.</span></p>`}
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Custom Items (Collapsible) -->
                         <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
                             <button onclick="Dashboard.toggleSettlementSection('custom', ${year}, ${month})" 
@@ -6973,6 +6950,10 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
                                     <div class="flex justify-between text-xs">
                                         <span class="text-red-600">Loan EMIs:</span>
                                         <span class="font-semibold text-red-700">₹${Utils.formatIndianNumber(loansTotal)}</span>
+                                    </div>
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-red-600">SIPs (Planned):</span>
+                                        <span class="font-semibold text-red-700">₹${Utils.formatIndianNumber(sipsTotal)}</span>
                                     </div>
                                     <div class="flex justify-between text-xs">
                                         <span class="text-red-600">Custom Items:</span>
@@ -7200,6 +7181,37 @@ YEAR-OVER-YEAR & ANNUAL PATTERNS (IMPORTANT):
             enabledLoanEmis.splice(index, 1);
         } else {
             enabledLoanEmis.push(itemName);
+        }
+        window.DB.settlementData[monthKey].expandedSections = expandedState;
+        window.Storage.save();
+        this.showSettlementModal(year, month);
+    },
+
+    /**
+     * Toggle a planned SIP item on/off for the given settlement month.
+     */
+    toggleSipItem(year, month, itemName) {
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        if (!window.DB.settlementData) window.DB.settlementData = {};
+        if (!window.DB.settlementData[monthKey]) {
+            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledSips: [], enabledCards: [], customItems: [], expandedSections: { cards: false, recurring: false, loans: false, sips: true, custom: false, summary: false } };
+        }
+        if (!Array.isArray(window.DB.settlementData[monthKey].enabledSips)) {
+            window.DB.settlementData[monthKey].enabledSips = [];
+        }
+        if (!window.DB.settlementData[monthKey].expandedSections) {
+            window.DB.settlementData[monthKey].expandedSections = { cards: false, recurring: false, loans: false, sips: true, custom: false, summary: false };
+        }
+
+        // Preserve expanded state (keep SIPs section open while toggling)
+        const expandedState = { ...window.DB.settlementData[monthKey].expandedSections, sips: true };
+
+        const enabledSips = window.DB.settlementData[monthKey].enabledSips;
+        const index = enabledSips.indexOf(itemName);
+        if (index > -1) {
+            enabledSips.splice(index, 1);
+        } else {
+            enabledSips.push(itemName);
         }
         window.DB.settlementData[monthKey].expandedSections = expandedState;
         window.Storage.save();

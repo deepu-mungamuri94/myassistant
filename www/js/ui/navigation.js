@@ -85,6 +85,11 @@ const Navigation = {
                 title: 'Expenses',
                 bgClass: 'bg-gradient-to-r from-purple-600 to-pink-600'
             },
+            plans: {
+                icon: '<svg class="w-6 h-6 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>',
+                title: 'Plans',
+                bgClass: 'bg-gradient-to-r from-orange-600 to-rose-600'
+            },
             recurring: {
                 icon: '<svg class="w-6 h-6 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>',
                 title: 'Recurring Payments',
@@ -124,7 +129,7 @@ const Navigation = {
             'from-slate-600', 'from-yellow-600', 'from-teal-600', 'from-indigo-600',
             // All "to-" colors
             'to-cyan-600', 'to-pink-600', 'to-emerald-600', 'to-amber-600',
-            'to-blue-600', 'to-indigo-600', 'to-orange-600', 'to-gray-600', 'to-purple-600'
+            'to-blue-600', 'to-indigo-600', 'to-orange-600', 'to-gray-600', 'to-purple-600', 'to-rose-600'
         );
         
         // Add new gradient classes
@@ -153,6 +158,9 @@ const Navigation = {
                 break;
             case 'expenses':
                 if (window.Expenses) window.Expenses.render();
+                break;
+            case 'plans':
+                if (window.Plans) window.Plans.render();
                 break;
             case 'recurring':
                 if (window.RecurringExpenses) window.RecurringExpenses.render();

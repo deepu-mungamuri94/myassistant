@@ -11,6 +11,8 @@ const DB = {
     monthlyInvestments: [], // Monthly investment tracking (id, name, type, goal, quantity, price, currency, amount, date, description)
     sharePrices: [], // Share price tracking (name, price, currency, active, lastUpdated)
     recurringExpenses: [], // Custom recurring expenses (LIC, insurance, etc.)
+    sips: [], // Planned monthly SIPs: { id, name, amount, active, createdAt }. Tracked as a plan only; actual buys are added under portfolioInvestments / monthlyInvestments.
+    plans: [], // Future planned expenses: { id, name, description, amount, plannedOn, completedOn, status, createdAt }
     loans: [], // Loan tracking
     moneyLent: [], // Money lent to others tracking
     income: null, // Income and payslip data
@@ -46,7 +48,9 @@ const DB = {
         // Priority order for AI fallback (Groq is FIXED at #1 for chat, rest is configurable)
         priorityOrder: ['groq', 'gemini', 'chatgpt', 'perplexity'],
         // Pay schedule: 'first_week' or 'last_week' - determines which month's income to compare expenses against
-        paySchedule: 'first_week'
+        paySchedule: 'first_week',
+        // Financial health limits (configurable by user)
+        maxLoanToIncomePercent: 40 // Maximum recommended loan EMI as % of income (default: 40%)
     },
     // Backward compatibility: Store groqApiKey at root level
     groqApiKey: '',
