@@ -1056,7 +1056,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 <div class="mt-3 pt-3 border-t border-slate-300">
                     <h5 class="text-sm font-bold text-slate-800 mb-2">📋 Card Benefits</h5>
                     <div class="bg-white bg-opacity-50 rounded-lg p-3">
-                        <div class="text-xs text-slate-700 leading-relaxed">${card.benefits}</div>
+                        ${window.AIRenderer ? window.AIRenderer.toHtml(card.benefits, { compact: true }) : `<div class="text-xs text-slate-700 leading-relaxed">${Utils.escapeHtml(card.benefits)}</div>`}
                     </div>
                 </div>
                 ` : ''}
@@ -2924,9 +2924,11 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
     showBenefitsModal(id) {
         const card = this.getById(id);
         if (!card || !card.benefits) return;
-        
-        // Format benefits for better display
-        const formattedBenefits = this.formatBenefits(card.benefits);
+
+        // Format benefits for better display via the unified AI renderer.
+        const formattedBenefits = window.AIRenderer
+            ? window.AIRenderer.toHtml(card.benefits)
+            : this.formatBenefits(card.benefits);
         
         // Create modal HTML
         const modal = document.createElement('div');

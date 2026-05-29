@@ -3771,35 +3771,54 @@ const Dashboard = {
                         </div>
                 `;
             } else {
-                // This is content - parse and format beautifully
+                // Content body of a section. If the unified renderer is available
+                // we delegate the entire body to it — gives consistent markdown
+                // rendering with the same look as chat/benefits. The legacy
+                // hand-rolled parser below is kept as a fallback.
+                if (window.AIRenderer) {
+                    // Strip directive lines (IF / ELSE conditional logic in the prompt)
+                    // before rendering — they're internal scaffolding, not user content.
+                    const cleanedSection = section
+                        .split(/\n/)
+                        .filter(line => !line.trim().match(/^(IF|ELSE|IF ALL|IF PROBLEMS|IF BELOW|IF AT|IF HIGH|IF LOANS)/i))
+                        .join('\n')
+                        .trim();
+                    if (cleanedSection) {
+                        html += window.AIRenderer.toHtml(cleanedSection, { compact: true });
+                    }
+                    html += `</div>`; // Close the colored section card
+                    return;
+                }
+
+                // Legacy fallback parser (used only if AIRenderer is missing)
                 const lines = section
                     .trim()
                     .split(/\n/)
                     .map(line => line.trim())
                     .filter(line => line.length > 0 && !line.match(/^(IF|ELSE|IF ALL|IF PROBLEMS|IF BELOW|IF AT|IF HIGH|IF LOANS)/i));
-                
+
                 if (lines.length > 0) {
                     html += `<div class="space-y-2.5">`;
-                    
+
                     let i = 0;
                     while (i < lines.length) {
                         const line = lines[i];
                         const originalLine = line; // Keep original for fallback
-                        
+
                         // Check for numbered items (1., 2., etc.) with full content
                         const numberedMatch = line.match(/^(\d+)\.\s*\*\*(.+?)\*\*\s*:\s*(.+)/);
                         const numberedSimple = line.match(/^(\d+)\.\s*(.+)/);
-                        
+
                         // Check for bullet with bold title - but capture the ENTIRE line content
                         const bulletWithBold = line.match(/^•\s*\*\*(.+?)\*\*\s*(?:\((.+?)\))?\s*(.*)/);
-                        
+
                         // Check for arrow sub-items (→)
                         const arrowMatch = line.match(/^\s*→\s*(.+)/);
-                        
+
                         // Check for key: value format (like "Needs: 55% actual vs 50% target")
                         const keyValueMatch = line.match(/^•\s*\*\*(.+?)\*\*\s*:\s*(.+)/);
                         const simpleKeyValue = line.match(/^•\s*(.+?):\s*(.+)/);
-                        
+
                         if (numberedMatch) {
                             // Numbered action item with title and description
                             const formattedDesc = this.formatInlineText(numberedMatch[3]);

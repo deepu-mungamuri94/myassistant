@@ -279,3 +279,176 @@ details > summary .details-arrow {
     border-radius: 0 0 0.5rem 0.5rem;
 }
 
+/* ============================================================
+   AI response rendering (.ai-content)
+   Used by AIRenderer for card benefits, chat advisor, dashboard
+   insights — keeps formatting consistent across all AI output.
+   ============================================================ */
+.ai-content {
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    color: #374151;
+    word-wrap: break-word;
+}
+.ai-content > *:first-child { margin-top: 0; }
+.ai-content > *:last-child { margin-bottom: 0; }
+
+.ai-content h1,
+.ai-content h2,
+.ai-content h3,
+.ai-content h4 {
+    font-weight: 700;
+    color: #1e3a8a;
+    margin: 0.9rem 0 0.4rem;
+    line-height: 1.3;
+}
+.ai-content h1 { font-size: 0.95rem; }
+.ai-content h2 { font-size: 0.9rem; }
+.ai-content h3 {
+    font-size: 0.85rem;
+    background: linear-gradient(90deg, #eef2ff 0%, #f5f3ff 100%);
+    padding: 0.4rem 0.6rem;
+    border-left: 3px solid #6366f1;
+    border-radius: 0.25rem;
+    color: #3730a3;
+}
+.ai-content h4 {
+    font-size: 0.8rem;
+    color: #4f46e5;
+    border-bottom: 1px solid #e0e7ff;
+    padding-bottom: 0.2rem;
+}
+
+.ai-content p {
+    margin: 0.4rem 0;
+}
+
+.ai-content strong {
+    color: #111827;
+    font-weight: 600;
+}
+
+.ai-content em { font-style: italic; }
+
+.ai-content ul,
+.ai-content ol {
+    margin: 0.35rem 0 0.6rem;
+    padding-left: 0;
+    list-style: none;
+}
+.ai-content ul li,
+.ai-content ol li {
+    position: relative;
+    padding: 0.4rem 0.55rem 0.4rem 1.5rem;
+    margin-bottom: 0.3rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.4rem;
+}
+.ai-content ul li::before {
+    content: "✓";
+    position: absolute;
+    left: 0.55rem;
+    top: 0.4rem;
+    color: #059669;
+    font-weight: 700;
+}
+.ai-content ol {
+    counter-reset: ai-ol;
+}
+.ai-content ol li {
+    counter-increment: ai-ol;
+}
+.ai-content ol li::before {
+    content: counter(ai-ol) ".";
+    position: absolute;
+    left: 0.55rem;
+    top: 0.4rem;
+    color: #6366f1;
+    font-weight: 700;
+}
+
+/* Nested lists — flatten background, keep indent */
+.ai-content li ul,
+.ai-content li ol {
+    margin-top: 0.3rem;
+}
+.ai-content li ul li,
+.ai-content li ol li {
+    background: #ffffff;
+}
+
+.ai-content a {
+    color: #2563eb;
+    text-decoration: underline;
+}
+.ai-content a:hover { color: #1d4ed8; }
+
+.ai-content code {
+    background: #f3f4f6;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.25rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.78rem;
+}
+.ai-content pre {
+    background: #f3f4f6;
+    padding: 0.6rem;
+    border-radius: 0.4rem;
+    overflow-x: auto;
+    font-size: 0.78rem;
+}
+.ai-content pre code {
+    background: transparent;
+    padding: 0;
+}
+
+.ai-content blockquote {
+    border-left: 3px solid #c7d2fe;
+    padding: 0.3rem 0.6rem;
+    margin: 0.5rem 0;
+    color: #4b5563;
+    background: #fafbff;
+    border-radius: 0 0.3rem 0.3rem 0;
+}
+
+.ai-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.5rem 0;
+    font-size: 0.78rem;
+}
+.ai-content th,
+.ai-content td {
+    border: 1px solid #e5e7eb;
+    padding: 0.35rem 0.5rem;
+    text-align: left;
+}
+.ai-content th {
+    background: #f3f4f6;
+    font-weight: 600;
+}
+
+.ai-content hr {
+    border: none;
+    border-top: 1px dashed #e5e7eb;
+    margin: 0.8rem 0;
+}
+
+.ai-content .ai-amount {
+    color: #059669;
+    font-weight: 700;
+}
+
+/* Compact variant for inline cards (tighter padding/font) */
+.ai-content-compact { font-size: 0.75rem; }
+.ai-content-compact h3 { font-size: 0.78rem; padding: 0.3rem 0.5rem; }
+.ai-content-compact h4 { font-size: 0.75rem; }
+.ai-content-compact ul li,
+.ai-content-compact ol li {
+    padding: 0.3rem 0.45rem 0.3rem 1.3rem;
+    margin-bottom: 0.2rem;
+}
+.ai-content-compact ul li::before,
+.ai-content-compact ol li::before { left: 0.4rem; top: 0.3rem; }
+

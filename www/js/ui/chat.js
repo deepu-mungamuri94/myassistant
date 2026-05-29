@@ -329,7 +329,11 @@ Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
         if (rawHtml) {
             formattedContent = content;
         } else if (role === 'assistant') {
-            formattedContent = this.formatAIResponse(content);
+            // Route AI markdown through the unified renderer; fall back to the
+            // legacy formatter only if AIRenderer isn't loaded for some reason.
+            formattedContent = window.AIRenderer
+                ? window.AIRenderer.toHtml(content, { compact: true })
+                : this.formatAIResponse(content);
         } else {
             formattedContent = Utils.escapeHtml(content);
         }
