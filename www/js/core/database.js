@@ -23,6 +23,11 @@ const DB = {
     exchangeRate: 89, // Default USD to INR rate
     goldRatePerGram: 11400, // Gold rate in INR per gram (default)
     settlementData: {}, // Settlement calculations data: { "2024-12": { autoFetchBills: true, autoFetchRecurring: true, selectedBills: [], customItems: [] } }
+
+    // Cash & savings balance tracked outside of investments (savings account, sweep, cash on hand).
+    // current = single number; history keeps the last 10 changes for trend.
+    cashSavings: { current: 0, lastUpdatedAt: 0, history: [] }, // history: [{ amount, updatedAt }]
+
     
     // Credit Card Bills (managed manually from the Cards page)
     cardBills: [], // Bill records: { id, cardId, cardLast4, amount, originalAmount, dueDate, minDue, isPaid, paidAmount, paidType, paidAt, parsedAt }

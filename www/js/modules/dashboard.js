@@ -171,11 +171,14 @@ const Dashboard = {
         const loans = this.getLoansData();
         
         container.innerHTML = `
+            <!-- Net Worth + Emergency Fund tile (top-of-dashboard summary) -->
+            ${window.FinancialHealth ? window.FinancialHealth.renderTile() : ''}
+
             <!-- Monthly Expenses Cards Box -->
             ${this.renderFirstLineCards()}
-            
+
             ${this.renderMonthlyBreakdown()}
-            
+
             ${this.renderNeedsWantsInvestments()}
             
             <!-- Category Expenses Chart -->
@@ -213,10 +216,10 @@ const Dashboard = {
             <!-- Investments Chart -->
             ${this.renderInvestmentsSection()}
             
-            <!-- EMI/Loan Progress -->
+            <!-- Loans & EMIs -->
             ${loans.length > 0 ? `
             <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
-                <h3 class="text-sm font-semibold text-gray-700 mb-3">EMI/Loan Progress</h3>
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">Loans & EMIs</h3>
                 <div style="height: ${Math.max(200, Math.min(400, loans.length * 60))}px; max-width: 100%;">
                     <canvas id="loans-chart"></canvas>
                 </div>
@@ -286,12 +289,14 @@ const Dashboard = {
         const emisPercent = minNetPay > 0 ? ((totalEmis / minNetPay) * 100).toFixed(1) : 0;
         const regularPercent = minNetPay > 0 ? ((regularExpenses / minNetPay) * 100).toFixed(1) : 0;
         
-        const regularLabel = 'Reg.Expenses';
+        // "Other spend" is more honest than "Regular Expenses": this bucket is
+        // everything that isn't recurring or an EMI — typical day-to-day spend.
+        const regularLabel = 'Other spend';
         
         return `
         <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden" id="first-line-cards-section">
             <div class="flex items-center justify-between mb-3">
-                <h3 class="text-sm font-semibold text-gray-700">${monthName}</h3>
+                <h3 class="text-sm font-semibold text-gray-700">Spending — ${monthName}</h3>
                 <div class="flex bg-gray-100 rounded-lg p-0.5">
                     <button onclick="Dashboard.switchFirstLineMonthView('current')" 
                         class="px-2 py-1 text-xs rounded-md transition-all ${isCurrent ? 'bg-white shadow-sm text-purple-600 font-medium' : 'text-gray-500 hover:text-gray-700'}">
@@ -305,7 +310,7 @@ const Dashboard = {
             </div>
             <div class="grid grid-cols-3 gap-3 max-w-full">
                 <div onclick="Dashboard.showMonthList('recurring', ${targetYear}, ${targetMonth})" class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                    <div class="text-xs opacity-90 leading-tight">Rec.Payments</div>
+                    <div class="text-xs opacity-90 leading-tight">Recurring</div>
                     <div class="flex-1 flex items-center justify-center">
                         <div class="text-3xl font-bold">${recurringPercent}<span class="text-lg opacity-80">%</span></div>
                     </div>
@@ -315,7 +320,7 @@ const Dashboard = {
                     </div>
                 </div>
                 <div onclick="Dashboard.showMonthList('emis', ${targetYear}, ${targetMonth})" class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                    <div class="text-xs opacity-90 leading-tight">Loans / EMIs</div>
+                    <div class="text-xs opacity-90 leading-tight">Loans & EMIs</div>
                     <div class="flex-1 flex items-center justify-center">
                         <div class="text-3xl font-bold">${emisPercent}<span class="text-lg opacity-80">%</span></div>
                     </div>
@@ -325,13 +330,16 @@ const Dashboard = {
                     </div>
                 </div>
                 <div onclick="Dashboard.showMonthList('regular', ${targetYear}, ${targetMonth})" class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                    <div class="text-xs opacity-90 leading-tight">${regularLabel}</div>
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs opacity-90 leading-tight">${regularLabel}</div>
+                        ${isProjected ? '<span class="text-[9px] bg-white/25 px-1.5 py-0.5 rounded font-semibold">est.</span>' : ''}
+                    </div>
                     <div class="flex-1 flex items-center justify-center">
                         <div class="text-3xl font-bold">${isProjected ? '~' : ''}${regularPercent}<span class="text-lg opacity-80">%</span></div>
                     </div>
                     <div class="flex items-center justify-between">
                         <div class="text-xs opacity-90">${isProjected ? '~' : ''}₹${Utils.formatIndianNumber(regularExpenses)}</div>
-                        <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">${isProjected ? '?' : '›'}</div>
+                        <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
                     </div>
                 </div>
             </div>
@@ -355,7 +363,7 @@ const Dashboard = {
                             </svg>
                         </div>
                         <div>
-                            <span class="text-xs font-medium text-green-700">Settlement Calculations</span>
+                            <span class="text-xs font-medium text-green-700">Month Settlement</span>
                         </div>
                     </div>
                     <button onclick="Dashboard.showSettlementModal(${year}, ${month})" 
@@ -364,7 +372,7 @@ const Dashboard = {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                         </svg>
-                        view
+                        View
                     </button>
                 </div>
             </div>
@@ -463,7 +471,7 @@ const Dashboard = {
         return `
         <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden" id="credit-card-bills-section">
             <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                <h3 class="text-sm font-semibold text-gray-700">💳 Credit Usage</h3>
+                <h3 class="text-sm font-semibold text-gray-700">💳 Credit Card Bills</h3>
                 <div class="flex items-center gap-2">
                     <button onclick="Dashboard.openCreditCardRangeModal()" class="px-2 py-1 border border-indigo-300 rounded-lg text-xs font-medium text-indigo-600 hover:bg-indigo-50 transition-all whitespace-nowrap">
                         <span id="credit-card-range-label">${this.getCreditCardRangeLabel()}</span> ▼
@@ -1227,7 +1235,7 @@ const Dashboard = {
         const investStatus = hasIncome ? (investOk ? '✓' : `${investDiff}%`) : '';
         
         // Budget rule title
-        const ruleTitle = `${needsIdeal}/${wantsIdeal}/${investIdeal} Budget Rule`;
+        const ruleTitle = `Budget Split (${needsIdeal}/${wantsIdeal}/${investIdeal})`;
         
         return `
                 <div class="flex justify-between items-center mb-3">
@@ -1250,20 +1258,20 @@ const Dashboard = {
                 
                 <div class="grid grid-cols-3 gap-3 max-w-full">
                     <!-- Needs Card -->
-                    <div onclick="Dashboard.showBudgetBreakdown('needs')" class="bg-gradient-to-br from-gray-600 to-gray-700 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
+                    <div onclick="${hasIncome ? `Dashboard.showBudgetBreakdown('needs')` : `Navigation.navigateTo('income')`}" class="bg-gradient-to-br from-gray-600 to-gray-700 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
                         <div class="flex items-center justify-between mb-1">
                             <div class="text-xs font-medium">Needs</div>
-                            ${hasIncome 
-                                ? (needsOk 
+                            ${hasIncome
+                                ? (needsOk
                                     ? `<span class="text-[9px] bg-green-500 px-1.5 py-0.5 rounded font-semibold">≤${needsIdeal}%</span>`
                                     : `<span class="text-[9px] bg-red-600 px-1.5 py-0.5 rounded font-semibold">&gt;${needsIdeal}%</span>`)
                                 : ''
                             }
                         </div>
                         <div class="flex-1 flex items-center justify-center">
-                            ${hasIncome 
+                            ${hasIncome
                                 ? `<div class="text-3xl font-bold">${needsPercent}<span class="text-lg opacity-80">%</span></div>`
-                                : `<div class="text-xl font-bold opacity-70">N/A</div>`
+                                : `<div class="text-[11px] font-semibold opacity-90 text-center leading-tight">Add income<br>to enable →</div>`
                             }
                         </div>
                         <div class="flex items-center justify-between">
@@ -1271,22 +1279,22 @@ const Dashboard = {
                             <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
                         </div>
                     </div>
-                    
+
                     <!-- Wants Card -->
-                    <div onclick="Dashboard.showBudgetBreakdown('wants')" class="bg-gradient-to-br from-pink-500 to-rose-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
+                    <div onclick="${hasIncome ? `Dashboard.showBudgetBreakdown('wants')` : `Navigation.navigateTo('income')`}" class="bg-gradient-to-br from-pink-500 to-rose-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
                         <div class="flex items-center justify-between mb-1">
                             <div class="text-xs font-medium">Wants</div>
-                            ${hasIncome 
-                                ? (wantsOk 
+                            ${hasIncome
+                                ? (wantsOk
                                     ? `<span class="text-[9px] bg-green-500 px-1.5 py-0.5 rounded font-semibold">≤${wantsIdeal}%</span>`
                                     : `<span class="text-[9px] bg-red-600 px-1.5 py-0.5 rounded font-semibold">&gt;${wantsIdeal}%</span>`)
                                 : ''
                             }
                         </div>
                         <div class="flex-1 flex items-center justify-center">
-                            ${hasIncome 
+                            ${hasIncome
                                 ? `<div class="text-3xl font-bold">${wantsPercent}<span class="text-lg opacity-80">%</span></div>`
-                                : `<div class="text-xl font-bold opacity-70">N/A</div>`
+                                : `<div class="text-[11px] font-semibold opacity-90 text-center leading-tight">Add income<br>to enable →</div>`
                             }
                         </div>
                         <div class="flex items-center justify-between">
@@ -1294,22 +1302,22 @@ const Dashboard = {
                             <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
                         </div>
                     </div>
-                    
+
                     <!-- Investments Card -->
-                    <div onclick="Dashboard.showBudgetBreakdown('investments')" class="bg-gradient-to-br from-orange-500 to-amber-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
+                    <div onclick="${hasIncome ? `Dashboard.showBudgetBreakdown('investments')` : `Navigation.navigateTo('income')`}" class="bg-gradient-to-br from-orange-500 to-amber-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
                         <div class="flex items-center justify-between mb-1">
                             <div class="text-xs font-medium">Invest</div>
-                            ${hasIncome 
-                                ? (investOk 
+                            ${hasIncome
+                                ? (investOk
                                     ? `<span class="text-[9px] bg-green-500 px-1.5 py-0.5 rounded font-semibold">≥${investIdeal}%</span>`
                                     : `<span class="text-[9px] bg-red-600 px-1.5 py-0.5 rounded font-semibold">&lt;${investIdeal}%</span>`)
                                 : ''
                             }
                         </div>
                         <div class="flex-1 flex items-center justify-center">
-                            ${hasIncome 
+                            ${hasIncome
                                 ? `<div class="text-3xl font-bold">${investPercent}<span class="text-lg opacity-80">%</span></div>`
-                                : `<div class="text-xl font-bold opacity-70">N/A</div>`
+                                : `<div class="text-[11px] font-semibold opacity-90 text-center leading-tight">Add income<br>to enable →</div>`
                             }
                         </div>
                         <div class="flex items-center justify-between">
@@ -1421,14 +1429,14 @@ const Dashboard = {
                     <div class="flex items-center justify-between">
                         <div>
                             <h4 class="text-sm font-semibold text-gray-700">Include Loan EMIs</h4>
-                            <p class="text-[10px] text-gray-500 mt-0.5">Include home/car/personal loan EMIs in budget calculation</p>
+                            <p class="text-[10px] text-gray-500 mt-0.5">Counts home / car / personal loan EMIs in budget split</p>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="include-loan-emis" class="sr-only peer" ${this.includeLoanEmis ? 'checked' : ''} onchange="Dashboard.toggleLoanEmis(this.checked)">
                             <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
                         </label>
                     </div>
-                    <p class="text-[10px] text-amber-600 mt-2">💡 Credit card EMIs are always included. Only loan EMIs can be excluded.</p>
+                    <p class="text-[10px] text-amber-600 mt-2">💡 Credit card EMIs are always included — only loan EMIs can be excluded.</p>
                 </div>
                 
                 <!-- Category Assignments -->
@@ -2104,12 +2112,15 @@ const Dashboard = {
                 let amount = 0;
                 if (inv.type === 'SHARES') {
                     amount = inv.price * inv.quantity * (inv.currency === 'USD' ? exchangeRate : 1);
+                } else if (inv.type === 'MF') {
+                    // MFs are INR-only; price stored is the historical NAV.
+                    amount = inv.price * inv.quantity;
                 } else if (inv.type === 'GOLD') {
                     amount = inv.price * inv.quantity;
                 } else if (inv.type === 'EPF' || inv.type === 'FD') {
                     amount = inv.amount || 0;
                 }
-                
+
                 return {
                     title: inv.name || inv.type,
                     category: inv.type,
@@ -2362,26 +2373,30 @@ const Dashboard = {
                     filterByIncomeMonth(inv, currentYear, currentMonth)
                 );
                 
-                // Calculate totals by type
-                let shares = 0, gold = 0, epfFd = 0;
+                // Calculate totals by type. MF gets its own bucket so the
+                // trend chart can show stocks vs mutual funds separately.
+                let shares = 0, mf = 0, gold = 0, epfFd = 0;
                 monthInvs.forEach(inv => {
                     if (inv.type === 'SHARES') {
                         shares += inv.price * inv.quantity * (inv.currency === 'USD' ? exchangeRate : 1);
+                    } else if (inv.type === 'MF') {
+                        mf += inv.price * inv.quantity;
                     } else if (inv.type === 'GOLD') {
                         gold += inv.price * inv.quantity;
                     } else if (inv.type === 'EPF' || inv.type === 'FD') {
                         epfFd += inv.amount || 0;
                     }
                 });
-                
+
                 monthsData.push({
                     label: monthName,
                     shares: shares,
+                    mf: mf,
                     gold: gold,
                     epfFd: epfFd,
-                    total: shares + gold + epfFd
+                    total: shares + mf + gold + epfFd
                 });
-                
+
                 // Move to next month
                 currentMonth++;
                 if (currentMonth > 12) {
@@ -2389,10 +2404,10 @@ const Dashboard = {
                     currentYear++;
                 }
             }
-            
+
             return monthsData;
         }
-        
+
         // Default: last N months
         const now = new Date();
         for (let i = monthsCount - 1; i >= 0; i--) {
@@ -2400,33 +2415,36 @@ const Dashboard = {
             const monthName = date.toLocaleDateString('en-US', { month: 'short' });
             const year = date.getFullYear();
             const month = date.getMonth() + 1;
-            
+
             // Get investments for this month using income attribution
-            const monthInvs = monthlyInvestments.filter(inv => 
+            const monthInvs = monthlyInvestments.filter(inv =>
                 filterByIncomeMonth(inv, year, month)
             );
-            
+
             // Calculate totals by type
-            let shares = 0, gold = 0, epfFd = 0;
+            let shares = 0, mf = 0, gold = 0, epfFd = 0;
             monthInvs.forEach(inv => {
                 if (inv.type === 'SHARES') {
                     shares += inv.price * inv.quantity * (inv.currency === 'USD' ? exchangeRate : 1);
+                } else if (inv.type === 'MF') {
+                    mf += inv.price * inv.quantity;
                 } else if (inv.type === 'GOLD') {
                     gold += inv.price * inv.quantity;
                 } else if (inv.type === 'EPF' || inv.type === 'FD') {
                     epfFd += inv.amount || 0;
                 }
             });
-            
+
             monthsData.push({
                 label: monthName,
                 shares: shares,
+                mf: mf,
                 gold: gold,
                 epfFd: epfFd,
-                total: shares + gold + epfFd
+                total: shares + mf + gold + epfFd
             });
         }
-        
+
         return monthsData;
     },
     
@@ -2487,7 +2505,8 @@ const Dashboard = {
                 pointBorderWidth: 2
             }];
         } else {
-            // Category view: Show individual categories
+            // Category view: Show individual categories. MF gets its own
+            // line so a SHARES vs Mutual Fund split is visible at a glance.
             datasets = [
                 {
                     label: 'Shares',
@@ -2500,6 +2519,20 @@ const Dashboard = {
                     pointRadius: 4,
                     pointHoverRadius: 6,
                     pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 1.5
+                },
+                {
+                    label: 'Mutual Funds',
+                    data: data.map(d => d.mf || 0),
+                    borderColor: 'rgba(79, 70, 229, 1)',
+                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: 'rgba(79, 70, 229, 1)',
                     pointBorderColor: '#fff',
                     pointBorderWidth: 1.5
                 },
@@ -3354,13 +3387,13 @@ const Dashboard = {
         let icon = '📋';
         
         if (type === 'recurring') {
-            title = `Recurring Payments`;
+            title = `Recurring`;
             icon = '🔄';
             color = 'purple';
             items = this.getRecurringExpenseItemsForMonth(year, month);
             total = items.reduce((sum, item) => sum + item.amount, 0);
         } else if (type === 'emis') {
-            title = `Loans / EMIs`;
+            title = `Loans & EMIs`;
             icon = '🏦';
             color = 'blue';
             items = this.getEmiItemsForMonth(year, month);
@@ -3370,14 +3403,14 @@ const Dashboard = {
             color = 'emerald';
             if (isFutureMonth) {
                 // For future months, show projection explanation
-                title = `Regular Expenses (Estimate)`;
+                title = `Other spend (estimate)`;
                 isProjected = true;
                 const projectionData = this.getProjectedRegularExpensesWithDetails(6);
                 total = projectionData.average;
                 items = projectionData.monthlyData; // Reuse items for the breakdown
-                projectionNote = 'This is an estimated amount based on your average regular expenses from the last 6 months.';
+                projectionNote = 'Estimated from your average non-recurring, non-EMI spend over the last 6 months.';
             } else {
-                title = `Regular Expenses`;
+                title = `Other spend`;
                 items = this.getRegularExpenseItemsForMonth(year, month);
                 total = items.reduce((sum, item) => sum + item.amount, 0);
             }
@@ -3529,7 +3562,7 @@ const Dashboard = {
      */
     getAIInsightsActions(year, month) {
         if (this.aiInsightsLoading) {
-            return `<span class="text-[10px] text-gray-400">loading...</span>`;
+            return `<span class="text-[10px] text-gray-400">Loading…</span>`;
         }
         
         return `
@@ -3538,7 +3571,7 @@ const Dashboard = {
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                 </svg>
-                get suggestions
+                Get suggestions
             </button>
         `;
     },
@@ -3556,7 +3589,7 @@ const Dashboard = {
                     <div class="flex-shrink-0 px-3 py-3 bg-purple-100 rounded-lg">
                         <div class="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
                     </div>
-                    <p class="text-[11px] text-purple-600 leading-relaxed">analyzing your spending patterns, loans, EMIs and recurring payments...</p>
+                    <p class="text-[11px] text-purple-600 leading-relaxed">Analyzing your spending — this takes ~10 seconds…</p>
                 </div>
             `;
         }
@@ -3571,7 +3604,7 @@ const Dashboard = {
                             </svg>
                         </div>
                         <div>
-                            <span class="text-xs font-medium text-purple-700">AI insights</span>
+                            <span class="text-xs font-medium text-purple-700">AI Insights</span>
                             <span class="text-[10px] text-gray-400 ml-2">${this.formatRelativeTime(cached.timestamp)}</span>
                         </div>
                     </div>
@@ -3588,7 +3621,7 @@ const Dashboard = {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                             </svg>
-                            view
+                            View
                         </button>
                     </div>
                 </div>
@@ -3607,10 +3640,10 @@ const Dashboard = {
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                         </svg>
-                        get suggestions
+                        Get suggestions
                     </button>
                 </div>
-                <p class="text-[11px] text-gray-500 leading-relaxed">click "get suggestions" to receive AI-powered insights for reducing your expenses next month.</p>
+                <p class="text-[11px] text-gray-500 leading-relaxed">Get AI suggestions on where to cut spending next month.</p>
             </div>
         `;
     },
@@ -5736,17 +5769,17 @@ ${(problemLoans.length > 0 || endingSoonLoans.length > 0) ? `**🏦 LOAN ALERTS*
         
         if (type === 'recurring') {
             items = this.getRecurringExpenseItems();
-            title = '🔄 Recurring Payments';
+            title = '🔄 Recurring';
             color = 'purple';
             total = items.reduce((sum, i) => sum + i.amount, 0);
         } else if (type === 'emis') {
             items = this.getEmiItems();
-            title = '🏦 Loans / EMIs';
+            title = '🏦 Loans & EMIs';
             color = 'blue';
             total = items.reduce((sum, i) => sum + i.amount, 0);
         } else if (type === 'regular') {
             items = this.getRegularExpenseItems();
-            title = '💵 Regular Expenses';
+            title = '💵 Other spend';
             color = 'emerald';
             total = items.reduce((sum, i) => sum + i.amount, 0);
         }
@@ -6122,6 +6155,9 @@ ${(problemLoans.length > 0 || endingSoonLoans.length > 0) ? `**🏦 LOAN ALERTS*
                 if (inv.type === 'SHARES') {
                     const exchangeRate = (window.Investments && window.Investments.getExchangeRate) ? window.Investments.getExchangeRate() : (typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : (window.DB.exchangeRate?.rate || 89));
                     return sum + (inv.price * inv.quantity * (inv.currency === 'USD' ? exchangeRate : 1));
+                } else if (inv.type === 'MF') {
+                    // MFs are INR-only.
+                    return sum + (inv.price * inv.quantity);
                 } else if (inv.type === 'GOLD') {
                     return sum + (inv.price * inv.quantity);
                 } else if (inv.type === 'EPF' || inv.type === 'FD') {
@@ -6153,10 +6189,13 @@ ${(problemLoans.length > 0 || endingSoonLoans.length > 0) ? `**🏦 LOAN ALERTS*
             .map(inv => {
                 let amount = 0;
                 let title = inv.name || inv.type;
-                
+
                 if (inv.type === 'SHARES') {
                     amount = inv.price * inv.quantity * (inv.currency === 'USD' ? exchangeRate : 1);
                     title = inv.name || 'Shares';
+                } else if (inv.type === 'MF') {
+                    amount = inv.price * inv.quantity;
+                    title = inv.name || 'Mutual Fund';
                 } else if (inv.type === 'GOLD') {
                     amount = inv.price * inv.quantity;
                     title = inv.name || 'Gold';
@@ -6752,8 +6791,8 @@ ${(problemLoans.length > 0 || endingSoonLoans.length > 0) ? `**🏦 LOAN ALERTS*
                                 <div class="flex items-center gap-2">
                                     <span class="text-sm">🔄</span>
                                     <div class="text-left">
-                                        <p class="text-xs font-semibold text-gray-700">Recurring Payments</p>
-                                        <p class="text-[10px] text-gray-500">${recurringItems.length} item(s)</p>
+                                        <p class="text-xs font-semibold text-gray-700">Recurring</p>
+                                        <p class="text-[10px] text-gray-500">${recurringItems.length} item${recurringItems.length === 1 ? '' : 's'}</p>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2">
@@ -6766,8 +6805,8 @@ ${(problemLoans.length > 0 || endingSoonLoans.length > 0) ? `**🏦 LOAN ALERTS*
                             <div id="recurring-content" class="${settlementData.expandedSections?.recurring ? '' : 'hidden'} px-3 pb-3 pt-3 space-y-1.5 border-t border-gray-200">
                                 <div class="flex items-start gap-2 mb-2 pb-2 border-b border-gray-200" onclick="event.stopPropagation()">
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-[10px] text-gray-600 leading-tight mb-0.5">Select month for recurring payments</p>
-                                        <p class="text-[9px] text-gray-500">Default: Based on income pay schedule</p>
+                                        <p class="text-[10px] text-gray-600 leading-tight mb-0.5">Recurring payments — choose month</p>
+                                        <p class="text-[9px] text-gray-500">Defaults to your income pay schedule</p>
                                     </div>
                                     <div class="relative flex-shrink-0 mt-0.5">
                                         <input type="month" id="settlement-recurring-month-selector" 
@@ -6796,7 +6835,7 @@ ${(problemLoans.length > 0 || endingSoonLoans.length > 0) ? `**🏦 LOAN ALERTS*
                                             <span class="text-[10px] font-bold text-gray-900 flex-shrink-0">₹${Utils.formatIndianNumber(item.amount)}</span>
                                         </label>
                                     `;
-                                }).join('') : '<p class="text-[10px] text-gray-500 text-center py-1.5">No recurring payments for this month</p>'}
+                                }).join('') : '<p class="text-[10px] text-gray-500 text-center py-1.5">No recurring payments this month</p>'}
                                 </div>
                             </div>
                         </div>
@@ -6809,7 +6848,7 @@ ${(problemLoans.length > 0 || endingSoonLoans.length > 0) ? `**🏦 LOAN ALERTS*
                                     <span class="text-sm">🏦</span>
                                     <div class="text-left">
                                         <p class="text-xs font-semibold text-gray-700">Loan EMIs</p>
-                                        <p class="text-[10px] text-gray-500">${loanEmiItems.length} EMI(s)</p>
+                                        <p class="text-[10px] text-gray-500">${loanEmiItems.length} EMI${loanEmiItems.length === 1 ? '' : 's'}</p>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2">

@@ -187,6 +187,11 @@ Important Rules:
                 const currency = sharePrice ? sharePrice.currency : (inv.currency || 'INR');
                 const amount = price * (inv.quantity || 0);
                 return currency === 'USD' ? amount * exchangeRate : amount;
+            } else if (inv.type === 'MF') {
+                // INR-only; reuses sharePrices store for latest NAV.
+                const navRecord = sharePrices.find(sp => sp.name === inv.name && sp.active);
+                const price = navRecord ? navRecord.price : (inv.price || 0);
+                return price * (inv.quantity || 0);
             } else if (inv.type === 'GOLD') {
                 return goldRate * (inv.quantity || 0);
             } else if (inv.type === 'EPF' || inv.type === 'FD') {
@@ -214,11 +219,12 @@ Important Rules:
                 fields: [
                     { name: 'id', type: 'number', description: 'Unique investment ID' },
                     { name: 'name', type: 'string', description: 'Investment name - SEARCHABLE TEXT (e.g., "Apple", "ICICI FD", "Gold")' },
-                    { name: 'type', type: 'string', description: 'Investment type (SHARES, GOLD, FD, EPF)', values: types },
+                    { name: 'type', type: 'string', description: 'Investment type (SHARES, MF, GOLD, FD, EPF). MF rows also have an "mfCategory" field: EQUITY/DEBT/LIQUID/ELSS/HYBRID.', values: types },
                     { name: 'goal', type: 'string', description: 'Investment goal/term (SHORT_TERM or LONG_TERM)', values: goals },
-                    { name: 'amount', type: 'number', description: 'Total investment amount in INR (calculated as price × quantity for SHARES/GOLD)' },
-                    { name: 'quantity', type: 'number', description: 'Quantity (for SHARES/GOLD)' },
-                    { name: 'price', type: 'number', description: 'Unit price (for SHARES/GOLD)' },
+                    { name: 'amount', type: 'number', description: 'Total investment amount in INR (calculated as price × quantity for SHARES/MF/GOLD)' },
+                    { name: 'quantity', type: 'number', description: 'Quantity / units (for SHARES/MF/GOLD)' },
+                    { name: 'price', type: 'number', description: 'Unit price; NAV for MF (for SHARES/MF/GOLD)' },
+                    { name: 'mfCategory', type: 'string', description: 'MF sub-category (only present when type=MF): EQUITY, DEBT, LIQUID, ELSS, HYBRID' },
                     { name: 'currency', type: 'string', description: 'Currency (INR or USD)', values: currencies },
                     { name: 'description', type: 'string', description: 'Additional notes - SEARCHABLE TEXT (may be null)' },
                     { name: 'createdAt', type: 'number', description: 'Timestamp when added' },
@@ -258,11 +264,12 @@ To query investments data, return a JSON object with this structure:
 }
 
 IMPORTANT - Field Clarifications:
-- "type" field contains: SHARES, GOLD, FD (Fixed Deposit), EPF (Employee Provident Fund)
+- "type" field contains: SHARES, MF (Mutual Fund — has mfCategory: EQUITY/DEBT/LIQUID/ELSS/HYBRID), GOLD, FD (Fixed Deposit), EPF (Employee Provident Fund)
 - "goal" field contains: SHORT_TERM, LONG_TERM (NOT in type field!)
 - Always use i.goal for SHORT_TERM/LONG_TERM, NOT i.type
 - "amount" field is pre-calculated in INR:
   * For SHARES: amount = price × quantity (USD shares converted to INR)
+  * For MF: amount = NAV × units (INR-only)
   * For GOLD: amount = gold rate per gram × quantity
   * For FD/EPF: amount = direct deposit amount
 
@@ -305,7 +312,7 @@ Important Rules:
 - Use JavaScript arrow function syntax
 - Access fields as i.fieldName (e.g., i.amount, i.type, i.goal, i.name)
 - Use i.goal for SHORT_TERM/LONG_TERM (not i.term or i.type!)
-- Use i.type for SHARES/GOLD/FD/EPF
+- Use i.type for SHARES/MF/GOLD/FD/EPF
 - For TEXT SEARCH: Always use .toLowerCase().includes('keyword') for case-insensitive matching
 - For DESCRIPTION: Always check null first: i.description && i.description.toLowerCase().includes('keyword')
 - Extract keywords from user's natural language query
@@ -396,6 +403,12 @@ Important Rules:
             const exchangeRate = safeExchange();
             const amount = price * (item.quantity || 0);
             return currency === 'USD' ? amount * exchangeRate : amount;
+        } else if (item.type === 'MF') {
+            // INR-only; latest NAV from sharePrices store (shared with SHARES).
+            const sharePrices = window.DB.sharePrices || [];
+            const navRecord = sharePrices.find(sp => sp.name === item.name && sp.active);
+            const price = navRecord ? navRecord.price : (item.price || 0);
+            return price * (item.quantity || 0);
         } else if (item.type === 'GOLD') {
             const goldRate = safeGold();
             return goldRate * (item.quantity || 0);

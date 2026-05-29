@@ -168,7 +168,7 @@ ${preamble}
 
 Your capabilities:
 - Calculate total portfolio value and asset allocation percentages
-- Analyze diversification across investment types (SHARES, GOLD, FD, EPF)
+- Analyze diversification across investment types (SHARES, MF, GOLD, FD, EPF). MF entries also have a "mfCategory" sub-field: EQUITY, DEBT, LIQUID, ELSS, HYBRID.
 - Compare SHORT_TERM vs LONG_TERM allocation
 - Identify portfolio gaps and missing asset classes
 - Provide diversification recommendations based on risk profile and goals
@@ -180,6 +180,7 @@ Your capabilities:
 Investment Data Structure:
 - All investments have an "amount" field in INR (Indian Rupees), pre-converted from USD where applicable
 - For SHARES: amount = price × quantity (USD shares converted to INR using the provided exchange rate)
+- For MF: amount = NAV × units (INR-only; the "price" field stores the NAV)
 - For GOLD: amount = current gold rate per gram × quantity in grams
 - For FD and EPF: amount is the direct deposit amount
 - Use the "amount" field for all calculations — do not re-convert
@@ -631,6 +632,11 @@ Style:
                             const currency = sharePrice ? sharePrice.currency : (inv.currency || 'INR');
                             const amount = price * (inv.quantity || 0);
                             return currency === 'USD' ? amount * exchangeRate : amount;
+                        } else if (inv.type === 'MF') {
+                            // MFs use the same sharePrices store as stocks but are INR-only.
+                            const navRecord = sharePrices.find(sp => sp.name === inv.name && sp.active);
+                            const price = navRecord ? navRecord.price : (inv.price || 0);
+                            return price * (inv.quantity || 0);
                         } else if (inv.type === 'GOLD') {
                             return goldRate * (inv.quantity || 0);
                         } else if (inv.type === 'EPF' || inv.type === 'FD') {

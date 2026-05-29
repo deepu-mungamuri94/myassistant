@@ -1213,6 +1213,7 @@
                     <select id="investment-type" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" onchange="Investments.handleTypeChange()">
                         <option value="">Select Type</option>
                         <option value="SHARES">Shares</option>
+                        <option value="MF">Mutual Fund</option>
                         <option value="GOLD">Gold</option>
                         <option value="EPF">EPF</option>
                         <option value="FD">Fixed Deposit</option>
@@ -3831,6 +3832,8 @@
     <script src="js/modules/moneyLent.js"></script>
     <script src="js/modules/investments.js"></script>
     <script src="js/modules/sips.js"></script>
+    <!-- Loads after every data module above; reads from all of them -->
+    <script src="js/modules/financialHealth.js"></script>
     
     <!-- UI modules -->
     <script src="js/ui/toast.js"></script>

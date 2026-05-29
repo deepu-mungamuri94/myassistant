@@ -28,16 +28,19 @@ const Formatters = {
         const type = investment.type;
         
         if (type === 'SHARES') {
-            const priceInINR = investment.currency === 'USD' 
-                ? investment.price * exchangeRate 
+            const priceInINR = investment.currency === 'USD'
+                ? investment.price * exchangeRate
                 : investment.price;
             return priceInINR * (investment.quantity || 0);
+        } else if (type === 'MF') {
+            // INR-only; price stored is the NAV.
+            return (investment.price || 0) * (investment.quantity || 0);
         } else if (type === 'GOLD') {
             return (investment.price || goldRate) * (investment.quantity || 0);
         } else if (type === 'EPF' || type === 'FD') {
             return investment.amount || 0;
         }
-        
+
         return 0;
     },
 

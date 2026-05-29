@@ -77,7 +77,7 @@ const Investments = {
         this.expandedMonths.add(currentMonthKey);
         
         // Also expand all type groups within current month by default
-        ['EPF', 'FD', 'GOLD', 'SHARES'].forEach(type => {
+        ['EPF', 'FD', 'GOLD', 'SHARES', 'MF'].forEach(type => {
             this.expandedMonthlyTypes.add(`${currentMonthKey}-${type}`);
         });
         
@@ -374,14 +374,22 @@ const Investments = {
         let html = '';
 
         // Render each type group
-        ['EPF', 'FD', 'GOLD', 'SHARES'].forEach(type => {
+        ['EPF', 'FD', 'GOLD', 'SHARES', 'MF'].forEach(type => {
             if (grouped[type] && grouped[type].length > 0) {
                 const typeTotal = grouped[type].reduce((sum, inv) => 
                     sum + this.calculatePortfolioAmount(inv, exchangeRate, goldRate, sharePrices), 0);
                 
                 const isExpanded = this.expandedTypes.has(`${this.currentPortfolioTab}-${type}`);
-                const typeLabel = type === 'FD' ? 'Fixed Deposit' : type === 'EPF' ? 'EPF' : type === 'GOLD' ? 'Gold' : 'Shares';
-                const typeIcon = type === 'SHARES' ? '📈' : type === 'GOLD' ? '🪙' : type === 'EPF' ? '💼' : '🏦';
+                const typeLabel = type === 'FD' ? 'Fixed Deposit'
+                    : type === 'EPF' ? 'EPF'
+                    : type === 'GOLD' ? 'Gold'
+                    : type === 'MF' ? 'Mutual Funds'
+                    : 'Shares';
+                const typeIcon = type === 'SHARES' ? '📈'
+                    : type === 'MF' ? '📊'
+                    : type === 'GOLD' ? '🪙'
+                    : type === 'EPF' ? '💼'
+                    : '🏦';
 
                 html += `
                     <div class="mb-3 border border-gray-200 rounded-lg overflow-hidden">
@@ -421,6 +429,7 @@ const Investments = {
         // Type badge colors
         const typeColors = {
             'SHARES': 'bg-blue-100 text-blue-800',
+            'MF': 'bg-indigo-100 text-indigo-800',
             'GOLD': 'bg-yellow-100 text-yellow-800',
             'EPF': 'bg-green-100 text-green-800',
             'FD': 'bg-orange-100 text-orange-800'
@@ -437,6 +446,16 @@ const Investments = {
                 const usdAmount = currentPrice * inv.quantity;
                 line3 += `<span class="text-gray-600 text-xs">$${Utils.formatIndianNumber(usdAmount.toFixed(2))}</span>`;
             }
+        } else if (inv.type === 'MF') {
+            // MFs share the SHARES rendering shape but show NAV instead of Price,
+            // include the sub-category, and skip USD logic (INR-only).
+            const navRecord = sharePrices.find(sp => sp.name === inv.name && sp.active);
+            const currentNav = navRecord ? navRecord.price : inv.price;
+            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">NAV:</span> ₹${Utils.formatIndianNumber(parseFloat(currentNav).toFixed(4))}</span>`;
+            line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Units:</span> ${inv.quantity}</span>`;
+            if (inv.mfCategory) {
+                line3 += `<span class="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded font-semibold uppercase">${inv.mfCategory}</span>`;
+            }
         } else if (inv.type === 'GOLD') {
             line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Price:</span> ₹${Utils.formatIndianNumber(goldRate)}/gm</span>`;
             line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Qty:</span> ${inv.quantity}gm</span>`;
@@ -451,8 +470,9 @@ const Investments = {
 
         line4 = (inv.type === 'EPF' ? '' : (inv.description ? `<p class="text-gray-600 text-xs mt-1">${inv.description}</p>` : ''));
 
-        // Edit button HTML - hide for FD, show for others
-        const editButton = inv.type === 'FD' ? '' : `
+        // Edit available for every type now. FDs especially benefit since
+        // users may need to flip the emergency-fund flag on existing entries.
+        const editButton = `
             <button onclick="Investments.editInvestment(${inv.id}, false)" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
@@ -613,15 +633,23 @@ const Investments = {
         let typeGroupsHtml = '';
         
         if (isExpanded) {
-            ['EPF', 'FD', 'GOLD', 'SHARES'].forEach(type => {
+            ['EPF', 'FD', 'GOLD', 'SHARES', 'MF'].forEach(type => {
                 if (grouped[type] && grouped[type].length > 0) {
                     const typeTotal = grouped[type].reduce((sum, inv) => 
                         sum + this.calculateMonthlyAmount(inv, goldRate), 0);
                     
                     const typeKey = `${monthKey}-${type}`;
                     const isTypeExpanded = this.expandedMonthlyTypes.has(typeKey);
-                    const typeLabel = type === 'FD' ? 'Fixed Deposit' : type === 'EPF' ? 'EPF' : type === 'GOLD' ? 'Gold' : 'Shares';
-                    const typeIcon = type === 'SHARES' ? '📈' : type === 'GOLD' ? '🪙' : type === 'EPF' ? '💼' : '🏦';
+                    const typeLabel = type === 'FD' ? 'Fixed Deposit'
+                        : type === 'EPF' ? 'EPF'
+                        : type === 'GOLD' ? 'Gold'
+                        : type === 'MF' ? 'Mutual Funds'
+                        : 'Shares';
+                    const typeIcon = type === 'SHARES' ? '📈'
+                        : type === 'MF' ? '📊'
+                        : type === 'GOLD' ? '🪙'
+                        : type === 'EPF' ? '💼'
+                        : '🏦';
 
                     typeGroupsHtml += `
                         <div class="mb-2 border border-gray-200 rounded-lg overflow-hidden">
@@ -680,6 +708,7 @@ const Investments = {
         // Type badge colors
         const typeColors = {
             'SHARES': 'bg-blue-100 text-blue-800',
+            'MF': 'bg-indigo-100 text-indigo-800',
             'GOLD': 'bg-yellow-100 text-yellow-800',
             'EPF': 'bg-green-100 text-green-800',
             'FD': 'bg-orange-100 text-orange-800'
@@ -690,6 +719,14 @@ const Investments = {
             const currencySymbol = inv.currency === 'USD' ? '$' : '₹';
             line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Price:</span> ${currencySymbol}${Utils.formatIndianNumber(inv.price)}</span>`;
             line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Qty:</span> ${inv.quantity}</span>`;
+            line3 += `<span class="text-gray-600 text-xs">${Utils.formatLocalDate(new Date(inv.date))}</span>`;
+        } else if (inv.type === 'MF') {
+            // Monthly MF entry: show NAV at time of purchase + sub-category chip.
+            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">NAV:</span> ₹${Utils.formatIndianNumber(parseFloat(inv.price).toFixed(4))}</span>`;
+            line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Units:</span> ${inv.quantity}</span>`;
+            if (inv.mfCategory) {
+                line3 += `<span class="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded font-semibold uppercase">${inv.mfCategory}</span>`;
+            }
             line3 += `<span class="text-gray-600 text-xs">${Utils.formatLocalDate(new Date(inv.date))}</span>`;
         } else if (inv.type === 'GOLD') {
             line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Price:</span> ₹${Utils.formatIndianNumber(inv.price)}/gm</span>`;
@@ -789,9 +826,15 @@ const Investments = {
             const sharePrice = sharePrices.find(sp => sp.name === inv.name && sp.active);
             const price = sharePrice ? sharePrice.price : inv.price;
             const currency = sharePrice ? sharePrice.currency : inv.currency;
-            
+
             const amount = price * inv.quantity;
             return currency === 'USD' ? amount * exchangeRate : amount;
+        } else if (inv.type === 'MF') {
+            // MF: units × NAV in INR. Reuses sharePrices store so latest-NAV
+            // refreshes (same code path as SHARES) "just work" for MFs too.
+            const navRecord = sharePrices.find(sp => sp.name === inv.name && sp.active);
+            const price = navRecord ? navRecord.price : inv.price;
+            return price * inv.quantity;
         } else if (inv.type === 'GOLD') {
             return goldRate * inv.quantity;
         } else if (inv.type === 'EPF' || inv.type === 'FD') {
@@ -806,6 +849,9 @@ const Investments = {
     calculateMonthlyAmount(inv, goldRate) {
         if (inv.type === 'SHARES') {
             return inv.price * inv.quantity * (inv.currency === 'USD' ? this.getExchangeRate() : 1);
+        } else if (inv.type === 'MF') {
+            // INR-only; historical NAV stored on the record.
+            return inv.price * inv.quantity;
         } else if (inv.type === 'GOLD') {
             return inv.price * inv.quantity;
         } else if (inv.type === 'EPF' || inv.type === 'FD') {
@@ -818,7 +864,7 @@ const Investments = {
      * Get display price for investment
      */
     getDisplayPrice(inv, goldRate, sharePrices) {
-        if (inv.type === 'SHARES') {
+        if (inv.type === 'SHARES' || inv.type === 'MF') {
             const sharePrice = sharePrices.find(sp => sp.name === inv.name && sp.active);
             return sharePrice ? sharePrice.price : inv.price;
         } else if (inv.type === 'GOLD') {
@@ -840,12 +886,16 @@ const Investments = {
      */
     updatePortfolioSharePrice(shareName, newPrice, currency) {
         const portfolioInvestments = window.DB.portfolioInvestments || [];
-        
-        // Update all portfolio entries with this share
+
+        // Update SHARES and MF entries with the same name. MFs share this
+        // store because they have the same name → unit-price relationship.
+        // (Currency is ignored for MFs since they're INR-only.)
         portfolioInvestments.forEach(inv => {
-            if (inv.type === 'SHARES' && inv.name === shareName) {
+            if ((inv.type === 'SHARES' || inv.type === 'MF') && inv.name === shareName) {
                 inv.price = newPrice;
-                inv.currency = currency;
+                if (inv.type === 'SHARES') {
+                    inv.currency = currency;
+                }
             }
         });
     },
@@ -1154,7 +1204,61 @@ const Investments = {
         `;
         
         // Type-specific fields
-        if (type === 'SHARES') {
+        if (type === 'MF') {
+            // Mutual funds reuse the units × NAV math (same as SHARES) but are
+            // INR-only and add a sub-category that drives emergency-fund and
+            // (future) tax-view classification. Field IDs intentionally mirror
+            // SHARES (investment-quantity, investment-price) so calculateAmount
+            // and validateField paths work unchanged.
+            html += `
+                <div class="mb-3">
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Sub-category</label>
+                    <select id="investment-mf-category" onchange="Investments.toggleMfEmergencyFundVisibility()" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                        <option value="EQUITY">Equity</option>
+                        <option value="DEBT">Debt</option>
+                        <option value="LIQUID">Liquid</option>
+                        <option value="ELSS">ELSS (tax-saver, 3-yr lock-in)</option>
+                        <option value="HYBRID">Hybrid</option>
+                    </select>
+                    <p class="text-[10px] text-gray-500 mt-1">ELSS is locked 3 years — emergency-fund option is hidden for ELSS.</p>
+                </div>
+                <div class="mb-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Units</label>
+                            <input type="number" id="investment-quantity" placeholder="Units" step="0.001" min="0"
+                                   class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                   oninput="Investments.calculateAmount(); Investments.clearFieldError('quantity');"
+                                   onblur="Investments.validateField('quantity')">
+                            <div id="investment-quantity-error" class="hidden mt-1 text-sm text-red-600 flex items-start gap-1">
+                                <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                <span id="investment-quantity-error-text"></span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">NAV (₹)</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
+                                <input type="number" id="investment-price" placeholder="0.00" step="0.0001" min="0"
+                                       class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                       oninput="Investments.calculateAmount(); Investments.clearFieldError('price');"
+                                       onblur="Investments.validateField('price')">
+                            </div>
+                            <div id="investment-price-error" class="hidden mt-1 text-sm text-red-600 flex items-start gap-1">
+                                <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                <span id="investment-price-error-text"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Hidden currency field so SHARES-shared logic (calculateAmount, save) reads INR. -->
+                <input type="hidden" id="investment-currency" value="INR">
+            `;
+        } else if (type === 'SHARES') {
             html += `
                 <div class="mb-3">
                     <div class="grid grid-cols-2 gap-2">
@@ -1323,8 +1427,8 @@ const Investments = {
             </div>
         `;
 
-        // Calculated amount display (for SHARES and GOLD)
-        if (type === 'SHARES' || type === 'GOLD') {
+        // Calculated amount display (for SHARES, MF, and GOLD — all units×price types)
+        if (type === 'SHARES' || type === 'MF' || type === 'GOLD') {
             html += `
                 <div class="mb-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                     <p class="text-xs text-yellow-700 mb-1">Calculated Amount</p>
@@ -1341,6 +1445,30 @@ const Investments = {
                 <label class="text-sm font-medium text-gray-700">Track as monthly investment</label>
             </div>
         `;
+
+        // Emergency-fund flag rules:
+        //  - FD: always eligible (can be broken on demand, penalty acceptable).
+        //  - MF: eligible UNLESS the sub-category is ELSS — ELSS has a
+        //        mandatory 3-year lock-in so it can't actually fund an
+        //        emergency. The MF checkbox is rendered up front; we
+        //        toggle it based on the sub-category dropdown's value
+        //        (see toggleMfEmergencyFundVisibility below).
+        //  - SHARES, EPF, GOLD: not eligible. Equities are too volatile to
+        //        be reliable emergency money; EPF is retirement-locked;
+        //        gold isn't liquid enough for true emergency use.
+        if (type === 'FD' || type === 'MF') {
+            const initialClassesForMf = (type === 'MF') ? 'mf-ef-row' : '';
+            html += `
+                <div id="investment-ef-row" class="mb-3 flex items-start gap-2 p-2.5 rounded-lg bg-cyan-50 border border-cyan-200 ${initialClassesForMf}">
+                    <input type="checkbox" id="investment-is-emergency-fund"
+                           class="w-4 h-4 mt-0.5 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded">
+                    <label for="investment-is-emergency-fund" class="text-xs text-cyan-900 leading-relaxed cursor-pointer">
+                        <span class="font-semibold">🛡️ Part of my emergency fund</span><br>
+                        <span class="text-cyan-700">Counts toward emergency-fund coverage on the dashboard. Use for sweep FDs and liquid / debt / arbitrage MFs you can redeem in under a week.</span>
+                    </label>
+                </div>
+            `;
+        }
 
         // Date field (if tracking monthly)
         const today = new Date();
@@ -1629,6 +1757,27 @@ const Investments = {
     },
 
     /**
+     * Show/hide the emergency-fund checkbox for MFs based on sub-category.
+     * ELSS has a 3-year lock-in so it can't fund an emergency — hide and
+     * uncheck to prevent stale state if the user switches categories
+     * after ticking the box.
+     */
+    toggleMfEmergencyFundVisibility() {
+        const type = document.getElementById('investment-type')?.value;
+        if (type !== 'MF') return;
+        const cat = document.getElementById('investment-mf-category')?.value;
+        const row = document.getElementById('investment-ef-row');
+        const checkbox = document.getElementById('investment-is-emergency-fund');
+        if (!row || !checkbox) return;
+        if (cat === 'ELSS') {
+            row.classList.add('hidden');
+            checkbox.checked = false;
+        } else {
+            row.classList.remove('hidden');
+        }
+    },
+
+    /**
      * Calculate amount for SHARES and GOLD
      */
     calculateAmount() {
@@ -1650,7 +1799,13 @@ const Investments = {
         } else if (type === 'GOLD') {
             const quantity = parseFloat(document.getElementById('investment-quantity').value) || 0;
             const price = parseFloat(document.getElementById('investment-price').value) || 0;
-            
+
+            const amount = price * quantity;
+            amountDisplay.textContent = `₹${Utils.formatIndianNumber(Math.round(amount))}`;
+        } else if (type === 'MF') {
+            // Mutual funds: units × NAV in INR (no FX).
+            const quantity = parseFloat(document.getElementById('investment-quantity').value) || 0;
+            const price = parseFloat(document.getElementById('investment-price').value) || 0;
             const amount = price * quantity;
             amountDisplay.textContent = `₹${Utils.formatIndianNumber(Math.round(amount))}`;
         }
@@ -1684,6 +1839,18 @@ const Investments = {
         
         const description = document.getElementById('investment-description')?.value.trim() || '';
         const trackMonthly = document.getElementById('investment-track-monthly').checked;
+        // EF eligibility:
+        //   - FD: yes
+        //   - MF: yes, except ELSS (3-yr lock-in)
+        //   - SHARES, EPF, GOLD: no (volatility / lock-in / illiquidity)
+        // Coerce to false outside that envelope so a flipped type or stale
+        // checkbox can't sneak through.
+        const mfCategoryNow = document.getElementById('investment-mf-category')?.value;
+        const efEligible = (type === 'FD')
+            || (type === 'MF' && mfCategoryNow !== 'ELSS');
+        const isEmergencyFund = efEligible
+            ? (document.getElementById('investment-is-emergency-fund')?.checked || false)
+            : false;
         const date = trackMonthly ? document.getElementById('investment-date').value : null;
         
         // Get income month attribution (for monthly investments)
@@ -1694,7 +1861,8 @@ const Investments = {
             name,
             type,
             goal,
-            description
+            description,
+            isEmergencyFund
         };
 
         // Type-specific validation and data
@@ -1718,6 +1886,29 @@ const Investments = {
             // Round price to 2 decimal places
             investmentData.price = Math.round(price * 100) / 100;
             investmentData.currency = currency;
+        } else if (type === 'MF') {
+            // Mutual funds: fractional units, INR-only NAV. Sub-category drives
+            // emergency-fund eligibility hints and (future) tax-view splits.
+            const quantity = parseFloat(document.getElementById('investment-quantity').value);
+            const price = parseFloat(document.getElementById('investment-price').value);
+            const mfCategory = document.getElementById('investment-mf-category')?.value || 'EQUITY';
+
+            let hasError = false;
+            if (!quantity || quantity <= 0) {
+                this.showFieldError('quantity', 'Please enter valid units greater than 0');
+                hasError = true;
+            }
+            if (!price || price <= 0) {
+                this.showFieldError('price', 'Please enter a valid NAV greater than 0');
+                hasError = true;
+            }
+            if (hasError) return;
+
+            investmentData.quantity = quantity;
+            // NAV typically has 4-decimal precision; preserve it.
+            investmentData.price = Math.round(price * 10000) / 10000;
+            investmentData.currency = 'INR';
+            investmentData.mfCategory = mfCategory;
         } else if (type === 'GOLD') {
             const quantity = parseFloat(document.getElementById('investment-quantity').value);
             const price = parseFloat(document.getElementById('investment-price').value);
@@ -1835,11 +2026,11 @@ const Investments = {
                     ...data
                 };
                 
-                // Update share price if SHARES
-                if (data.type === 'SHARES') {
-                    this.updateSharePrice(data.name, data.price, data.currency);
-            }
-                
+                // Persist latest unit price for SHARES and MF (shared store)
+                if (data.type === 'SHARES' || data.type === 'MF') {
+                    this.updateSharePrice(data.name, data.price, data.currency || 'INR');
+                }
+
                 window.Storage.save();
                 this.showSuccess();
             }
@@ -1870,20 +2061,33 @@ const Investments = {
         const existing = portfolioInvestments.find(inv => `${inv.name}_${inv.type}_${inv.goal}` === userDataKey);
         
         if (existing) {
-            // Add to existing (only for SHARES and GOLD)
-            if (data.type === 'SHARES' || data.type === 'GOLD') {
+            // Add to existing (SHARES, GOLD, MF — all units×price types).
+            if (data.type === 'SHARES' || data.type === 'GOLD' || data.type === 'MF') {
                 existing.quantity = (existing.quantity || 0) + (data.quantity || 0);
-                // Update to latest price (rounded to 2 decimals)
-                existing.price = Math.round(data.price * 100) / 100;
+                // SHARES: 2-decimal price; MF: 4-decimal NAV; GOLD: 2-decimal price.
+                if (data.type === 'MF') {
+                    existing.price = Math.round(data.price * 10000) / 10000;
+                } else {
+                    existing.price = Math.round(data.price * 100) / 100;
+                }
                 if (data.type === 'SHARES') {
                     existing.currency = data.currency;
                 }
+                if (data.type === 'MF' && data.mfCategory) {
+                    existing.mfCategory = data.mfCategory;
+                }
             }
             // FD and EPF: Don't add to existing in portfolio from monthly investments
-            
-            // Update share price in storage if SHARES
-            if (data.type === 'SHARES') {
-                this.updateSharePrice(data.name, data.price, data.currency);
+
+            // Propagate emergency-fund flag updates to the existing portfolio row
+            // so flipping it on a monthly entry isn't silently lost.
+            if (typeof data.isEmergencyFund === 'boolean') {
+                existing.isEmergencyFund = data.isEmergencyFund;
+            }
+
+            // Update unit-price storage for SHARES and MF (both share the same store)
+            if (data.type === 'SHARES' || data.type === 'MF') {
+                this.updateSharePrice(data.name, data.price, data.currency || 'INR');
             }
         } else {
             // Add new
@@ -1894,10 +2098,9 @@ const Investments = {
                 id: newId,
                 ...portfolioData
             });
-            
-            // Update share price if SHARES
-            if (data.type === 'SHARES') {
-                this.updateSharePrice(data.name, data.price, data.currency);
+
+            if (data.type === 'SHARES' || data.type === 'MF') {
+                this.updateSharePrice(data.name, data.price, data.currency || 'INR');
             }
         }
         
@@ -1918,8 +2121,8 @@ const Investments = {
                 this.showNameError(data.type);
                 return;
             }
-            
-            // Show add/override modal for SHARES and GOLD
+
+            // SHARES, GOLD, and MF can be added to existing (buy more units).
             this.pendingInvestmentData = data;
             this.showAddOrOverrideModal(existing, data);
         } else {
@@ -1929,15 +2132,16 @@ const Investments = {
                 id: newId,
                 ...data
             });
-            
-            // Update share price if SHARES
-            if (data.type === 'SHARES') {
-                this.updateSharePrice(data.name, data.price, data.currency);
+
+            // Persist latest unit price for SHARES and MFs (they share the
+            // sharePrices store keyed by name).
+            if (data.type === 'SHARES' || data.type === 'MF') {
+                this.updateSharePrice(data.name, data.price, data.currency || 'INR');
             }
-            
+
             window.DB.portfolioInvestments = portfolioInvestments;
             window.Storage.save();
-            
+
             this.showSuccess();
         }
     },
@@ -2001,7 +2205,7 @@ const Investments = {
         const message = document.getElementById('add-override-message');
         
         let existingInfo = '';
-        if (newData.type === 'SHARES' || newData.type === 'GOLD') {
+        if (newData.type === 'SHARES' || newData.type === 'GOLD' || newData.type === 'MF') {
             existingInfo = `Current: ${existing.quantity} units\nNew: ${newData.quantity} units`;
         } else {
             existingInfo = `Current: ₹${Utils.formatIndianNumber(existing.amount)}\nNew: ₹${Utils.formatIndianNumber(newData.amount)}`;
@@ -2032,24 +2236,28 @@ const Investments = {
      * Add to existing investment
      */
     addToExisting(existing, newData) {
-        if (newData.type === 'SHARES' || newData.type === 'GOLD') {
+        if (newData.type === 'SHARES' || newData.type === 'GOLD' || newData.type === 'MF') {
             existing.quantity = (existing.quantity || 0) + (newData.quantity || 0);
-            // Update to latest price (rounded to 2 decimals)
-            existing.price = Math.round(newData.price * 100) / 100;
+            // SHARES/GOLD: 2-decimal price; MF: 4-decimal NAV.
+            if (newData.type === 'MF') {
+                existing.price = Math.round(newData.price * 10000) / 10000;
+                if (newData.mfCategory) existing.mfCategory = newData.mfCategory;
+            } else {
+                existing.price = Math.round(newData.price * 100) / 100;
+            }
             if (newData.type === 'SHARES') {
                 existing.currency = newData.currency;
             }
         } else {
             existing.amount = (existing.amount || 0) + (newData.amount || 0);
         }
-        
-        // Update share price in storage if SHARES
-        if (newData.type === 'SHARES') {
-            this.updateSharePrice(newData.name, newData.price, newData.currency);
+
+        if (newData.type === 'SHARES' || newData.type === 'MF') {
+            this.updateSharePrice(newData.name, newData.price, newData.currency || 'INR');
         }
-        
+
         window.Storage.save();
-        
+
         this.showSuccess();
     },
 
@@ -2061,7 +2269,7 @@ const Investments = {
         const message = document.getElementById('override-confirm-message');
         
         let oldInfo = '', newInfo = '';
-        if (newData.type === 'SHARES' || newData.type === 'GOLD') {
+        if (newData.type === 'SHARES' || newData.type === 'GOLD' || newData.type === 'MF') {
             oldInfo = `Quantity: ${existing.quantity}`;
             newInfo = `Quantity: ${newData.quantity}`;
         } else {
@@ -2088,14 +2296,13 @@ const Investments = {
      */
     overrideExisting(existing, newData) {
         Object.assign(existing, newData);
-        
-        // Update share price in storage if SHARES
-        if (newData.type === 'SHARES') {
-            this.updateSharePrice(newData.name, newData.price, newData.currency);
+
+        if (newData.type === 'SHARES' || newData.type === 'MF') {
+            this.updateSharePrice(newData.name, newData.price, newData.currency || 'INR');
         }
-        
+
         window.Storage.save();
-        
+
         this.showSuccess();
     },
     
@@ -2142,10 +2349,10 @@ const Investments = {
      */
     populateEditFields(investment) {
         document.getElementById('investment-name').value = investment.name;
-        
+
         if (investment.type === 'SHARES') {
             document.getElementById('investment-quantity').value = investment.quantity;
-            
+
             // For portfolio investments, use latest price from storage; for monthly, use historical price
             if (investment.isMonthly) {
                 document.getElementById('investment-price').value = investment.price;
@@ -2155,6 +2362,18 @@ const Investments = {
                 document.getElementById('investment-price').value = latestSharePrice ? latestSharePrice.price : investment.price;
                 document.getElementById('investment-currency').value = latestSharePrice ? latestSharePrice.currency : investment.currency;
             }
+            this.calculateAmount();
+        } else if (investment.type === 'MF') {
+            // Same shape as SHARES (units + price) plus the sub-category.
+            // We reuse the SHARES sharePrices store for latest NAV updates so
+            // a manual NAV refresh works without a separate code path.
+            document.getElementById('investment-quantity').value = investment.quantity;
+            const latestSharePrice = this.getLatestSharePrice(investment.name);
+            document.getElementById('investment-price').value = latestSharePrice ? latestSharePrice.price : investment.price;
+            const mfCatEl = document.getElementById('investment-mf-category');
+            if (mfCatEl) mfCatEl.value = investment.mfCategory || 'EQUITY';
+            // Sync EF row visibility based on the sub-category we just set.
+            this.toggleMfEmergencyFundVisibility();
             this.calculateAmount();
         } else if (investment.type === 'GOLD') {
             document.getElementById('investment-quantity').value = investment.quantity;
@@ -2177,7 +2396,11 @@ const Investments = {
         }
         
         document.getElementById('investment-description').value = investment.description || '';
-        
+
+        // Restore emergency-fund flag (defaults to false for legacy investments).
+        const efCheckbox = document.getElementById('investment-is-emergency-fund');
+        if (efCheckbox) efCheckbox.checked = !!investment.isEmergencyFund;
+
         if (investment.isMonthly) {
             document.getElementById('investment-track-monthly').checked = true;
             document.getElementById('investment-track-monthly').disabled = true;
@@ -2269,10 +2492,34 @@ const Investments = {
                     ${investment.description ? `<div class="text-sm text-gray-600 pt-2 border-t border-gray-200">${investment.description}</div>` : ''}
                 </div>
             `;
+        } else if (investment.type === 'MF') {
+            // Same shape as the SHARES details — units + NAV + computed amount.
+            const navRecord = isMonthly ? null : sharePrices.find(sp => sp.name === investment.name && sp.active);
+            const nav = navRecord ? navRecord.price : investment.price;
+            amount = isMonthly ? this.calculateMonthlyAmount(investment) : this.calculatePortfolioAmount(investment, exchangeRate, goldRate, sharePrices);
+
+            detailsHTML = `
+                <div class="text-left space-y-2 bg-gray-50 p-4 rounded-lg">
+                    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-gray-800 text-lg">${investment.name}</span>
+                            ${typeBadge}
+                            ${investment.mfCategory ? `<span class="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded font-semibold uppercase">${investment.mfCategory}</span>` : ''}
+                        </div>
+                        <span class="font-bold text-yellow-700 text-lg">₹${Utils.formatIndianNumber(Math.round(amount))}</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div><span class="font-semibold text-gray-700">Units:</span> <span class="text-gray-600">${investment.quantity}</span></div>
+                        <div class="text-right"><span class="font-semibold text-gray-700">NAV:</span> <span class="text-gray-600">₹${Utils.formatIndianNumber(parseFloat(nav).toFixed(4))}</span></div>
+                        ${isMonthly && investment.date ? `<div class="col-span-2"><span class="font-semibold text-gray-700">Date:</span> <span class="text-gray-600">${Utils.formatLocalDate(new Date(investment.date))}</span></div>` : ''}
+                    </div>
+                    ${investment.description ? `<div class="text-sm text-gray-600 pt-2 border-t border-gray-200">${investment.description}</div>` : ''}
+                </div>
+            `;
         } else if (investment.type === 'GOLD') {
             // Use correct calculation method based on investment type
             amount = isMonthly ? this.calculateMonthlyAmount(investment) : this.calculatePortfolioAmount(investment, exchangeRate, goldRate, sharePrices);
-            
+
             detailsHTML = `
                 <div class="text-left space-y-2 bg-gray-50 p-4 rounded-lg">
                     <div class="flex justify-between items-center border-b border-gray-200 pb-2">
@@ -2384,13 +2631,15 @@ const Investments = {
             const investment = window.DB.portfolioInvestments.find(inv => parseInt(inv.id) === parsedId);
             window.DB.portfolioInvestments = window.DB.portfolioInvestments.filter(inv => parseInt(inv.id) !== parsedId);
             
-            // Check if any other portfolio items use this share
-            if (investment && investment.type === 'SHARES') {
-                const hasOtherShares = window.DB.portfolioInvestments.some(inv => 
-                    inv.type === 'SHARES' && inv.name === investment.name
+            // SHARES and MF both write to the sharePrices store keyed by name,
+            // so when the last entry with a given name is deleted, mark it
+            // inactive so it stops surfacing in the price-update modal.
+            if (investment && (investment.type === 'SHARES' || investment.type === 'MF')) {
+                const hasOtherEntries = window.DB.portfolioInvestments.some(inv =>
+                    (inv.type === 'SHARES' || inv.type === 'MF') && inv.name === investment.name
                 );
-                
-                if (!hasOtherShares) {
+
+                if (!hasOtherEntries) {
                     this.markSharePriceInactive(investment.name);
                 }
             }
@@ -2421,9 +2670,9 @@ const Investments = {
         const portfolioInvestments = window.DB.portfolioInvestments || [];
         
         list.innerHTML = activeShares.map(share => {
-            // Check if share exists in portfolio
-            const existsInPortfolio = portfolioInvestments.some(inv => 
-                inv.type === 'SHARES' && inv.name === share.name
+            // Existence check covers both SHARES and MF (same sharePrices store).
+            const existsInPortfolio = portfolioInvestments.some(inv =>
+                (inv.type === 'SHARES' || inv.type === 'MF') && inv.name === share.name
             );
             
             return `
@@ -2916,10 +3165,10 @@ Respond ONLY with valid JSON (no markdown, no explanation):
      * Delete share price from storage
      */
     deleteSharePrice(shareName) {
-        // Check if share exists in portfolio
+        // Block delete if any SHARES or MF entry still uses this name.
         const portfolioInvestments = window.DB.portfolioInvestments || [];
-        const existsInPortfolio = portfolioInvestments.some(inv => 
-            inv.type === 'SHARES' && inv.name === shareName
+        const existsInPortfolio = portfolioInvestments.some(inv =>
+            (inv.type === 'SHARES' || inv.type === 'MF') && inv.name === shareName
         );
         
         if (existsInPortfolio) {
@@ -3278,7 +3527,7 @@ Respond ONLY with valid JSON (no markdown, no explanation):
                 
                 // Also expand all type groups within current month
                 this.expandedMonthlyTypes.clear();
-                ['EPF', 'FD', 'GOLD', 'SHARES'].forEach(type => {
+                ['EPF', 'FD', 'GOLD', 'SHARES', 'MF'].forEach(type => {
                     this.expandedMonthlyTypes.add(`${currentMonthKey}-${type}`);
                 });
             } else {
@@ -3330,7 +3579,7 @@ Respond ONLY with valid JSON (no markdown, no explanation):
             
             // Also expand all type groups within current month
             this.expandedMonthlyTypes.clear();
-            ['EPF', 'FD', 'GOLD', 'SHARES'].forEach(type => {
+            ['EPF', 'FD', 'GOLD', 'SHARES', 'MF'].forEach(type => {
                 this.expandedMonthlyTypes.add(`${currentMonthKey}-${type}`);
             });
         } else {
