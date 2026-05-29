@@ -170,9 +170,13 @@ Important Rules:
             };
         }
 
-        // Get calculation parameters
-        const exchangeRate = window.DB.exchangeRate?.rate || window.DB.exchangeRate || 83;
-        const goldRate = window.DB.goldRatePerGram || 7000;
+        // Get calculation parameters — rates are now stored as { rate, updatedAt }
+        const exchangeRate = (window.Investments && window.Investments.getExchangeRate)
+            ? window.Investments.getExchangeRate()
+            : (typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : (window.DB.exchangeRate?.rate || 89));
+        const goldRate = (window.Investments && window.Investments.getGoldRate)
+            ? window.Investments.getGoldRate()
+            : (typeof window.DB.goldRatePerGram === 'number' ? window.DB.goldRatePerGram : (window.DB.goldRatePerGram?.rate || 10000));
         const sharePrices = window.DB.sharePrices || [];
         
         // Helper to calculate amount for any investment
@@ -306,7 +310,7 @@ Important Rules:
 - For DESCRIPTION: Always check null first: i.description && i.description.toLowerCase().includes('keyword')
 - Extract keywords from user's natural language query
 - Return ONLY valid JavaScript that works with Array.filter()
-- For USD to INR conversion, use exchangeRate: ${window.DB.exchangeRate?.rate || window.DB.exchangeRate || 83}
+- For USD to INR conversion, use exchangeRate: ${(window.Investments && window.Investments.getExchangeRate) ? window.Investments.getExchangeRate() : (typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : (window.DB.exchangeRate?.rate || 89))}
 - When user asks about specific companies/stocks/banks, use TEXT SEARCH (examples 6-10)
 `
         };
@@ -375,16 +379,25 @@ Important Rules:
      * Calculate amount for an investment item
      */
     calculateInvestmentAmount(item) {
+        // Helpers that safely read the rate as a number whether storage is in
+        // legacy primitive form or the new { rate, updatedAt } object form.
+        const safeExchange = () => (window.Investments && window.Investments.getExchangeRate)
+            ? window.Investments.getExchangeRate()
+            : (typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : (window.DB.exchangeRate?.rate || 89));
+        const safeGold = () => (window.Investments && window.Investments.getGoldRate)
+            ? window.Investments.getGoldRate()
+            : (typeof window.DB.goldRatePerGram === 'number' ? window.DB.goldRatePerGram : (window.DB.goldRatePerGram?.rate || 10000));
+
         if (item.type === 'SHARES') {
             const sharePrices = window.DB.sharePrices || [];
             const sharePrice = sharePrices.find(sp => sp.name === item.name && sp.active);
             const price = sharePrice ? sharePrice.price : (item.price || 0);
             const currency = sharePrice ? sharePrice.currency : (item.currency || 'INR');
-            const exchangeRate = window.DB.exchangeRate?.rate || window.DB.exchangeRate || 83;
+            const exchangeRate = safeExchange();
             const amount = price * (item.quantity || 0);
             return currency === 'USD' ? amount * exchangeRate : amount;
         } else if (item.type === 'GOLD') {
-            const goldRate = window.DB.goldRatePerGram || 7000;
+            const goldRate = safeGold();
             return goldRate * (item.quantity || 0);
         } else if (item.type === 'EPF' || item.type === 'FD') {
             return parseFloat(item.amount) || 0;

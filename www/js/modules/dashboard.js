@@ -2088,7 +2088,7 @@ const Dashboard = {
      */
     getInvestmentItems(year, month) {
         const monthlyInvestments = window.DB.monthlyInvestments || [];
-        const exchangeRate = typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : 83;
+        const exchangeRate = (window.Investments && window.Investments.getExchangeRate) ? window.Investments.getExchangeRate() : (typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : (window.DB.exchangeRate?.rate || 89));
         
         return monthlyInvestments
             .filter(inv => {
@@ -2329,8 +2329,8 @@ const Dashboard = {
     getInvestmentsDataForChart(monthsCount = 6) {
         const monthsData = [];
         const monthlyInvestments = window.DB.monthlyInvestments || [];
-        const goldRate = window.DB.goldRatePerGram || 7000;
-        const exchangeRate = typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : 83;
+        const goldRate = (window.Investments && window.Investments.getGoldRate) ? window.Investments.getGoldRate() : (typeof window.DB.goldRatePerGram === 'number' ? window.DB.goldRatePerGram : (window.DB.goldRatePerGram?.rate || 10000));
+        const exchangeRate = (window.Investments && window.Investments.getExchangeRate) ? window.Investments.getExchangeRate() : (typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : (window.DB.exchangeRate?.rate || 89));
         
         /**
          * Helper to filter investments by income month (or fall back to investment date)
@@ -4344,8 +4344,8 @@ const Dashboard = {
         // Investments data for the same period
         // Use getMonthInvestments which properly handles incomeMonth/incomeYear attribution
         const investmentsByMonth = {};
-        const goldRate = window.DB.goldRatePerGram || 7000;
-        const exchangeRate = typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : 83;
+        const goldRate = (window.Investments && window.Investments.getGoldRate) ? window.Investments.getGoldRate() : (typeof window.DB.goldRatePerGram === 'number' ? window.DB.goldRatePerGram : (window.DB.goldRatePerGram?.rate || 10000));
+        const exchangeRate = (window.Investments && window.Investments.getExchangeRate) ? window.Investments.getExchangeRate() : (typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : (window.DB.exchangeRate?.rate || 89));
         
         for (let i = 1; i <= ANALYSIS_MONTHS; i++) {
             const analysisDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
@@ -4552,10 +4552,57 @@ const Dashboard = {
         // Add Year-over-Year comparison data
         // Use the passed targetMonth parameter (the month we're analyzing for)
         data.yearOverYear = this.getYearOverYearData(targetMonth);
-        
+
         // Add detected annual patterns
         data.annualPatterns = this.detectAnnualPatterns(targetMonth);
-        
+
+        // ===== TARGET MONTH SPECIFIC DATA (for forward-looking insights) =====
+        // What's actually scheduled / known for the upcoming month?
+        const upcomingRecurring = this.getRecurringExpenseItemsForMonth(targetYear, targetMonth) || [];
+        const upcomingEmis = (this.getEmiItemsForMonth(targetYear, targetMonth) || []).filter(e => e.type === 'loan' || e.type === 'card');
+        const upcomingIncomeData = this.getIncomeForExpenseComparison(targetYear, targetMonth);
+
+        const upcomingRecurringTotal = upcomingRecurring.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+        const upcomingEmiTotal = upcomingEmis.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+
+        // Pending plans with planByDate in or before target month
+        const pendingPlans = (window.DB.plans || []).filter(p => p.status === 'pending');
+        const targetMonthEnd = new Date(targetYear, targetMonth, 0);
+        const targetPlans = pendingPlans.filter(p => {
+            if (!p.planByDate) return false;
+            return new Date(p.planByDate) <= targetMonthEnd;
+        }).map(p => ({
+            name: p.name,
+            amount: parseFloat(p.amount) || 0,
+            planByDate: p.planByDate,
+            description: p.description || ''
+        }));
+        const targetPlansTotal = targetPlans.reduce((s, p) => s + p.amount, 0);
+
+        // Calculate available cash for the target month
+        const expectedIncome = upcomingIncomeData.income || data.insights.avgMonthlyIncome || 0;
+        const fixedObligations = upcomingRecurringTotal + upcomingEmiTotal;
+        const projectedVariable = data.projectedAverage || 0;
+        const investmentTarget = expectedIncome > 0
+            ? Math.round((expectedIncome * (data.budgetAnalysis?.targetRule?.invest || 20)) / 100)
+            : 0;
+        const projectedTotal = fixedObligations + projectedVariable + investmentTarget + targetPlansTotal;
+        const projectedSurplus = expectedIncome - projectedTotal;
+
+        data.targetMonthForecast = {
+            expectedIncome,
+            fixedObligations,
+            recurring: { total: upcomingRecurringTotal, items: upcomingRecurring },
+            emis: { total: upcomingEmiTotal, items: upcomingEmis },
+            projectedVariable,
+            investmentTarget,
+            targetPlans,
+            targetPlansTotal,
+            projectedTotal,
+            projectedSurplus,
+            isCashTight: projectedSurplus < 0
+        };
+
         return data;
     },
     
@@ -5038,142 +5085,148 @@ const Dashboard = {
             patternsText = 'No recurring annual patterns detected for this month (need more historical data).';
         }
         
-        return `You are a personal finance advisor providing insights for ${monthName}. Be concise, specific, and actionable.
+        // Forward-looking data for target month
+        const fc = data.targetMonthForecast || {};
+        const inv = data.investments || {};
+        const monthShort = monthName.split(' ')[0];
 
-## CONTEXT (${analysisMonths}-month data)
-**Income**: ₹${Math.round(data.insights.avgMonthlyIncome || 0).toLocaleString()}/month average
-**Budget Rule**: ${data.budgetAnalysis?.targetRule?.needs || 50}% Needs / ${data.budgetAnalysis?.targetRule?.wants || 30}% Wants / ${data.budgetAnalysis?.targetRule?.invest || 20}% Invest
+        // Top 5 spending areas with their leading items
+        const topAreasText = data.topCategories.slice(0, 5).map(c => {
+            const top = (c.topItems || []).slice(0, 2).map(i => `${i.title} ₹${Math.round(i.monthlyAvg).toLocaleString()}`).join(', ');
+            return `• ${c.category}: ₹${Math.round(c.monthlyAvg).toLocaleString()}/mo${top ? ` (top: ${top})` : ''}`;
+        }).join('\n');
 
-**Recent Trend**:
-${data.historicalExpenses.slice(-3).map(h => `${h.label}: ₹${Math.round(h.amount).toLocaleString()}`).join(' → ')}
-→ Average: ₹${Math.round(data.projectedAverage).toLocaleString()}/month
+        // Top 8 individual recurring expenses (already discretionary candidates)
+        const topItemsText = data.topExpenses.slice(0, 8).map(e =>
+            `• ${e.title} (${e.category}): ₹${Math.round(e.monthlyAvg).toLocaleString()}/mo`
+        ).join('\n');
 
-**Budget Status**:
-${budgetText || 'No budget issues detected'}
+        // Investment trajectory
+        const invTrendText = inv.targetComparisons && inv.targetComparisons.length > 0
+            ? inv.targetComparisons.slice(-Math.min(6, inv.targetComparisons.length)).map(tc =>
+                `${tc.month.split(' ')[0]}: ${tc.actualPercent}% (₹${Math.round(tc.actualAmount).toLocaleString()}) ${tc.missedTarget ? '❌ short ₹' + Math.round(tc.gapAmount).toLocaleString() : '✅'}`
+            ).join(' | ')
+            : 'No data';
 
-**Top Spending Areas** (${analysisMonths}-month avg):
-${data.topCategories.slice(0, 5).map(c => `• ${c.category}: ₹${Math.round(c.monthlyAvg).toLocaleString()}/month (${c.count} transactions)`).join('\n')}
-
-**Fixed Obligations** (₹${Math.round(data.insights.totalFixed).toLocaleString()}/month total):
-${recurringText ? `Subscriptions: ₹${Math.round(data.insights.totalRecurring).toLocaleString()}/month\n${recurringText.split('\n').slice(0, 3).join('\n')}${data.recurringPayments.length > 3 ? '\n... +' + (data.recurringPayments.length - 3) + ' more' : ''}` : 'None'}
-${data.loans.length > 0 ? `\nLoans: ₹${Math.round(data.insights.totalLoans).toLocaleString()}/month\n${loansText}` : ''}
-${data.emis.length > 0 ? `\nCard EMIs: ₹${Math.round(data.insights.totalEmis).toLocaleString()}/month\n${emisText}` : ''}
-
-${data.annualPatterns && data.annualPatterns.hasPatterns ? `**Annual Patterns for ${monthName.split(' ')[0]}**:\n${patternsText}` : ''}
-
-${data.yearOverYear && data.yearOverYear.hasData ? `**Last Year Same Month**:\n${yoyText.split('\n').slice(0, 3).join('\n')}` : ''}
-
-**Investment Activity** (${data.investments?.targetPercent || 20}% target):
-${data.investments?.targetComparisons && data.investments.targetComparisons.length > 0
-    ? `Recent months: ${data.investments.targetComparisons.slice(-3).map(tc => `${tc.month.split(' ')[0]}: ${tc.actualPercent}%${tc.missedTarget ? '❌' : '✅'}`).join(' | ')}\nMiss rate: ${data.investments?.missRate || 0}% (${data.investments?.targetMisses || 0}/${data.investments?.targetComparisons?.length || 0} months)`
-    : 'No investment data'}
-
----
-RESPOND IN THIS FORMAT. Be concise but comprehensive (aim for 400-600 words). Use bullet points, not tables.
-
-**📊 QUICK HEALTH CHECK**
-${budgetText.includes('OVER') || budgetText.includes('UNDER') ? '(State main budget issues with specific amounts and percentages)' : '✓ Budget on track - All categories within limits'}
-${data.investments?.missRate > 30 ? '\n⚠️ Investment target missed ' + data.investments.missRate + '% of months - ' + (data.investments.missRate >= 50 ? 'CRITICAL' : 'needs attention') : ''}
-
-**🎯 TOP ACTIONS FOR ${monthName.toUpperCase()}**
-List the MOST IMPACTFUL things to focus on (3-5 items). Be specific with amounts, current vs target, and clear actions:
-
-1. **[Expense/Category Name]** - ₹X/month current → ₹Y/month target (₹Z savings)
-   → How: [Specific actionable step with frequency/method]
-   → Why: [Brief reason why this matters]
-
-2. **[Expense/Category Name]** - ₹X/month current → ₹Y/month target (₹Z savings)
-   → How: [Specific actionable step]
-   → Why: [Brief reason]
-
-(Continue for all high-impact items)
-
-**Total potential savings: ₹XX,XXX/month**
-
-${data.annualPatterns && data.annualPatterns.hasPatterns ? `\n**🎂 UPCOMING ANNUAL EXPENSES**\nBased on past data for ${monthName.split(' ')[0]}:\n(List expected expenses with amounts, last year comparison, and prep tips)` : ''}
-
-${problemLoans.length > 0 || endingSoonLoans.length > 0 ? `\n**🏦 LOAN ALERTS**\n${problemLoans.length > 0 ? problemLoans.map(l => '⚠️ ' + l.name + ' @ ' + l.interestRate + '% - ₹' + Math.round(l.remainingAmount/1000) + 'K left - Consider pre-closure').join('\\n') + '\\n' : ''}${endingSoonLoans.length > 0 ? endingSoonLoans.map(l => '🎉 ' + l.name + ' - ' + l.remainingMonths + ' EMI(s) left').join('\\n') : ''}` : ''}
-
-${data.recurringPayments.length > 3 ? `\n**🔄 SUBSCRIPTION REVIEW**\n(Review for unused/redundant services to pause or cancel)` : ''}
-
-2. **Fluctuation Pattern Assessment**:
-   - **Consistent Pattern**: "Investments stable at ₹X/month - excellent discipline"
-   - **Increasing Trend**: "Investments growing from ₹X to ₹Y over ${analysisMonths} months - positive momentum"
-   - **Decreasing Trend**: "Investments declining from ₹X to ₹Y - needs immediate attention"
-   - **Irregular Pattern**: "Investments vary ₹X to ₹Y - indicates inconsistent saving habits"
-
-3. **Health Diagnosis** (Be Specific):
-   - **Peak Performance**: "Highest investment ₹X in [month] - replicate this month's approach"
-   - **Lowest Point**: "Lowest investment ₹X in [month] - identify what caused the drop"
-   - **Volatility**: "Variation range ₹X (Y% difference) - [High/Moderate/Low] volatility indicates [assessment]"
-   - **Consistency Score**: "X out of ${analysisMonths} months show consistent investment - [Good/Needs Improvement]"
-
-4. **Root Cause Analysis**:
-   - If declining: "Decline started in [month] - check if expenses increased or income decreased"
-   - If irregular: "No consistent pattern - likely manual investments without automation"
-   - If increasing: "Positive trend suggests improving financial discipline"
-
-5. **Specific Actionable Recommendations**:
-   - Address fluctuation root cause: "Set up auto-SIP of ₹X/month to eliminate ₹Y variation"
-   - Stabilize pattern: "Your investments range ₹X-₹Y - aim for consistent ₹Z/month (mid-point)"
-   - Build on success: "You invested ₹X in [best month] - maintain this level monthly"
-   - Fix decline: "Reverse the ₹X/month decline by reducing [specific expense category] by ₹Y"
-
-FORMAT (Use exact data from fluctuations):
-• **Fluctuation Pattern**: [Increasing/Decreasing/Irregular/Stable] trend
-  → Highest: ₹${data.investments?.highestMonth ? Math.round(data.investments.highestMonth.amount).toLocaleString() : 'N/A'} in ${data.investments?.highestMonth?.month || 'N/A'}
-  → Lowest: ₹${data.investments?.lowestMonth ? Math.round(data.investments.lowestMonth.amount).toLocaleString() : 'N/A'} in ${data.investments?.lowestMonth?.month || 'N/A'}
-  → Variation: ₹${data.investments?.variation ? Math.round(data.investments.variation).toLocaleString() : 'N/A'} (${data.investments?.variationPercent !== undefined ? data.investments.variationPercent : 'N/A'}% difference)
-
-• **Month-by-Month Changes**:
-${data.investments?.fluctuations && data.investments.fluctuations.length > 0 ? data.investments.fluctuations.map(f => 
-    `  → ${f.from} → ${f.to}: ${f.change >= 0 ? '+' : ''}₹${Math.round(f.change).toLocaleString()} (${f.changePercent >= 0 ? '+' : ''}${f.changePercent}%) - ${f.trend}`
-).join('\n') : '  → No significant fluctuations (consistent pattern)'}
-
-• **Target Performance Summary**:
-  → Target: ${data.investments?.targetPercent || 20}% of income
-  → Months Met Target: ${data.investments?.targetHits || 0} out of ${data.investments?.targetComparisons?.length || 0}
-  → Months Missed Target: ${data.investments?.targetMisses || 0} out of ${data.investments?.targetComparisons?.length || 0}
-  → Severity: **${data.investments?.severity ? data.investments.severity.toUpperCase() : 'UNKNOWN'}** (${data.investments?.missRate || 0}% miss rate)
-  ${data.investments?.targetComparisons && data.investments.targetComparisons.length > 0 ? `→ Average Gap: ₹${Math.round(data.investments.targetComparisons.filter(tc => tc.missedTarget).reduce((sum, tc) => sum + tc.gapAmount, 0) / Math.max(1, data.investments.targetMisses)).toLocaleString()}/month when missed` : ''}
-
-• **Health Assessment**:
-  → [Specific diagnosis based on pattern AND target performance: e.g., "Irregular saving habits detected with ${data.investments?.missRate || 0}% target miss rate" OR "Excellent consistency but ${data.investments?.targetMisses || 0} months missed target" OR "Declining trend needs reversal - critical planning issue"]
-  → [Root cause: e.g., "Manual investments without automation" OR "Expense pressure reducing investment capacity" OR "Target miss rate of ${data.investments?.missRate || 0}% indicates systematic planning gaps"]
-  ${data.investments?.severity === 'critical' ? '  → **CRITICAL ISSUE**: More than 50% of months missed target - this is a serious planning problem requiring immediate action' : ''}
-  ${data.investments?.severity === 'serious' ? '  → **SERIOUS ISSUE**: Significant portion of months missed target - planning discipline needs improvement' : ''}
-  ${data.investments?.severity === 'moderate' ? '  → **MODERATE ISSUE**: Some months missed target - investigate specific causes for those months' : ''}
-
-• **Action Plan** (Prioritize based on severity):
-  ${data.investments?.severity === 'critical' ? '  → **URGENT**: Set up auto-SIP of ₹X/month (target amount) to ensure consistent investments\n  → **URGENT**: Review and reduce expenses by ₹Y/month to free up investment capacity\n  → **URGENT**: Create monthly investment reminder/automation to prevent misses' : ''}
-  ${data.investments?.severity === 'serious' ? '  → Set up auto-SIP of ₹X/month to improve consistency\n  → Review months that missed target and identify common causes\n  → Adjust budget to prioritize investments' : ''}
-  ${data.investments?.severity === 'moderate' ? (() => {
-    const missedMonths = data.investments?.targetComparisons?.filter(tc => tc.missedTarget).map(tc => tc.month).join(', ') || 'N/A';
-    return `  → Investigate specific months that missed target (${missedMonths})\n  → Set up reminders for investment deadlines\n  → Consider auto-SIP to prevent future misses`;
-  })() : ''}
-  → [Specific action 1 with exact amount: e.g., "Set up ₹X/month auto-SIP to stabilize pattern"]
-  → [Specific action 2: e.g., "Maintain ₹Y/month (your highest month) consistently"]
-  → [Specific action 3: e.g., "Reduce variation from ₹X-₹Y to consistent ₹Z/month"]
-  ${data.investments?.targetComparisons && data.investments.targetComparisons.filter(tc => tc.missedTarget).length > 0 ? `→ **Address Target Gaps**: Total gap of ₹${Math.round(data.investments.targetComparisons.filter(tc => tc.missedTarget).reduce((sum, tc) => sum + tc.gapAmount, 0)).toLocaleString()} across missed months - prioritize closing this gap` : ''}
-
-**✅ PRIORITY ACTIONS FOR ${monthName.toUpperCase()}**
-List 5 specific actions in order of priority:
-1. **[Action]**: Save/Invest ₹X by [specific method]
-2. **[Action]**: Save/Invest ₹X by [specific method]
-3. **[Action]**: Save/Invest ₹X by [specific method]
-4. **[Action]**: Save/Invest ₹X by [specific method]
-5. **[Action]**: Save/Invest ₹X by [specific method]
-
-**Total Monthly Impact: ₹X potential savings/additional investment**
+        return `You are a personal finance advisor analyzing data for **${monthName}** (the upcoming/target month). Provide insights grounded in the EXACT data below. Do not invent numbers.
 
 ═══════════════════════════════════════════════════════════════
-**CRITICAL RULES**:
-• Focus on **discretionary spending** user controls (delivery, shopping, subscriptions, entertainment)
-• **NEVER** suggest reducing: rent, insurance, utilities, health, education, basic groceries, loans
-• Only mention **problems** - skip healthy categories
-• Use **exact expense names** from data (e.g., "Swiggy: ₹5K" not "reduce food")
-• Loans: Flag only if interest >12% (personal), >9% (home), or ≤3 months left
-• Aim for **400-600 words** - be comprehensive yet concise, specific with amounts and actions`;
+## SECTION A: HISTORICAL CONTEXT (last ${analysisMonths} months)
+
+**Avg Monthly Income**: ₹${Math.round(data.insights.avgMonthlyIncome || 0).toLocaleString()}
+**Budget Rule**: ${data.budgetAnalysis?.targetRule?.needs || 50}% Needs / ${data.budgetAnalysis?.targetRule?.wants || 30}% Wants / ${data.budgetAnalysis?.targetRule?.invest || 20}% Invest
+
+**Spending Trend (last 3 months)**:
+${data.historicalExpenses.slice(-3).map(h => `  ${h.label}: ₹${Math.round(h.amount).toLocaleString()}`).join('\n')}
+  ${analysisMonths}-month avg: ₹${Math.round(data.projectedAverage).toLocaleString()}/month
+
+**Budget Health (${analysisMonths}-month average)**:
+${budgetText || 'Within targets'}
+
+**Top Spending Categories**:
+${topAreasText || '(none)'}
+
+**Top Individual Recurring Items**:
+${topItemsText || '(none)'}
+
+═══════════════════════════════════════════════════════════════
+## SECTION B: ${monthName.toUpperCase()} FORECAST (forward-looking)
+
+**Expected Income**: ₹${Math.round(fc.expectedIncome || 0).toLocaleString()}
+
+**Already-Committed Outflows**:
+  • Recurring payments scheduled: ₹${Math.round(fc.recurring?.total || 0).toLocaleString()} (${fc.recurring?.items?.length || 0} items)
+${(fc.recurring?.items || []).slice(0, 5).map(r => `      - ${r.name}: ₹${Math.round(r.amount).toLocaleString()}`).join('\n')}
+  • Loan/Card EMIs scheduled: ₹${Math.round(fc.emis?.total || 0).toLocaleString()} (${fc.emis?.items?.length || 0} items)
+${(fc.emis?.items || []).slice(0, 5).map(e => `      - ${e.name}: ₹${Math.round(e.amount).toLocaleString()}`).join('\n')}
+  • Fixed total: ₹${Math.round(fc.fixedObligations || 0).toLocaleString()}
+
+**Planned Items Due By ${monthShort}**: ${fc.targetPlans?.length > 0 ? `₹${Math.round(fc.targetPlansTotal || 0).toLocaleString()}` : 'None'}
+${(fc.targetPlans || []).map(p => `  • ${p.name}: ₹${Math.round(p.amount).toLocaleString()} (by ${p.planByDate})`).join('\n')}
+
+**Projected Variable Spend**: ₹${Math.round(fc.projectedVariable || 0).toLocaleString()} (based on ${analysisMonths}-month avg)
+**Investment Target (${data.budgetAnalysis?.targetRule?.invest || 20}%)**: ₹${Math.round(fc.investmentTarget || 0).toLocaleString()}
+
+**📊 Cash-Flow Summary for ${monthShort}**:
+  Income (₹${Math.round(fc.expectedIncome || 0).toLocaleString()})
+  − Fixed (₹${Math.round(fc.fixedObligations || 0).toLocaleString()})
+  − Variable est. (₹${Math.round(fc.projectedVariable || 0).toLocaleString()})
+  − Plans due (₹${Math.round(fc.targetPlansTotal || 0).toLocaleString()})
+  − Investment target (₹${Math.round(fc.investmentTarget || 0).toLocaleString()})
+  = **${fc.projectedSurplus >= 0 ? 'Surplus' : 'SHORTFALL'}: ₹${Math.round(Math.abs(fc.projectedSurplus || 0)).toLocaleString()}**${fc.isCashTight ? '  ⚠️ CASH TIGHT' : ''}
+
+═══════════════════════════════════════════════════════════════
+## SECTION C: INVESTMENT HEALTH
+
+  • Target: ${inv.targetPercent || 20}% of income (₹${Math.round(fc.investmentTarget || 0).toLocaleString()}/month)
+  • ${analysisMonths}-month avg invested: ₹${Math.round(inv.monthlyAvg || 0).toLocaleString()}/month
+  • Months hit target: ${inv.targetHits || 0} / ${inv.targetComparisons?.length || 0}
+  • Miss rate: ${inv.missRate || 0}% — Severity: **${(inv.severity || 'unknown').toUpperCase()}**
+  • Range: ₹${Math.round(inv.lowestMonth?.amount || 0).toLocaleString()} (${inv.lowestMonth?.month || '-'}) → ₹${Math.round(inv.highestMonth?.amount || 0).toLocaleString()} (${inv.highestMonth?.month || '-'})
+  • Month-by-month: ${invTrendText}
+
+═══════════════════════════════════════════════════════════════
+## SECTION D: LOANS & EMIs
+
+${data.loans.length > 0 ? `Active loans (${data.loans.length}, EMI ₹${Math.round(data.insights.totalLoans).toLocaleString()}/mo):\n${loansText}` : 'No active loans ✓'}
+
+${data.emis.length > 0 ? `\nCard EMIs (${data.emis.length}, ₹${Math.round(data.insights.totalEmis).toLocaleString()}/mo):\n${emisText}` : ''}
+
+═══════════════════════════════════════════════════════════════
+## SECTION E: HISTORICAL PATTERNS FOR ${monthShort.toUpperCase()}
+
+${data.annualPatterns?.hasPatterns ? `**Recurring annual patterns**:\n${patternsText}` : 'No recurring annual patterns detected.'}
+
+${data.yearOverYear?.hasData ? `\n**Last year same month**:\n${yoyText.split('\n').slice(0, 3).join('\n')}` : ''}
+
+═══════════════════════════════════════════════════════════════
+## YOUR RESPONSE — exact format
+
+Aim for **350-500 words**. Use the EXACT numbers from above. Bullet points only — no tables.
+
+**📊 ${monthShort.toUpperCase()} HEALTH CHECK**
+One line on cash-flow status (use Section B's surplus/shortfall number).
+${fc.isCashTight ? 'CRITICAL: Cash shortfall projected — explain by how much and which obligations exceed income.' : ''}
+${budgetText.includes('OVER') || budgetText.includes('UNDER') ? 'One line on budget rule deviation (use Section A averages).' : ''}
+${(inv.severity === 'critical' || inv.severity === 'serious') ? `One line on investment miss rate (${inv.missRate}%) — what changed in declining months.` : ''}
+
+**🔮 ${monthShort.toUpperCase()} FORECAST**
+3-4 bullets covering:
+• Total committed (fixed + scheduled plans) and what % of income it consumes
+• Variable spending headroom remaining: ₹${Math.round((fc.expectedIncome || 0) - (fc.fixedObligations || 0) - (fc.targetPlansTotal || 0) - (fc.investmentTarget || 0)).toLocaleString()}
+• Whether ${monthShort} can absorb known annual patterns from Section E (cite specific year+amount)
+• Specific dates/obligations to watch (use exact item names from Section B)
+
+**🎯 TOP 3 ACTIONS** (highest impact first; use real category/item names from Sections A & B; only suggest cuts on discretionary items)
+
+1. **[Exact item name from data]** — current ₹X/mo → target ₹Y/mo (saves ₹Z)
+   → How: [one specific behavior change]
+   → Why: [tie to ${monthShort} forecast or budget gap]
+
+2. **[Exact item name from data]** — current ₹X/mo → target ₹Y/mo (saves ₹Z)
+   → How: [...]
+   → Why: [...]
+
+3. **[Investment / loan / debt action]** — exact ₹ amount
+   → How: [auto-SIP, prepayment, etc. — be specific]
+   → Why: [tie to Section C miss rate or Section D loan health]
+
+**Total potential improvement: ₹X/month**
+
+${(data.annualPatterns?.hasPatterns || data.yearOverYear?.hasData) ? `**🎂 ${monthShort.toUpperCase()} ANNUAL PREP**\n2-3 bullets on what to budget for in ${monthShort} based on Section E. Cite the specific year and amount as evidence.` : ''}
+
+${(problemLoans.length > 0 || endingSoonLoans.length > 0) ? `**🏦 LOAN ALERTS**\n${problemLoans.map(l => `⚠️ ${l.name} @ ${l.interestRate}% — ₹${Math.round(l.remainingAmount/1000)}K balance, consider prepayment`).join('\n')}${endingSoonLoans.map(l => `\n🎉 ${l.name} — only ${l.remainingMonths} EMI(s) left; redirect ₹${Math.round(l.emiAmount).toLocaleString()}/mo to investments after`).join('')}` : ''}
+
+═══════════════════════════════════════════════════════════════
+## CRITICAL RULES
+
+• **Use ONLY numbers/names that appear in Sections A-E above**. No estimates, no inventions.
+• **NEVER suggest reducing**: rent, mortgage, utilities, health insurance, education, basic groceries, mandatory loan EMIs.
+• **DO suggest reducing**: food delivery, online shopping, subscriptions, entertainment, dining out, lifestyle upgrades.
+• **Skip healthy areas** — if budget rule, investments, or loans are on track, omit the section entirely.
+• **Loan flagging threshold**: personal loan >12%, home loan >9%, or ≤3 months remaining.
+• **Be quantitative**: every recommendation must include a ₹ amount AND tie back to a Section A-E data point.
+• **Forward-looking**: prioritize ${monthShort} forecast (Section B) and Section E annual patterns over generic advice.`;
     },
     
     /**
@@ -6034,7 +6087,7 @@ List 5 specific actions in order of priority:
     getMonthInvestments(monthValue) {
         const [year, month] = monthValue.split('-').map(Number);
         const monthlyInvestments = window.DB.monthlyInvestments || [];
-        const goldRate = window.DB.goldRatePerGram || 7000;
+        const goldRate = (window.Investments && window.Investments.getGoldRate) ? window.Investments.getGoldRate() : (typeof window.DB.goldRatePerGram === 'number' ? window.DB.goldRatePerGram : (window.DB.goldRatePerGram?.rate || 10000));
         
         return monthlyInvestments
             .filter(inv => {
@@ -6048,7 +6101,7 @@ List 5 specific actions in order of priority:
             })
             .reduce((sum, inv) => {
                 if (inv.type === 'SHARES') {
-                    const exchangeRate = typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : 83;
+                    const exchangeRate = (window.Investments && window.Investments.getExchangeRate) ? window.Investments.getExchangeRate() : (typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : (window.DB.exchangeRate?.rate || 89));
                     return sum + (inv.price * inv.quantity * (inv.currency === 'USD' ? exchangeRate : 1));
                 } else if (inv.type === 'GOLD') {
                     return sum + (inv.price * inv.quantity);
@@ -6066,7 +6119,7 @@ List 5 specific actions in order of priority:
     getMonthInvestmentItems(monthValue) {
         const [year, month] = monthValue.split('-').map(Number);
         const monthlyInvestments = window.DB.monthlyInvestments || [];
-        const exchangeRate = typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : 83;
+        const exchangeRate = (window.Investments && window.Investments.getExchangeRate) ? window.Investments.getExchangeRate() : (typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : (window.DB.exchangeRate?.rate || 89));
         
         return monthlyInvestments
             .filter(inv => {

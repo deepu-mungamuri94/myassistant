@@ -190,18 +190,63 @@ const Cards = {
     /**
      * Fetch card benefits from AI and store in database
      */
+    // Tracks in-flight benefit fetches per card to prevent duplicate concurrent calls
+    _benefitsFetchesInFlight: new Set(),
+
+    // When true, per-card success/error toasts are suppressed so the bulk runner
+    // can show one consolidated summary at the end of the batch.
+    _suppressBenefitToasts: false,
+
+    // Benefits older than this are considered stale — banks revise reward terms
+    // a few times per year, so 180 days is a reasonable refresh cadence.
+    BENEFITS_STALE_DAYS: 180,
+
+    /**
+     * Check how stale a card's benefits are.
+     * Returns { hasBenefits, ageDays, isStale, label } where:
+     *  - hasBenefits: false → no benefits fetched yet
+     *  - ageDays: integer days since last fetch (0 if never)
+     *  - isStale: true when ageDays exceeds BENEFITS_STALE_DAYS
+     *  - label: short human-readable freshness label ("Fresh", "5 mo old", etc.)
+     */
+    getBenefitsFreshness(card) {
+        if (!card || !card.benefits || !card.benefitsFetchedAt) {
+            return { hasBenefits: false, ageDays: 0, isStale: false, label: 'Not fetched' };
+        }
+        const ageMs = Date.now() - new Date(card.benefitsFetchedAt).getTime();
+        const ageDays = Math.max(0, Math.floor(ageMs / (1000 * 60 * 60 * 24)));
+        const isStale = ageDays > this.BENEFITS_STALE_DAYS;
+        let label;
+        if (ageDays < 30) label = `${ageDays}d old`;
+        else if (ageDays < 365) label = `${Math.floor(ageDays / 30)} mo old`;
+        else label = `${Math.floor(ageDays / 365)}y+ old`;
+        return { hasBenefits: true, ageDays, isStale, label };
+    },
+
     async fetchAndStoreBenefits(cardId, cardName, showLoading = true) {
+        const cardKey = String(cardId);
+
+        // Concurrency guard: ignore duplicate clicks while a fetch is already running for this card
+        if (this._benefitsFetchesInFlight.has(cardKey)) {
+            console.warn(`Benefits fetch already in progress for card ${cardKey}; ignoring duplicate request.`);
+            if (showLoading && window.Utils) {
+                window.Utils.showInfo('⏳ Update already in progress for this card');
+            }
+            return;
+        }
+        this._benefitsFetchesInFlight.add(cardKey);
+
         // Suppress AIProvider info messages if using progress modal
         if (showLoading && window.AIProvider) {
             window.AIProvider.suppressInfoMessages = true;
         }
-        
+
         try {
             // Show progress modal
             if (showLoading) {
                 Utils.showProgressModal(`💳 Fetching benefits for ${cardName}...<br><span class="text-sm text-gray-600">Searching official bank website</span>`, true);
             }
-            
+
             // Check if AI is configured
             if (!window.AIProvider || !window.AIProvider.isConfigured()) {
                 console.warn('AI not configured, skipping benefits fetch');
@@ -343,7 +388,21 @@ const Cards = {
 7. SOURCE VERIFICATION:
 - Use ONLY official bank sources as the source of truth
 - If specific benefit not found on official site, don't make it up
-- But be thorough - check rewards page, terms & conditions, feature highlights`;
+- But be thorough - check rewards page, terms & conditions, feature highlights
+
+8. SOURCES SECTION (MANDATORY):
+- End the response with a "### Sources" section listing the official bank URL(s) you used
+- Format each source as: "- [Page name](https://...)" (use plain markdown links)
+- This lets the user verify the data and re-check whenever the bank updates terms
+- If no usable official source was found, say so explicitly: "Could not locate official source for ${cardName}"
+
+9. CARD NOT FOUND HANDLING:
+- If the card "${cardName}" cannot be found on any official bank website (possibly discontinued
+  or renamed), respond with EXACTLY this short message and nothing else:
+  "### Card Not Found\\n\\nCould not locate \\"${cardName}\\" on any official bank website. It may
+  have been discontinued or renamed. Please check the card name and try again, or update it
+  manually using the Notes field."
+- Do NOT invent or substitute benefits from a similar-sounding card.`;
             
             const userQuery = `Search the official "${cardName}" bank website and fetch COMPLETE, COMPREHENSIVE reward rules for ALL spending categories:
 
@@ -365,34 +424,59 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
 
             // Use callWithWebSearch to ensure we use Gemini/Perplexity (providers with web search)
             const benefits = await window.AIProvider.callWithWebSearch(userQuery, { system_instruction: systemPrompt });
-            
+
             // Update card with fetched benefits
             const card = this.getById(cardId);
             if (card) {
-                card.benefits = benefits;
+                // Sanity check: a real benefits payload covers many categories and
+                // is typically several thousand chars. If the response is suspiciously
+                // short (web search miss, provider hiccup), refuse to overwrite a
+                // previously good version — this prevents losing accurate data to a
+                // transient failure.
+                const MIN_BENEFITS_LENGTH = 200;
+                const benefitsTrim = (benefits || '').trim();
+                const tooShort = benefitsTrim.length < MIN_BENEFITS_LENGTH;
+                const hadGoodVersion = card.benefits && card.benefits.length >= MIN_BENEFITS_LENGTH;
+
+                if (tooShort && hadGoodVersion) {
+                    console.warn(`Discarding short benefits response (${benefitsTrim.length} chars) for ${cardName} — keeping previous version.`);
+                    if (showLoading) {
+                        Utils.showProgressError(`⚠️ Update incomplete<br><span class="text-sm text-gray-300">Web search returned too little data; keeping your previous benefits. Try again in a moment.</span>`);
+                    } else if (window.Utils && !this._suppressBenefitToasts) {
+                        Utils.showError(`Update incomplete for ${cardName} — kept previous version`);
+                    }
+                    return;
+                }
+
+                if (tooShort && !hadGoodVersion) {
+                    // No previous version to fall back on — store but warn the user
+                    console.warn(`Storing minimal benefits (${benefitsTrim.length} chars) for ${cardName} as initial version.`);
+                }
+
+                card.benefits = benefitsTrim;
                 card.benefitsFetchedAt = Utils.getCurrentTimestamp();
                 window.Storage.save();
-                
+
                 // Refresh UI if on cards view
-                if (document.getElementById('cards-view') && 
+                if (document.getElementById('cards-view') &&
                     !document.getElementById('cards-view').classList.contains('hidden')) {
                     this.render();
                 }
-                
-                console.log(`✅ Benefits fetched for ${cardName}`);
+
+                console.log(`✅ Benefits fetched for ${cardName} (${benefitsTrim.length} chars)`);
                 if (showLoading) {
                     Utils.showProgressSuccess(`✅ Benefits loaded!<br><span class="text-sm text-gray-600">${cardName} benefits updated</span>`, true);
-                } else if (window.Utils) {
+                } else if (window.Utils && !this._suppressBenefitToasts) {
                     Utils.showSuccess(`Card benefits loaded for ${cardName}`);
                 }
             }
         } catch (error) {
             console.error(`Failed to fetch benefits for ${cardName}:`, error);
-            
+
             // Show error in progress modal or regular error
             if (showLoading) {
                 Utils.showProgressError(`❌ Failed to fetch benefits<br><span class="text-sm text-gray-300">${error.message}</span>`);
-            } else if (window.Utils) {
+            } else if (window.Utils && !this._suppressBenefitToasts) {
                 Utils.showError(`Failed to fetch benefits for ${cardName}`);
             }
         } finally {
@@ -400,6 +484,8 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             if (showLoading && window.AIProvider) {
                 window.AIProvider.suppressInfoMessages = false;
             }
+            // Release the concurrency lock for this card
+            this._benefitsFetchesInFlight.delete(cardKey);
         }
     },
 
@@ -424,7 +510,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         try {
             // Use progress modal for status updates
             await this.fetchAndStoreBenefits(cardId, card.name, true);
-            
+
             // Re-render to show View button now enabled
             this.render();
         } finally {
@@ -432,7 +518,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             if (btn && btnText) {
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-wait');
-                btnText.textContent = 'Update Rules';
+                btnText.textContent = 'Update';
             }
         }
     },
@@ -488,9 +574,11 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
         // Save to storage
         window.Storage.save();
         
-        // Only re-fetch benefits if card name changed AND it's a credit card
+        // Only re-fetch benefits if card name changed AND it's a credit card.
+        // showLoading=true gives the user a visible progress modal so they
+        // know the rules are being re-fetched (and don't think the edit failed).
         if (nameChanged && card.cardType === 'credit') {
-            this.fetchAndStoreBenefits(card.id, name).catch(err => {
+            this.fetchAndStoreBenefits(card.id, name, true).catch(err => {
                 console.error('Failed to fetch benefits for updated card:', err);
             });
         }
@@ -1397,8 +1485,17 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 })()}
                 
                 <!-- EMI & Benefits Actions - inline with card -->
-                ${isCredit && !isPlaceholder ? `
+                ${isCredit && !isPlaceholder ? (() => {
+                    const freshness = this.getBenefitsFreshness(card);
+                    const stalePill = freshness.isStale
+                        ? `<div class="mb-2 flex items-center gap-1.5 text-[10px] font-semibold text-amber-700 bg-amber-100 border border-amber-300 px-2 py-1 rounded-md" title="Benefits last fetched ${freshness.label}. Bank reward terms change — tap Update to refresh.">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                Benefits stale (${freshness.label}) — tap Update
+                           </div>`
+                        : '';
+                    return `
                 <div class="pt-3 mt-2 border-t border-slate-300 border-opacity-50">
+                    ${stalePill}
                     <div class="flex gap-2">
                         <button onclick="Cards.openEMIModal('${cardIdStr}')" class="flex-1 text-xs bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-3 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 shadow-md">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1420,15 +1517,16 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                         <button onclick="Cards.refreshBenefits('${cardIdStr}')"
                                 id="refresh-btn-${cardIdStr}"
                                 class="flex-1 text-xs bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-3 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 shadow-md"
-                                title="Update terms">
+                                title="Re-fetch latest reward rules from the bank">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                             </svg>
-                            <span id="refresh-text-${cardIdStr}">Terms</span>
+                            <span id="refresh-text-${cardIdStr}">Update</span>
                         </button>
                     </div>
                 </div>
-                ` : ''}
+                `;
+                })() : ''}
             </div>
         `;
     },
@@ -1438,13 +1536,23 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
      */
     renderSummaryCard() {
         const summary = window.SmsBills ? window.SmsBills.getSummary() : { totalCreditLimit: 0, totalOutstanding: 0, totalBillsDue: 0, unpaidBillsCount: 0, totalEmis: 0, activeEmiCount: 0 };
-        
+
         // Calculate from cards if SmsBills not loaded
         if (!window.SmsBills) {
-            const creditCards = window.DB.cards.filter(c => c.cardType === 'credit' && !c.isPlaceholder);
-            summary.totalCreditLimit = creditCards.reduce((sum, c) => sum + (parseFloat(c.creditLimit) || 0), 0);
-            summary.totalOutstanding = creditCards.reduce((sum, c) => sum + (parseFloat(c.outstanding) || 0), 0);
+            const creditCardsForSummary = window.DB.cards.filter(c => c.cardType === 'credit' && !c.isPlaceholder);
+            summary.totalCreditLimit = creditCardsForSummary.reduce((sum, c) => sum + (parseFloat(c.creditLimit) || 0), 0);
+            summary.totalOutstanding = creditCardsForSummary.reduce((sum, c) => sum + (parseFloat(c.outstanding) || 0), 0);
         }
+
+        // Count credit cards whose benefits are stale (or never fetched) so we can
+        // surface a single "Update all" CTA instead of asking the user to refresh
+        // each card individually.
+        const allCreditCards = window.DB.cards.filter(c => c.cardType === 'credit' && !c.isPlaceholder);
+        const staleCards = allCreditCards.filter(c => {
+            const f = this.getBenefitsFreshness(c);
+            return !f.hasBenefits || f.isStale;
+        });
+        const staleCount = staleCards.length;
         
         // Calculate current month EMI amount (only credit card EMIs, not loans)
         let currentMonthEMIAmount = 0;
@@ -1531,8 +1639,103 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 </div>
             </div>
             ` : ''}
+
+            ${staleCount > 0 ? `
+            <!-- Stale benefits CTA: refresh terms on all stale cards in one tap -->
+            <div class="border-t border-white border-opacity-20 pt-3 mt-3">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="text-xs opacity-90 flex-1 min-w-0">
+                        <strong>${staleCount}</strong> card${staleCount > 1 ? 's have' : ' has'} stale or missing benefit data
+                    </div>
+                    <button onclick="Cards.refreshAllStaleBenefits()"
+                            id="refresh-all-btn"
+                            class="text-xs bg-white text-purple-700 hover:bg-purple-50 font-bold px-3 py-1.5 rounded-lg transition-all whitespace-nowrap shadow-md">
+                        🔄 Update All
+                    </button>
+                </div>
+            </div>
+            ` : ''}
         </div>
         `;
+    },
+
+    /**
+     * Refresh benefits sequentially for every credit card whose benefits are stale
+     * or missing. Sequential (not parallel) to avoid hitting AI provider rate limits
+     * and to keep the progress UI legible. Skips cards already in flight.
+     */
+    async refreshAllStaleBenefits() {
+        const candidates = window.DB.cards.filter(c => {
+            if (c.cardType !== 'credit' || c.isPlaceholder) return false;
+            const f = this.getBenefitsFreshness(c);
+            return !f.hasBenefits || f.isStale;
+        });
+
+        if (candidates.length === 0) {
+            window.Utils.showInfo('All card benefits are up to date ✓');
+            return;
+        }
+
+        if (!window.AIProvider || !window.AIProvider.isConfigured()) {
+            window.Utils.showError('Please configure an AI provider in settings first.');
+            return;
+        }
+
+        // Disable the bulk button to prevent re-entry while batch is running
+        const btn = document.getElementById('refresh-all-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-wait');
+            btn.textContent = 'Updating...';
+        }
+
+        let succeeded = 0;
+        let failed = 0;
+        // Suppress AI provider info messages for the whole batch and per-card
+        // success/error toasts so only the batch summary is shown.
+        const previousSuppressState = window.AIProvider.suppressInfoMessages;
+        window.AIProvider.suppressInfoMessages = true;
+        this._suppressBenefitToasts = true;
+
+        for (let i = 0; i < candidates.length; i++) {
+            const card = candidates[i];
+            // Skip if a per-card fetch is already running
+            if (this._benefitsFetchesInFlight.has(String(card.id))) continue;
+
+            // Drive a single shared progress modal across the batch so the user
+            // sees overall progress (e.g., "Updating 3/7: HDFC Regalia").
+            window.Utils.showProgressModal(
+                `🔄 Updating ${i + 1}/${candidates.length}<br><span class="text-sm text-gray-600">${Utils.escapeHtml(card.name)}</span>`,
+                true
+            );
+            try {
+                // showLoading=false → per-card flow won't open/close its own modal;
+                // we keep the batch modal in place for the user.
+                await this.fetchAndStoreBenefits(card.id, card.name, false);
+                succeeded++;
+            } catch (e) {
+                console.error(`Bulk refresh failed for ${card.name}:`, e);
+                failed++;
+            }
+        }
+
+        window.AIProvider.suppressInfoMessages = previousSuppressState;
+        this._suppressBenefitToasts = false;
+
+        // Final summary modal
+        if (failed === 0) {
+            window.Utils.showProgressSuccess(`✅ Updated ${succeeded} card${succeeded !== 1 ? 's' : ''}`, true);
+        } else {
+            window.Utils.showProgressError(`Updated ${succeeded}, failed ${failed}. Try again for failed ones.`);
+        }
+
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-wait');
+            btn.textContent = '🔄 Update All';
+        }
+
+        this.render();
     },
     
     /**
@@ -2740,6 +2943,22 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     </button>
                 </div>
                 <div class="p-4 overflow-y-auto flex-1">
+                    ${(() => {
+                        const f = this.getBenefitsFreshness(card);
+                        return f.isStale ? `
+                            <div class="mb-3 p-3 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start gap-2">
+                                <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                <span><strong>Stale benefits:</strong> these were fetched ${f.label}. Bank reward terms can change — tap <strong>Refresh</strong> below to fetch the latest from the official site.</span>
+                            </div>
+                        ` : '';
+                    })()}
+                    ${(card.additionalData && card.additionalData.trim()) ? `
+                        <div class="mb-3 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-xs">
+                            <p class="font-bold mb-1">📝 Your Notes</p>
+                            <p class="whitespace-pre-wrap">${Utils.escapeHtml(card.additionalData)}</p>
+                            <p class="text-[10px] text-blue-700 mt-2 italic">AI Advisor treats these as authoritative.</p>
+                        </div>
+                    ` : ''}
                     ${formattedBenefits}
                     ${card.benefitsFetchedAt ? `
                         <div class="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-200">

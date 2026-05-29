@@ -17,21 +17,50 @@ const Investments = {
     editingInvestment: null, // Store the investment being edited
     pendingInvestmentData: null, // Store pending investment data for override/add operations
 
+    // Days after which a manually-set rate is considered stale
+    RATE_STALE_DAYS: 7,
+
+    // Tracks in-flight share price reloads (per share name) so duplicate clicks
+    // don't spawn parallel Yahoo Finance calls for the same ticker.
+    _sharePriceReloadsInFlight: new Set(),
+
     /**
      * Initialize the module
      */
     init() {
-        // Initialize default rates if not set, handle old object format
-        if (!window.DB.exchangeRate) {
-            window.DB.exchangeRate = 83;
-        } else if (typeof window.DB.exchangeRate === 'object' && window.DB.exchangeRate !== null) {
-            // Convert old object format to number
-            window.DB.exchangeRate = window.DB.exchangeRate.rate || 83;
+        // -------- Exchange rate (USD → INR) --------
+        // Stored as { rate, updatedAt } so we can show staleness. Migrate from
+        // legacy plain-number form on first load. Default is a realistic 2026
+        // value (89) — user can correct via the Refresh / manual entry flow.
+        const xr = window.DB.exchangeRate;
+        if (xr === undefined || xr === null) {
+            window.DB.exchangeRate = { rate: 89, updatedAt: null };
+        } else if (typeof xr === 'number') {
+            window.DB.exchangeRate = { rate: xr, updatedAt: null };
+        } else if (typeof xr === 'object') {
+            // Already object form — fill missing fields
+            if (typeof xr.rate !== 'number' || xr.rate <= 0) xr.rate = 89;
+            if (xr.updatedAt === undefined) xr.updatedAt = null;
         }
-        
-        if (!window.DB.goldRatePerGram) {
-            window.DB.goldRatePerGram = 7000;
+
+        // -------- Gold rate (₹/gram) --------
+        // Stored as { rate, updatedAt, purity } where purity is '22K' or '24K'.
+        // Indian personal finance default is 22K (jewellery / coins from local
+        // jewellers); 24K is for bullion / ETF holders. Defaulting first-run
+        // users to 22K matches typical consumer gold ownership in India.
+        // Default rate ~9000 reflects realistic 2026 22K street price.
+        const gr = window.DB.goldRatePerGram;
+        if (gr === undefined || gr === null) {
+            window.DB.goldRatePerGram = { rate: 9000, updatedAt: null, purity: '22K' };
+        } else if (typeof gr === 'number') {
+            // Legacy primitive form had no purity; assume 22K (common case)
+            window.DB.goldRatePerGram = { rate: gr, updatedAt: null, purity: '22K' };
+        } else if (typeof gr === 'object') {
+            if (typeof gr.rate !== 'number' || gr.rate <= 0) gr.rate = 9000;
+            if (gr.updatedAt === undefined) gr.updatedAt = null;
+            if (!gr.purity) gr.purity = '22K';
         }
+
         if (!window.DB.portfolioInvestments) {
             window.DB.portfolioInvestments = [];
         }
@@ -67,14 +96,82 @@ const Investments = {
     },
 
     /**
-     * Get exchange rate as a number (handles old object format)
+     * Get exchange rate as a plain number. Handles legacy plain-number form
+     * AND the new {rate, updatedAt} form so older callers keep working.
      */
     getExchangeRate() {
-        let rate = window.DB.exchangeRate;
-        if (typeof rate === 'object' && rate !== null) {
-            return rate.rate || 83;
+        const xr = window.DB.exchangeRate;
+        if (xr && typeof xr === 'object') return parseFloat(xr.rate) || 89;
+        return typeof xr === 'number' ? xr : 89;
+    },
+
+    /**
+     * Get gold rate as a plain number. Handles legacy plain-number form
+     * AND the new {rate, updatedAt, purity} form.
+     */
+    getGoldRate() {
+        const gr = window.DB.goldRatePerGram;
+        if (gr && typeof gr === 'object') return parseFloat(gr.rate) || 9000;
+        return typeof gr === 'number' ? gr : 9000;
+    },
+
+    /**
+     * Compute freshness for any rate stored as {updatedAt: ISO string} or as a
+     * legacy primitive (in which case it's "Not fetched"). Returns the same
+     * shape used elsewhere in the app so the UI can render a consistent pill.
+     */
+    getRateFreshness(rateObj) {
+        const updatedAt = rateObj && typeof rateObj === 'object' ? rateObj.updatedAt : null;
+        if (!updatedAt) {
+            return { hasData: false, ageDays: 0, isStale: true, label: 'Never updated' };
         }
-        return typeof rate === 'number' ? rate : 83;
+        const ageMs = Date.now() - new Date(updatedAt).getTime();
+        const ageDays = Math.max(0, Math.floor(ageMs / (1000 * 60 * 60 * 24)));
+        const isStale = ageDays > this.RATE_STALE_DAYS;
+        let label;
+        if (ageDays === 0) {
+            const hours = Math.floor(ageMs / (1000 * 60 * 60));
+            label = hours < 1 ? 'Just now' : `${hours}h ago`;
+        } else if (ageDays === 1) label = 'Yesterday';
+        else if (ageDays < 30) label = `${ageDays}d ago`;
+        else if (ageDays < 365) label = `${Math.floor(ageDays / 30)} mo ago`;
+        else label = `${Math.floor(ageDays / 365)}y+ ago`;
+        return { hasData: true, ageDays, isStale, label };
+    },
+
+    /**
+     * Set the exchange rate and bump the timestamp atomically.
+     */
+    setExchangeRate(rate) {
+        const r = parseFloat(rate);
+        if (!r || r <= 0) throw new Error('Invalid exchange rate');
+        if (!window.DB.exchangeRate || typeof window.DB.exchangeRate !== 'object') {
+            window.DB.exchangeRate = { rate: r, updatedAt: new Date().toISOString() };
+        } else {
+            window.DB.exchangeRate.rate = r;
+            window.DB.exchangeRate.updatedAt = new Date().toISOString();
+        }
+        window.Storage.save();
+    },
+
+    /**
+     * Set the gold rate and bump the timestamp atomically.
+     */
+    setGoldRate(rate, purity) {
+        const r = parseFloat(rate);
+        if (!r || r <= 0) throw new Error('Invalid gold rate');
+        if (!window.DB.goldRatePerGram || typeof window.DB.goldRatePerGram !== 'object') {
+            window.DB.goldRatePerGram = {
+                rate: Math.round(r * 100) / 100,
+                updatedAt: new Date().toISOString(),
+                purity: purity || '22K'
+            };
+        } else {
+            window.DB.goldRatePerGram.rate = Math.round(r * 100) / 100;
+            window.DB.goldRatePerGram.updatedAt = new Date().toISOString();
+            if (purity) window.DB.goldRatePerGram.purity = purity;
+        }
+        window.Storage.save();
     },
     
     /**
@@ -154,7 +251,7 @@ const Investments = {
 
         const portfolioData = window.DB.portfolioInvestments || [];
         const exchangeRate = this.getExchangeRate();
-        const goldRate = window.DB.goldRatePerGram || 7000;
+        const goldRate = this.getGoldRate();
         const sharePrices = window.DB.sharePrices || [];
 
         // Calculate total value in INR
@@ -181,6 +278,23 @@ const Investments = {
         const currentGoldRate = goldRate ? `₹${Utils.formatIndianNumber(goldRate)}/gm` : 'Set Rate';
         const currentExchangeRate = exchangeRate ? `$1 = ₹${exchangeRate.toFixed(2)}` : 'Set Rate';
 
+        // Compute freshness for each rate so we can show a small dot pill on the buttons
+        const xrFreshness = this.getRateFreshness(window.DB.exchangeRate);
+        const goldFreshness = this.getRateFreshness(window.DB.goldRatePerGram);
+        // Share-price freshness = max age across active shares
+        const activeShares = (window.DB.sharePrices || []).filter(s => s.active && s.lastUpdated);
+        const oldestShareAgeDays = activeShares.length === 0
+            ? null
+            : Math.max(...activeShares.map(s => Math.floor((Date.now() - new Date(s.lastUpdated).getTime()) / (1000 * 60 * 60 * 24))));
+        const stocksStale = oldestShareAgeDays === null || oldestShareAgeDays > this.RATE_STALE_DAYS;
+
+        // Tiny absolute-positioned freshness dot — anchors to top-right of the
+        // button without consuming inline space (so the label stays on one line).
+        const dot = (stale, hasData) => {
+            const color = !hasData ? 'bg-red-400' : (stale ? 'bg-amber-400' : 'bg-green-400');
+            return `<span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${color}"></span>`;
+        };
+
         // Use persistent state for portfolio body visibility
         const isBodyVisible = this.portfolioBodyVisible;
 
@@ -198,17 +312,26 @@ const Investments = {
                         <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(totalValue))}</p>
                     </div>
                     <div class="grid grid-cols-3 gap-2">
-                        <button onclick="event.stopPropagation(); Investments.openSharePriceModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
+                        <button onclick="event.stopPropagation(); Investments.openSharePriceModal()"
+                                title="${oldestShareAgeDays === null ? 'No share prices yet' : `Oldest share price: ${oldestShareAgeDays}d ago`}"
+                                class="relative p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1 whitespace-nowrap">
+                            ${dot(stocksStale, oldestShareAgeDays !== null)}
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                             </svg>
                             Stocks
                         </button>
-                        <button onclick="event.stopPropagation(); Investments.openExchangeRateModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
+                        <button onclick="event.stopPropagation(); Investments.openExchangeRateModal()"
+                                title="${xrFreshness.hasData ? `Updated ${xrFreshness.label}${xrFreshness.isStale ? ' — stale' : ''}` : 'Never updated'}"
+                                class="relative p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1 whitespace-nowrap">
+                            ${dot(xrFreshness.isStale, xrFreshness.hasData)}
                             <span class="text-base">💲</span>
                             ${currentExchangeRate}
                         </button>
-                        <button onclick="event.stopPropagation(); Investments.openGoldRateModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1">
+                        <button onclick="event.stopPropagation(); Investments.openGoldRateModal()"
+                                title="${goldFreshness.hasData ? `Updated ${goldFreshness.label}${goldFreshness.isStale ? ' — stale' : ''}` : 'Never updated'}"
+                                class="relative p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-1 whitespace-nowrap">
+                            ${dot(goldFreshness.isStale, goldFreshness.hasData)}
                             <span class="text-base">🪙</span>
                             ${currentGoldRate}
                         </button>
@@ -374,7 +497,7 @@ const Investments = {
 
         const monthlyData = window.DB.monthlyInvestments || [];
         const exchangeRate = this.getExchangeRate();
-        const goldRate = window.DB.goldRatePerGram || 7000;
+        const goldRate = this.getGoldRate();
 
         // Apply date filter FIRST to all data
         const dateFilteredData = this.applyDateFilterToInvestments(monthlyData);
@@ -1001,7 +1124,7 @@ const Investments = {
         saveBtn.classList.add('bg-gradient-to-r', 'from-green-600', 'to-emerald-600', 'text-white', 'hover:shadow-lg', 'transform', 'hover:scale-105');
 
         const isEditing = document.getElementById('investment-editing').value === 'true';
-        const goldRate = window.DB.goldRatePerGram || 7000;
+        const goldRate = this.getGoldRate();
 
         let html = '';
 
@@ -2040,7 +2163,7 @@ const Investments = {
             if (investment.isMonthly) {
                 document.getElementById('investment-price').value = investment.price;
             } else {
-                const goldRate = window.DB.goldRatePerGram || 7000;
+                const goldRate = this.getGoldRate();
                 document.getElementById('investment-price').value = goldRate || investment.price;
             }
             this.calculateAmount();
@@ -2110,7 +2233,7 @@ const Investments = {
         
         // Get required data for calculations
         const exchangeRate = this.getExchangeRate();
-        const goldRate = window.DB.goldRatePerGram || 7000;
+        const goldRate = this.getGoldRate();
         const sharePrices = window.DB.sharePrices || [];
         
         // Build detailed info based on investment type
@@ -2424,52 +2547,55 @@ Respond ONLY with valid JSON (no markdown, no explanation):
     },
 
     /**
-     * Fetch actual stock price from Yahoo Finance API
-     * @param {string} ticker - Stock ticker (e.g., "AAPL" or "RELIANCE.NS")
+     * Internal helper: single Yahoo Finance fetch attempt for a ticker.
+     */
+    async _fetchPriceFromYahooOnce(ticker) {
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
+        let data;
+
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) {
+            const response = await window.Capacitor.Plugins.CapacitorHttp.get({
+                url,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            });
+            if (response.status !== 200) {
+                const err = new Error(`Yahoo Finance API returned ${response.status}`);
+                err.status = response.status;
+                throw err;
+            }
+            data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+        } else {
+            const response = await fetch(url);
+            if (!response.ok) {
+                const err = new Error(`Yahoo Finance API returned ${response.status}`);
+                err.status = response.status;
+                throw err;
+            }
+            data = await response.json();
+        }
+
+        const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+        if (!price) throw new Error('Price not found in response');
+        return Math.round(price * 100) / 100;
+    },
+
+    /**
+     * Fetch stock price from Yahoo Finance with one automatic retry on transient
+     * 5xx / 429 errors (2-second backoff). Other errors bubble immediately.
      */
     async fetchPriceFromYahoo(ticker) {
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
-        
         try {
-            let data;
-            
-            // Use Capacitor CapacitorHttp for native apps (bypasses CORS)
-            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) {
-                const response = await window.Capacitor.Plugins.CapacitorHttp.get({
-                    url: url,
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                    }
-                });
-                
-                if (response.status !== 200) {
-                    throw new Error(`Yahoo Finance API returned ${response.status}`);
-                }
-                
-                // CapacitorHttp returns data directly
-                data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-            } else {
-                // Fallback to fetch for web/testing (will have CORS issues on web)
-                const response = await fetch(url);
-                
-                if (!response.ok) {
-                    throw new Error(`Yahoo Finance API returned ${response.status}`);
-                }
-                
-                data = await response.json();
-            }
-            
-            // Extract price from response
-            const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-            
-            if (!price) {
-                throw new Error('Price not found in response');
-            }
-            
-            return Math.round(price * 100) / 100; // Round to 2 decimals
-            
+            return await this._fetchPriceFromYahooOnce(ticker);
         } catch (error) {
-            throw error;
+            // Retry once for transient errors only (5xx, 429 rate-limit)
+            const isTransient = error.status &&
+                (error.status === 429 || (error.status >= 500 && error.status < 600));
+            if (!isTransient) throw error;
+            console.warn(`Transient Yahoo error (${error.status}) for ${ticker}; retrying in 2s...`);
+            await new Promise(r => setTimeout(r, 2000));
+            return await this._fetchPriceFromYahooOnce(ticker);
         }
     },
 
@@ -2661,61 +2787,79 @@ Respond ONLY with valid JSON (no markdown, no explanation):
     },
 
     /**
-     * Reload single share price (LLM + Yahoo Finance)
+     * Reload single share price (LLM + Yahoo Finance).
+     *
+     * Optimization: when the ticker is already cached on the share record,
+     * we skip the LLM call entirely (saves 1 AI call per reload, which adds
+     * up fast). Tickers rarely change; users can clear them via Edit if needed.
+     *
+     * Concurrency: a per-share lock prevents duplicate parallel reloads when
+     * the user taps the reload button multiple times.
      */
     async reloadSingleSharePrice(shareName) {
         const shareDiv = document.querySelector(`[data-share="${shareName}"]`);
         if (!shareDiv) return;
-        
+
+        // Concurrency guard — second tap while a reload is running is a no-op
+        if (this._sharePriceReloadsInFlight.has(shareName)) {
+            console.warn(`Reload already in progress for ${shareName}; ignoring duplicate request.`);
+            return;
+        }
+        this._sharePriceReloadsInFlight.add(shareName);
+
         const priceSpan = shareDiv.querySelector('.share-price');
         const reloadBtn = shareDiv.querySelector('.reload-share-btn svg');
         const originalPrice = priceSpan.innerHTML;
-        
+
         // Show loading state
         priceSpan.innerHTML = '<span class="loading-dots">...</span>';
         if (reloadBtn) reloadBtn.classList.add('animate-spin');
-        
+
         // Hide any previous errors
         const errorDiv = shareDiv.querySelector('.share-error');
         if (errorDiv) {
             errorDiv.classList.add('hidden');
         }
-        
+
         // Suppress AIProvider info messages (progress modal handles feedback)
         if (window.AIProvider) {
             window.AIProvider.suppressInfoMessages = true;
         }
-        
+
         // Show progress modal
         Utils.showProgressModal(`📊 Updating ${shareName}...<br><span class="text-sm text-gray-600">Fetching latest price</span>`, true);
-        
+
         // Find share in DB
         const sharePrices = window.DB.sharePrices || [];
         const share = sharePrices.find(sp => sp.name === shareName);
-        
+
         if (!share) {
             priceSpan.innerHTML = originalPrice;
             if (reloadBtn) reloadBtn.classList.remove('animate-spin');
             Utils.closeProgressModal();
+            this._sharePriceReloadsInFlight.delete(shareName);
             return;
         }
-        
+
         try {
-            // Step 1: ALWAYS fetch ticker from LLM (ticker symbols can change over time)
-            Utils.updateProgressModal(`🔍 Fetching stock symbol...<br><span class="text-sm text-gray-600">Analyzing ${shareName}</span>`, true);
-            const tickerData = await this.fetchTickersFromLLM();
-            const tickerInfo = tickerData[shareName];
-            
-            if (tickerInfo && tickerInfo.ticker) {
-                share.ticker = tickerInfo.ticker;
-                share.exchange = tickerInfo.exchange;
-                share.currency = tickerInfo.currency;
-                window.Storage.save();
-            } else {
-                throw new Error('Could not fetch ticker from LLM');
+            // Step 1: Only call the LLM if we don't already have a ticker. Cached
+            // tickers rarely change in practice; this skips an unnecessary AI call.
+            if (!share.ticker) {
+                Utils.updateProgressModal(`🔍 Fetching stock symbol...<br><span class="text-sm text-gray-600">Analyzing ${shareName}</span>`, true);
+                const tickerData = await this.fetchTickersFromLLM();
+                const tickerInfo = tickerData[shareName];
+
+                if (tickerInfo && tickerInfo.ticker) {
+                    share.ticker = tickerInfo.ticker;
+                    share.exchange = tickerInfo.exchange;
+                    share.currency = tickerInfo.currency;
+                    window.Storage.save();
+                } else {
+                    throw new Error('Could not fetch ticker from LLM');
+                }
             }
-            
-            // Step 2: Fetch price from Yahoo Finance
+
+            // Step 2: Fetch price from Yahoo Finance (with one automatic retry on transient errors)
             Utils.updateProgressModal(`📊 Fetching price from market...<br><span class="text-sm text-gray-600">Updating ${shareName}</span>`, true);
             const newPrice = await this.fetchPriceFromYahoo(share.ticker);
             share.price = newPrice;
@@ -2757,11 +2901,14 @@ Respond ONLY with valid JSON (no markdown, no explanation):
         } finally {
             // Remove loading animation
             if (reloadBtn) reloadBtn.classList.remove('animate-spin');
-            
+
             // Re-enable AIProvider info messages
             if (window.AIProvider) {
                 window.AIProvider.suppressInfoMessages = false;
             }
+
+            // Release the per-share concurrency lock
+            this._sharePriceReloadsInFlight.delete(shareName);
         }
     },
 
@@ -2868,8 +3015,18 @@ Respond ONLY with valid JSON (no markdown, no explanation):
      */
     openExchangeRateModal() {
         const currentRate = this.getExchangeRate();
+        const freshness = this.getRateFreshness(window.DB.exchangeRate);
         document.getElementById('current-rate-display').textContent = `₹${currentRate.toFixed(2)}`;
         document.getElementById('exchange-rate-input').value = '';
+
+        const freshnessEl = document.getElementById('exchange-rate-freshness');
+        if (freshnessEl) {
+            freshnessEl.textContent = freshness.hasData
+                ? `Last updated: ${freshness.label}${freshness.isStale ? ' ⚠ stale' : ''}`
+                : 'Never updated — tap Auto-fetch or enter manually';
+            freshnessEl.className = 'text-xs ' + (freshness.isStale ? 'text-amber-700' : 'text-gray-500');
+        }
+
         document.getElementById('exchange-rate-modal').classList.remove('hidden');
     },
 
@@ -2881,70 +3038,169 @@ Respond ONLY with valid JSON (no markdown, no explanation):
     },
 
     /**
-     * Save exchange rate
+     * Save exchange rate (manual entry)
      */
     saveExchangeRate() {
         const newRate = parseFloat(document.getElementById('exchange-rate-input').value);
-        
+
         if (!newRate || newRate <= 0) {
             Utils.showError('Please enter a valid exchange rate');
             return;
         }
-        
-        window.DB.exchangeRate = newRate;
-        window.Storage.save();
-        
+
+        try {
+            this.setExchangeRate(newRate);
+        } catch (e) {
+            Utils.showError(e.message);
+            return;
+        }
+
         Utils.showSuccess('Exchange rate updated successfully! Portfolio values recalculated.');
         this.closeExchangeRateModal();
         this.render();
+    },
+
+    /**
+     * Auto-fetch USD/INR exchange rate from a free public API (frankfurter.app).
+     * Uses CapacitorHttp on native to avoid CORS, falls back to fetch on web.
+     */
+    async autoFetchExchangeRate() {
+        const btn = document.getElementById('exchange-rate-autofetch-btn');
+        const originalHTML = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<svg class="w-4 h-4 animate-spin inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Fetching...';
+        }
+        try {
+            // frankfurter.app — free, no API key needed, ECB rates
+            const url = 'https://api.frankfurter.app/latest?from=USD&to=INR';
+            let data;
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) {
+                const response = await window.Capacitor.Plugins.CapacitorHttp.get({ url });
+                if (response.status !== 200) throw new Error(`HTTP ${response.status}`);
+                data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+            } else {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                data = await response.json();
+            }
+            const rate = data?.rates?.INR;
+            if (!rate || rate <= 0) throw new Error('Rate not found in response');
+
+            const rounded = Math.round(rate * 100) / 100;
+            const input = document.getElementById('exchange-rate-input');
+            if (input) input.value = rounded;
+            Utils.showInfo(`✓ Fetched USD/INR: ₹${rounded.toFixed(2)} — review & save`);
+        } catch (e) {
+            console.error('Auto-fetch exchange rate failed:', e);
+            Utils.showError(`Auto-fetch failed: ${e.message}. Please enter manually.`);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        }
     },
     
     /**
      * Open gold rate modal
      */
     openGoldRateModal() {
-        const currentRate = window.DB.goldRatePerGram || 7000;
+        const currentRate = this.getGoldRate();
+        const purity = (window.DB.goldRatePerGram && window.DB.goldRatePerGram.purity) || '22K';
+        const freshness = this.getRateFreshness(window.DB.goldRatePerGram);
         document.getElementById('current-gold-rate-display').textContent = Utils.formatIndianNumber(currentRate);
         document.getElementById('gold-rate-input').value = '';
+
+        const purityEl = document.getElementById('gold-rate-purity');
+        if (purityEl) purityEl.value = purity;
+
+        const freshnessEl = document.getElementById('gold-rate-freshness');
+        if (freshnessEl) {
+            freshnessEl.textContent = freshness.hasData
+                ? `Last updated: ${freshness.label}${freshness.isStale ? ' ⚠ stale' : ''}`
+                : 'Never updated — tap Auto-fetch or enter manually';
+            freshnessEl.className = 'text-xs ' + (freshness.isStale ? 'text-amber-700' : 'text-gray-500');
+        }
+
         document.getElementById('gold-rate-modal').classList.remove('hidden');
     },
-            
+
     /**
      * Close gold rate modal
      */
     closeGoldRateModal() {
         document.getElementById('gold-rate-modal').classList.add('hidden');
     },
-    
+
     /**
-     * Save gold rate
+     * Save gold rate (manual entry)
      */
     saveGoldRate() {
         const newRate = parseFloat(document.getElementById('gold-rate-input').value);
-        
+        const purityEl = document.getElementById('gold-rate-purity');
+        const purity = purityEl ? purityEl.value : '24K';
+
         if (!newRate || newRate <= 0) {
             Utils.showError('Please enter a valid gold rate');
             return;
         }
-        
-        // Round to 2 decimal places
-        window.DB.goldRatePerGram = Math.round(newRate * 100) / 100;
-        
-        // Also update portfolio entries with GOLD (sync the price field)
-        this.updatePortfolioGoldPrice(window.DB.goldRatePerGram);
-        
-        window.Storage.save();
-        
+
+        try {
+            this.setGoldRate(newRate, purity);
+        } catch (e) {
+            Utils.showError(e.message);
+            return;
+        }
+
+        // Sync portfolio GOLD entries' price field with the new rate
+        this.updatePortfolioGoldPrice(this.getGoldRate());
+
         // Close modal first, then render to ensure clean UI update
         this.closeGoldRateModal();
-        
-        // Force complete re-render (portfolio + monthly sections)
         this.render();
-        
-        // Small delay to ensure DOM is updated before showing success
+
         setTimeout(() => {
             Utils.showSuccess('Gold rate updated!<br>Portfolio values recalculated');
         }, 100);
+    },
+
+    /**
+     * Auto-fetch gold rate (₹/gram) using Yahoo Finance.
+     * For 24K we use GOLDBEES.NS (Nippon India ETF Gold BeES, tracks 24K spot
+     * fairly well: ~1 unit ≈ 0.01g, so price × 100 ≈ ₹/gram). For other purities
+     * we scale the result by the standard purity factor.
+     */
+    async autoFetchGoldRate() {
+        const btn = document.getElementById('gold-rate-autofetch-btn');
+        const originalHTML = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<svg class="w-4 h-4 animate-spin inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Fetching...';
+        }
+        try {
+            // Default purity is 22K — most Indian gold investments (jewellery, coins) are 22K.
+            const purity = document.getElementById('gold-rate-purity')?.value || '22K';
+            // GOLDBEES.NS is in INR; price ≈ ₹/0.01g of 24K spot → multiply by 100 for ₹/gram (24K)
+            const etfPrice = await this.fetchPriceFromYahoo('GOLDBEES.NS');
+            const pricePerGram24K = etfPrice * 100;
+
+            // Apply purity factor (24K = 99.9% pure, 22K = 91.6% pure)
+            const purityFactor = purity === '22K' ? 0.916 : 1.0;
+            const finalRate = Math.round(pricePerGram24K * purityFactor);
+
+            const input = document.getElementById('gold-rate-input');
+            if (input) input.value = finalRate;
+            Utils.showInfo(`✓ Fetched ${purity} gold rate: ₹${Utils.formatIndianNumber(finalRate)}/g — review & save`);
+        } catch (e) {
+            console.error('Auto-fetch gold rate failed:', e);
+            Utils.showError(`Auto-fetch failed: ${e.message}. Please enter manually.`);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        }
     },
 
     /**

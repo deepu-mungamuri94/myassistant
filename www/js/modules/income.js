@@ -613,12 +613,14 @@ const Income = {
     },
     
     /**
-     * Generate monthly payslips for financial year (April to March)
+     * Generate monthly payslips ordered May → April (April lands at the bottom).
+     * The underlying calendar-month math still resolves correctly because we map
+     * the position in the array → calendar month per row inside the loop.
      */
     generateYearlyPayslips(ctc, bonusPercent, esppPercentCycle1, esppPercentCycle2, pfPercent) {
         const months = [
-            'April', 'May', 'June', 'July', 'August', 'September',
-            'October', 'November', 'December', 'January', 'February', 'March'
+            'May', 'June', 'July', 'August', 'September', 'October',
+            'November', 'December', 'January', 'February', 'March', 'April'
         ];
         
         const data = this.getData();
@@ -634,9 +636,15 @@ const Income = {
         const insuranceMonths = data.insuranceMonths || [];
         const insurancePerMonth = insuranceMonths.length > 0 ? insuranceTotal / insuranceMonths.length : 0;
         
-        const payslips = months.map((month, index) => {
-            // Calendar month mapping (1=Jan, 4=Apr, etc.)
-            const calendarMonth = index < 9 ? index + 4 : index - 8;
+        // Map month name → calendar month number (1=Jan…12=Dec) so reordering the
+        // array doesn't break per-month logic (insurance, bonus, leave encashment).
+        const monthNameToNumber = {
+            January: 1, February: 2, March: 3, April: 4, May: 5, June: 6,
+            July: 7, August: 8, September: 9, October: 10, November: 11, December: 12
+        };
+
+        const payslips = months.map((month) => {
+            const calendarMonth = monthNameToNumber[month];
             
             // Get the correct ESPP percent for this month
             const monthEsppPercent = this.getESPPPercentForMonth(month, esppPercentCycle1, esppPercentCycle2);

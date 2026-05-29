@@ -8,16 +8,96 @@ const AIProvider = {
     suppressInfoMessages: false,
     
     /**
+     * Compute the user's average monthly income from the last 6 months of
+     * salary records (plus any additional income for those months). Returns 0
+     * when there is no data — callers should treat 0 as "unknown".
+     */
+    getAvgMonthlyIncome() {
+        const salaries = (window.DB && window.DB.salaries) || [];
+        const additional = (window.DB && window.DB.additionalIncome) || [];
+        if (salaries.length === 0) return 0;
+
+        const today = new Date();
+        const cutoff = new Date(today.getFullYear(), today.getMonth() - 6, 1);
+
+        const recentSalaries = salaries.filter(s => {
+            const d = new Date(s.year, (s.month || 1) - 1, 1);
+            return d >= cutoff;
+        });
+
+        if (recentSalaries.length === 0) return 0;
+
+        const salaryTotal = recentSalaries.reduce((sum, s) => sum + (parseFloat(s.amount) || 0), 0);
+
+        // Add additional income for the same months
+        const additionalTotal = additional.reduce((sum, a) => {
+            const d = new Date(a.year, (a.month || 1) - 1, 1);
+            return d >= cutoff ? sum + (parseFloat(a.amount) || 0) : sum;
+        }, 0);
+
+        return Math.round((salaryTotal + additionalTotal) / recentSalaries.length);
+    },
+
+    /**
+     * Snapshot of cross-cutting financial context that several modes benefit
+     * from (income, active SIPs, planned future expenses). Returned object is
+     * safe to embed in any context — fields default to sensible empties when
+     * unavailable.
+     */
+    getFinancialSnapshot() {
+        const avgMonthlyIncome = this.getAvgMonthlyIncome();
+
+        const sips = ((window.DB && window.DB.sips) || []).filter(s => s.active !== false).map(s => ({
+            name: s.name,
+            amount: parseFloat(s.amount) || 0
+        }));
+        const sipsTotal = sips.reduce((sum, s) => sum + s.amount, 0);
+
+        const plans = ((window.DB && window.DB.plans) || []).filter(p => p.status === 'pending').map(p => ({
+            name: p.name,
+            amount: parseFloat(p.amount) || 0,
+            planByDate: p.planByDate || null
+        }));
+        const plansTotal = plans.reduce((sum, p) => sum + p.amount, 0);
+
+        return {
+            avgMonthlyIncome,
+            activeSips: sips,
+            sipsMonthlyTotal: sipsTotal,
+            pendingPlans: plans,
+            pendingPlansTotal: plansTotal
+        };
+    },
+
+    /**
+     * Build a "today" preamble used by every system prompt so the AI can
+     * resolve relative time phrases ("last month", "this quarter") accurately.
+     */
+    getTodayPreamble() {
+        const now = new Date();
+        const iso = now.toISOString().split('T')[0];
+        const monthName = now.toLocaleDateString('en-US', { month: 'long' });
+        const year = now.getFullYear();
+        const monthNum = now.getMonth() + 1;
+        const quarter = Math.ceil(monthNum / 3);
+        return `Today's date: ${iso} (${monthName} ${year}, Q${quarter}). Use this to interpret relative phrases like "last month", "this quarter", "next month".`;
+    },
+
+    /**
      * Get system instruction based on context mode (used by all providers)
      */
     getSystemInstruction(context) {
+        const preamble = this.getTodayPreamble();
+
         if (!context || !context.mode) {
-            return 'You are a helpful financial assistant.';
+            return `You are a helpful financial assistant focused on Indian personal finance.\n\n${preamble}\n\nUse Indian Rupee (₹) for all amounts.`;
         }
-        
+
         switch(context.mode) {
             case 'credit_cards':
                 return `You are a credit card advisor. Use ONLY the stored benefit information provided. DO NOT search online.
+
+${preamble}
 
 CRITICAL INSTRUCTIONS FOR RESPONSES:
 1. **Compare ALL cards** provided in the context
@@ -25,13 +105,24 @@ CRITICAL INSTRUCTIONS FOR RESPONSES:
 3. **Present ONLY these top 3 cards** with detailed benefits comparison
 4. **Provide a final recommendation** at the end with ONE best card and clear reasoning
 
+If the user mentions a transaction (e.g., "₹5000 on groceries"):
+- Calculate **expected reward value in ₹** for each top-3 card (use the rate from benefits text)
+- Mention any **monthly/quarterly caps** on rewards if visible in the benefits
+- Mention **milestone proximity** if benefits text describes spend-based milestones
+- If a card's benefits are not yet fetched, say so explicitly and skip — do not guess
+
+If a card has "USER NOTES" attached, treat those as authoritative corrections/additions
+that **override** the fetched benefits text on conflicts (the user knows their card better).
+Cite user notes briefly when they affect the recommendation (e.g., "Per your note: 5% on Amazon").
+
 RESPONSE FORMAT:
 - Start with: "📊 **TOP 3 CARDS COMPARISON**"
 - For each of the top 3 cards:
   - Card name
   - Key benefits relevant to the query
   - Reward rate/cashback for the specific category
-  - Any special offers or milestone benefits
+  - Expected reward value in ₹ for this transaction (if amount given)
+  - Any caps, exclusions, or milestone notes from the benefits text
 - End with: "✅ **FINAL RECOMMENDATION**" followed by:
   - The single best card to use
   - Clear reasoning why this card is best
@@ -39,10 +130,13 @@ RESPONSE FORMAT:
 
 Focus on: reward rates, category-specific benefits, cashback, milestone bonuses.
 Never ask for or reference sensitive information like card numbers or CVV.
-DO NOT list all cards - only show the top 3 with comparison and final recommendation.`;
-                
+DO NOT list all cards - only show the top 3 with comparison and final recommendation.
+Use Indian Rupee (₹) for all amounts.`;
+
             case 'expenses':
-                return `You are an expense analysis expert. Analyze the expense data provided to answer user queries.
+                return `You are an expense analysis expert for Indian personal finance.
+
+${preamble}
 
 Your capabilities:
 - Calculate totals, averages, and counts
@@ -56,12 +150,21 @@ When users ask about specific items (e.g., "pharmacy expenses", "baby products",
 → Search the TITLE and DESCRIPTION fields for those keywords
 → Use case-insensitive text search: e.title.toLowerCase().includes('keyword')
 → Extract keywords from natural language queries
+→ Note: many expenses have empty description — title is the primary search field
+
+If average monthly income is provided in the context, use it to give percentage insights:
+e.g., "Restaurants ₹6,000/mo = 12% of your income"
+
+If the query returns ZERO results, do not invent numbers. Say clearly:
+"No matching expenses found." Then suggest 2-3 alternative search keywords or date ranges.
 
 Provide insights with specific numbers, dates, and trends.
 Use Indian Rupee (₹) for all amounts.`;
-                
+
             case 'investments':
-                return `You are an expert investment portfolio analyst and financial advisor. Analyze the investment data provided to answer user queries.
+                return `You are an expert investment portfolio analyst for Indian personal finance.
+
+${preamble}
 
 Your capabilities:
 - Calculate total portfolio value and asset allocation percentages
@@ -75,16 +178,23 @@ Your capabilities:
 - Filter by specific companies, stocks, banks, or sectors
 
 Investment Data Structure:
-- All investments have an "amount" field in INR (Indian Rupees)
-- For SHARES: amount = price × quantity (USD shares are converted to INR using exchange rate)
+- All investments have an "amount" field in INR (Indian Rupees), pre-converted from USD where applicable
+- For SHARES: amount = price × quantity (USD shares converted to INR using the provided exchange rate)
 - For GOLD: amount = current gold rate per gram × quantity in grams
 - For FD and EPF: amount is the direct deposit amount
-- Use the "amount" field for all calculations and analysis
+- Use the "amount" field for all calculations — do not re-convert
 
 When users ask about specific companies, sectors, or banks (e.g., "Apple stock", "ICICI FD", "tech stocks"):
 → Search the NAME and DESCRIPTION fields for those keywords
 → Use case-insensitive text search: i.name.toLowerCase().includes('keyword')
 → Extract keywords from natural language queries
+
+If the context includes income, monthly SIPs, or planned future expenses, use them to give grounded advice:
+- "Your active SIPs total ₹X/month — that's Y% of your income"
+- "Planned items totaling ₹X may need liquid funds — ensure FD ladder/cash buffer"
+- Recommend specific monthly investment amounts as a percentage of income
+
+If the query returns ZERO results, do not invent. Say "No matching investments found" and suggest alternatives.
 
 When providing recommendations:
 - Be specific about percentages and amounts
@@ -94,9 +204,28 @@ When providing recommendations:
 - Suggest realistic action steps
 
 Use Indian Rupee (₹) for all amounts.`;
-                
+
+            case 'general':
+                return `You are a knowledgeable personal finance assistant focused on Indian context (taxation, investments, banking, RBI rules, NPS/PPF/EPF, mutual funds, real estate).
+
+${preamble}
+
+Capabilities:
+- Answer general financial questions, do calculations, explain concepts
+- Compare investment options (SIP vs lumpsum, FD vs debt fund, ELSS vs PPF, etc.)
+- Tax planning under both Old and New regimes (Indian)
+- Compound interest, EMI math, retirement planning estimates
+- Currency conversions, inflation-adjusted returns
+
+Style:
+- Be concise and direct. Use bullet points for comparisons.
+- Use Indian Rupee (₹) and Indian numbering (lakh/crore) by default.
+- For specific tax/legal questions, add a brief disclaimer: "This is general guidance, not professional tax advice."
+- Show your math when calculating (so the user can verify).
+- If you're not sure about a specific Indian regulation, say so rather than guessing.`;
+
             default:
-                return 'You are a helpful financial assistant.';
+                return `You are a helpful financial assistant.\n\n${preamble}\n\nUse Indian Rupee (₹) for all amounts.`;
         }
     },
     
@@ -106,8 +235,28 @@ Use Indian Rupee (₹) for all amounts.`;
      * keep token usage bounded — pretty JSON adds ~30% bloat.
      */
     formatContextText(ctx) {
+        // Build a compact "USER PROFILE" block from the cross-cutting snapshot
+        // when one is attached. Sent before the mode-specific data so the AI
+        // can ground percentage/ratio reasoning.
+        const snapshotBlock = (snap) => {
+            if (!snap) return '';
+            const lines = ['USER PROFILE:'];
+            if (snap.avgMonthlyIncome > 0) {
+                lines.push(`  Avg monthly income (last 6 months): ₹${snap.avgMonthlyIncome.toLocaleString()}`);
+            }
+            if (snap.sipsMonthlyTotal > 0) {
+                lines.push(`  Active SIPs: ${snap.activeSips.length} totaling ₹${snap.sipsMonthlyTotal.toLocaleString()}/month`);
+            }
+            if (snap.pendingPlansTotal > 0) {
+                lines.push(`  Pending planned expenses: ${snap.pendingPlans.length} totaling ₹${snap.pendingPlansTotal.toLocaleString()}`);
+            }
+            return lines.length > 1 ? lines.join('\n') + '\n\n' : '';
+        };
+
         try {
             const mode = ctx && ctx.mode;
+            const snap = snapshotBlock(ctx && ctx.snapshot);
+
             if (mode === 'credit_cards' && Array.isArray(ctx.available_cards)) {
                 const lines = [`MY CREDIT CARDS (${ctx.available_cards.length}):`];
                 ctx.available_cards.forEach((c, i) => {
@@ -117,6 +266,9 @@ Use Indian Rupee (₹) for all amounts.`;
                     } else {
                         lines.push('   (benefits not yet fetched)');
                     }
+                    if (c.userNotes) {
+                        lines.push(`   USER NOTES (treat as authoritative override): ${c.userNotes}`);
+                    }
                 });
                 return lines.join('\n');
             }
@@ -125,14 +277,17 @@ Use Indian Rupee (₹) for all amounts.`;
                 const rows = ctx.expenses.map(e =>
                     `${e.date || ''} | ${e.category || ''} | ${e.title || ''} | ₹${e.amount}`
                 );
-                return `${head}\n${rows.join('\n')}`;
+                return `${snap}${head}\n${rows.join('\n')}`;
             }
             if (mode === 'investments' && Array.isArray(ctx.investments)) {
                 const head = `INVESTMENTS (${ctx.investments.length} items, total ₹${(ctx.total || 0).toFixed(2)}, USD/INR ${ctx.exchangeRate})`;
                 const rows = ctx.investments.map(inv =>
                     `${inv.type || ''} | ${inv.name || ''} | goal=${inv.goal || ''} | ₹${Math.round(inv.amount || 0)}`
                 );
-                return `${head}\n${rows.join('\n')}`;
+                return `${snap}${head}\n${rows.join('\n')}`;
+            }
+            if (mode === 'general') {
+                return `${snap}${ctx.message || 'General assistant.'}`;
             }
         } catch (e) {
             // fall through
@@ -387,20 +542,27 @@ Use Indian Rupee (₹) for all amounts.`;
      * @param {boolean} useMetadata - If true, return metadata instead of full data (for expenses/investments)
      */
     prepareContext(mode = 'general', useMetadata = false) {
+        const snapshot = this.getFinancialSnapshot();
+
         switch(mode) {
             case 'general':
                 return {
                     mode: 'general',
-                    message: 'You are a helpful AI assistant. Answer any questions the user has.'
+                    message: 'You are a helpful AI assistant. Answer any questions the user has.',
+                    snapshot
                 };
-                
+
             case 'cards':
                 // Cards mode - ONLY sends non-sensitive data
                 // SECURITY: Sensitive fields are EXCLUDED: cardNumber, CVV, expiry, creditLimit, outstanding, statementDate, billDate, emis
                 const creditCards = window.DB.cards.filter(c => !c.cardType || c.cardType === 'credit');
-                // Per-card benefits cap to keep total prompt within small-context model limits (e.g. Groq 12k TPM).
-                // 1500 chars ≈ 375 tokens per card; with 10 cards that's ~3750 tokens for benefits + system prompt + headroom.
-                const MAX_BENEFITS_CHARS = 1500;
+                // Per-card benefits cap to keep total prompt within small-context model limits.
+                // 3000 chars ≈ 750 tokens per card. The fetch prompt asks for very comprehensive
+                // benefits (often 2.5–4K chars) — capping too aggressively was dropping caps,
+                // exclusions, and milestone info that the AI Advisor needs for accurate
+                // recommendations. With 10 cards this is ~7.5K tokens of benefits, still well
+                // under typical 12K-32K small-context model limits.
+                const MAX_BENEFITS_CHARS = 3000;
                 return {
                     mode: 'credit_cards',
                     available_cards: creditCards.map(c => {
@@ -408,18 +570,24 @@ Use Indian Rupee (₹) for all amounts.`;
                         const trimmed = (typeof raw === 'string' && raw.length > MAX_BENEFITS_CHARS)
                             ? raw.slice(0, MAX_BENEFITS_CHARS) + '\n…[truncated]'
                             : raw;
+                        // User-entered notes/corrections override or supplement
+                        // the fetched benefits (e.g., "5% on Amazon, lounge waived above ₹5L spend").
+                        const userNotes = (c.additionalData || '').trim();
                         return {
                             name: c.name,
                             benefits: trimmed,
-                            benefitsFetchedAt: c.benefitsFetchedAt || null
+                            benefitsFetchedAt: c.benefitsFetchedAt || null,
+                            userNotes: userNotes || null
                         };
                     })
                 };
-                
+
             case 'expenses':
                 if (useMetadata) {
                     // Return metadata for two-phase query
-                    return window.QueryEngine.generateExpensesMetadata();
+                    const meta = window.QueryEngine.generateExpensesMetadata();
+                    meta.snapshot = snapshot;
+                    return meta;
                 } else {
                     // Legacy: return full data
                     return {
@@ -432,19 +600,27 @@ Use Indian Rupee (₹) for all amounts.`;
                             date: e.date,
                             createdAt: e.createdAt
                         })),
-                        total: window.DB.expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0)
+                        total: window.DB.expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0),
+                        snapshot
                     };
                 }
-                
+
             case 'investments':
                 if (useMetadata) {
                     // Return metadata for two-phase query
-                    return window.QueryEngine.generateInvestmentsMetadata();
+                    const meta = window.QueryEngine.generateInvestmentsMetadata();
+                    meta.snapshot = snapshot;
+                    return meta;
                 } else {
                     // Legacy: return full data (fallback)
                     const investments = window.DB.portfolioInvestments || [];
-                    const exchangeRate = window.DB.exchangeRate?.rate || window.DB.exchangeRate || 83;
-                    const goldRate = window.DB.goldRatePerGram || 7000;
+                    // Rates are stored as { rate, updatedAt } — get the numeric rate safely
+                    const exchangeRate = (window.Investments && window.Investments.getExchangeRate)
+                        ? window.Investments.getExchangeRate()
+                        : (typeof window.DB.exchangeRate === 'number' ? window.DB.exchangeRate : (window.DB.exchangeRate?.rate || 89));
+                    const goldRate = (window.Investments && window.Investments.getGoldRate)
+                        ? window.Investments.getGoldRate()
+                        : (typeof window.DB.goldRatePerGram === 'number' ? window.DB.goldRatePerGram : (window.DB.goldRatePerGram?.rate || 10000));
                     const sharePrices = window.DB.sharePrices || [];
                     
                     // Calculate amount for each investment
@@ -481,7 +657,8 @@ Use Indian Rupee (₹) for all amounts.`;
                         }),
                         total: investments.reduce((sum, inv) => sum + calculateAmount(inv), 0),
                         exchangeRate: exchangeRate,
-                        goldRate: goldRate
+                        goldRate: goldRate,
+                        snapshot
                     };
                 }
                 

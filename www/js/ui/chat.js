@@ -194,7 +194,7 @@ const Chat = {
             if (dots3) dots3.textContent = 'Analyzing results';
             
             // PHASE 3: Send results to AI for analysis
-            const phase2Prompt = this.buildPhase2Prompt(userQuery, queryResult, mode);
+            const phase2Prompt = this.buildPhase2Prompt(userQuery, queryResult, mode, metadataContext);
             const finalResponse = await window.AIProvider.call(phase2Prompt, null);
             
             return finalResponse;
@@ -215,7 +215,10 @@ const Chat = {
     buildPhase1Prompt(userQuery, mode, metadataContext) {
         // Always include full metadata for each query (chat queries are independent)
         const datasetName = mode === 'expenses' ? 'expenses' : 'investments';
-        return `I have a ${datasetName} dataset with the following structure:
+        const todayIso = new Date().toISOString().split('T')[0];
+        return `Today's date: ${todayIso}. Use it to interpret relative phrases ("last month", "this quarter", "this year").
+
+I have a ${datasetName} dataset with the following structure:
 
 ${JSON.stringify(metadataContext, null, 2)}
 
@@ -225,14 +228,16 @@ Your task: Generate a JavaScript query to answer this question. ${metadataContex
 
 Return ONLY a JSON object, no extra text or explanation outside the JSON.`;
     },
-    
+
     /**
      * Build Phase 2 prompt (filtered data → analysis)
      */
-    buildPhase2Prompt(userQuery, queryResult, mode) {
+    buildPhase2Prompt(userQuery, queryResult, mode, metadataContext) {
         const datasetName = mode === 'expenses' ? 'expenses' : 'investments';
+        const isInvestments = mode === 'investments';
+        const todayIso = new Date().toISOString().split('T')[0];
         let resultSummary;
-        
+
         if (queryResult.result.type === 'sum') {
             resultSummary = `Query returned ${queryResult.result.count} ${datasetName}.\nTotal ${queryResult.result.field}: ₹${Utils.formatIndianNumber(Math.round(queryResult.result.value))}`;
         } else if (queryResult.result.type === 'count') {
@@ -250,9 +255,27 @@ Return ONLY a JSON object, no extra text or explanation outside the JSON.`;
             const sampleData = queryResult.result.data.slice(0, 20);
             resultSummary = `Query returned ${queryResult.result.count} ${datasetName}.\n\nSample data (first ${sampleData.length} items):\n${JSON.stringify(sampleData, null, 2)}`;
         }
-        
-        const isInvestments = mode === 'investments';
-        const analysisGuidance = isInvestments 
+
+        // User profile snapshot (income / SIPs / plans) — helps AI ground % insights
+        const snap = metadataContext && metadataContext.snapshot;
+        let profileBlock = '';
+        if (snap) {
+            const profileLines = [];
+            if (snap.avgMonthlyIncome > 0) {
+                profileLines.push(`Avg monthly income (last 6 months): ₹${Utils.formatIndianNumber(snap.avgMonthlyIncome)}`);
+            }
+            if (snap.sipsMonthlyTotal > 0) {
+                profileLines.push(`Active SIPs: ${snap.activeSips.length} totaling ₹${Utils.formatIndianNumber(snap.sipsMonthlyTotal)}/month`);
+            }
+            if (snap.pendingPlansTotal > 0) {
+                profileLines.push(`Pending planned expenses: ${snap.pendingPlans.length} totaling ₹${Utils.formatIndianNumber(snap.pendingPlansTotal)}`);
+            }
+            if (profileLines.length > 0) {
+                profileBlock = `\n\nUSER PROFILE:\n${profileLines.map(l => '  ' + l).join('\n')}`;
+            }
+        }
+
+        const analysisGuidance = isInvestments
             ? `
 
 For portfolio analysis questions, provide:
@@ -260,13 +283,19 @@ For portfolio analysis questions, provide:
 - Specific gaps or over-concentration issues
 - Concrete recommendations with amounts/percentages
 - Risk-reward considerations
-- Action steps for rebalancing if needed`
-            : '';
+- Action steps for rebalancing if needed
+- If income is provided in USER PROFILE, frame recommendations as "₹X/month = Y% of income"`
+            : `
+
+If income is provided in USER PROFILE, frame totals as percentages of income too (e.g., "₹6K = 12% of your income"). Use TODAY'S DATE for relative time phrases.`;
 
         // Add explanation of what was queried if available
         const queryExplanation = queryResult.explanation ? `\n\nQuery executed: ${queryResult.explanation}` : '';
+        const zeroResults = queryResult.result.count === 0 || queryResult.result.value === 0;
 
-        return `User asked: "${userQuery}"
+        return `Today's date: ${todayIso}. ${profileBlock}
+
+User asked: "${userQuery}"
 
 I executed a query on my ${datasetName} database and got these results:
 
@@ -277,7 +306,7 @@ Please provide a clear, helpful analysis of these results that directly answers 
 - Breakdowns or comparisons if relevant
 - Actionable recommendations if applicable${analysisGuidance}
 
-${queryResult.result.count === 0 ? 'NOTE: Zero results found. Suggest alternative search terms or broader criteria the user could try.' : ''}
+${zeroResults ? `IMPORTANT: Zero results were found. Do NOT invent numbers. Tell the user honestly "No matching ${datasetName} found." Then suggest 2-3 alternative search terms, broader date ranges, or related categories they could try.` : ''}
 
 Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
     },
@@ -611,17 +640,18 @@ Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
                     <p class="text-lg mb-3">💳 <strong>AI Credit Card Advisor</strong></p>
                     <p class="mb-2">I'll help you choose the best credit card for your spending!</p>
                     <p class="text-xs mb-3">Using stored card benefits for fast, accurate recommendations.</p>
-                    
+
                     <div class="bg-blue-50 p-3 rounded-lg text-left mb-3">
                         <p class="text-xs font-semibold text-blue-800 mb-2">💡 Try asking:</p>
                         <ul class="text-xs space-y-1 text-blue-700">
-                            <li>• "₹5000 on groceries at BigBasket"</li>
+                            <li>• "₹5,000 on groceries at BigBasket"</li>
                             <li>• "₹10,000 for flight tickets"</li>
-                            <li>• "₹2000 for dining at restaurants"</li>
-                            <li>• "Best card for fuel purchases?"</li>
+                            <li>• "₹2,000 dining at restaurants"</li>
+                            <li>• "Best card for fuel?"</li>
+                            <li>• "Best card for international travel?"</li>
                         </ul>
                     </div>
-                    
+
                     <p class="text-xs text-gray-400 mt-2">
                         🔒 Secure: Only card names are shared, never numbers or CVV
                     </p>
@@ -631,17 +661,18 @@ Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
                 <div class="text-center text-gray-500 text-sm px-4">
                     <p class="text-lg mb-3">📊 <strong>Expense Analyzer</strong></p>
                     <p class="mb-2">Ask me anything about your spending patterns!</p>
-                    
+
                     <div class="bg-purple-50 p-3 rounded-lg text-left mb-3">
                         <p class="text-xs font-semibold text-purple-800 mb-2">💡 Try asking:</p>
                         <ul class="text-xs space-y-1 text-purple-700">
-                            <li>• "November 2024 expense summary"</li>
-                            <li>• "Category-wise breakdown for December"</li>
-                            <li>• "Compare Q3 and Q4 spending"</li>
-                            <li>• "Top 5 expense categories this year"</li>
+                            <li>• "Last month's expense summary"</li>
+                            <li>• "Category breakdown for this quarter"</li>
+                            <li>• "Top 5 spending categories this year"</li>
+                            <li>• "How much on pharmacy this month?"</li>
+                            <li>• "Compare last 3 months spending"</li>
                         </ul>
                     </div>
-                    
+
                     <p class="text-xs text-gray-400 mt-2">
                         📈 Analyzing ${window.DB.expenses.length} transactions
                     </p>
@@ -652,19 +683,19 @@ Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
                 <div class="text-center text-gray-500 text-sm px-4">
                     <p class="text-lg mb-3">💰 <strong>Investment Portfolio Advisor</strong></p>
                     <p class="mb-2">Get insights, diversification analysis, and recommendations!</p>
-                    
+
                     <div class="bg-yellow-50 p-3 rounded-lg text-left mb-3">
                         <p class="text-xs font-semibold text-yellow-800 mb-2">💡 Try asking:</p>
                         <ul class="text-xs space-y-1 text-yellow-700">
                             <li>• "How is my portfolio diversified?"</li>
-                            <li>• "What percentage is in stocks vs fixed deposits?"</li>
-                            <li>• "Show my short-term vs long-term allocation"</li>
-                            <li>• "What am I missing in my portfolio?"</li>
-                            <li>• "Give me diversification recommendations"</li>
+                            <li>• "Stocks vs FD vs Gold percentage"</li>
+                            <li>• "Short-term vs long-term allocation"</li>
+                            <li>• "What's missing in my portfolio?"</li>
+                            <li>• "Are my SIPs enough for my income?"</li>
                             <li>• "Is my portfolio too risky?"</li>
                         </ul>
                     </div>
-                    
+
                     <p class="text-xs text-gray-400 mt-2">
                         💼 Analyzing ${investmentCount} investments
                     </p>
@@ -673,21 +704,22 @@ Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
             welcomeHTML = `
                 <div class="text-center text-gray-500 text-sm px-4">
                     <p class="text-lg mb-3">💬 <strong>General Assistant</strong></p>
-                    <p class="mb-2">I can help with general questions and tasks!</p>
-                    <p class="text-xs mb-3 text-gray-400">Ask me anything - from calculations to general information.</p>
-                    
+                    <p class="mb-2">Ask anything about Indian personal finance!</p>
+                    <p class="text-xs mb-3 text-gray-400">Tax planning, investment math, calculations, and concepts.</p>
+
                     <div class="bg-green-50 p-3 rounded-lg text-left mb-3">
                         <p class="text-xs font-semibold text-green-800 mb-2">💡 Try asking:</p>
                         <ul class="text-xs space-y-1 text-green-700">
-                            <li>• "What's the compound interest on ₹10L at 8%?"</li>
-                            <li>• "Convert 50 USD to INR"</li>
-                            <li>• "Best tax saving strategies in India"</li>
-                            <li>• "Explain SIP vs lump sum investing"</li>
+                            <li>• "Compound interest on ₹10L at 8% for 10 years"</li>
+                            <li>• "Old vs New tax regime — which is better for me?"</li>
+                            <li>• "ELSS vs PPF — pros and cons"</li>
+                            <li>• "EMI for ₹50L home loan @ 9% for 20 years"</li>
+                            <li>• "How much should I invest for ₹2Cr in 15 years?"</li>
                         </ul>
                     </div>
-                    
+
                     <p class="text-xs text-gray-400 mt-2">
-                        🤖 Powered by AI - Ask me anything!
+                        🤖 General guidance — not professional tax/legal advice
                     </p>
                 </div>`;
         }
