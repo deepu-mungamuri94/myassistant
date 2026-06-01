@@ -279,6 +279,14 @@ details > summary .details-arrow {
     border-radius: 0 0 0.5rem 0.5rem;
 }
 
+/* Numerical columns in projection / breakdown tables — keep digit widths
+   uniform so amounts align vertically. The Tailwind CDN sometimes ships
+   without this utility class generated, so we define it ourselves. */
+.tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+}
+
 /* ============================================================
    AI response rendering (.ai-content)
    Used by AIRenderer for card benefits, chat advisor, dashboard

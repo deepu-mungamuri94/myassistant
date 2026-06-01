@@ -3383,6 +3383,7 @@ const Dashboard = {
         let total = 0;
         let isProjected = false;
         let projectionNote = '';
+        let projectionDetail = null;  // populated for "Other spend" projections
         let color = 'gray';
         let icon = '📋';
         
@@ -3405,10 +3406,12 @@ const Dashboard = {
                 // For future months, show projection explanation
                 title = `Other spend (estimate)`;
                 isProjected = true;
-                const projectionData = this.getProjectedRegularExpensesWithDetails(6);
-                total = projectionData.average;
-                items = projectionData.monthlyData; // Reuse items for the breakdown
-                projectionNote = 'Estimated from your average non-recurring, non-EMI spend over the last 6 months.';
+                const projectionData = this.getProjectedRegularExpensesWithDetails(3);
+                total = projectionData.projection || projectionData.average;
+                items = projectionData.monthlyData;
+                // Carry the rich breakdown into the render below.
+                projectionDetail = projectionData;
+                projectionNote = 'Frequent items (seen ≥2 of 3 months) + 50% of one-off spend as a buffer. Outliers like one-time flights/hospital bills don\'t bloat the estimate.';
             } else {
                 title = `Other spend`;
                 items = this.getRegularExpenseItemsForMonth(year, month);
@@ -3428,50 +3431,160 @@ const Dashboard = {
         
         let contentHtml = '';
         if (isProjected) {
-            const hasData = items.length > 0;
-            contentHtml = `
-                <div class="py-2">
-                    <p class="text-gray-600 text-sm mb-4 text-center">${projectionNote}</p>
-                    
-                    ${hasData ? `
-                    <!-- Monthly Breakdown -->
-                    <div class="mb-4">
-                        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Data Used</div>
-                        <div class="bg-gray-50 rounded-lg p-3 space-y-2">
-                            ${items.map(item => `
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm text-gray-700">${item.label}</span>
-                                    <span class="text-sm font-semibold text-gray-800">₹${Utils.formatIndianNumber(item.amount)}</span>
-                                </div>
-                            `).join('')}
+            const detail = projectionDetail || {};
+            const frequent = detail.frequentItems || [];
+            const occasional = detail.occasionalItems || [];
+            const hasData = items.length > 0 || frequent.length > 0 || occasional.length > 0;
+
+            const trendChip = (t) => t === 'rising'
+                ? '<span class="text-[9px] px-1 py-0.5 bg-rose-100 text-rose-700 rounded font-semibold">↗ rising</span>'
+                : t === 'falling' ? '<span class="text-[9px] px-1 py-0.5 bg-emerald-100 text-emerald-700 rounded font-semibold">↘ falling</span>'
+                : '';
+
+            // Frequent items: 4-col table. Numeric columns are right-aligned
+            // and use tabular-nums so digits line up vertically. Generous
+            // py-3 row padding for a roomy, readable feel on mobile.
+            const frequentTableRows = frequent.map(it => `
+                <tr class="border-b border-emerald-50 last:border-b-0 hover:bg-emerald-50/30 transition-colors">
+                    <td class="px-3 py-3 align-top">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="text-sm font-medium text-gray-800 break-words" title="${Utils.escapeHtml(it.title)}">${Utils.escapeHtml(it.title)}</span>
+                            ${trendChip(it.trend)}
                         </div>
-                    </div>
-                    
-                    <!-- Calculation -->
-                    <div class="mb-4">
-                        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Calculation</div>
-                        <div class="bg-blue-50 rounded-lg p-3">
-                            <div class="text-sm text-blue-700">
-                                <div class="flex justify-between mb-1">
-                                    <span>Total of ${items.length} months</span>
-                                    <span class="font-medium">₹${Utils.formatIndianNumber(items.reduce((s, i) => s + i.amount, 0))}</span>
+                        <div class="text-[11px] text-gray-500 mt-0.5">${Utils.escapeHtml(it.category)}</div>
+                    </td>
+                    <td class="px-2 py-3 text-center align-middle">
+                        <span class="inline-block px-1.5 py-0.5 rounded bg-gray-100 text-[11px] font-semibold text-gray-700 tabular-nums whitespace-nowrap">${it.monthsSeen}/3</span>
+                    </td>
+                    <td class="px-2 py-3 text-right text-xs text-gray-700 tabular-nums whitespace-nowrap align-middle">₹${Utils.formatIndianNumber(it.totalAmount)}</td>
+                    <td class="px-3 py-3 text-right text-sm font-semibold text-emerald-700 tabular-nums whitespace-nowrap align-middle">₹${Utils.formatIndianNumber(it.monthlyAvg)}</td>
+                </tr>
+            `).join('');
+
+            // One-offs: 3-col table. Drop category from the column (shown as
+            // subtitle) — keeps the table compact on narrow screens.
+            const occasionalTableRows = occasional.map(it => `
+                <tr class="border-b border-amber-100 last:border-b-0 hover:bg-amber-50/30 transition-colors">
+                    <td class="px-3 py-3 align-top">
+                        <div class="text-sm text-gray-800 break-words" title="${Utils.escapeHtml(it.title)}">${Utils.escapeHtml(it.title)}</div>
+                        <div class="text-[11px] text-amber-700 mt-0.5">${Utils.escapeHtml(it.category)}</div>
+                    </td>
+                    <td class="px-2 py-3 text-center text-xs text-amber-700 whitespace-nowrap align-middle">${Utils.escapeHtml(it.month)}</td>
+                    <td class="px-3 py-3 text-right text-sm font-medium text-gray-800 tabular-nums whitespace-nowrap align-middle">₹${Utils.formatIndianNumber(it.amount)}</td>
+                </tr>
+            `).join('');
+
+            contentHtml = `
+                <div class="py-1">
+                    <p class="text-[11px] text-gray-500 mb-3 leading-relaxed">${projectionNote}</p>
+
+                    ${!hasData ? `
+                        <div class="text-center py-4 text-gray-500">
+                            <p>No spending data available — log a few months of expenses to see a projection.</p>
+                        </div>
+                    ` : `
+                        ${frequent.length > 0 ? `
+                            <div class="mb-5">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Frequent items · ${frequent.length}</div>
+                                    <div class="text-[10px] text-gray-500">counted in full</div>
                                 </div>
-                                <div class="flex justify-between text-blue-600">
-                                    <span>÷ ${items.length} months</span>
-                                    <span class="font-medium">= ₹${Utils.formatIndianNumber(total)}</span>
+                                <div class="bg-white border border-emerald-200 rounded-xl shadow-sm overflow-hidden">
+                                    <table class="w-full text-xs">
+                                        <thead>
+                                            <tr class="bg-emerald-50 border-b border-emerald-200">
+                                                <th class="text-left font-semibold text-emerald-800 uppercase tracking-wide text-[10px] px-3 py-2">Item</th>
+                                                <th class="text-center font-semibold text-emerald-800 uppercase tracking-wide text-[10px] px-2 py-2">Seen</th>
+                                                <th class="text-right font-semibold text-emerald-800 uppercase tracking-wide text-[10px] px-2 py-2 whitespace-nowrap">3-mo total</th>
+                                                <th class="text-right font-semibold text-emerald-800 uppercase tracking-wide text-[10px] px-3 py-2">₹/mo</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${frequentTableRows}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="bg-emerald-50 border-t-2 border-emerald-300">
+                                                <td colspan="3" class="px-3 py-2.5 text-sm font-bold text-emerald-900">Subtotal → projection</td>
+                                                <td class="px-3 py-2.5 text-right text-base font-bold text-emerald-700 tabular-nums whitespace-nowrap">₹${Utils.formatIndianNumber(detail.frequentProjection || 0)}<span class="text-[10px] font-normal text-emerald-600">/mo</span></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        ${occasional.length > 0 ? `
+                            <div class="mb-5">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">One-off items · ${occasional.length}</div>
+                                    <div class="text-[10px] text-gray-500">50% of avg counted as buffer</div>
+                                </div>
+                                <div class="bg-white border border-amber-200 rounded-xl shadow-sm overflow-hidden">
+                                    <table class="w-full text-xs">
+                                        <thead>
+                                            <tr class="bg-amber-50 border-b border-amber-200">
+                                                <th class="text-left font-semibold text-amber-800 uppercase tracking-wide text-[10px] px-3 py-2">Item</th>
+                                                <th class="text-center font-semibold text-amber-800 uppercase tracking-wide text-[10px] px-2 py-2">Month</th>
+                                                <th class="text-right font-semibold text-amber-800 uppercase tracking-wide text-[10px] px-3 py-2">Amount</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${occasionalTableRows}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="bg-amber-50 border-t border-amber-200">
+                                                <td colspan="2" class="px-3 py-2 text-xs text-amber-900 font-semibold">Total (3 mo)</td>
+                                                <td class="px-3 py-2 text-right text-xs font-semibold text-amber-900 tabular-nums whitespace-nowrap">₹${Utils.formatIndianNumber(detail.occasionalTotal || 0)}</td>
+                                            </tr>
+                                            <tr class="bg-amber-50 border-t border-amber-100">
+                                                <td colspan="2" class="px-3 py-2 text-xs text-amber-800">Avg per month (÷ 3)</td>
+                                                <td class="px-3 py-2 text-right text-xs text-amber-800 tabular-nums whitespace-nowrap">₹${Utils.formatIndianNumber(detail.occasionalAveragePerMonth || 0)}</td>
+                                            </tr>
+                                            <tr class="bg-amber-100 border-t-2 border-amber-300">
+                                                <td colspan="2" class="px-3 py-2.5 text-sm font-bold text-amber-900">Buffer → projection (50%)</td>
+                                                <td class="px-3 py-2.5 text-right text-base font-bold text-amber-700 tabular-nums whitespace-nowrap">₹${Utils.formatIndianNumber(detail.occasionalBuffer || 0)}<span class="text-[10px] font-normal text-amber-600">/mo</span></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <div class="mb-4">
+                            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Calculation</div>
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 space-y-0.5 font-mono">
+                                <div class="flex justify-between">
+                                    <span>Frequent items</span>
+                                    <span>₹${Utils.formatIndianNumber(detail.frequentProjection || 0)}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>+ 50% × one-off avg (₹${Utils.formatIndianNumber(detail.occasionalAveragePerMonth || 0)})</span>
+                                    <span>₹${Utils.formatIndianNumber(detail.occasionalBuffer || 0)}</span>
+                                </div>
+                                <div class="flex justify-between font-bold pt-1 mt-1 border-t border-blue-200">
+                                    <span>Projection</span>
+                                    <span>₹${Utils.formatIndianNumber(total)}</span>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    ` : `
-                    <div class="text-center py-4 text-gray-500">
-                        <p>No historical data available to calculate projection.</p>
-                    </div>
+
+                        ${items.length > 0 ? `
+                            <div class="mb-4">
+                                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Last 3 months — total "other spend"</div>
+                                <div class="bg-gray-50 rounded-lg p-3 space-y-1">
+                                    ${items.map(item => `
+                                        <div class="flex justify-between items-center text-xs">
+                                            <span class="text-gray-700">${item.label}</span>
+                                            <span class="font-medium text-gray-800">₹${Utils.formatIndianNumber(item.amount)}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
                     `}
-                    
-                    <!-- Result -->
-                    <div class="bg-emerald-50 rounded-lg p-4 text-center">
-                        <div class="text-xs text-emerald-600 font-medium mb-1">Estimated for Next Month</div>
+
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-center">
+                        <div class="text-xs text-emerald-600 font-semibold uppercase tracking-wide mb-1">Estimated for ${monthName.split(' ')[0]}</div>
                         <div class="text-2xl font-bold text-emerald-700">~₹${Utils.formatIndianNumber(total)}</div>
                     </div>
                 </div>
@@ -3694,11 +3807,12 @@ const Dashboard = {
                 
                 <!-- Content -->
                 <div class="flex-1 overflow-y-auto px-3 py-5 bg-gray-50 pb-20">
+                    ${this._renderInsightsSummary(cached.summary, monthName)}
                     <div class="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-2.5">
                         <div class="flex items-start gap-2">
                             <span class="text-blue-500 text-sm">ℹ️</span>
-                            <div class="text-xs text-blue-700">
-                                <span class="font-semibold">Data Period:</span> Projections based on last 6 months of expenses + Year-over-Year comparison
+                            <div class="text-xs text-blue-700 leading-relaxed">
+                                <span class="font-semibold">Variable est.</span> uses last-3-month frequent items (seen in ≥2 months) + half of one-off spend as a buffer — outliers don't bloat the projection. AI insights below are advisory only.
                             </div>
                         </div>
                     </div>
@@ -3722,20 +3836,151 @@ const Dashboard = {
     },
     
     /**
+     * Build a small JSON summary out of the analysis data so the modal can
+     * render a deterministic cash-flow card. Keeping it minimal ensures the
+     * stored cache stays small.
+     */
+    _buildInsightsSummary(data) {
+        const fc = data.targetMonthForecast || {};
+        const fh = data.financialHealth || null;
+        return {
+            expectedIncome: fc.expectedIncome || 0,
+            fixedObligations: fc.fullFixed || fc.fixedObligations || 0,
+            recurring: fc.recurring?.total || 0,
+            emis: fc.emis?.total || 0,
+            sips: fc.sipsCommitment || 0,
+            unpaidBills: fc.unpaidBillsTotal || 0,
+            upcomingBills: fc.upcomingBillsTotal || 0,
+            projectedVariable: fc.projectedVariable || 0,
+            investmentTarget: fc.investmentTarget || 0,
+            plansTotal: fc.targetPlansTotal || 0,
+            projectedTotal: fc.projectedTotal || 0,
+            projectedSurplus: fc.projectedSurplus || 0,
+            isCashTight: !!fc.isCashTight,
+            netWorth: fh?.netWorth ?? null,
+            cashSavings: fh?.cashSavings ?? null,
+            efMonths: fh?.emergencyFund?.months ?? null,
+            efStatus: fh?.emergencyFund?.status ?? null,
+            efShortfall: fh?.emergencyFund?.shortfall ?? null,
+            riskPercent: fh?.riskPercent ?? null,
+        };
+    },
+
+    /**
+     * Render the deterministic cash-flow summary card. Always shown at the
+     * top of the AI Insights modal so the user sees the structured numbers
+     * regardless of what the AI text emits.
+     */
+    _renderInsightsSummary(summary, monthName) {
+        if (!summary) return '';
+        const fmt = (n) => `₹${Utils.formatIndianNumber(Math.round(n || 0))}`;
+
+        const surplus = summary.projectedSurplus;
+        const isShortfall = surplus < 0;
+        const surplusColor = isShortfall ? 'rose' : 'emerald';
+        const surplusLabel = isShortfall ? 'Shortfall' : 'Surplus';
+
+        const efBadge = (() => {
+            if (summary.efStatus === 'critical') return '<span class="text-[9px] bg-rose-500 text-white px-1.5 py-0.5 rounded font-semibold">Critical</span>';
+            if (summary.efStatus === 'low') return '<span class="text-[9px] bg-amber-500 text-white px-1.5 py-0.5 rounded font-semibold">Low</span>';
+            if (summary.efStatus === 'good') return '<span class="text-[9px] bg-emerald-500 text-white px-1.5 py-0.5 rounded font-semibold">Healthy</span>';
+            return '';
+        })();
+
+        // Cash-flow line items — only show non-zero entries to reduce noise.
+        const lineItems = [
+            { label: 'Recurring',         value: summary.recurring },
+            { label: 'Loan / Card EMIs',  value: summary.emis },
+            { label: 'SIPs',              value: summary.sips },
+            { label: 'Card bills due',    value: summary.upcomingBills },
+            { label: 'Past-due bills',    value: summary.unpaidBills, alert: true },
+            { label: 'Variable est.',     value: summary.projectedVariable },
+            { label: 'Plans due',         value: summary.plansTotal },
+            { label: 'Extra invest tgt.', value: summary.investmentTarget },
+        ].filter(li => li.value > 0);
+
+        const lineHtml = lineItems.map(li => `
+            <div class="flex justify-between text-[11px] py-0.5">
+                <span class="${li.alert ? 'text-rose-700 font-semibold' : 'text-gray-600'}">− ${li.label}</span>
+                <span class="${li.alert ? 'text-rose-700 font-semibold' : 'text-gray-800'}">${fmt(li.value)}</span>
+            </div>
+        `).join('');
+
+        const monthShort = monthName.split(' ')[0];
+
+        return `
+            <div class="mb-3 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-3 py-2 text-[11px] font-semibold uppercase tracking-wide">
+                    ${monthShort} cash-flow forecast
+                </div>
+                <div class="p-3 space-y-2">
+                    <!-- Income vs surplus -->
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-[10px] uppercase tracking-wide text-gray-500">Expected Income</div>
+                            <div class="text-base font-bold text-gray-800">${fmt(summary.expectedIncome)}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[10px] uppercase tracking-wide text-${surplusColor}-600">${surplusLabel}</div>
+                            <div class="text-base font-bold text-${surplusColor}-700">${fmt(Math.abs(surplus))}</div>
+                        </div>
+                    </div>
+                    ${summary.isCashTight ? `
+                        <div class="bg-rose-50 border border-rose-200 rounded p-1.5 text-[10px] text-rose-700 font-semibold flex items-center gap-1">
+                            ⚠️ Cash tight: known commitments exceed income.
+                        </div>
+                    ` : ''}
+
+                    <!-- Outflows -->
+                    ${lineItems.length > 0 ? `
+                        <div class="border-t border-gray-100 pt-2">
+                            ${lineHtml}
+                            <div class="border-t border-gray-200 mt-1 pt-1 flex justify-between text-[11px] font-semibold">
+                                <span class="text-gray-700">Total claimed</span>
+                                <span class="text-gray-900">${fmt(summary.projectedTotal)}</span>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- Health snapshot row -->
+                    ${summary.netWorth !== null ? `
+                        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-gray-100 text-center">
+                            <div>
+                                <div class="text-[9px] uppercase tracking-wide text-gray-500">Net Worth</div>
+                                <div class="text-xs font-bold text-gray-800">${fmt(summary.netWorth)}</div>
+                            </div>
+                            <div>
+                                <div class="text-[9px] uppercase tracking-wide text-gray-500">Cash & Savings</div>
+                                <div class="text-xs font-bold text-gray-800">${fmt(summary.cashSavings)}</div>
+                            </div>
+                            <div>
+                                <div class="text-[9px] uppercase tracking-wide text-gray-500 flex items-center justify-center gap-1">EF ${efBadge}</div>
+                                <div class="text-xs font-bold text-gray-800">${summary.efMonths !== null ? `${summary.efMonths}mo` : '—'}</div>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    },
+
+    /**
      * Format AI insights text with beautiful, structured HTML
      */
     formatAIInsightsCollapsible(text) {
         if (!text) return '';
         
-        // Split by section headers (emoji + bold text pattern)
-        const headerPattern = /(\*\*[📊💡🔄🏦📈✅🎂].*?\*\*)/g;
+        // Split by section headers — recognise the six locked-format emojis
+        // (📊 outlook, 💸 expenses, 📈 investments, 🏦 debt, 🔮 predictions,
+        // 🎯 actions) plus legacy ones still in old cached responses.
+        const headerPattern = /(\*\*[📊💡🔄🏦📈✅🎂💸🔮🎯].*?\*\*)/g;
         const sections = text.split(headerPattern).filter(s => s.trim());
         
         let html = '';
         
         sections.forEach((section, sectionIndex) => {
             // Check if this is a header (starts with ** and contains emoji)
-            if (section.match(/^\*\*[📊💡🔄🏦📈✅🎂]/)) {
+            if (section.match(/^\*\*[📊💡🔄🏦📈✅🎂💸🔮🎯]/)) {
                 const header = section.replace(/\*\*/g, '').trim();
                 // Extract emoji - check if first character is an emoji
                 let emoji = '';
@@ -3743,7 +3988,7 @@ const Dashboard = {
                 
                 // Try to extract emoji by checking first character
                 // Common emojis used in headers
-                const emojiChars = ['📊', '💡', '🔄', '🏦', '📈', '✅', '🎂'];
+                const emojiChars = ['📊', '💡', '🔄', '🏦', '📈', '✅', '🎂', '💸', '🔮', '🎯'];
                 for (const emojiChar of emojiChars) {
                     if (header.startsWith(emojiChar)) {
                         emoji = emojiChar;
@@ -3767,11 +4012,11 @@ const Dashboard = {
                 let bgGradient = 'from-purple-50 to-purple-100';
                 let borderColor = 'border-purple-200';
                 
-                if (header.includes('BUDGET') || header.includes('HEALTH')) {
+                if (header.includes('OUTLOOK') || header.includes('HEALTH')) {
                     cardColor = 'blue';
                     bgGradient = 'from-blue-50 to-blue-100';
                     borderColor = 'border-blue-200';
-                } else if (header.includes('EXPENSE REDUCTIONS') || header.includes('EXPECTED')) {
+                } else if (header.includes('EXPENSE') || header.includes('EXPECTED')) {
                     cardColor = 'orange';
                     bgGradient = 'from-orange-50 to-orange-100';
                     borderColor = 'border-orange-200';
@@ -3779,7 +4024,7 @@ const Dashboard = {
                     cardColor = 'pink';
                     bgGradient = 'from-pink-50 to-pink-100';
                     borderColor = 'border-pink-200';
-                } else if (header.includes('LOAN') || header.includes('EMI')) {
+                } else if (header.includes('DEBT') || header.includes('LOAN') || header.includes('EMI')) {
                     cardColor = 'indigo';
                     bgGradient = 'from-indigo-50 to-indigo-100';
                     borderColor = 'border-indigo-200';
@@ -3787,6 +4032,10 @@ const Dashboard = {
                     cardColor = 'emerald';
                     bgGradient = 'from-emerald-50 to-emerald-100';
                     borderColor = 'border-emerald-200';
+                } else if (header.includes('PREDICTION') || header.includes('RISK') || header.includes('FORECAST')) {
+                    cardColor = 'cyan';
+                    bgGradient = 'from-cyan-50 to-cyan-100';
+                    borderColor = 'border-cyan-200';
                 } else if (header.includes('PRIORITY') || header.includes('ACTION')) {
                     cardColor = 'green';
                     bgGradient = 'from-green-50 to-green-100';
@@ -3794,7 +4043,7 @@ const Dashboard = {
                 }
                 
                 // Clean title - remove any remaining emoji characters
-                const cleanTitle = title.replace(/[📊💡🔄🏦📈✅🎂]/g, '').trim();
+                const cleanTitle = title.replace(/[📊💡🔄🏦📈✅🎂💸🔮🎯]/g, '').trim();
                 
                 html += `
                     <div class="mt-4 mb-3 bg-gradient-to-r ${bgGradient} border ${borderColor} rounded-xl px-3 py-2.5 shadow-sm">
@@ -4115,12 +4364,15 @@ const Dashboard = {
             // Call AI
             const response = await window.AIProvider.call(prompt, null);
             
-            // Cache the response (persisted to storage)
+            // Cache the response with the deterministic summary numbers we
+            // already computed, so the modal can render a fixed-format
+            // cash-flow card without recomputing on every open.
             this.aiExpenseInsightsCache[monthKey] = {
                 insights: response,
                 timestamp: Date.now(),
                 year: year,
-                month: month
+                month: month,
+                summary: this._buildInsightsSummary(analysisData)
             };
             window.Storage.save(); // Persist to storage
             
@@ -4196,6 +4448,22 @@ const Dashboard = {
         data.historicalExpenses = projectionData.monthlyData || [];
         data.projectedAverage = projectionData.average;
         data.analysisMonths = ANALYSIS_MONTHS;
+
+        // Frequent vs occasional breakdown (3-month window) — drives the
+        // projection and gives AI raw signal to advise on growth/anomalies.
+        data.variableSpendBreakdown = {
+            projection: projectionData.projection,
+            frequentProjection: projectionData.frequentProjection,
+            occasionalBuffer: projectionData.occasionalBuffer,
+            occasionalAveragePerMonth: projectionData.occasionalAveragePerMonth,
+            occasionalWeight: projectionData.occasionalWeight,
+            // Top 12 frequent items by amount (full pool for the prompt;
+            // UI separately shows fewer).
+            frequentItems: (projectionData.frequentItems || []).slice(0, 12),
+            // Notable occasional items (top 8 by ₹) — useful for AI to call
+            // out big one-offs that inflated last month.
+            occasionalItems: (projectionData.occasionalItems || []).slice(0, 8),
+        };
         
         // Get detailed expenses by category for last 6 months
         const expenses = window.DB.expenses || [];
@@ -4641,18 +4909,149 @@ const Dashboard = {
         const projectedTotal = fixedObligations + projectedVariable + investmentTarget + targetPlansTotal;
         const projectedSurplus = expectedIncome - projectedTotal;
 
+        // ===== EXTRA CONTEXT: financial health, cash, SIPs, money-lent, card bills =====
+        // These were missing from the AI prompt — without them the AI can't ground
+        // advice in the user's actual safety net or planned investment commitments.
+
+        // Financial health (net worth, emergency fund, risk %).
+        if (window.FinancialHealth) {
+            try {
+                const nw = window.FinancialHealth.computeNetWorth();
+                const ef = window.FinancialHealth.computeEmergencyFund();
+                data.financialHealth = {
+                    netWorth: Math.round(nw.total),
+                    assets: Math.round(nw.assets.totalAssets),
+                    liabilities: Math.round(nw.liabilities.totalLiabilities),
+                    cashSavings: Math.round(nw.assets.cashSavings || 0),
+                    investmentBreakdown: {
+                        EPF: Math.round(nw.assets.investmentBreakdown?.EPF || 0),
+                        FD: Math.round(nw.assets.investmentBreakdown?.FD || 0),
+                        GOLD: Math.round(nw.assets.investmentBreakdown?.GOLD || 0),
+                        SHARES: Math.round(nw.assets.investmentBreakdown?.SHARES || 0),
+                        MF: Math.round(nw.assets.investmentBreakdown?.MF || 0),
+                    },
+                    riskAmount: Math.round(nw.risk?.amount || 0),
+                    riskPercent: Math.round(nw.risk?.percentOfNetWorth || 0),
+                    emergencyFund: {
+                        liquid: Math.round(ef.liquid),
+                        cashBalance: Math.round(ef.cashBalance || 0),
+                        flaggedTotal: Math.round(ef.flaggedTotal || 0),
+                        monthlyEssentials: Math.round(ef.monthlyEssentials),
+                        months: parseFloat((ef.months || 0).toFixed(1)),
+                        status: ef.status,                  // 'critical' | 'low' | 'good'
+                        targetMonths: ef.target,
+                        shortfall: Math.round(ef.shortfall || 0),
+                    },
+                };
+            } catch (e) {
+                console.warn('FinancialHealth unavailable for AI insights:', e);
+            }
+        }
+
+        // Active SIPs — planned monthly investment commitments.
+        if (window.SIPs && typeof window.SIPs.getAll === 'function') {
+            const allSips = window.SIPs.getAll() || [];
+            const activeSips = allSips
+                .filter(s => s && s.active !== false && parseFloat(s.amount) > 0)
+                .map(s => ({
+                    name: s.name,
+                    amount: Math.round(parseFloat(s.amount) || 0),
+                }));
+            data.sips = {
+                count: activeSips.length,
+                total: activeSips.reduce((sum, s) => sum + s.amount, 0),
+                items: activeSips,
+            };
+        }
+
+        // Money lent (receivables — cash that's "out" but still yours).
+        if (window.MoneyLent && Array.isArray(window.DB.moneyLent)) {
+            const lentItems = window.DB.moneyLent
+                .map(rec => ({
+                    name: rec.borrower || rec.name || 'Unknown',
+                    outstanding: Math.round(window.MoneyLent.calculateOutstanding(rec) || 0),
+                }))
+                .filter(rec => rec.outstanding > 0);
+            data.moneyLent = {
+                count: lentItems.length,
+                total: lentItems.reduce((sum, r) => sum + r.outstanding, 0),
+                items: lentItems.slice(0, 5),  // top 5 only
+            };
+        }
+
+        // Past-due credit-card bills (unpaid). These are a hidden obligation
+        // the cash-flow forecast doesn't otherwise capture.
+        const allBills = window.DB.cardBills || [];
+        const today2 = new Date();
+        const targetMonthStart = new Date(targetYear, targetMonth - 1, 1);
+        const targetMonthEnd2 = new Date(targetYear, targetMonth, 0);
+
+        const unpaidPast = allBills
+            .filter(b => !b.isPaid && b.dueDate && new Date(b.dueDate) < today2)
+            .map(b => {
+                const card = (window.DB.cards || []).find(c => String(c.id) === String(b.cardId));
+                return {
+                    cardName: (card?.nickname || card?.name || `Card ${b.cardLast4 || ''}`).trim(),
+                    amount: Math.round(parseFloat(b.amount) || 0),
+                    dueDate: b.dueDate,
+                };
+            })
+            .filter(b => b.amount > 0);
+
+        data.unpaidCardBills = {
+            count: unpaidPast.length,
+            total: unpaidPast.reduce((sum, b) => sum + b.amount, 0),
+            items: unpaidPast.slice(0, 5),
+        };
+
+        // Upcoming credit-card bills due IN the target month.
+        const upcomingBills = allBills
+            .filter(b => !b.isPaid && b.dueDate)
+            .filter(b => {
+                const d = new Date(b.dueDate);
+                return d >= targetMonthStart && d <= targetMonthEnd2;
+            })
+            .map(b => {
+                const card = (window.DB.cards || []).find(c => String(c.id) === String(b.cardId));
+                return {
+                    cardName: (card?.nickname || card?.name || `Card ${b.cardLast4 || ''}`).trim(),
+                    amount: Math.round(parseFloat(b.amount) || 0),
+                    dueDate: b.dueDate,
+                };
+            })
+            .filter(b => b.amount > 0);
+
+        data.upcomingCardBills = {
+            count: upcomingBills.length,
+            total: upcomingBills.reduce((sum, b) => sum + b.amount, 0),
+            items: upcomingBills,
+        };
+
+        // Recompute fixed obligations to include SIPs, unpaid card bills, and
+        // upcoming card bills — these are real claims on the target month's cash.
+        const sipsCommitment = data.sips?.total || 0;
+        const unpaidBillsTotal = data.unpaidCardBills.total;
+        const upcomingBillsTotal = data.upcomingCardBills.total;
+        const fullFixed = fixedObligations + sipsCommitment + unpaidBillsTotal + upcomingBillsTotal;
+        const fullProjectedTotal = fullFixed + projectedVariable + investmentTarget + targetPlansTotal;
+        const fullSurplus = expectedIncome - fullProjectedTotal;
+
         data.targetMonthForecast = {
             expectedIncome,
-            fixedObligations,
+            fixedObligations,         // recurring + EMIs (legacy)
+            sipsCommitment,
+            unpaidBillsTotal,
+            upcomingBillsTotal,
+            fullFixed,                // recurring + EMIs + SIPs + card bills (past due + upcoming)
             recurring: { total: upcomingRecurringTotal, items: upcomingRecurring },
             emis: { total: upcomingEmiTotal, items: upcomingEmis },
             projectedVariable,
             investmentTarget,
             targetPlans,
             targetPlansTotal,
-            projectedTotal,
-            projectedSurplus,
-            isCashTight: projectedSurplus < 0
+            projectedTotal: fullProjectedTotal,
+            projectedSurplus: fullSurplus,
+            isCashTight: fullSurplus < 0
         };
 
         return data;
@@ -5160,17 +5559,79 @@ const Dashboard = {
             ).join(' | ')
             : 'No data';
 
-        return `You are a personal finance advisor analyzing data for **${monthName}** (the upcoming/target month). Provide insights grounded in the EXACT data below. Do not invent numbers.
+        // Pre-render financial-health summary block.
+        const fh = data.financialHealth || null;
+        let fhText = '';
+        if (fh) {
+            const ef = fh.emergencyFund || {};
+            const efBadge = ef.status === 'critical' ? '🚨 CRITICAL'
+                : ef.status === 'low' ? '⚠ LOW'
+                : '✅ HEALTHY';
+            fhText = `**Net Worth**: ₹${fh.netWorth.toLocaleString()}  (assets ₹${fh.assets.toLocaleString()} − liabilities ₹${fh.liabilities.toLocaleString()})
+**Cash & Savings**: ₹${fh.cashSavings.toLocaleString()}
+**Market Risk**: ₹${fh.riskAmount.toLocaleString()} (${fh.riskPercent}% of net worth)
+**Emergency Fund**: ${ef.months}mo coverage of ₹${ef.monthlyEssentials.toLocaleString()}/mo essentials → ${efBadge}${ef.shortfall > 0 ? ` (shortfall ₹${ef.shortfall.toLocaleString()} to reach ${ef.targetMonths}mo)` : ''}`;
+        } else {
+            fhText = '_(financial health not computed)_';
+        }
+
+        // SIPs / moneyLent / card-bill obligations
+        const sipsBlock = data.sips && data.sips.count > 0
+            ? `**Active SIPs**: ${data.sips.count} totalling ₹${data.sips.total.toLocaleString()}/month\n${data.sips.items.map(s => `  • ${s.name}: ₹${s.amount.toLocaleString()}`).join('\n')}`
+            : '_No active SIPs._';
+
+        const lentBlock = data.moneyLent && data.moneyLent.count > 0
+            ? `**Money Lent (receivable)**: ₹${data.moneyLent.total.toLocaleString()} across ${data.moneyLent.count} record${data.moneyLent.count === 1 ? '' : 's'}\n${data.moneyLent.items.map(r => `  • ${r.name}: ₹${r.outstanding.toLocaleString()}`).join('\n')}`
+            : '_No outstanding money lent._';
+
+        const unpaidBlock = data.unpaidCardBills && data.unpaidCardBills.count > 0
+            ? `⚠ **Past-due card bills**: ₹${data.unpaidCardBills.total.toLocaleString()} across ${data.unpaidCardBills.count} bill${data.unpaidCardBills.count === 1 ? '' : 's'}\n${data.unpaidCardBills.items.map(b => `  • ${b.cardName}: ₹${b.amount.toLocaleString()} (due ${b.dueDate})`).join('\n')}`
+            : '_No past-due card bills._';
+
+        const upcomingBillsBlock = data.upcomingCardBills && data.upcomingCardBills.count > 0
+            ? `${data.upcomingCardBills.count} bill${data.upcomingCardBills.count === 1 ? '' : 's'} totalling ₹${data.upcomingCardBills.total.toLocaleString()}\n${data.upcomingCardBills.items.map(b => `      - ${b.cardName}: ₹${b.amount.toLocaleString()} (due ${b.dueDate})`).join('\n')}`
+            : '_None_';
+
+        // Frequent vs occasional breakdown — the new projection methodology.
+        const vsb = data.variableSpendBreakdown || {};
+        const frequentText = (vsb.frequentItems && vsb.frequentItems.length > 0)
+            ? vsb.frequentItems.map(it => {
+                const trendChip = it.trend === 'rising' ? ' ↗ rising'
+                    : it.trend === 'falling' ? ' ↘ falling'
+                    : '';
+                return `  • ${it.title} (${it.category}) — ₹${it.monthlyAvg.toLocaleString()}/mo across ${it.monthsSeen}/3 months${trendChip}`;
+            }).join('\n')
+            : '_None_';
+        const occasionalText = (vsb.occasionalItems && vsb.occasionalItems.length > 0)
+            ? vsb.occasionalItems.map(it => `  • ${it.title} (${it.category}): ₹${it.amount.toLocaleString()} in ${it.month}`).join('\n')
+            : '_None_';
+
+        return `You are a personal finance advisor analyzing data for **${monthName}** (the upcoming month). Provide insights grounded in the EXACT data below. Do not invent numbers.
 
 ═══════════════════════════════════════════════════════════════
-## SECTION A: HISTORICAL CONTEXT (last ${analysisMonths} months)
+## SECTION A: FINANCIAL HEALTH (current snapshot)
+
+${fhText}
+
+${sipsBlock}
+
+${lentBlock}
+
+═══════════════════════════════════════════════════════════════
+## SECTION B: HISTORICAL CONTEXT (last ${analysisMonths} months)
 
 **Avg Monthly Income**: ₹${Math.round(data.insights.avgMonthlyIncome || 0).toLocaleString()}
 **Budget Rule**: ${data.budgetAnalysis?.targetRule?.needs || 50}% Needs / ${data.budgetAnalysis?.targetRule?.wants || 30}% Wants / ${data.budgetAnalysis?.targetRule?.invest || 20}% Invest
 
-**Spending Trend (last 3 months)**:
+**Spending Trend (last 3 months, "other spend" — excludes recurring + EMIs)**:
 ${data.historicalExpenses.slice(-3).map(h => `  ${h.label}: ₹${Math.round(h.amount).toLocaleString()}`).join('\n')}
-  ${analysisMonths}-month avg: ₹${Math.round(data.projectedAverage).toLocaleString()}/month
+  Next-month projection: **₹${Math.round(vsb.projection || data.projectedAverage || 0).toLocaleString()}** = frequent items ₹${(vsb.frequentProjection || 0).toLocaleString()} + occasional buffer ₹${(vsb.occasionalBuffer || 0).toLocaleString()} (${Math.round((vsb.occasionalWeight || 0) * 100)}% of avg occasional ₹${(vsb.occasionalAveragePerMonth || 0).toLocaleString()})
+
+**Frequent items (≥2 of last 3 months)** — these reliably recur:
+${frequentText}
+
+**Notable one-offs (last 3 months)** — surface anomalies, won't be projected forward:
+${occasionalText}
 
 **Budget Health (${analysisMonths}-month average)**:
 ${budgetText || 'Within targets'}
@@ -5182,16 +5643,20 @@ ${topAreasText || '(none)'}
 ${topItemsText || '(none)'}
 
 ═══════════════════════════════════════════════════════════════
-## SECTION B: ${monthName.toUpperCase()} FORECAST (forward-looking)
+## SECTION C: ${monthName.toUpperCase()} FORECAST (forward-looking)
 
 **Expected Income**: ₹${Math.round(fc.expectedIncome || 0).toLocaleString()}
 
 **Already-Committed Outflows**:
-  • Recurring payments scheduled: ₹${Math.round(fc.recurring?.total || 0).toLocaleString()} (${fc.recurring?.items?.length || 0} items)
+  • Recurring payments: ₹${Math.round(fc.recurring?.total || 0).toLocaleString()} (${fc.recurring?.items?.length || 0} items)
 ${(fc.recurring?.items || []).slice(0, 5).map(r => `      - ${r.name}: ₹${Math.round(r.amount).toLocaleString()}`).join('\n')}
-  • Loan/Card EMIs scheduled: ₹${Math.round(fc.emis?.total || 0).toLocaleString()} (${fc.emis?.items?.length || 0} items)
+  • Loan / Card EMIs: ₹${Math.round(fc.emis?.total || 0).toLocaleString()} (${fc.emis?.items?.length || 0} items)
 ${(fc.emis?.items || []).slice(0, 5).map(e => `      - ${e.name}: ₹${Math.round(e.amount).toLocaleString()}`).join('\n')}
-  • Fixed total: ₹${Math.round(fc.fixedObligations || 0).toLocaleString()}
+  • SIP commitments: ₹${Math.round(fc.sipsCommitment || 0).toLocaleString()}
+  • Past-due card bills: ₹${Math.round(fc.unpaidBillsTotal || 0).toLocaleString()}
+  • Card bills due in ${monthShort}: ₹${Math.round(fc.upcomingBillsTotal || 0).toLocaleString()}
+${upcomingBillsBlock !== '_None_' ? upcomingBillsBlock : ''}
+  • **Fixed total: ₹${Math.round(fc.fullFixed || 0).toLocaleString()}**
 
 **Planned Items Due By ${monthShort}**: ${fc.targetPlans?.length > 0 ? `₹${Math.round(fc.targetPlansTotal || 0).toLocaleString()}` : 'None'}
 ${(fc.targetPlans || []).map(p => `  • ${p.name}: ₹${Math.round(p.amount).toLocaleString()} (by ${p.planByDate})`).join('\n')}
@@ -5201,14 +5666,14 @@ ${(fc.targetPlans || []).map(p => `  • ${p.name}: ₹${Math.round(p.amount).to
 
 **📊 Cash-Flow Summary for ${monthShort}**:
   Income (₹${Math.round(fc.expectedIncome || 0).toLocaleString()})
-  − Fixed (₹${Math.round(fc.fixedObligations || 0).toLocaleString()})
+  − Fixed obligations (₹${Math.round(fc.fullFixed || 0).toLocaleString()})
   − Variable est. (₹${Math.round(fc.projectedVariable || 0).toLocaleString()})
   − Plans due (₹${Math.round(fc.targetPlansTotal || 0).toLocaleString()})
-  − Investment target (₹${Math.round(fc.investmentTarget || 0).toLocaleString()})
+  − Extra investment target (₹${Math.round(fc.investmentTarget || 0).toLocaleString()})
   = **${fc.projectedSurplus >= 0 ? 'Surplus' : 'SHORTFALL'}: ₹${Math.round(Math.abs(fc.projectedSurplus || 0)).toLocaleString()}**${fc.isCashTight ? '  ⚠️ CASH TIGHT' : ''}
 
 ═══════════════════════════════════════════════════════════════
-## SECTION C: INVESTMENT HEALTH
+## SECTION D: INVESTMENT HEALTH
 
   • Target: ${inv.targetPercent || 20}% of income (₹${Math.round(fc.investmentTarget || 0).toLocaleString()}/month)
   • ${analysisMonths}-month avg invested: ₹${Math.round(inv.monthlyAvg || 0).toLocaleString()}/month
@@ -5218,67 +5683,83 @@ ${(fc.targetPlans || []).map(p => `  • ${p.name}: ₹${Math.round(p.amount).to
   • Month-by-month: ${invTrendText}
 
 ═══════════════════════════════════════════════════════════════
-## SECTION D: LOANS & EMIs
+## SECTION E: LOANS, EMIs, & CARD BILLS
 
 ${data.loans.length > 0 ? `Active loans (${data.loans.length}, EMI ₹${Math.round(data.insights.totalLoans).toLocaleString()}/mo):\n${loansText}` : 'No active loans ✓'}
 
 ${data.emis.length > 0 ? `\nCard EMIs (${data.emis.length}, ₹${Math.round(data.insights.totalEmis).toLocaleString()}/mo):\n${emisText}` : ''}
 
+${unpaidBlock}
+
 ═══════════════════════════════════════════════════════════════
-## SECTION E: HISTORICAL PATTERNS FOR ${monthShort.toUpperCase()}
+## SECTION F: HISTORICAL PATTERNS FOR ${monthShort.toUpperCase()}
 
 ${data.annualPatterns?.hasPatterns ? `**Recurring annual patterns**:\n${patternsText}` : 'No recurring annual patterns detected.'}
 
 ${data.yearOverYear?.hasData ? `\n**Last year same month**:\n${yoyText.split('\n').slice(0, 3).join('\n')}` : ''}
 
 ═══════════════════════════════════════════════════════════════
-## YOUR RESPONSE — exact format
+## YOUR RESPONSE — STRICT FORMAT (mandatory)
 
-Aim for **350-500 words**. Use the EXACT numbers from above. Bullet points only — no tables.
+You MUST output ALL six headers below in this exact order. If a section
+has nothing notable, write a one-line "all good" status — do NOT skip the
+header. Use the EXACT numbers from Sections A–F. Bullet points only —
+NO tables. Aim for 400–600 words total.
 
-**📊 ${monthShort.toUpperCase()} HEALTH CHECK**
-One line on cash-flow status (use Section B's surplus/shortfall number).
-${fc.isCashTight ? 'CRITICAL: Cash shortfall projected — explain by how much and which obligations exceed income.' : ''}
-${budgetText.includes('OVER') || budgetText.includes('UNDER') ? 'One line on budget rule deviation (use Section A averages).' : ''}
-${(inv.severity === 'critical' || inv.severity === 'serious') ? `One line on investment miss rate (${inv.missRate}%) — what changed in declining months.` : ''}
+**📊 ${monthShort.toUpperCase()} OUTLOOK**
+2–3 bullets:
+• Cash-flow status using Section C surplus/shortfall (cite the ₹ amount).
+• Net-worth + emergency-fund status from Section A (one line; flag if status is critical/low).
+• Budget split status from Section B (one line; flag if any category deviates).
 
-**🔮 ${monthShort.toUpperCase()} FORECAST**
-3-4 bullets covering:
-• Total committed (fixed + scheduled plans) and what % of income it consumes
-• Variable spending headroom remaining: ₹${Math.round((fc.expectedIncome || 0) - (fc.fixedObligations || 0) - (fc.targetPlansTotal || 0) - (fc.investmentTarget || 0)).toLocaleString()}
-• Whether ${monthShort} can absorb known annual patterns from Section E (cite specific year+amount)
-• Specific dates/obligations to watch (use exact item names from Section B)
+**💸 EXPENSE PLAN — where ${monthShort} cash will go**
+3–4 bullets:
+• Already-committed total (fixed obligations from Section C) and % of income.
+• Variable spend headroom remaining: ₹${Math.round((fc.expectedIncome || 0) - (fc.fullFixed || 0) - (fc.targetPlansTotal || 0) - (fc.investmentTarget || 0)).toLocaleString()}.
+• Top 2–3 spending categories from Section B with their leading items.
+• Plans due in ${monthShort} (cite item names + ₹ from Section C if any).
 
-**🎯 TOP 3 ACTIONS** (highest impact first; use real category/item names from Sections A & B; only suggest cuts on discretionary items)
+**📈 INVESTMENT PLAN**
+3 bullets:
+• Section D severity ("${inv.severity || 'unknown'}") and ${analysisMonths}-month avg vs target.
+• SIP commitment status from Section A (auto-pilot working / not enough / room to add more).
+• Emergency fund — if ≤3 months, it MUST come before any new SIP recommendation.
 
-1. **[Exact item name from data]** — current ₹X/mo → target ₹Y/mo (saves ₹Z)
-   → How: [one specific behavior change]
-   → Why: [tie to ${monthShort} forecast or budget gap]
+**🏦 DEBT STATUS**
+2–3 bullets:
+• Loans: ${data.loans.length === 0 ? 'none' : `${data.loans.length} active, ₹${Math.round(data.insights.totalLoans).toLocaleString()}/mo`}. Flag any high-interest loan (personal >12%, home >9%) for prepayment if cash allows.
+• Card EMIs: ${data.emis.length === 0 ? 'none' : `${data.emis.length} active, ₹${Math.round(data.insights.totalEmis).toLocaleString()}/mo`}.
+• Card bills past-due (Section E) — if any, this is the #1 priority before anything else.
 
-2. **[Exact item name from data]** — current ₹X/mo → target ₹Y/mo (saves ₹Z)
-   → How: [...]
-   → Why: [...]
+**🔮 PREDICTIONS & RISKS**
+2–3 bullets:
+• Annual patterns from Section F (cite specific year + ₹ as evidence; e.g. "Mar 2024 spent ₹X on tax-saving").
+• Risk factors: market exposure (Section A), upcoming-bill spike, EF shortfall.
+• Cash-tight months ahead based on known commitments.
 
-3. **[Investment / loan / debt action]** — exact ₹ amount
-   → How: [auto-SIP, prepayment, etc. — be specific]
-   → Why: [tie to Section C miss rate or Section D loan health]
+**🎯 TOP 3 ACTIONS** (highest impact first)
+Each action MUST: (a) name a real item/category from Sections A–F, (b) include the ₹ delta, (c) explain HOW (one specific behaviour) and WHY (which Section data point it ties to).
+
+1. **[Exact item / lever]** — current ₹X → target ₹Y (saves ₹Z/mo)
+   → How: [one specific change]
+   → Why: [Section A/B/C/D/E/F evidence]
+
+2. **[…]** — same shape
+
+3. **[…]** — same shape
 
 **Total potential improvement: ₹X/month**
-
-${(data.annualPatterns?.hasPatterns || data.yearOverYear?.hasData) ? `**🎂 ${monthShort.toUpperCase()} ANNUAL PREP**\n2-3 bullets on what to budget for in ${monthShort} based on Section E. Cite the specific year and amount as evidence.` : ''}
-
-${(problemLoans.length > 0 || endingSoonLoans.length > 0) ? `**🏦 LOAN ALERTS**\n${problemLoans.map(l => `⚠️ ${l.name} @ ${l.interestRate}% — ₹${Math.round(l.remainingAmount/1000)}K balance, consider prepayment`).join('\n')}${endingSoonLoans.map(l => `\n🎉 ${l.name} — only ${l.remainingMonths} EMI(s) left; redirect ₹${Math.round(l.emiAmount).toLocaleString()}/mo to investments after`).join('')}` : ''}
 
 ═══════════════════════════════════════════════════════════════
 ## CRITICAL RULES
 
-• **Use ONLY numbers/names that appear in Sections A-E above**. No estimates, no inventions.
-• **NEVER suggest reducing**: rent, mortgage, utilities, health insurance, education, basic groceries, mandatory loan EMIs.
-• **DO suggest reducing**: food delivery, online shopping, subscriptions, entertainment, dining out, lifestyle upgrades.
-• **Skip healthy areas** — if budget rule, investments, or loans are on track, omit the section entirely.
-• **Loan flagging threshold**: personal loan >12%, home loan >9%, or ≤3 months remaining.
-• **Be quantitative**: every recommendation must include a ₹ amount AND tie back to a Section A-E data point.
-• **Forward-looking**: prioritize ${monthShort} forecast (Section B) and Section E annual patterns over generic advice.`;
+• **Use ONLY numbers/names from Sections A–F**. No invented amounts, no generic advice.
+• **NEVER suggest reducing**: rent, mortgage, utilities, health insurance, education, basic groceries, mandatory EMIs, SIPs into core goals.
+• **DO suggest reducing**: food delivery, online shopping, lifestyle subscriptions, entertainment, dining out, impulse upgrades.
+• **Emergency fund first**: if Section A says critical/low (<3 / <6 months), DO NOT recommend new long-term investments — recommend topping up the EF instead.
+• **Past-due card bills first**: if Section E shows past-due bills, the very first action must be clearing them (interest is typically 36–48% APR).
+• **Loan flagging threshold**: personal >12%, home >9%, ≤3 months remaining = ending-soon redirect.
+• **Every recommendation needs a ₹ amount AND a Section reference.**`;
     },
     
     /**
@@ -5507,71 +5988,241 @@ ${(problemLoans.length > 0 || endingSoonLoans.length > 0) ? `**🏦 LOAN ALERTS*
     },
     
     /**
-     * Get projected regular expenses for next month based on historical average
-     * Uses the average of the last 6 completed months (excluding current month)
+     * Get projected "other spend" for the next month.
+     *
+     * Algorithm: look at last 3 complete months of regular expenses (those
+     * already excluded from recurring + EMIs). Group expenses by normalized
+     * title (case- and whitespace-insensitive). An item is "frequent" if it
+     * appeared in ≥2 of the last 3 months. Project = sum-of-amounts / 3
+     * for every frequent item. Single-month items are flagged "occasional"
+     * and excluded from the projection (we don't expect them again).
+     *
+     * Why this beats a flat 6-month average:
+     *   - new spend habits (baby products, new gym) get caught after 2 months
+     *     instead of being diluted across the full 6
+     *   - one-off ₹15k flights / hospital bills don't bloat the projection
+     *   - real recurring patterns naturally emerge by frequency
      */
     getProjectedRegularExpenses() {
-        return this.getProjectedRegularExpensesWithDetails(6).average;
+        return this.getFrequentVariableSpend().projection;
     },
-    
+
     /**
-     * Get projected regular expenses with detailed breakdown
-     * Returns both the average and individual month data
-     * @param {number} numMonths - Number of months to analyze (default: 3)
+     * Compute "frequent vs occasional" breakdown for the last 3 months.
+     * Returns:
+     *   {
+     *     projection,                    // ₹/mo to budget for next month
+     *     frequentItems: [{title, category, monthsSeen, totalAmount, monthlyAvg, trend}],
+     *     occasionalItems: [{title, category, amount, month}],
+     *     monthlyData: [{ year, month, label, amount }],
+     *     monthsAnalyzed,
+     *   }
+     *
+     * @param {object} [opts]
+     * @param {number} [opts.minMonthsSeen=2] threshold for "frequent"
+     * @param {number} [opts.lookback=3]      months to scan back
      */
-    getProjectedRegularExpensesWithDetails(numMonths = 3) {
+    getFrequentVariableSpend({ minMonthsSeen = 2, lookback = 3 } = {}) {
         const expenses = window.DB.expenses || [];
         const today = new Date();
         const currentYear = today.getFullYear();
-        const currentMonth = today.getMonth() + 1; // 1-12
-        
-        // Calculate averages from the last N completed months
-        const monthlyData = [];
-        
-        for (let i = 1; i <= numMonths; i++) {
-            let targetMonth = currentMonth - i;
-            let targetYear = currentYear;
-            
-            if (targetMonth <= 0) {
-                targetMonth += 12;
-                targetYear -= 1;
-            }
-            
-            let monthTotal = 0;
-            expenses.forEach(expense => {
-                // Use budget month if available
-                const { month: expenseMonth, year: expenseYear } = this.getExpenseBudgetMonth(expense);
-                
-                if (expenseYear === targetYear && expenseMonth === targetMonth) {
-                    // Use the same filtering logic as getRegularExpenses
-                    if (this.isRegularExpense(expense)) {
-                        monthTotal += parseFloat(expense.amount) || 0;
-                    }
-                }
-            });
-            
-            // Only include months that have data
-            if (monthTotal > 0) {
-                const monthDate = new Date(targetYear, targetMonth - 1, 1);
-                const monthLabel = monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-                monthlyData.push({
-                    month: targetMonth,
-                    year: targetYear,
-                    label: monthLabel,
-                    amount: Math.round(monthTotal)
+        const currentMonth = today.getMonth() + 1;
+
+        // Build the list of (year, month) windows we're scanning.
+        const windows = [];
+        for (let i = 1; i <= lookback; i++) {
+            let m = currentMonth - i;
+            let y = currentYear;
+            if (m <= 0) { m += 12; y -= 1; }
+            windows.push({ year: y, month: m });
+        }
+
+        // Normalize a free-text title for grouping (case + whitespace).
+        const norm = (t) => (t || 'Untitled').trim().toLowerCase().replace(/\s+/g, ' ');
+
+        // Bucket by normalized title; keep monthly totals so we can both
+        // count distinct months seen AND compute the per-month projection.
+        // Shape: bucket[normTitle] = {
+        //   displayTitle, category, byMonth: { 'YYYY-MM': totalForMonth }
+        // }
+        const buckets = new Map();
+        const monthlyTotals = new Map();  // 'YYYY-MM' → total regular spend
+
+        expenses.forEach(exp => {
+            const { month, year } = this.getExpenseBudgetMonth(exp);
+            const key = `${year}-${String(month).padStart(2, '0')}`;
+            const inWindow = windows.some(w => w.year === year && w.month === month);
+            if (!inWindow) return;
+            if (!this.isRegularExpense(exp)) return;
+
+            const amount = parseFloat(exp.amount) || 0;
+            if (amount <= 0) return;
+
+            const titleNorm = norm(exp.title);
+            if (!buckets.has(titleNorm)) {
+                buckets.set(titleNorm, {
+                    displayTitle: (exp.title || 'Untitled').trim(),
+                    category: exp.category || 'Other',
+                    byMonth: new Map(),
                 });
             }
+            const b = buckets.get(titleNorm);
+            b.byMonth.set(key, (b.byMonth.get(key) || 0) + amount);
+
+            monthlyTotals.set(key, (monthlyTotals.get(key) || 0) + amount);
+        });
+
+        const frequentItems = [];
+        const occasionalItems = [];
+
+        buckets.forEach((b) => {
+            const monthsSeen = b.byMonth.size;
+            const totalAmount = Array.from(b.byMonth.values()).reduce((s, v) => s + v, 0);
+            const monthlyAvg = totalAmount / lookback;  // sum ÷ 3 (treat missing months as 0)
+
+            if (monthsSeen >= minMonthsSeen) {
+                // Trend signal: compare oldest-month value to newest-month value
+                // among the months this item appeared in. Used by AI advisory only.
+                const sortedKeys = Array.from(b.byMonth.keys()).sort();
+                const first = b.byMonth.get(sortedKeys[0]);
+                const last = b.byMonth.get(sortedKeys[sortedKeys.length - 1]);
+                let trend = 'flat';
+                if (sortedKeys.length >= 2) {
+                    if (last > first * 1.25) trend = 'rising';
+                    else if (last < first * 0.75) trend = 'falling';
+                }
+
+                frequentItems.push({
+                    title: b.displayTitle,
+                    category: b.category,
+                    monthsSeen,
+                    totalAmount: Math.round(totalAmount),
+                    monthlyAvg: Math.round(monthlyAvg),
+                    trend,
+                });
+            } else {
+                // Single-month item — list it as occasional with the month it
+                // appeared in for AI advisory.
+                const onlyKey = Array.from(b.byMonth.keys())[0];
+                occasionalItems.push({
+                    title: b.displayTitle,
+                    category: b.category,
+                    amount: Math.round(b.byMonth.get(onlyKey)),
+                    month: onlyKey,
+                });
+            }
+        });
+
+        // Sort by amount descending so the prompt + UI lead with the biggest items.
+        frequentItems.sort((a, b) => b.monthlyAvg - a.monthlyAvg);
+        occasionalItems.sort((a, b) => b.amount - a.amount);
+
+        // Frequent items contribute their full per-month average.
+        const frequentProjection = frequentItems.reduce((s, item) => s + item.monthlyAvg, 0);
+
+        // Occasional items: a flat 0-weight would underestimate (people DO
+        // have one-offs every month, just not the same ones). A flat 1.0
+        // weight would over-budget. We use 0.5 — half the average occasional
+        // pool gets carried into the projection as a "surge buffer".
+        const OCCASIONAL_WEIGHT = 0.5;
+        const occasionalTotal = occasionalItems.reduce((s, item) => s + item.amount, 0);
+        const occasionalAveragePerMonth = occasionalTotal / lookback;
+        const occasionalBuffer = OCCASIONAL_WEIGHT * occasionalAveragePerMonth;
+
+        const projection = Math.round(frequentProjection + occasionalBuffer);
+
+        // Per-month roll-up so the existing modal projection-detail view still
+        // has data to show ("last 3 months totals").
+        const monthlyData = windows
+            .map(w => {
+                const key = `${w.year}-${String(w.month).padStart(2, '0')}`;
+                const amount = Math.round(monthlyTotals.get(key) || 0);
+                if (amount === 0) return null;
+                const monthDate = new Date(w.year, w.month - 1, 1);
+                return {
+                    year: w.year,
+                    month: w.month,
+                    label: monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+                    amount,
+                };
+            })
+            .filter(Boolean)
+            .sort((a, b) => (a.year - b.year) || (a.month - b.month));
+
+        return {
+            projection,
+            frequentProjection: Math.round(frequentProjection),
+            occasionalBuffer: Math.round(occasionalBuffer),
+            occasionalTotal: Math.round(occasionalTotal),
+            occasionalAveragePerMonth: Math.round(occasionalAveragePerMonth),
+            occasionalWeight: OCCASIONAL_WEIGHT,
+            frequentItems,
+            occasionalItems,
+            monthlyData,
+            monthsAnalyzed: windows.length,
+        };
+    },
+    
+    /**
+     * Projected "other spend" for the next month, with breakdown.
+     *
+     * Backwards-compatible shape (keeps `average` + `monthlyData` for old
+     * callers) but the projection number is now produced by
+     * `getFrequentVariableSpend` — frequent items + 0.5 × occasional buffer
+     * over a 3-month window. The numMonths arg is ignored for the projection
+     * itself (we use 3 always — newer trends matter more) but still controls
+     * how many months of historical totals the breakdown view shows.
+     *
+     * @param {number} numMonths - months of history to include in monthlyData
+     */
+    getProjectedRegularExpensesWithDetails(numMonths = 3) {
+        const detail = this.getFrequentVariableSpend({ lookback: 3 });
+
+        // For modal/breakdown views asking for more than 3 months of history,
+        // backfill the older months from the raw expenses (frequency analysis
+        // still uses 3 months — only the displayed history extends).
+        let monthlyData = detail.monthlyData;
+        if (numMonths > 3) {
+            const expenses = window.DB.expenses || [];
+            const today = new Date();
+            const extra = [];
+            for (let i = 4; i <= numMonths; i++) {
+                let m = today.getMonth() + 1 - i;
+                let y = today.getFullYear();
+                while (m <= 0) { m += 12; y -= 1; }
+                let total = 0;
+                expenses.forEach(exp => {
+                    const { month, year } = this.getExpenseBudgetMonth(exp);
+                    if (year === y && month === m && this.isRegularExpense(exp)) {
+                        total += parseFloat(exp.amount) || 0;
+                    }
+                });
+                if (total > 0) {
+                    const d = new Date(y, m - 1, 1);
+                    extra.push({
+                        year: y, month: m,
+                        label: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+                        amount: Math.round(total),
+                    });
+                }
+            }
+            monthlyData = [...extra.reverse(), ...detail.monthlyData];
         }
-        
-        // Calculate average (or return 0 if no historical data)
-        if (monthlyData.length === 0) {
-            return { average: 0, monthlyData: [] };
-        }
-        
-        const totalSum = monthlyData.reduce((sum, data) => sum + data.amount, 0);
-        const average = Math.round(totalSum / monthlyData.length);
-        
-        return { average, monthlyData, totalSum, monthCount: monthlyData.length };
+
+        return {
+            average: detail.projection,        // legacy field name → new projection
+            projection: detail.projection,
+            frequentProjection: detail.frequentProjection,
+            occasionalBuffer: detail.occasionalBuffer,
+            occasionalTotal: detail.occasionalTotal,
+            occasionalAveragePerMonth: detail.occasionalAveragePerMonth,
+            occasionalWeight: detail.occasionalWeight,
+            frequentItems: detail.frequentItems,
+            occasionalItems: detail.occasionalItems,
+            monthlyData,
+            monthCount: monthlyData.length,
+            totalSum: monthlyData.reduce((s, m) => s + m.amount, 0),
+        };
     },
     
     /**
@@ -6448,6 +7099,23 @@ ${(problemLoans.length > 0 || endingSoonLoans.length > 0) ? `**🏦 LOAN ALERTS*
     /**
      * Show Settlement Calculations Modal
      */
+    /**
+     * Most-recent paid bill for a card. Returns { amount, paidAt } or null.
+     * Uses paidAmount when present, falls back to the original billed amount.
+     */
+    _getLastPaidBillForCard(cardId) {
+        const all = (window.DB.cardBills || []).filter(b =>
+            String(b.cardId) === String(cardId) && b.isPaid && (b.paidAt || b.paidDate)
+        );
+        if (all.length === 0) return null;
+        const sorted = all.slice().sort((a, b) =>
+            new Date(b.paidAt || b.paidDate) - new Date(a.paidAt || a.paidDate)
+        );
+        const latest = sorted[0];
+        const amt = parseFloat(latest.paidAmount) || parseFloat(latest.amount) || 0;
+        return { amount: amt, paidAt: latest.paidAt || latest.paidDate };
+    },
+
     showSettlementModal(year, month) {
         // Save scroll positions before re-rendering
         const scrollPositions = {};
@@ -6508,30 +7176,36 @@ ${(problemLoans.length > 0 || endingSoonLoans.length > 0) ? `**🏦 LOAN ALERTS*
         const creditCards = (window.DB.cards || []).filter(c => c.cardType === 'credit' && !c.isPlaceholder);
         const unpaidBills = (window.DB.cardBills || []).filter(b => !b.isPaid);
         
-        // Calculate current bill amounts per card
+        // Calculate current bill / outstanding / last-paid amounts per card.
+        // The Reload / Revert button toggles which set of numbers is used:
+        //   'current'  → Bill + Outstanding radios per card (live data)
+        //   'lastPaid' → single line per card showing the most recent paid bill
         const currentCardData = creditCards.map(card => {
             const cardBills = unpaidBills.filter(b => String(b.cardId) === String(card.id));
             const billAmount = cardBills.reduce((sum, b) => sum + (parseFloat(b.amount) || 0), 0);
             const outstandingAmount = parseFloat(card.outstanding) || 0;
+            const lastPaid = this._getLastPaidBillForCard(card.id);
             return {
                 id: card.id,
                 name: card.name,
-                billAmount: billAmount,
-                outstandingAmount: outstandingAmount,
+                billAmount,
+                outstandingAmount,
+                lastPaidBillAmount: lastPaid?.amount || 0,
+                lastPaidBillDate: lastPaid?.paidAt || null,
                 hasBills: billAmount > 0,
-                hasOutstanding: outstandingAmount > 0
+                hasOutstanding: outstandingAmount > 0,
+                hasLastPaid: !!(lastPaid && lastPaid.amount > 0),
             };
-        }).filter(card => card.billAmount > 0 || card.outstandingAmount > 0); // Skip cards with both amounts as 0
+        }).filter(card => card.billAmount > 0 || card.outstandingAmount > 0 || card.lastPaidBillAmount > 0);
         
-        // Use saved card data if exists and not loaded, otherwise use current data
-        const hasSavedData = settlementData.savedCardData && settlementData.savedCardData.length > 0;
-        const cardData = (hasSavedData && !settlementData.cardDataLoaded) ? settlementData.savedCardData : currentCardData;
-        
-        // If no saved data exists, initialize with current data
-        if (!hasSavedData) {
-            settlementData.savedCardData = currentCardData;
-            settlementData.cardDataLoaded = false;
+        // The "card view mode" controls what amount(s) we render per card:
+        //   'current'  → Bill / Outstanding radios (live values)
+        //   'lastPaid' → most-recent paid bill, single number, no radios
+        // Default = 'current' on first open.
+        if (!settlementData.cardViewMode) {
+            settlementData.cardViewMode = 'current';
         }
+        const cardData = currentCardData;
         
         // Get individual recurring payments for selected month
         const recurringMonthKey = settlementData.recurringMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`;
@@ -6591,10 +7265,16 @@ ${(problemLoans.length > 0 || endingSoonLoans.length > 0) ? `**🏦 LOAN ALERTS*
             settlementData.expandedSections = { cards: false, recurring: false, loans: false, custom: false, summary: false };
         }
         
-        // Calculate totals
+        // Calculate totals — depends on view mode.
+        // In 'lastPaid' mode the per-card radio is irrelevant; the total is
+        // always the sum of last-paid amounts across enabled cards.
+        const isLastPaidMode = settlementData.cardViewMode === 'lastPaid';
         const cardsTotal = cardData
             .filter(card => (settlementData.enabledCards || []).some(id => String(id) === String(card.id)))
             .reduce((sum, card) => {
+                if (isLastPaidMode) {
+                    return sum + (card.lastPaidBillAmount || 0);
+                }
                 const selection = settlementData.cardSelections[card.id] || 'bill';
                 return sum + (selection === 'bill' ? card.billAmount : card.outstandingAmount);
             }, 0);
@@ -6724,29 +7404,52 @@ ${(problemLoans.length > 0 || endingSoonLoans.length > 0) ? `**🏦 LOAN ALERTS*
                             <div id="cards-content" class="${settlementData.expandedSections?.cards ? '' : 'hidden'} px-3 pb-3 pt-3 space-y-2 border-t border-gray-200">
                                 <div class="flex items-start gap-2 mb-2 pb-2 border-b border-gray-200" onclick="event.stopPropagation()">
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-[10px] text-gray-600 leading-tight mb-0.5">${settlementData.cardDataLoaded ? 'Showing current bills from credit cards page' : 'Showing last saved data'}</p>
-                                        <p class="text-[9px] text-gray-500">${settlementData.cardDataLoaded ? 'Click revert to restore saved data' : 'Click load to fetch current bills'}</p>
+                                        <p class="text-[10px] text-gray-600 leading-tight mb-0.5">${isLastPaidMode ? 'Showing each card\'s last paid bill amount' : 'Showing current bill / outstanding from credit cards'}</p>
+                                        <p class="text-[9px] text-gray-500">${isLastPaidMode ? 'Tap reload to switch to current bill / outstanding' : 'Tap revert to switch to last paid amounts'}</p>
                                     </div>
-                                    ${settlementData.cardDataLoaded ? `
-                                        <button onclick="event.stopPropagation(); Dashboard.revertCardData(${year}, ${month})" 
+                                    ${isLastPaidMode ? `
+                                        <button onclick="event.stopPropagation(); Dashboard.loadCardData(${year}, ${month})"
                                                 class="p-1.5 border border-gray-300 rounded hover:bg-gray-50 transition-all flex-shrink-0 mt-0.5"
-                                                title="Revert to saved data">
+                                                title="Reload — show current bill / outstanding">
                                             <svg class="w-3.5 h-3.5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                                             </svg>
                                         </button>
                                     ` : `
-                                        <button onclick="event.stopPropagation(); Dashboard.loadCardData(${year}, ${month})" 
+                                        <button onclick="event.stopPropagation(); Dashboard.revertCardData(${year}, ${month})"
                                                 class="p-1.5 border border-gray-300 rounded hover:bg-gray-50 transition-all flex-shrink-0 mt-0.5"
-                                                title="Load current bills">
+                                                title="Revert — show last paid amounts">
                                             <svg class="w-3.5 h-3.5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
                                             </svg>
                                         </button>
                                     `}
                                 </div>
                                 ${cardData.length > 0 ? cardData.map(card => {
                                     const isEnabled = (settlementData.enabledCards || []).some(id => String(id) === String(card.id));
+
+                                    // ── Last-paid view: single value per card, no radios ──
+                                    if (isLastPaidMode) {
+                                        const lastPaidLabel = card.lastPaidBillDate
+                                            ? new Date(card.lastPaidBillDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
+                                            : '';
+                                        return `
+                                            <div class="bg-gray-50 rounded p-2" onclick="event.stopPropagation()">
+                                                <div class="flex items-center gap-2">
+                                                    <input type="checkbox" id="card-checkbox-${card.id}" ${isEnabled ? 'checked' : ''}
+                                                           onchange="event.stopPropagation(); Dashboard.toggleCardEnabled(${year}, ${month}, '${card.id}', this.checked)"
+                                                           class="w-3.5 h-3.5 text-green-600 border-gray-300 rounded">
+                                                    <div class="flex-1 min-w-0">
+                                                        <p class="text-xs font-semibold text-gray-700 truncate">${Utils.escapeHtml(card.name)}</p>
+                                                        <p class="text-[10px] text-gray-500">${card.hasLastPaid ? `Last paid${lastPaidLabel ? ` · ${lastPaidLabel}` : ''}` : 'No paid history yet'}</p>
+                                                    </div>
+                                                    <span class="text-xs font-bold ${card.hasLastPaid ? 'text-gray-900' : 'text-gray-400'} flex-shrink-0">₹${Utils.formatIndianNumber(card.lastPaidBillAmount)}</span>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }
+
+                                    // ── Current view: Bill / Outstanding radios ──
                                     const selection = settlementData.cardSelections[card.id] || 'bill';
                                     return `
                                         <div class="bg-gray-50 rounded p-2" onclick="event.stopPropagation()">
@@ -6759,7 +7462,7 @@ ${(problemLoans.length > 0 || endingSoonLoans.length > 0) ? `**🏦 LOAN ALERTS*
                                             ${isEnabled ? `
                                                 <div class="flex items-center gap-3 ml-5">
                                                     <label class="flex items-center gap-1.5 cursor-pointer">
-                                                        <input type="radio" name="card-${card.id}" value="bill" 
+                                                        <input type="radio" name="card-${card.id}" value="bill"
                                                                ${selection === 'bill' ? 'checked' : ''}
                                                                onchange="event.stopPropagation(); Dashboard.updateCardSelection(${year}, ${month}, '${card.id}', 'bill')"
                                                                class="w-3.5 h-3.5 text-green-600 border-gray-300">
@@ -6768,7 +7471,7 @@ ${(problemLoans.length > 0 || endingSoonLoans.length > 0) ? `**🏦 LOAN ALERTS*
                                                         </span>
                                                     </label>
                                                     <label class="flex items-center gap-1.5 cursor-pointer">
-                                                        <input type="radio" name="card-${card.id}" value="outstanding" 
+                                                        <input type="radio" name="card-${card.id}" value="outstanding"
                                                                ${selection === 'outstanding' ? 'checked' : ''}
                                                                onchange="event.stopPropagation(); Dashboard.updateCardSelection(${year}, ${month}, '${card.id}', 'outstanding')"
                                                                class="w-3.5 h-3.5 text-green-600 border-gray-300">
@@ -7330,62 +8033,35 @@ ${(problemLoans.length > 0 || endingSoonLoans.length > 0) ? `**🏦 LOAN ALERTS*
     },
     
     /**
-     * Load current card data from credit cards page
+     * Reload — switch the cards section to "current" view.
+     * Shows live current bill / outstanding values per card with the existing
+     * Bill / Outstanding radio toggle.
      */
     loadCardData(year, month) {
+        this._setCardViewMode(year, month, 'current');
+    },
+
+    /**
+     * Revert — switch the cards section to "last paid" view.
+     * Shows each card's most-recently-paid bill amount (single value, no
+     * radios). Useful for "what did I pay last cycle" comparisons.
+     */
+    revertCardData(year, month) {
+        this._setCardViewMode(year, month, 'lastPaid');
+    },
+
+    /** Internal: persist the cards-section view mode and re-render. */
+    _setCardViewMode(year, month, mode) {
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
         if (!window.DB.settlementData) window.DB.settlementData = {};
         if (!window.DB.settlementData[monthKey]) {
-            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: {} };
-        }
-        
-        // Get current credit cards data
-        const creditCards = (window.DB.cards || []).filter(c => c.cardType === 'credit' && !c.isPlaceholder);
-        const unpaidBills = (window.DB.cardBills || []).filter(b => !b.isPaid);
-        
-        const currentCardData = creditCards.map(card => {
-            const cardBills = unpaidBills.filter(b => String(b.cardId) === String(card.id));
-            const billAmount = cardBills.reduce((sum, b) => sum + (parseFloat(b.amount) || 0), 0);
-            const outstandingAmount = parseFloat(card.outstanding) || 0;
-            return {
-                id: card.id,
-                name: card.name,
-                billAmount: billAmount,
-                outstandingAmount: outstandingAmount,
-                hasBills: billAmount > 0,
-                hasOutstanding: outstandingAmount > 0
+            window.DB.settlementData[monthKey] = {
+                cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [],
+                enabledCards: [], customItems: [], expandedSections: {}
             };
-        }).filter(card => card.billAmount > 0 || card.outstandingAmount > 0); // Skip cards with both amounts as 0
-        
-        // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: true, recurring: false, loans: false, custom: false, summary: false };
-        
-        // Save current data as loaded data
-        window.DB.settlementData[monthKey].savedCardData = currentCardData;
-        window.DB.settlementData[monthKey].cardDataLoaded = true;
-        window.DB.settlementData[monthKey].expandedSections = expandedState;
-        window.Storage.save();
-        
-        this.showSettlementModal(year, month);
-    },
-    
-    /**
-     * Revert to saved card data
-     */
-    revertCardData(year, month) {
-        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-        if (!window.DB.settlementData || !window.DB.settlementData[monthKey]) {
-            return;
         }
-        
-        // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: true, recurring: false, loans: false, custom: false, summary: false };
-        
-        // Revert to saved data
-        window.DB.settlementData[monthKey].cardDataLoaded = false;
-        window.DB.settlementData[monthKey].expandedSections = expandedState;
+        window.DB.settlementData[monthKey].cardViewMode = mode;
         window.Storage.save();
-        
         this.showSettlementModal(year, month);
     },
     

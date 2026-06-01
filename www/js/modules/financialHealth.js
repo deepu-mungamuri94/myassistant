@@ -28,13 +28,40 @@ const FinancialHealth = {
     CASH_HISTORY_LIMIT: 10,
 
     /**
+     * Exchange rate (USD→INR) as a plain number.
+     * `DB.exchangeRate` is stored as `{ rate, updatedAt }` in modern data,
+     * but old/migrating data can have a raw number, undefined, or even an
+     * object with a non-numeric rate. Without this guard, passing the wrapper
+     * object straight into `calculatePortfolioAmount` produced `NaN` totals
+     * that bubbled up as a ₹0 net-worth tile.
+     */
+    _getExchangeRate() {
+        if (window.Investments && typeof window.Investments.getExchangeRate === 'function') {
+            return window.Investments.getExchangeRate();
+        }
+        const xr = window.DB.exchangeRate;
+        if (xr && typeof xr === 'object') return parseFloat(xr.rate) || 89;
+        return typeof xr === 'number' ? xr : 89;
+    },
+
+    /** Same idea for gold rate. */
+    _getGoldRate() {
+        if (window.Investments && typeof window.Investments.getGoldRate === 'function') {
+            return window.Investments.getGoldRate();
+        }
+        const gr = window.DB.goldRatePerGram;
+        if (gr && typeof gr === 'object') return parseFloat(gr.rate) || 9000;
+        return typeof gr === 'number' ? gr : 9000;
+    },
+
+    /**
      * Compute net worth from current data.
      * Investment values use Investments.calculatePortfolioAmount which already
      * handles share-price lookups, gold rate, and USD/INR conversion.
      */
     computeNetWorth() {
-        const exchangeRate = window.DB.exchangeRate || 89;
-        const goldRate = window.DB.goldRatePerGram || 11400;
+        const exchangeRate = this._getExchangeRate();
+        const goldRate = this._getGoldRate();
         const sharePrices = window.DB.sharePrices || [];
 
         // ---- Assets ----
@@ -130,8 +157,8 @@ const FinancialHealth = {
      * status              = 'critical' (<3) | 'low' (<6) | 'good' (>=6)
      */
     computeEmergencyFund() {
-        const exchangeRate = window.DB.exchangeRate || 89;
-        const goldRate = window.DB.goldRatePerGram || 11400;
+        const exchangeRate = this._getExchangeRate();
+        const goldRate = this._getGoldRate();
         const sharePrices = window.DB.sharePrices || [];
 
         const cashBalance = this._getCashSavingsCurrent();
@@ -449,8 +476,8 @@ const FinancialHealth = {
     _renderEmergencyFundModalBody() {
         const ef = this.computeEmergencyFund();
         const fmt = (n) => `₹${Utils.formatIndianNumber(Math.round(n))}`;
-        const exchangeRate = window.DB.exchangeRate || 89;
-        const goldRate = window.DB.goldRatePerGram || 11400;
+        const exchangeRate = this._getExchangeRate();
+        const goldRate = this._getGoldRate();
         const sharePrices = window.DB.sharePrices || [];
 
         const statusCopy = {
