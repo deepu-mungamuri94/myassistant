@@ -152,7 +152,10 @@ const FinancialHealth = {
      *
      * liquid              = cashSavings.current
      *                       + sum of investments flagged isEmergencyFund
-     * monthlyEssentials   = average Needs total over last 3 months (with data)
+     * monthlyEssentials   = recurring obligations (this month)
+     *                       + loan & credit-card EMIs (this month)
+     *                       + 3-mo average of "other spend" (regular, non-recurring, non-EMI)
+     *                       — i.e. money that would still go out even with zero income.
      * months              = liquid / monthlyEssentials
      * status              = 'critical' (<3) | 'low' (<6) | 'good' (>=6)
      */
@@ -186,7 +189,8 @@ const FinancialHealth = {
 
         const liquid = cashBalance + flaggedTotal;
 
-        const monthlyEssentials = this._getAverageMonthlyEssentials();
+        const breakdown = this._getMonthlyEssentialsBreakdown();
+        const monthlyEssentials = breakdown.total;
 
         let months = 0;
         if (monthlyEssentials > 0) {
@@ -203,6 +207,7 @@ const FinancialHealth = {
             flaggedTotal,
             flaggedInvestments,
             monthlyEssentials,
+            essentialsBreakdown: breakdown,
             months,
             status,
             target: this.EMERGENCY_FUND_TARGET_MONTHS,
@@ -256,24 +261,72 @@ const FinancialHealth = {
     },
 
     /**
-     * Average essential (Needs) spending over the last 3 calendar months
-     * (excluding the current month — which is partial). Falls back to
-     * fewer months if data is short. Uses Dashboard.getNeedsTotal so we
-     * inherit the user's needs/wants categorization rules.
+     * What you'd still owe each month with zero income:
+     *   recurring   — bills/subscriptions/rent/etc. due this month
+     *   emis        — loan + credit-card EMIs due this month
+     *   otherSpend  — 3-month average of "regular" expenses (non-recurring,
+     *                 non-EMI day-to-day spending: groceries, fuel, eating out)
+     *
+     * The current month is partial, so we average over the last 3 *complete*
+     * months for `otherSpend`. Recurring and EMIs are pulled from the current
+     * month because they're scheduled obligations — the amount is known, not
+     * estimated from history.
+     *
+     * Returns { recurring, emis, otherSpend, total, monthsSampledForOther }.
      */
-    _getAverageMonthlyEssentials() {
-        if (!window.Dashboard || !window.Dashboard.getNeedsTotal) return 0;
+    _getMonthlyEssentialsBreakdown() {
+        const dash = window.Dashboard;
+        if (!dash) return { recurring: 0, emis: 0, otherSpend: 0, total: 0, monthsSampledForOther: 0 };
 
         const now = new Date();
-        const samples = [];
-        // Look back 4 months, skip the current (partial) month, take up to 3 complete ones.
-        for (let i = 1; i <= 4 && samples.length < 3; i++) {
-            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const total = window.Dashboard.getNeedsTotal(d.getFullYear(), d.getMonth() + 1);
-            if (total > 0) samples.push(total);
+        const curYear = now.getFullYear();
+        const curMonth = now.getMonth() + 1;
+
+        const recurring = (dash.getTotalRecurringExpensesForMonth)
+            ? dash.getTotalRecurringExpensesForMonth(curYear, curMonth)
+            : 0;
+        const emis = (dash.getTotalEmisForMonth)
+            ? dash.getTotalEmisForMonth(curYear, curMonth)
+            : 0;
+
+        // 3-month average of "other spend" (regular = non-recurring, non-EMI),
+        // skipping the current partial month.
+        let otherSpend = 0;
+        let monthsSampledForOther = 0;
+        if (dash.getRegularTotalForMonth || dash.isRegularExpense) {
+            const samples = [];
+            for (let i = 1; i <= 4 && samples.length < 3; i++) {
+                const d = new Date(curYear, now.getMonth() - i, 1);
+                const total = (dash.getRegularTotalForMonth)
+                    ? dash.getRegularTotalForMonth(d.getFullYear(), d.getMonth() + 1)
+                    : this._sumRegularExpensesForMonth(d.getFullYear(), d.getMonth() + 1);
+                if (total > 0) samples.push(total);
+            }
+            if (samples.length > 0) {
+                otherSpend = samples.reduce((s, v) => s + v, 0) / samples.length;
+                monthsSampledForOther = samples.length;
+            }
         }
-        if (samples.length === 0) return 0;
-        return samples.reduce((s, v) => s + v, 0) / samples.length;
+
+        const total = recurring + emis + otherSpend;
+        return { recurring, emis, otherSpend, total, monthsSampledForOther };
+    },
+
+    /**
+     * Fallback summer for "other spend" if Dashboard doesn't expose a helper.
+     * Uses Dashboard.isRegularExpense for the same regular/recurring/EMI split
+     * so the number matches what the dashboard's "Other spend" tile shows.
+     */
+    _sumRegularExpensesForMonth(year, month) {
+        const dash = window.Dashboard;
+        if (!dash || !dash.isRegularExpense) return 0;
+        const expenses = window.DB.expenses || [];
+        return expenses.reduce((sum, exp) => {
+            const { month: m, year: y } = dash.getExpenseBudgetMonth(exp);
+            if (y !== year || m !== month) return sum;
+            if (!dash.isRegularExpense(exp)) return sum;
+            return sum + (parseFloat(exp.amount) || 0);
+        }, 0);
     },
 
     /**
@@ -312,9 +365,9 @@ const FinancialHealth = {
             : '';
 
         return `
-        <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+        <div class="dash-card-hero">
             <div class="flex items-center justify-between mb-3">
-                <h3 class="text-sm font-semibold text-gray-700">Financial Health</h3>
+                <h3 class="text-sm font-bold text-gray-800">Financial Health</h3>
             </div>
             <div class="grid grid-cols-2 gap-3 max-w-full">
                 <div onclick="FinancialHealth.showNetWorthBreakdown()"
@@ -575,11 +628,36 @@ const FinancialHealth = {
                             <div class="text-[10px] text-blue-700 mt-0.5">cash + flagged investments</div>
                         </div>
                         <div class="bg-purple-50 border border-purple-200 rounded-lg p-2.5">
-                            <div class="text-[10px] uppercase tracking-wide text-purple-600 font-semibold">Avg essentials/mo</div>
+                            <div class="text-[10px] uppercase tracking-wide text-purple-600 font-semibold">Essentials/mo</div>
                             <div class="text-base font-bold text-purple-900">${ef.monthlyEssentials > 0 ? fmt(ef.monthlyEssentials) : '—'}</div>
-                            <div class="text-[10px] text-purple-700 mt-0.5">Last 3 complete months</div>
+                            <div class="text-[10px] text-purple-700 mt-0.5">recurring + EMIs + avg other spend</div>
                         </div>
                     </div>
+
+                    ${ef.monthlyEssentials > 0 ? `
+                    <!-- Essentials breakdown — what the EF is sized to cover -->
+                    <div class="bg-white border border-purple-200 rounded-lg p-3">
+                        <div class="text-xs font-bold text-purple-800 mb-2">What you'd still owe each month with zero income</div>
+                        <div class="space-y-1.5 text-xs">
+                            <div class="flex justify-between">
+                                <span class="text-gray-700">Recurring payments <span class="text-[10px] text-gray-500">(this month)</span></span>
+                                <span class="font-semibold text-gray-900">${fmt(ef.essentialsBreakdown.recurring)}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-700">Loans &amp; credit-card EMIs <span class="text-[10px] text-gray-500">(this month)</span></span>
+                                <span class="font-semibold text-gray-900">${fmt(ef.essentialsBreakdown.emis)}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-700">Other spend <span class="text-[10px] text-gray-500">(${ef.essentialsBreakdown.monthsSampledForOther || 0}-mo avg)</span></span>
+                                <span class="font-semibold text-gray-900">${fmt(ef.essentialsBreakdown.otherSpend)}</span>
+                            </div>
+                            <div class="flex justify-between pt-1.5 mt-1.5 border-t border-purple-100">
+                                <span class="font-bold text-purple-800">Total / month</span>
+                                <span class="font-bold text-purple-900">${fmt(ef.monthlyEssentials)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
 
                     <!-- Cash & Savings editor -->
                     <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
@@ -638,7 +716,7 @@ const FinancialHealth = {
 
                     ${ef.monthlyEssentials === 0 ? `
                         <div class="text-[11px] text-gray-500 leading-relaxed bg-amber-50 border border-amber-100 rounded-lg p-2.5">
-                            <strong class="text-amber-800">No essentials data:</strong> add expenses for at least one full month and tag them as Needs (or use the default categories). The emergency-fund target will then calibrate automatically to your actual spending.
+                            <strong class="text-amber-800">No essentials data yet:</strong> add recurring payments, loans/EMIs, or at least one full month of expenses. The emergency-fund target will then calibrate to what you'd still owe with zero income.
                         </div>
                     ` : ''}
                 </div>

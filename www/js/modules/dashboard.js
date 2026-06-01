@@ -182,9 +182,9 @@ const Dashboard = {
             ${this.renderNeedsWantsInvestments()}
             
             <!-- Category Expenses Chart -->
-            <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+            <div class="dash-card-secondary dash-tier-break">
                 <div class="flex justify-between items-center mb-3 max-w-full">
-                    <h3 class="text-sm font-semibold text-gray-700">Expenses by Category</h3>
+                    <h3 class="text-sm font-semibold">Expenses by Category</h3>
                     <div class="relative">
                         <input type="month" id="category-month-selector" value="${this.getCurrentMonthValue()}" onchange="Dashboard.updateCategoryButton(); Dashboard.renderCategoryChart()" class="absolute opacity-0 pointer-events-none" />
                         <button id="category-month-button" onclick="document.getElementById('category-month-selector').showPicker()" class="px-3 py-1.5 border border-purple-300 rounded-lg text-xs font-medium text-purple-700 hover:bg-purple-50 transition-all whitespace-nowrap">
@@ -201,9 +201,9 @@ const Dashboard = {
             </div>
             
             <!-- Income vs Expenses Chart -->
-            <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+            <div class="dash-card-secondary">
                 <div class="flex justify-between items-center mb-3 max-w-full">
-                    <h3 class="text-sm font-semibold text-gray-700">Income vs Expenses</h3>
+                    <h3 class="text-sm font-semibold">Income vs Expenses</h3>
                     <button onclick="Dashboard.openMonthRangeModal()" class="px-3 py-1.5 border border-blue-300 rounded-lg text-xs font-medium text-blue-700 hover:bg-blue-50 transition-all whitespace-nowrap">
                         <span id="month-range-label">${this.getMonthRangeLabel()}</span> ▼
                     </button>
@@ -216,14 +216,17 @@ const Dashboard = {
             <!-- Investments Chart -->
             ${this.renderInvestmentsSection()}
             
-            <!-- Loans & EMIs -->
+            <!-- Loans & EMIs (collapsed by default — reference data) -->
             ${loans.length > 0 ? `
-            <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
-                <h3 class="text-sm font-semibold text-gray-700 mb-3">Loans & EMIs</h3>
+            <details class="dash-card-secondary" id="loans-section" ontoggle="if(this.open) Dashboard.renderLoansChartIfNeeded()">
+                <summary class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold">Loans & EMIs <span class="text-xs text-gray-400 font-normal">(${loans.length})</span></h3>
+                    <span class="text-xs text-gray-400 details-arrow">▾</span>
+                </summary>
                 <div style="height: ${Math.max(200, Math.min(400, loans.length * 60))}px; max-width: 100%;">
                     <canvas id="loans-chart"></canvas>
                 </div>
-            </div>
+            </details>
             ` : ''}
             
             <!-- Credit Card Bills Chart -->
@@ -294,7 +297,7 @@ const Dashboard = {
         const regularLabel = 'Other spend';
         
         return `
-        <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden" id="first-line-cards-section">
+        <div class="dash-card-primary" id="first-line-cards-section">
             <div class="flex items-center justify-between mb-3">
                 <h3 class="text-sm font-semibold text-gray-700">Spending — ${monthName}</h3>
                 <div class="flex bg-gray-100 rounded-lg p-0.5">
@@ -413,9 +416,9 @@ const Dashboard = {
         const isTotal = this.investmentsChartView === 'total';
         
         return `
-        <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden" id="investments-section">
+        <div class="dash-card-secondary" id="investments-section">
             <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                <h3 class="text-sm font-semibold text-gray-700">📈 Investments</h3>
+                <h3 class="text-sm font-semibold">📈 Investments</h3>
                 <div class="flex items-center gap-2">
                     <button onclick="Dashboard.openInvestmentRangeModal()" class="px-2 py-1 border border-emerald-300 rounded-lg text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-all whitespace-nowrap">
                         <span id="investment-range-label">${this.getInvestmentRangeLabel()}</span> ▼
@@ -462,16 +465,20 @@ const Dashboard = {
     /**
      * Render Credit Card Bills section
      */
-    renderCreditCardBillsSection() {
+    renderCreditCardBillsSection(forceOpen = false) {
         const paidBills = (window.DB.cardBills || []).filter(b => b.isPaid && b.paidAt);
         if (paidBills.length === 0) return '';
-        
+
         const isTotal = this.creditCardChartView === 'total';
-        
+        const openAttr = forceOpen ? ' open' : '';
+
         return `
-        <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden" id="credit-card-bills-section">
-            <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                <h3 class="text-sm font-semibold text-gray-700">💳 Credit Card Bills</h3>
+        <details class="dash-card-secondary" id="credit-card-bills-section"${openAttr} ontoggle="if(this.open) Dashboard.renderCreditCardBillsChartIfNeeded()">
+            <summary class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-semibold">💳 Credit Card Bills</h3>
+                <span class="text-xs text-gray-400 details-arrow">▾</span>
+            </summary>
+            <div class="flex items-center justify-end gap-2 mb-3 flex-wrap">
                 <div class="flex items-center gap-2">
                     <button onclick="Dashboard.openCreditCardRangeModal()" class="px-2 py-1 border border-indigo-300 rounded-lg text-xs font-medium text-indigo-600 hover:bg-indigo-50 transition-all whitespace-nowrap">
                         <span id="credit-card-range-label">${this.getCreditCardRangeLabel()}</span> ▼
@@ -491,10 +498,10 @@ const Dashboard = {
             <div style="height: 220px; max-width: 100%;">
                 <canvas id="credit-card-bills-chart"></canvas>
             </div>
-        </div>
+        </details>
         `;
     },
-    
+
     /**
      * Switch credit card chart view
      */
@@ -507,14 +514,15 @@ const Dashboard = {
             this.creditCardBillsChartInstance = null;
         }
         
-        // Re-render the section
+        // Re-render the section, preserving the open/closed state
         const section = document.getElementById('credit-card-bills-section');
         if (section) {
-            section.outerHTML = this.renderCreditCardBillsSection();
-            this.renderCreditCardBillsChart();
+            const wasOpen = section.open;
+            section.outerHTML = this.renderCreditCardBillsSection(wasOpen);
+            if (wasOpen) this.renderCreditCardBillsChart();
         }
     },
-    
+
     /**
      * Get credit card range label
      */
@@ -655,6 +663,9 @@ const Dashboard = {
      * Destroy all chart instances
      */
     destroyAllCharts() {
+        // Reset lazy-render flags so collapsed charts re-render after a full dashboard refresh
+        this._loansChartRendered = false;
+        this._ccBillsChartRendered = false;
         if (this.incomeExpenseChartInstance) {
             try {
                 this.incomeExpenseChartInstance.destroy();
@@ -935,16 +946,36 @@ const Dashboard = {
             console.error('Chart.js is not loaded');
             return;
         }
-        
+
         try {
             this.renderIncomeExpenseChart();
             this.renderCategoryChart();
-            this.renderLoansChart();
-            this.renderCreditCardBillsChart();
+            // Loans + Credit Card Bills are inside <details> and collapsed by default.
+            // Rendering Chart.js into a hidden parent gives a 0×0 canvas, so we lazy-
+            // render on first open via renderLoansChartIfNeeded / renderCreditCardBillsChartIfNeeded.
+            const loansEl = document.getElementById('loans-section');
+            if (loansEl && loansEl.open) this.renderLoansChart();
+            const ccEl = document.getElementById('credit-card-bills-section');
+            if (ccEl && ccEl.open) this.renderCreditCardBillsChart();
             this.renderInvestmentsTrendChart();
         } catch (error) {
             console.error('Error initializing charts:', error);
         }
+    },
+
+    /**
+     * Lazy chart renderers — invoked the first time a collapsible section opens.
+     */
+    renderLoansChartIfNeeded() {
+        if (this._loansChartRendered) return;
+        this._loansChartRendered = true;
+        try { this.renderLoansChart(); } catch (e) { console.error(e); this._loansChartRendered = false; }
+    },
+
+    renderCreditCardBillsChartIfNeeded() {
+        if (this._ccBillsChartRendered) return;
+        this._ccBillsChartRendered = true;
+        try { this.renderCreditCardBillsChart(); } catch (e) { console.error(e); this._ccBillsChartRendered = false; }
     },
     
     /**
@@ -1186,7 +1217,7 @@ const Dashboard = {
     renderNeedsWantsInvestments() {
         return `
             <!-- Needs/Wants/Investments Cards -->
-            <div id="budget-rule-container" class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+            <div id="budget-rule-container" class="dash-card-primary">
                 ${this.renderBudgetRuleContent()}
             </div>
         `;
@@ -7035,7 +7066,7 @@ Each action MUST: (a) name a real item/category from Sections A–F, (b) include
         
         return `
             <!-- Monthly Breakdown Cards Box -->
-            <div class="bg-white rounded-lg p-3 shadow-sm mb-4 max-w-full overflow-hidden">
+            <div class="dash-card-primary">
                 <!-- Header with Title and Month Selector -->
                 <div class="flex justify-between items-center max-w-full">
                     <h3 class="text-sm font-semibold text-gray-700">Monthly Breakdown</h3>
