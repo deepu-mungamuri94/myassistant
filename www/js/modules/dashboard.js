@@ -307,7 +307,7 @@ const Dashboard = {
         return `
         <div class="dash-card-primary" id="first-line-cards-section">
             <div class="flex items-center justify-between mb-3">
-                <h3 class="text-sm font-semibold text-gray-700">Spending — ${monthName}</h3>
+                <h3 class="text-sm font-semibold text-gray-700">Outflows by type — ${monthName}</h3>
                 <div class="flex bg-gray-100 rounded-lg p-0.5">
                     <button onclick="Dashboard.switchFirstLineMonthView('current')" 
                         class="px-2 py-1 text-xs rounded-md transition-all ${isCurrent ? 'bg-white shadow-sm text-purple-600 font-medium' : 'text-gray-500 hover:text-gray-700'}">
@@ -715,6 +715,14 @@ const Dashboard = {
                 this.investmentChartInstance = null;
             } catch (e) {
                 console.error('Error destroying investment chart:', e);
+            }
+        }
+        if (this.cashFlowTrendChartInstance) {
+            try {
+                this.cashFlowTrendChartInstance.destroy();
+                this.cashFlowTrendChartInstance = null;
+            } catch (e) {
+                console.error('Error destroying cash-flow trend chart:', e);
             }
         }
     },
@@ -4089,7 +4097,12 @@ const Dashboard = {
             unpaidBills: fc.unpaidBillsTotal || 0,
             upcomingBills: fc.upcomingBillsTotal || 0,
             projectedVariable: fc.projectedVariable || 0,
-            investmentTarget: fc.investmentTarget || 0,
+            // Top-up above SIPs needed to hit the budget rule's invest %.
+            // NOT advice to add a new SIP — it's the gap shown in the cash-
+            // flow tile so the surplus math is honest. If SIPs already meet
+            // the target, this is 0 and the line drops out of the tile.
+            investmentTargetGap: fc.investmentTargetGap || 0,
+            investmentTargetTotal: fc.investmentTargetTotal || 0,
             plansTotal: fc.targetPlansTotal || 0,
             projectedTotal: fc.projectedTotal || 0,
             projectedSurplus: fc.projectedSurplus || 0,
@@ -4133,7 +4146,11 @@ const Dashboard = {
             { label: 'Past-due bills',    value: summary.unpaidBills, alert: true },
             { label: 'Variable est.',     value: summary.projectedVariable },
             { label: 'Plans due',         value: summary.plansTotal },
-            { label: 'Extra invest tgt.', value: summary.investmentTarget },
+            // Top-up above SIPs needed to reach the invest % target. We label
+            // it "Top-up above SIPs" so the user doesn't read it as a new
+            // recommendation — it's a benchmark gap, and the row is hidden
+            // entirely when SIPs already meet/exceed the target.
+            { label: 'Top-up above SIPs', value: summary.investmentTargetGap },
         ].filter(li => li.value > 0);
 
         const lineHtml = lineItems.map(li => `
@@ -5140,10 +5157,18 @@ const Dashboard = {
         const expectedIncome = upcomingIncomeData.income || data.insights.avgMonthlyIncome || 0;
         const fixedObligations = upcomingRecurringTotal + upcomingEmiTotal;
         const projectedVariable = data.projectedAverage || 0;
-        const investmentTarget = expectedIncome > 0
+        // Absolute target — total ₹ that needs to be invested this month to
+        // hit the user's budget rule (e.g. 20% of income). Used as a benchmark.
+        const investmentTargetTotal = expectedIncome > 0
             ? Math.round((expectedIncome * (data.budgetAnalysis?.targetRule?.invest || 20)) / 100)
             : 0;
-        const projectedTotal = fixedObligations + projectedVariable + investmentTarget + targetPlansTotal;
+        // The cash-flow surplus subtracts SIPs once (via fullFixed below). So
+        // the *additional* deduction needed for "extra investing" is only the
+        // GAP between target and what SIPs already cover. If SIPs already meet
+        // or exceed the target, this is zero — no double-counting.
+        // investmentTargetGap is set after sipsCommitment is computed (below);
+        // we initialize it here so the legacy projectedTotal stays defined.
+        const projectedTotal = fixedObligations + projectedVariable + investmentTargetTotal + targetPlansTotal;
         const projectedSurplus = expectedIncome - projectedTotal;
 
         // ===== EXTRA CONTEXT: financial health, cash, SIPs, money-lent, card bills =====
@@ -5273,7 +5298,13 @@ const Dashboard = {
         const unpaidBillsTotal = data.unpaidCardBills.total;
         const upcomingBillsTotal = data.upcomingCardBills.total;
         const fullFixed = fixedObligations + sipsCommitment + unpaidBillsTotal + upcomingBillsTotal;
-        const fullProjectedTotal = fullFixed + projectedVariable + investmentTarget + targetPlansTotal;
+        // Top-up above SIPs needed to reach the budget rule's invest %. This
+        // is the "extra" the cash-flow line refers to — it's NOT advice to
+        // add a new SIP, just a benchmark for how much more (if any) would
+        // hit the target. Capped at zero so over-saving doesn't add a
+        // negative deduction.
+        const investmentTargetGap = Math.max(0, investmentTargetTotal - sipsCommitment);
+        const fullProjectedTotal = fullFixed + projectedVariable + investmentTargetGap + targetPlansTotal;
         const fullSurplus = expectedIncome - fullProjectedTotal;
 
         data.targetMonthForecast = {
@@ -5286,7 +5317,11 @@ const Dashboard = {
             recurring: { total: upcomingRecurringTotal, items: upcomingRecurring },
             emis: { total: upcomingEmiTotal, items: upcomingEmis },
             projectedVariable,
-            investmentTarget,
+            investmentTargetTotal,    // absolute ₹ to hit invest %
+            investmentTargetGap,      // top-up above SIPs needed to hit it
+            // Legacy alias — older prompt copy still references investmentTarget.
+            // Mapped to the GAP so cash-flow math stops double-counting SIPs.
+            investmentTarget: investmentTargetGap,
             targetPlans,
             targetPlansTotal,
             projectedTotal: fullProjectedTotal,
@@ -5900,21 +5935,28 @@ ${upcomingBillsBlock !== '_None_' ? upcomingBillsBlock : ''}
 ${(fc.targetPlans || []).map(p => `  • ${p.name}: ₹${Math.round(p.amount).toLocaleString()} (by ${p.planByDate})`).join('\n')}
 
 **Projected Variable Spend**: ₹${Math.round(fc.projectedVariable || 0).toLocaleString()} (based on ${analysisMonths}-month avg)
-**Investment Target (${data.budgetAnalysis?.targetRule?.invest || 20}%)**: ₹${Math.round(fc.investmentTarget || 0).toLocaleString()}
+**Investment Target (${data.budgetAnalysis?.targetRule?.invest || 20}% of income)**: ₹${Math.round(fc.investmentTargetTotal || 0).toLocaleString()} total
+  • Already covered by planned SIPs: ₹${Math.round(fc.sipsCommitment || 0).toLocaleString()}
+  • **Top-up needed above SIPs**: ₹${Math.round(fc.investmentTargetGap || 0).toLocaleString()} ${(fc.investmentTargetGap || 0) === 0 ? '(SIPs already meet target ✓)' : ''}
 
 **📊 Cash-Flow Summary for ${monthShort}**:
   Income (₹${Math.round(fc.expectedIncome || 0).toLocaleString()})
-  − Fixed obligations (₹${Math.round(fc.fullFixed || 0).toLocaleString()})
+  − Fixed obligations incl. SIPs (₹${Math.round(fc.fullFixed || 0).toLocaleString()})
   − Variable est. (₹${Math.round(fc.projectedVariable || 0).toLocaleString()})
   − Plans due (₹${Math.round(fc.targetPlansTotal || 0).toLocaleString()})
-  − Extra investment target (₹${Math.round(fc.investmentTarget || 0).toLocaleString()})
+  − Investment top-up above SIPs (₹${Math.round(fc.investmentTargetGap || 0).toLocaleString()})
   = **${fc.projectedSurplus >= 0 ? 'Surplus' : 'SHORTFALL'}: ₹${Math.round(Math.abs(fc.projectedSurplus || 0)).toLocaleString()}**${fc.isCashTight ? '  ⚠️ CASH TIGHT' : ''}
+
+  Note: SIPs are deducted ONCE — inside "Fixed obligations incl. SIPs". The
+  "top-up above SIPs" line is the *additional* ₹ that would need to be
+  invested this month to hit the budget rule's invest %, beyond what your
+  existing SIPs already cover. If SIPs already meet the target, this is ₹0.
 
 ═══════════════════════════════════════════════════════════════
 ## SECTION D: INVESTMENT HEALTH
 
   • **Planned SIP commitment** (auto-deducted in Settlement): ₹${(data.sips?.total || 0).toLocaleString()}/month across ${data.sips?.count || 0} SIP(s)
-  • **Target** for ${monthShort}: ${inv.targetPercent || 20}% of income = ₹${Math.round(fc.investmentTarget || 0).toLocaleString()}/month
+  • **Target** for ${monthShort}: ${inv.targetPercent || 20}% of income = ₹${Math.round(fc.investmentTargetTotal || 0).toLocaleString()}/month total
   • **${analysisMonths}-month REALIZED invested** (actual purchases, not SIP plan): ₹${Math.round(inv.monthlyAvg || 0).toLocaleString()}/month
   • Months hit target: ${inv.targetHits || 0} / ${inv.targetComparisons?.length || 0}
   • Miss rate: ${inv.missRate || 0}% — Severity: **${(inv.severity || 'unknown').toUpperCase()}**
@@ -5955,13 +5997,13 @@ NO tables. Aim for 400–600 words total.
 **💸 EXPENSE PLAN — where ${monthShort} cash will go**
 3–4 bullets:
 • Already-committed total (fixed obligations from Section C) and % of income.
-• Variable spend headroom remaining: ₹${Math.round((fc.expectedIncome || 0) - (fc.fullFixed || 0) - (fc.targetPlansTotal || 0) - (fc.investmentTarget || 0)).toLocaleString()}.
+• Variable spend headroom remaining: ₹${Math.round((fc.expectedIncome || 0) - (fc.fullFixed || 0) - (fc.targetPlansTotal || 0) - (fc.investmentTargetGap || 0)).toLocaleString()}.
 • Top 2–3 spending categories from Section B with their leading items.
 • Plans due in ${monthShort} (cite item names + ₹ from Section C if any).
 
 **📈 INVESTMENT PLAN**
 3 bullets — must distinguish PLANNED (SIPs in Section A/D) from REALIZED (actual purchases in Section D's monthly avg). The two are different numbers and you must cite both:
-• ${analysisMonths}-mo realized avg ₹${Math.round(inv.monthlyAvg || 0).toLocaleString()}/mo vs target ₹${Math.round(fc.investmentTarget || 0).toLocaleString()}/mo (severity: "${inv.severity || 'unknown'}"). State the gap in ₹.
+• ${analysisMonths}-mo realized avg ₹${Math.round(inv.monthlyAvg || 0).toLocaleString()}/mo vs target ₹${Math.round(fc.investmentTargetTotal || 0).toLocaleString()}/mo (severity: "${inv.severity || 'unknown'}"). State the gap in ₹.
 • Planned SIP commitment ₹${(data.sips?.total || 0).toLocaleString()}/mo (${data.sips?.count || 0} SIP${(data.sips?.count || 0) === 1 ? '' : 's'}) vs target — does the plan alone clear the target? If not, what's the top-up?
 • Emergency fund — if status is critical/low, EF top-up MUST come before any new SIP recommendation.
 
@@ -7287,10 +7329,19 @@ For each ₹ amount you wrote, point to the EXACT Section line it came from. If 
         return `
             <!-- Monthly Breakdown Cards Box -->
             <div class="dash-card-primary">
-                <!-- Header with Title and Month Selector -->
-                <div class="flex justify-between items-center max-w-full">
-                    <h3 class="text-sm font-semibold text-gray-700">Monthly Breakdown</h3>
-                    <div class="relative">
+                <!-- Header with Title, Trend Icon, and Month Selector -->
+                <div class="flex justify-between items-center gap-2 max-w-full">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <h3 class="text-sm font-semibold text-gray-700">Cash flow</h3>
+                        <button onclick="Dashboard.showCashFlowTrendModal()"
+                                class="w-5 h-5 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors flex-shrink-0"
+                                title="Show cash-flow trend">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 17l6-6 4 4 7-7M14 8h7v7"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="relative flex-shrink-0">
                         <input type="month" id="filter-month-selector" value="${filterMonth}" onchange="Dashboard.updateFilterMonthButton()" class="absolute opacity-0 pointer-events-none" />
                         <button id="filter-month-button" onclick="document.getElementById('filter-month-selector').showPicker()" class="px-3 py-1.5 border border-red-300 rounded-lg text-xs font-medium text-red-700 hover:bg-red-50 transition-all whitespace-nowrap">
                             ${this.getFormattedMonth(filterMonth)} ▼
@@ -7332,7 +7383,7 @@ For each ₹ amount you wrote, point to the EXACT Section line it came from. If 
                     <div class="bg-gradient-to-br ${hasIncomeData && balance >= 0 ? 'from-teal-500 to-cyan-600' : 'from-gray-500 to-gray-600'} rounded-lg p-3 text-white shadow-lg relative flex flex-col">
                         <div class="text-xs opacity-90 leading-tight">Balance</div>
                         <div class="flex-1 flex items-center justify-center">
-                            ${hasIncomeData 
+                            ${hasIncomeData
                                 ? `<div class="text-3xl font-bold">${balancePercent}<span class="text-lg opacity-80">%</span></div>`
                                 : `<div class="text-xl font-bold opacity-70">N/A</div>`
                             }
@@ -7343,10 +7394,294 @@ For each ₹ amount you wrote, point to the EXACT Section line it came from. If 
                         </div>
                     </div>
                 </div>
+                ${this._renderEndOfMonthAdvice({ filterMonth, expenseYear, expenseMonth, hasIncomeData, balance })}
             </div>
         `;
     },
-    
+
+    /**
+     * On the last day of the viewed month, when there's still a positive
+     * balance left, nudge the user to put it to work — emergency fund first
+     * (until target met), SIPs / extra investing after that. Returns '' in
+     * every other case so the row only appears when actionable.
+     *
+     * Why "last day" specifically: earlier in the month the balance number
+     * is misleading (most expenses haven't landed yet). On the final day,
+     * what's left is genuinely "did not get spent this month".
+     */
+    _renderEndOfMonthAdvice({ filterMonth, expenseYear, expenseMonth, hasIncomeData, balance }) {
+        if (!hasIncomeData || balance <= 0) return '';
+
+        // Last-day check tied to the user's *viewed* month, not "today's"
+        // month. So if you scroll back and view a past month, the advice
+        // doesn't reappear retroactively.
+        const today = new Date();
+        const isCurrentMonth = today.getFullYear() === expenseYear && (today.getMonth() + 1) === expenseMonth;
+        if (!isCurrentMonth) return '';
+
+        const lastDay = new Date(expenseYear, expenseMonth, 0).getDate();
+        if (today.getDate() !== lastDay) return '';
+
+        // Branch on emergency-fund status. EF data lives on FinancialHealth;
+        // if it's unavailable, default to "fund EF first" (safer).
+        let efShortfall = 0;
+        let efStatus = 'critical';
+        try {
+            if (window.FinancialHealth && typeof window.FinancialHealth.computeEmergencyFund === 'function') {
+                const ef = window.FinancialHealth.computeEmergencyFund();
+                efShortfall = ef?.shortfall || 0;
+                efStatus = ef?.status || 'critical';
+            }
+        } catch (e) {
+            console.warn('EF computation failed for advice row:', e);
+        }
+
+        const efIsHealthy = efStatus === 'good' || efShortfall <= 0;
+        const balanceFmt = Utils.formatIndianNumber(Math.round(balance));
+        const fmt = (n) => Utils.formatIndianNumber(Math.round(n));
+
+        // EF-first path. Cap the suggested top-up at the EF shortfall so we
+        // don't tell someone to "park ₹50k in EF" when they only need ₹8k
+        // more to hit the target — the rest can still go to SIPs.
+        if (!efIsHealthy) {
+            const towardEf = Math.min(balance, efShortfall);
+            const remainder = balance - towardEf;
+            const remainderLine = remainder > 0
+                ? ` Remainder ₹${fmt(remainder)} → top up SIPs / extra investing.`
+                : '';
+            return `
+                <div class="mt-3 flex items-start gap-2 px-3 py-2.5 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-lg">
+                    <span class="text-emerald-600 flex-shrink-0 mt-0.5">💡</span>
+                    <div class="text-[11px] leading-snug text-emerald-800">
+                        <strong>Last day — put ₹${balanceFmt} to work.</strong>
+                        Move ₹${fmt(towardEf)} to your <button onclick="FinancialHealth.showEmergencyFundBreakdown && FinancialHealth.showEmergencyFundBreakdown()" class="underline font-semibold hover:text-emerald-900">emergency fund</button> first (status: ${efStatus}).${remainderLine}
+                    </div>
+                </div>
+            `;
+        }
+
+        // EF healthy → nudge toward SIPs / investing.
+        return `
+            <div class="mt-3 flex items-start gap-2 px-3 py-2.5 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-lg">
+                <span class="text-emerald-600 flex-shrink-0 mt-0.5">💡</span>
+                <div class="text-[11px] leading-snug text-emerald-800">
+                    <strong>Last day — put ₹${balanceFmt} to work.</strong>
+                    Emergency fund is healthy ✓ — top up your SIPs or send the surplus into long-term investing instead of letting it idle in savings.
+                </div>
+            </div>
+        `;
+    },
+
+    // ----- Cash-flow trend modal -------------------------------------------
+    // 3-line chart of Expenses / Investments / Balance over the last N months
+    // (default 6, switchable to 3 or 12). Lives in its own modal so the main
+    // dashboard tile stays compact. Re-uses existing month accessors so the
+    // numbers match what the other tiles show.
+
+    cashFlowTrendChartInstance: null,
+    cashFlowTrendRange: 6,   // months — 3 / 6 / 12
+
+    showCashFlowTrendModal() {
+        let modal = document.getElementById('cashflow-trend-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'cashflow-trend-modal';
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4';
+            modal.onclick = (e) => { if (e.target === modal) Dashboard.closeCashFlowTrendModal(); };
+            document.body.appendChild(modal);
+        }
+        modal.innerHTML = this._renderCashFlowTrendModalBody();
+        modal.classList.remove('hidden');
+        // Render the chart on the next frame so the canvas has a measured size.
+        setTimeout(() => this._renderCashFlowTrendChart(), 50);
+    },
+
+    closeCashFlowTrendModal() {
+        if (this.cashFlowTrendChartInstance) {
+            try { this.cashFlowTrendChartInstance.destroy(); } catch (e) { /* ignore */ }
+            this.cashFlowTrendChartInstance = null;
+        }
+        const modal = document.getElementById('cashflow-trend-modal');
+        if (modal) modal.classList.add('hidden');
+    },
+
+    setCashFlowTrendRange(months) {
+        this.cashFlowTrendRange = months;
+        const modal = document.getElementById('cashflow-trend-modal');
+        if (modal) modal.innerHTML = this._renderCashFlowTrendModalBody();
+        setTimeout(() => this._renderCashFlowTrendChart(), 50);
+    },
+
+    /**
+     * Build the trend dataset: one point per month, ending with the *current*
+     * month, looking back N-1 months. Each point carries income / expenses /
+     * investments / balance (= income − expenses − investments). When a month
+     * has no income data, balance is reported as 0 — that's preferable to
+     * dropping the month entirely (charts with gaps look broken).
+     */
+    _getCashFlowTrendData(months) {
+        const now = new Date();
+        const series = [];
+        for (let i = months - 1; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const y = d.getFullYear();
+            const m = d.getMonth() + 1;
+            const monthValue = `${y}-${String(m).padStart(2, '0')}`;
+            const expenses = this.getMonthExpenses(monthValue) || 0;
+            const investments = this.getMonthInvestments(monthValue) || 0;
+            const incomeData = this.getIncomeForExpenseComparison(y, m);
+            const income = incomeData?.income || 0;
+            const balance = income > 0 ? Math.max(0, income - expenses - investments) : 0;
+            series.push({
+                label: d.toLocaleDateString('en-US', { month: 'short' }) + (months > 6 ? ` ${String(y).slice(-2)}` : ''),
+                income,
+                expenses,
+                investments,
+                balance,
+            });
+        }
+        return series;
+    },
+
+    _renderCashFlowTrendModalBody() {
+        const range = this.cashFlowTrendRange;
+        const rangeButton = (n) => `
+            <button onclick="Dashboard.setCashFlowTrendRange(${n})"
+                    class="px-3 py-1 text-xs rounded-md transition-all ${range === n ? 'bg-white shadow-sm text-teal-700 font-semibold' : 'text-gray-500 hover:text-gray-700'}">
+                ${n}M
+            </button>
+        `;
+        return `
+            <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden">
+                <div class="bg-gradient-to-r from-teal-600 to-cyan-600 text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
+                    <h3 class="text-base font-bold">📈 Cash flow trend</h3>
+                    <button onclick="Dashboard.closeCashFlowTrendModal()" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-lg leading-none">×</button>
+                </div>
+                <div class="p-4 overflow-y-auto flex-1 space-y-3">
+                    <!-- Range selector -->
+                    <div class="flex bg-gray-100 rounded-lg p-0.5 w-fit mx-auto">
+                        ${rangeButton(3)}
+                        ${rangeButton(6)}
+                        ${rangeButton(12)}
+                        ${rangeButton(24)}
+                    </div>
+                    <!-- Chart canvas -->
+                    <div style="position: relative; height: 280px; max-width: 100%;">
+                        <canvas id="cashflow-trend-canvas"></canvas>
+                    </div>
+                    <!-- Legend / explainer -->
+                    <div class="text-[11px] text-gray-500 leading-relaxed bg-gray-50 border border-gray-200 rounded-lg p-2.5">
+                        <strong class="text-gray-700">How to read this:</strong> Expenses and Investments are what went out each month. Balance is what was left over (income − expenses − investments). Rising Balance + flat Expenses is the healthiest pattern.
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    _renderCashFlowTrendChart() {
+        if (typeof Chart === 'undefined') return;
+        const canvas = document.getElementById('cashflow-trend-canvas');
+        if (!canvas) return;
+
+        if (this.cashFlowTrendChartInstance) {
+            try { this.cashFlowTrendChartInstance.destroy(); } catch (e) { /* ignore */ }
+            this.cashFlowTrendChartInstance = null;
+        }
+
+        const data = this._getCashFlowTrendData(this.cashFlowTrendRange);
+        const labels = data.map(d => d.label);
+
+        // Scale point/line density to range so 24 months still reads clearly.
+        const isDense = this.cashFlowTrendRange >= 12;
+        const pointRadius = isDense ? 2 : 3;
+        const borderWidth = isDense ? 2 : 2.5;
+        // X-tick density: skip labels at 24M so they don't overlap on small screens.
+        const maxXTicks = this.cashFlowTrendRange >= 24 ? 8 : this.cashFlowTrendRange;
+
+        // Colors mirror the dashboard tiles so users can map at a glance.
+        const ctx = canvas.getContext('2d');
+        this.cashFlowTrendChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Expenses',
+                        data: data.map(d => Math.round(d.expenses)),
+                        borderColor: '#ef4444',  // red-500 — matches Expenses tile
+                        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                        tension: 0.35,
+                        borderWidth: borderWidth,
+                        pointRadius: pointRadius,
+                        pointHoverRadius: 5,
+                        fill: false,
+                    },
+                    {
+                        label: 'Investments',
+                        data: data.map(d => Math.round(d.investments)),
+                        borderColor: '#f59e0b',  // amber-500 — matches Investments tile
+                        backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                        tension: 0.35,
+                        borderWidth: borderWidth,
+                        pointRadius: pointRadius,
+                        pointHoverRadius: 5,
+                        fill: false,
+                    },
+                    {
+                        label: 'Balance',
+                        data: data.map(d => Math.round(d.balance)),
+                        borderColor: '#14b8a6',  // teal-500 — matches Balance tile
+                        backgroundColor: 'rgba(20, 184, 166, 0.12)',
+                        tension: 0.35,
+                        borderWidth: borderWidth,
+                        pointRadius: pointRadius,
+                        pointHoverRadius: 5,
+                        fill: true,            // light fill so Balance reads as the "headline" series
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { boxWidth: 10, boxHeight: 10, padding: 12, font: { size: 11 }, usePointStyle: true },
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (item) => {
+                                const v = item.parsed.y;
+                                return `${item.dataset.label}: ₹${(window.Utils && Utils.formatIndianNumber) ? Utils.formatIndianNumber(v) : v.toLocaleString('en-IN')}`;
+                            },
+                        },
+                    },
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 10 }, maxTicksLimit: maxXTicks, autoSkip: true },
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                        ticks: {
+                            font: { size: 10 },
+                            // Compact ₹ ticks — 1.2L, 25k, 5k etc.
+                            callback: (v) => {
+                                if (v === 0) return '₹0';
+                                if (v >= 100000) return '₹' + (v / 100000).toFixed(v % 100000 === 0 ? 0 : 1) + 'L';
+                                if (v >= 1000) return '₹' + Math.round(v / 1000) + 'k';
+                                return '₹' + v;
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    },
+
     /**
      * Show Settlement Calculations Modal
      */
