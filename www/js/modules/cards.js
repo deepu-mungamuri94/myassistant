@@ -1205,8 +1205,8 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                         ${isCreditTab ? `
-                        <span class="text-[10px] font-light ${bankOutstanding > 0 ? 'text-slate-600' : 'text-slate-400'}" title="Total outstanding across ${cardCount} card(s) in ${Utils.escapeHtml(bankName)}${bankUnpaidBillCount > 0 ? ` • ${bankUnpaidBillCount} unpaid bill(s)` : ''}" style="font-variant-numeric: tabular-nums;">
-                            O/S ₹${Utils.formatIndianNumber(bankOutstanding)}${bankUnpaidBillCount > 0 ? ` · ${bankUnpaidBillCount} unpaid` : ''}
+                        <span class="text-xs font-bold ${bankOutstanding > 0 ? 'text-slate-800' : 'text-slate-400'}" title="Total outstanding across ${cardCount} card(s) in ${Utils.escapeHtml(bankName)}${bankUnpaidBillCount > 0 ? ` • ${bankUnpaidBillCount} unpaid bill(s)` : ''}" style="font-variant-numeric: tabular-nums;">
+                            O/S ₹${Utils.formatIndianNumber(bankOutstanding)}${bankUnpaidBillCount > 0 ? ` <span class="text-[10px] font-medium text-slate-500">· ${bankUnpaidBillCount} unpaid</span>` : ''}
                         </span>
                         ` : ''}
                         <div class="flex items-center gap-1" onclick="event.stopPropagation()">

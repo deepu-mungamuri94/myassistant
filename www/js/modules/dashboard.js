@@ -266,8 +266,14 @@ const Dashboard = {
         setTimeout(() => {
             this.initializeCharts();
         }, 100);
+
+        // Surface a one-shot popup if Needs or Wants have exceeded their cap
+        // for the current month. Dismissal is keyed by YYYY-MM, so it resets
+        // automatically next calendar month. Run on a microtask so it doesn't
+        // block the dashboard's first paint.
+        setTimeout(() => this._maybeShowBudgetExceededPopup(), 250);
     },
-    
+
     /**
      * Render First Line Cards (Recurring, Loans/EMIs, Regular Expenses)
      */
@@ -292,9 +298,11 @@ const Dashboard = {
         const emisPercent = minNetPay > 0 ? ((totalEmis / minNetPay) * 100).toFixed(1) : 0;
         const regularPercent = minNetPay > 0 ? ((regularExpenses / minNetPay) * 100).toFixed(1) : 0;
         
-        // "Other spend" is more honest than "Regular Expenses": this bucket is
-        // everything that isn't recurring or an EMI — typical day-to-day spend.
-        const regularLabel = 'Other spend';
+        // "Other" — short label so it fits one line on the dashboard tile.
+        // The bucket is "everything that isn't recurring or an EMI" but the
+        // tile is too small for the long form; the modal title and AI prompt
+        // still spell it out as "Other spend" for clarity.
+        const regularLabel = 'Other';
         
         return `
         <div class="dash-card-primary" id="first-line-cards-section">
@@ -465,11 +473,14 @@ const Dashboard = {
     /**
      * Render Credit Card Bills section
      */
-    renderCreditCardBillsSection(forceOpen = false) {
+    renderCreditCardBillsSection(forceOpen = true) {
         const paidBills = (window.DB.cardBills || []).filter(b => b.isPaid && b.paidAt);
         if (paidBills.length === 0) return '';
 
         const isTotal = this.creditCardChartView === 'total';
+        // CC Bills is one of the most-checked sections, so we open it by
+        // default. <details> retains its toggle behaviour — users can still
+        // collapse it manually; we just don't start collapsed.
         const openAttr = forceOpen ? ' open' : '';
 
         return `
@@ -1256,22 +1267,62 @@ const Dashboard = {
         const wantsDiff = hasIncome ? (parseFloat(wantsPercent) - wantsIdeal).toFixed(1) : 0;
         const investDiff = hasIncome ? (parseFloat(investPercent) - investIdeal).toFixed(1) : 0;
         
-        // Status indicators with difference
+        // Three-zone classifier for spend categories (Needs / Wants):
+        //   ok     → comfortably under the limit (more than 10pp of headroom)
+        //   warn   → within 10pp of the limit (limit-10 ≤ % ≤ limit)
+        //   danger → over the limit
+        // The 10pp warning band is a soft cushion: by the time spend is within
+        // 10% of the cap, behavior usually has to change to avoid breaching
+        // mid-month. Investments only have an "is it ≥ ideal?" question, so we
+        // leave its existing 2-state badge alone.
+        const WARN_BAND = 10;
+        const classifySpend = (pct, limit) => {
+            const v = parseFloat(pct);
+            if (Number.isNaN(v)) return 'ok';
+            if (v > limit) return 'danger';
+            if (v >= limit - WARN_BAND) return 'warn';
+            return 'ok';
+        };
+        const needsZone = hasIncome ? classifySpend(needsPercent, needsIdeal) : 'ok';
+        const wantsZone = hasIncome ? classifySpend(wantsPercent, wantsIdeal) : 'ok';
+
         const needsOk = hasIncome && parseFloat(needsPercent) <= needsIdeal;
         const wantsOk = hasIncome && parseFloat(wantsPercent) <= wantsIdeal;
         const investOk = hasIncome && parseFloat(investPercent) >= investIdeal;
-        
+
         const needsStatus = hasIncome ? (needsOk ? '✓' : `+${needsDiff}%`) : '';
         const wantsStatus = hasIncome ? (wantsOk ? '✓' : `+${wantsDiff}%`) : '';
         const investStatus = hasIncome ? (investOk ? '✓' : `${investDiff}%`) : '';
+
+        // Per-zone badge HTML for a spend card. Compact so it fits a 3-col grid on mobile.
+        const zoneBadge = (zone, limit) => {
+            if (zone === 'danger') return `<span class="text-[9px] bg-red-600 px-1.5 py-0.5 rounded font-semibold" title="Over ${limit}% — exceeded limit">&gt;${limit}%</span>`;
+            if (zone === 'warn')   return `<span class="text-[9px] bg-amber-500 px-1.5 py-0.5 rounded font-semibold" title="Within 10% of the ${limit}% cap">⚠ ${limit}%</span>`;
+            return `<span class="text-[9px] bg-green-500 px-1.5 py-0.5 rounded font-semibold">≤${limit}%</span>`;
+        };
         
         // Budget rule title
         const ruleTitle = `Budget Split (${needsIdeal}/${wantsIdeal}/${investIdeal})`;
+
+        // Show a tiny "re-enable alert" pill if the user dismissed this month's
+        // exceeded-popup and is currently looking at that same month. The popup
+        // only fires for the current calendar month, so the toggle is only
+        // useful in that context.
+        const now = new Date();
+        const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const showReEnable = budgetMonth === currentKey && this._isBudgetPopupDismissed(currentKey);
         
         return `
                 <div class="flex justify-between items-center mb-3">
                     <div class="flex items-center gap-2">
                         <h3 class="text-sm font-semibold text-gray-700">${ruleTitle}</h3>
+                        ${showReEnable ? `
+                            <button onclick="Dashboard.reEnableBudgetPopup()"
+                                    class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-700 text-[10px] font-semibold transition-colors"
+                                    title="You've muted this month's exceeded-budget alert. Tap to re-enable.">
+                                🔔 Alert muted
+                            </button>
+                        ` : ''}
                         <button onclick="Dashboard.openCategoryConfigModal()" class="w-5 h-5 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors" title="Configure categories & rule">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
@@ -1292,12 +1343,7 @@ const Dashboard = {
                     <div onclick="${hasIncome ? `Dashboard.showBudgetBreakdown('needs')` : `Navigation.navigateTo('income')`}" class="bg-gradient-to-br from-gray-600 to-gray-700 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
                         <div class="flex items-center justify-between mb-1">
                             <div class="text-xs font-medium">Needs</div>
-                            ${hasIncome
-                                ? (needsOk
-                                    ? `<span class="text-[9px] bg-green-500 px-1.5 py-0.5 rounded font-semibold">≤${needsIdeal}%</span>`
-                                    : `<span class="text-[9px] bg-red-600 px-1.5 py-0.5 rounded font-semibold">&gt;${needsIdeal}%</span>`)
-                                : ''
-                            }
+                            ${hasIncome ? zoneBadge(needsZone, needsIdeal) : ''}
                         </div>
                         <div class="flex-1 flex items-center justify-center">
                             ${hasIncome
@@ -1315,12 +1361,7 @@ const Dashboard = {
                     <div onclick="${hasIncome ? `Dashboard.showBudgetBreakdown('wants')` : `Navigation.navigateTo('income')`}" class="bg-gradient-to-br from-pink-500 to-rose-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
                         <div class="flex items-center justify-between mb-1">
                             <div class="text-xs font-medium">Wants</div>
-                            ${hasIncome
-                                ? (wantsOk
-                                    ? `<span class="text-[9px] bg-green-500 px-1.5 py-0.5 rounded font-semibold">≤${wantsIdeal}%</span>`
-                                    : `<span class="text-[9px] bg-red-600 px-1.5 py-0.5 rounded font-semibold">&gt;${wantsIdeal}%</span>`)
-                                : ''
-                            }
+                            ${hasIncome ? zoneBadge(wantsZone, wantsIdeal) : ''}
                         </div>
                         <div class="flex-1 flex items-center justify-center">
                             ${hasIncome
@@ -1357,10 +1398,187 @@ const Dashboard = {
                         </div>
                     </div>
                 </div>
+                ${this._renderBudgetZoneBanner({ needsZone, wantsZone, needsPercent, wantsPercent, needsIdeal, wantsIdeal })}
             </div>
         `;
     },
-    
+
+    /**
+     * Banner under the Needs/Wants/Invest cards. Renders one line per category
+     * that has crossed the warn or danger threshold. Hidden entirely when both
+     * categories are in the green zone — no need to clutter the dashboard
+     * with "all good" copy.
+     */
+    _renderBudgetZoneBanner({ needsZone, wantsZone, needsPercent, wantsPercent, needsIdeal, wantsIdeal }) {
+        const lines = [];
+        const line = (label, zone, pct, ideal) => {
+            const pctStr = `${parseFloat(pct).toFixed(1)}%`;
+            if (zone === 'danger') {
+                return `
+                    <div class="flex items-start gap-2 text-[11px] leading-snug bg-red-50 border border-red-200 rounded-md px-2.5 py-1.5">
+                        <span class="text-red-600 flex-shrink-0">🚨</span>
+                        <div class="text-red-700"><strong>${label} exceeded:</strong> ${pctStr} vs ${ideal}% cap. Plan better — trim non-essential spend or rebalance the rule.</div>
+                    </div>
+                `;
+            }
+            if (zone === 'warn') {
+                return `
+                    <div class="flex items-start gap-2 text-[11px] leading-snug bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5">
+                        <span class="text-amber-600 flex-shrink-0">⚠️</span>
+                        <div class="text-amber-700"><strong>${label} approaching cap:</strong> ${pctStr} of income, cap is ${ideal}%. Watch the rest of the month.</div>
+                    </div>
+                `;
+            }
+            return '';
+        };
+
+        const needsLine = line('Needs', needsZone, needsPercent, needsIdeal);
+        const wantsLine = line('Wants', wantsZone, wantsPercent, wantsIdeal);
+        if (needsLine) lines.push(needsLine);
+        if (wantsLine) lines.push(wantsLine);
+        if (lines.length === 0) return '';
+
+        return `<div class="mt-3 space-y-1.5">${lines.join('')}</div>`;
+    },
+
+    /**
+     * Storage key for the "don't show again this month" dismissal.
+     * Format: 'dashboard_budget_popup_dismissed_YYYY-MM'. Lives in localStorage
+     * because it's a UX preference, not durable financial data — cleared by
+     * design when the user clears site data, and naturally expires every month.
+     */
+    _budgetPopupDismissKey(monthKey) {
+        return `dashboard_budget_popup_dismissed_${monthKey}`;
+    },
+
+    /**
+     * Check whether the user has dismissed the popup for the given month.
+     */
+    _isBudgetPopupDismissed(monthKey) {
+        try {
+            return localStorage.getItem(this._budgetPopupDismissKey(monthKey)) === '1';
+        } catch (e) {
+            return false;
+        }
+    },
+
+    /**
+     * Persist the dismissal for the given month + close the popup.
+     */
+    dismissBudgetPopupForMonth(monthKey) {
+        try {
+            localStorage.setItem(this._budgetPopupDismissKey(monthKey), '1');
+        } catch (e) { /* private mode etc. — best-effort */ }
+        this.closeBudgetExceededPopup();
+    },
+
+    /**
+     * Re-enable the popup for the current month after the user dismissed it.
+     * Clears the flag, refreshes the budget card so the "muted" pill goes
+     * away, and re-fires the popup immediately so the user gets confirmation
+     * the alert is back on (rather than waiting for the next dashboard load).
+     */
+    reEnableBudgetPopup() {
+        const now = new Date();
+        const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        try {
+            localStorage.removeItem(this._budgetPopupDismissKey(currentKey));
+        } catch (e) { /* best-effort */ }
+
+        const container = document.getElementById('budget-rule-container');
+        if (container) container.innerHTML = this.renderBudgetRuleContent();
+        this._maybeShowBudgetExceededPopup();
+    },
+
+    closeBudgetExceededPopup() {
+        const el = document.getElementById('budget-exceeded-popup');
+        if (el) el.remove();
+    },
+
+    /**
+     * Pop a single combined alert when Needs and/or Wants are over their cap
+     * for the current calendar month. Skipped silently if:
+     *   - no income data (we have nothing to compare against)
+     *   - neither category is in the danger zone
+     *   - the user has already dismissed this month
+     *   - the user is viewing a non-current month via the budget picker
+     *     (a popup tied to a back-dated month is misleading)
+     */
+    _maybeShowBudgetExceededPopup() {
+        const now = new Date();
+        const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+        // Tie the popup strictly to the current calendar month — past months
+        // are read-only and a popup about them would be noise.
+        const viewingKey = this.getBudgetMonthValue();
+        if (viewingKey !== currentKey) return;
+
+        if (this._isBudgetPopupDismissed(currentKey)) return;
+
+        const [year, month] = currentKey.split('-').map(Number);
+        const incomeData = this.getIncomeForExpenseComparison(year, month);
+        const netPay = incomeData.income || 0;
+        if (netPay <= 0) return;
+
+        const needs = this.getNeedsTotal(year, month);
+        const wants = this.getWantsTotal(year, month);
+        const needsPct = (needs / netPay) * 100;
+        const wantsPct = (wants / netPay) * 100;
+
+        const rule = this.budgetRule;
+        const breached = [];
+        if (needsPct > rule.needs) breached.push({ label: 'Needs', pct: needsPct, cap: rule.needs });
+        if (wantsPct > rule.wants) breached.push({ label: 'Wants', pct: wantsPct, cap: rule.wants });
+        if (breached.length === 0) return;
+
+        // Avoid stacking — if a previous popup is still on screen, replace it.
+        this.closeBudgetExceededPopup();
+
+        const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        const rows = breached.map(b => `
+            <div class="flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-base">🚨</span>
+                    <div>
+                        <div class="text-sm font-bold text-red-800">${b.label}</div>
+                        <div class="text-[11px] text-red-700">cap ${b.cap}%</div>
+                    </div>
+                </div>
+                <div class="text-lg font-bold text-red-700">${b.pct.toFixed(1)}%</div>
+            </div>
+        `).join('');
+
+        const html = `
+        <div id="budget-exceeded-popup" class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+             onclick="if(event.target===this) Dashboard.closeBudgetExceededPopup()">
+            <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden">
+                <div class="bg-gradient-to-r from-red-600 to-rose-600 text-white px-4 py-3 flex items-center justify-between">
+                    <h3 class="text-base font-bold">Budget exceeded</h3>
+                    <button onclick="Dashboard.closeBudgetExceededPopup()" class="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-lg leading-none">×</button>
+                </div>
+                <div class="p-4 space-y-3">
+                    <div class="text-xs text-gray-600 leading-relaxed">
+                        Your <strong>${monthName}</strong> spending has crossed the budget rule. Plan better — trim non-essential spend or rebalance the rule.
+                    </div>
+                    <div class="space-y-2">
+                        ${rows}
+                    </div>
+                    <div class="flex gap-2 pt-1">
+                        <button onclick="Dashboard.dismissBudgetPopupForMonth('${currentKey}')"
+                                class="flex-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition-colors">
+                            Don't show this month
+                        </button>
+                        <button onclick="Dashboard.closeBudgetExceededPopup()"
+                                class="flex-1 px-3 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white text-xs font-bold rounded-lg hover:shadow-md transition-all">
+                            Got it
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    },
+
     /**
      * Open category configuration modal
      */
@@ -3472,38 +3690,72 @@ const Dashboard = {
                 : t === 'falling' ? '<span class="text-[9px] px-1 py-0.5 bg-emerald-100 text-emerald-700 rounded font-semibold">↘ falling</span>'
                 : '';
 
-            // Frequent items: 4-col table. Numeric columns are right-aligned
-            // and use tabular-nums so digits line up vertically. Generous
-            // py-3 row padding for a roomy, readable feel on mobile.
-            const frequentTableRows = frequent.map(it => `
-                <tr class="border-b border-emerald-50 last:border-b-0 hover:bg-emerald-50/30 transition-colors">
-                    <td class="px-3 py-3 align-top">
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                            <span class="text-sm font-medium text-gray-800 break-words" title="${Utils.escapeHtml(it.title)}">${Utils.escapeHtml(it.title)}</span>
+            // Group frequent items by category. The table now leads with the
+            // category total (the number the user actually budgets against),
+            // and each category row expands to show the items inside. We drop
+            // the "3-mo total" column — only ₹/mo and seen-count matter for
+            // budgeting next month.
+            const groupByCategory = (items) => {
+                const map = new Map();
+                items.forEach(it => {
+                    const cat = it.category || 'Other';
+                    if (!map.has(cat)) map.set(cat, { items: [], monthlyTotal: 0, monthsSeenMax: 0 });
+                    const g = map.get(cat);
+                    g.items.push(it);
+                    g.monthlyTotal += it.monthlyAvg || 0;
+                    g.monthsSeenMax = Math.max(g.monthsSeenMax, it.monthsSeen || 0);
+                });
+                return Array.from(map.entries())
+                    .map(([category, g]) => ({ category, ...g }))
+                    .sort((a, b) => b.monthlyTotal - a.monthlyTotal);
+            };
+
+            const frequentByCategory = groupByCategory(frequent);
+
+            const frequentCategoryRows = frequentByCategory.map((group, idx) => {
+                const childItems = group.items.map(it => `
+                    <div class="flex items-center justify-between py-1.5 px-3 text-xs border-b border-emerald-50 last:border-b-0">
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <span class="text-gray-700 truncate" title="${Utils.escapeHtml(it.title)}">${Utils.escapeHtml(it.title)}</span>
                             ${trendChip(it.trend)}
                         </div>
-                        <div class="text-[11px] text-gray-500 mt-0.5">${Utils.escapeHtml(it.category)}</div>
-                    </td>
-                    <td class="px-2 py-3 text-center align-middle">
-                        <span class="inline-block px-1.5 py-0.5 rounded bg-gray-100 text-[11px] font-semibold text-gray-700 tabular-nums whitespace-nowrap">${it.monthsSeen}/3</span>
-                    </td>
-                    <td class="px-2 py-3 text-right text-xs text-gray-700 tabular-nums whitespace-nowrap align-middle">₹${Utils.formatIndianNumber(it.totalAmount)}</td>
-                    <td class="px-3 py-3 text-right text-sm font-semibold text-emerald-700 tabular-nums whitespace-nowrap align-middle">₹${Utils.formatIndianNumber(it.monthlyAvg)}</td>
-                </tr>
-            `).join('');
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <span class="text-[10px] text-gray-500 tabular-nums">${it.monthsSeen}/3</span>
+                            <span class="font-semibold text-emerald-700 tabular-nums">₹${Utils.formatIndianNumber(it.monthlyAvg)}</span>
+                        </div>
+                    </div>
+                `).join('');
 
-            // One-offs: 3-col table. Drop category from the column (shown as
-            // subtitle) — keeps the table compact on narrow screens.
-            const occasionalTableRows = occasional.map(it => `
-                <tr class="border-b border-amber-100 last:border-b-0 hover:bg-amber-50/30 transition-colors">
-                    <td class="px-3 py-3 align-top">
-                        <div class="text-sm text-gray-800 break-words" title="${Utils.escapeHtml(it.title)}">${Utils.escapeHtml(it.title)}</div>
-                        <div class="text-[11px] text-amber-700 mt-0.5">${Utils.escapeHtml(it.category)}</div>
-                    </td>
-                    <td class="px-2 py-3 text-center text-xs text-amber-700 whitespace-nowrap align-middle">${Utils.escapeHtml(it.month)}</td>
-                    <td class="px-3 py-3 text-right text-sm font-medium text-gray-800 tabular-nums whitespace-nowrap align-middle">₹${Utils.formatIndianNumber(it.amount)}</td>
-                </tr>
-            `).join('');
+                return `
+                    <details class="border-b border-emerald-50 last:border-b-0" ${idx === 0 ? 'open' : ''}>
+                        <summary class="flex items-center justify-between px-3 py-3 cursor-pointer hover:bg-emerald-50/30 transition-colors list-none">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="text-emerald-600 text-xs details-arrow">▾</span>
+                                <span class="text-sm font-semibold text-gray-800 truncate">${Utils.escapeHtml(group.category)}</span>
+                                <span class="text-[10px] px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded font-semibold flex-shrink-0">${group.items.length}</span>
+                            </div>
+                            <span class="text-sm font-bold text-emerald-700 tabular-nums whitespace-nowrap flex-shrink-0">₹${Utils.formatIndianNumber(Math.round(group.monthlyTotal))}<span class="text-[10px] font-normal text-emerald-600">/mo</span></span>
+                        </summary>
+                        <div class="bg-emerald-50/30">
+                            ${childItems}
+                        </div>
+                    </details>
+                `;
+            }).join('');
+
+            // One-offs: don't list every transaction. The user said the long
+            // list felt noisy and was sweeping in tiny amounts. Show one
+            // summary card with count, avg per month, and the buffer applied.
+            // Top 3 biggest one-offs are kept inline as quick context (these
+            // are usually the items people remember and want to verify).
+            const topOccasional = occasional.slice(0, 3);
+            const topOccasionalChips = topOccasional.length > 0
+                ? topOccasional.map(it => `
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-800 rounded text-[10px] font-medium">
+                        ${Utils.escapeHtml(it.title)} · ₹${Utils.formatIndianNumber(it.amount)}
+                    </span>
+                `).join('')
+                : '';
 
             contentHtml = `
                 <div class="py-1">
@@ -3517,66 +3769,34 @@ const Dashboard = {
                         ${frequent.length > 0 ? `
                             <div class="mb-5">
                                 <div class="flex items-center justify-between mb-2">
-                                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Frequent items · ${frequent.length}</div>
-                                    <div class="text-[10px] text-gray-500">counted in full</div>
+                                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">By category · ${frequentByCategory.length}</div>
+                                    <div class="text-[10px] text-gray-500">tap to expand items</div>
                                 </div>
                                 <div class="bg-white border border-emerald-200 rounded-xl shadow-sm overflow-hidden">
-                                    <table class="w-full text-xs">
-                                        <thead>
-                                            <tr class="bg-emerald-50 border-b border-emerald-200">
-                                                <th class="text-left font-semibold text-emerald-800 uppercase tracking-wide text-[10px] px-3 py-2">Item</th>
-                                                <th class="text-center font-semibold text-emerald-800 uppercase tracking-wide text-[10px] px-2 py-2">Seen</th>
-                                                <th class="text-right font-semibold text-emerald-800 uppercase tracking-wide text-[10px] px-2 py-2 whitespace-nowrap">3-mo total</th>
-                                                <th class="text-right font-semibold text-emerald-800 uppercase tracking-wide text-[10px] px-3 py-2">₹/mo</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            ${frequentTableRows}
-                                        </tbody>
-                                        <tfoot>
-                                            <tr class="bg-emerald-50 border-t-2 border-emerald-300">
-                                                <td colspan="3" class="px-3 py-2.5 text-sm font-bold text-emerald-900">Subtotal → projection</td>
-                                                <td class="px-3 py-2.5 text-right text-base font-bold text-emerald-700 tabular-nums whitespace-nowrap">₹${Utils.formatIndianNumber(detail.frequentProjection || 0)}<span class="text-[10px] font-normal text-emerald-600">/mo</span></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
+                                    ${frequentCategoryRows}
+                                    <div class="bg-emerald-50 border-t-2 border-emerald-300 px-3 py-2.5 flex justify-between items-center">
+                                        <span class="text-sm font-bold text-emerald-900">Subtotal → projection</span>
+                                        <span class="text-base font-bold text-emerald-700 tabular-nums whitespace-nowrap">₹${Utils.formatIndianNumber(detail.frequentProjection || 0)}<span class="text-[10px] font-normal text-emerald-600">/mo</span></span>
+                                    </div>
                                 </div>
                             </div>
                         ` : ''}
 
                         ${occasional.length > 0 ? `
                             <div class="mb-5">
-                                <div class="flex items-center justify-between mb-2">
-                                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">One-off items · ${occasional.length}</div>
-                                    <div class="text-[10px] text-gray-500">50% of avg counted as buffer</div>
-                                </div>
-                                <div class="bg-white border border-amber-200 rounded-xl shadow-sm overflow-hidden">
-                                    <table class="w-full text-xs">
-                                        <thead>
-                                            <tr class="bg-amber-50 border-b border-amber-200">
-                                                <th class="text-left font-semibold text-amber-800 uppercase tracking-wide text-[10px] px-3 py-2">Item</th>
-                                                <th class="text-center font-semibold text-amber-800 uppercase tracking-wide text-[10px] px-2 py-2">Month</th>
-                                                <th class="text-right font-semibold text-amber-800 uppercase tracking-wide text-[10px] px-3 py-2">Amount</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            ${occasionalTableRows}
-                                        </tbody>
-                                        <tfoot>
-                                            <tr class="bg-amber-50 border-t border-amber-200">
-                                                <td colspan="2" class="px-3 py-2 text-xs text-amber-900 font-semibold">Total (3 mo)</td>
-                                                <td class="px-3 py-2 text-right text-xs font-semibold text-amber-900 tabular-nums whitespace-nowrap">₹${Utils.formatIndianNumber(detail.occasionalTotal || 0)}</td>
-                                            </tr>
-                                            <tr class="bg-amber-50 border-t border-amber-100">
-                                                <td colspan="2" class="px-3 py-2 text-xs text-amber-800">Avg per month (÷ 3)</td>
-                                                <td class="px-3 py-2 text-right text-xs text-amber-800 tabular-nums whitespace-nowrap">₹${Utils.formatIndianNumber(detail.occasionalAveragePerMonth || 0)}</td>
-                                            </tr>
-                                            <tr class="bg-amber-100 border-t-2 border-amber-300">
-                                                <td colspan="2" class="px-3 py-2.5 text-sm font-bold text-amber-900">Buffer → projection (50%)</td>
-                                                <td class="px-3 py-2.5 text-right text-base font-bold text-amber-700 tabular-nums whitespace-nowrap">₹${Utils.formatIndianNumber(detail.occasionalBuffer || 0)}<span class="text-[10px] font-normal text-amber-600">/mo</span></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
+                                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">One-off buffer</div>
+                                <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+                                    <div class="flex items-center justify-between text-xs text-amber-800">
+                                        <span>${occasional.length} one-off item${occasional.length === 1 ? '' : 's'} (last 3 mo)</span>
+                                        <span class="tabular-nums">avg ₹${Utils.formatIndianNumber(detail.occasionalAveragePerMonth || 0)}/mo</span>
+                                    </div>
+                                    ${topOccasionalChips ? `
+                                        <div class="flex flex-wrap gap-1">${topOccasionalChips}${occasional.length > 3 ? `<span class="text-[10px] text-amber-700 self-center">+${occasional.length - 3} more</span>` : ''}</div>
+                                    ` : ''}
+                                    <div class="flex items-center justify-between pt-2 border-t border-amber-300">
+                                        <span class="text-sm font-bold text-amber-900">Buffer (${Math.round((detail.occasionalWeight || 0.5) * 100)}% of avg)</span>
+                                        <span class="text-base font-bold text-amber-700 tabular-nums whitespace-nowrap">₹${Utils.formatIndianNumber(detail.occasionalBuffer || 0)}<span class="text-[10px] font-normal text-amber-600">/mo</span></span>
+                                    </div>
                                 </div>
                             </div>
                         ` : ''}
@@ -3585,11 +3805,11 @@ const Dashboard = {
                             <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Calculation</div>
                             <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 space-y-0.5 font-mono">
                                 <div class="flex justify-between">
-                                    <span>Frequent items</span>
+                                    <span>Frequent (categories)</span>
                                     <span>₹${Utils.formatIndianNumber(detail.frequentProjection || 0)}</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span>+ 50% × one-off avg (₹${Utils.formatIndianNumber(detail.occasionalAveragePerMonth || 0)})</span>
+                                    <span>+ One-off buffer (${Math.round((detail.occasionalWeight || 0.5) * 100)}%)</span>
                                     <span>₹${Utils.formatIndianNumber(detail.occasionalBuffer || 0)}</span>
                                 </div>
                                 <div class="flex justify-between font-bold pt-1 mt-1 border-t border-blue-200">
@@ -3598,20 +3818,6 @@ const Dashboard = {
                                 </div>
                             </div>
                         </div>
-
-                        ${items.length > 0 ? `
-                            <div class="mb-4">
-                                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Last 3 months — total "other spend"</div>
-                                <div class="bg-gray-50 rounded-lg p-3 space-y-1">
-                                    ${items.map(item => `
-                                        <div class="flex justify-between items-center text-xs">
-                                            <span class="text-gray-700">${item.label}</span>
-                                            <span class="font-medium text-gray-800">₹${Utils.formatIndianNumber(item.amount)}</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
                     `}
 
                     <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-center">
@@ -4979,20 +5185,23 @@ const Dashboard = {
             }
         }
 
-        // Active SIPs — planned monthly investment commitments.
-        if (window.SIPs && typeof window.SIPs.getAll === 'function') {
-            const allSips = window.SIPs.getAll() || [];
-            const activeSips = allSips
-                .filter(s => s && s.active !== false && parseFloat(s.amount) > 0)
-                .map(s => ({
-                    name: s.name,
-                    amount: Math.round(parseFloat(s.amount) || 0),
-                }));
+        // Active SIPs — planned monthly investment commitments. Use the SAME
+        // source the Settlement modal uses (window.Sips.getActiveForSettlement)
+        // so the AI insights can never disagree with what the user sees there.
+        // Earlier this read window.SIPs.getAll() (uppercase + wrong method) and
+        // silently produced an empty list, so the AI was unaware of any SIPs.
+        if (window.Sips && typeof window.Sips.getActiveForSettlement === 'function') {
+            const activeSips = window.Sips.getActiveForSettlement().map(s => ({
+                name: s.name,
+                amount: Math.round(parseFloat(s.amount) || 0),
+            }));
             data.sips = {
                 count: activeSips.length,
                 total: activeSips.reduce((sum, s) => sum + s.amount, 0),
                 items: activeSips,
             };
+        } else {
+            data.sips = { count: 0, total: 0, items: [] };
         }
 
         // Money lent (receivables — cash that's "out" but still yours).
@@ -5654,9 +5863,7 @@ ${lentBlock}
 **Avg Monthly Income**: ₹${Math.round(data.insights.avgMonthlyIncome || 0).toLocaleString()}
 **Budget Rule**: ${data.budgetAnalysis?.targetRule?.needs || 50}% Needs / ${data.budgetAnalysis?.targetRule?.wants || 30}% Wants / ${data.budgetAnalysis?.targetRule?.invest || 20}% Invest
 
-**Spending Trend (last 3 months, "other spend" — excludes recurring + EMIs)**:
-${data.historicalExpenses.slice(-3).map(h => `  ${h.label}: ₹${Math.round(h.amount).toLocaleString()}`).join('\n')}
-  Next-month projection: **₹${Math.round(vsb.projection || data.projectedAverage || 0).toLocaleString()}** = frequent items ₹${(vsb.frequentProjection || 0).toLocaleString()} + occasional buffer ₹${(vsb.occasionalBuffer || 0).toLocaleString()} (${Math.round((vsb.occasionalWeight || 0) * 100)}% of avg occasional ₹${(vsb.occasionalAveragePerMonth || 0).toLocaleString()})
+**"Other spend" projection for next month**: **₹${Math.round(vsb.projection || data.projectedAverage || 0).toLocaleString()}/mo** = frequent items ₹${(vsb.frequentProjection || 0).toLocaleString()} + one-off buffer ₹${(vsb.occasionalBuffer || 0).toLocaleString()} (${Math.round((vsb.occasionalWeight || 0) * 100)}% of last-3-mo avg one-off ₹${(vsb.occasionalAveragePerMonth || 0).toLocaleString()})
 
 **Frequent items (≥2 of last 3 months)** — these reliably recur:
 ${frequentText}
@@ -5706,12 +5913,14 @@ ${(fc.targetPlans || []).map(p => `  • ${p.name}: ₹${Math.round(p.amount).to
 ═══════════════════════════════════════════════════════════════
 ## SECTION D: INVESTMENT HEALTH
 
-  • Target: ${inv.targetPercent || 20}% of income (₹${Math.round(fc.investmentTarget || 0).toLocaleString()}/month)
-  • ${analysisMonths}-month avg invested: ₹${Math.round(inv.monthlyAvg || 0).toLocaleString()}/month
+  • **Planned SIP commitment** (auto-deducted in Settlement): ₹${(data.sips?.total || 0).toLocaleString()}/month across ${data.sips?.count || 0} SIP(s)
+  • **Target** for ${monthShort}: ${inv.targetPercent || 20}% of income = ₹${Math.round(fc.investmentTarget || 0).toLocaleString()}/month
+  • **${analysisMonths}-month REALIZED invested** (actual purchases, not SIP plan): ₹${Math.round(inv.monthlyAvg || 0).toLocaleString()}/month
   • Months hit target: ${inv.targetHits || 0} / ${inv.targetComparisons?.length || 0}
   • Miss rate: ${inv.missRate || 0}% — Severity: **${(inv.severity || 'unknown').toUpperCase()}**
   • Range: ₹${Math.round(inv.lowestMonth?.amount || 0).toLocaleString()} (${inv.lowestMonth?.month || '-'}) → ₹${Math.round(inv.highestMonth?.amount || 0).toLocaleString()} (${inv.highestMonth?.month || '-'})
   • Month-by-month: ${invTrendText}
+  • **Plan-vs-realized gap**: planned ₹${(data.sips?.total || 0).toLocaleString()}/mo, ${analysisMonths}-mo realized avg ₹${Math.round(inv.monthlyAvg || 0).toLocaleString()}/mo — ${(data.sips?.total || 0) > Math.round(inv.monthlyAvg || 0) ? 'realized is BELOW plan (some SIPs may be paused or not getting executed)' : (data.sips?.total || 0) < Math.round(inv.monthlyAvg || 0) ? 'realized is ABOVE plan (good — extra discretionary investing on top of SIPs)' : 'realized matches plan'}
 
 ═══════════════════════════════════════════════════════════════
 ## SECTION E: LOANS, EMIs, & CARD BILLS
@@ -5751,10 +5960,10 @@ NO tables. Aim for 400–600 words total.
 • Plans due in ${monthShort} (cite item names + ₹ from Section C if any).
 
 **📈 INVESTMENT PLAN**
-3 bullets:
-• Section D severity ("${inv.severity || 'unknown'}") and ${analysisMonths}-month avg vs target.
-• SIP commitment status from Section A (auto-pilot working / not enough / room to add more).
-• Emergency fund — if ≤3 months, it MUST come before any new SIP recommendation.
+3 bullets — must distinguish PLANNED (SIPs in Section A/D) from REALIZED (actual purchases in Section D's monthly avg). The two are different numbers and you must cite both:
+• ${analysisMonths}-mo realized avg ₹${Math.round(inv.monthlyAvg || 0).toLocaleString()}/mo vs target ₹${Math.round(fc.investmentTarget || 0).toLocaleString()}/mo (severity: "${inv.severity || 'unknown'}"). State the gap in ₹.
+• Planned SIP commitment ₹${(data.sips?.total || 0).toLocaleString()}/mo (${data.sips?.count || 0} SIP${(data.sips?.count || 0) === 1 ? '' : 's'}) vs target — does the plan alone clear the target? If not, what's the top-up?
+• Emergency fund — if status is critical/low, EF top-up MUST come before any new SIP recommendation.
 
 **🏦 DEBT STATUS**
 2–3 bullets:
@@ -5784,13 +5993,24 @@ Each action MUST: (a) name a real item/category from Sections A–F, (b) include
 ═══════════════════════════════════════════════════════════════
 ## CRITICAL RULES
 
+### Numeric discipline (read this BEFORE writing the response):
+• **Every ₹ amount in your response must be copy-pasted verbatim from Sections A–F.** No rounding, no estimating, no "approximately". If the data says ₹13,847 you write ₹13,847, not "~₹14k".
+• **Do not multiply or sum numbers in your head.** If you need a derived number, only use sums/differences that are ALREADY computed in Sections A–F (e.g. fc.fullFixed, fc.projectedSurplus, inv.monthlyAvg). Never compute a new total like "12 × monthly = annual" — that's a guess.
+• **Never confuse PLANNED with REALIZED.** Planned SIPs (Section A) are the monthly auto-deduct commitment. Realized investments (Section D monthly avg) are actual purchases logged. They are independent numbers — do not substitute one for the other or add them together.
+• **If a number is ₹0 in Sections A–F, treat it as zero — do not infer it must be "missing data".** When Section A says "_No active SIPs._", do not assume there are SIPs you can't see.
+• **No tables. No code blocks. No long parenthetical math.** Keep each bullet to one line of plain English with one or two ₹ citations.
+
+### Recommendation rules:
 • **Use ONLY numbers/names from Sections A–F**. No invented amounts, no generic advice.
 • **NEVER suggest reducing**: rent, mortgage, utilities, health insurance, education, basic groceries, mandatory EMIs, SIPs into core goals.
 • **DO suggest reducing**: food delivery, online shopping, lifestyle subscriptions, entertainment, dining out, impulse upgrades.
 • **Emergency fund first**: if Section A says critical/low (<3 / <6 months), DO NOT recommend new long-term investments — recommend topping up the EF instead.
 • **Past-due card bills first**: if Section E shows past-due bills, the very first action must be clearing them (interest is typically 36–48% APR).
 • **Loan flagging threshold**: personal >12%, home >9%, ≤3 months remaining = ending-soon redirect.
-• **Every recommendation needs a ₹ amount AND a Section reference.**`;
+• **Every recommendation needs a ₹ amount AND a Section reference.**
+
+### Self-check before submitting:
+For each ₹ amount you wrote, point to the EXACT Section line it came from. If you can't, delete the number and rewrite the bullet with a number you CAN cite.`;
     },
     
     /**

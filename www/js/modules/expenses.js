@@ -847,7 +847,7 @@ const Expenses = {
         
         // Add to expenses with TODAY'S date (manual addition)
         const expense = this.add(title, amount, category, todayStr, description, null);
-        
+
         // If this is from a recurring expense, mark the SCHEDULED month as added to prevent duplicates
         if (recurringId && window.RecurringExpenses) {
             const recurring = window.DB.recurringExpenses.find(r => String(r.id) === String(recurringId));
@@ -855,7 +855,7 @@ const Expenses = {
                 // Extract year-month from the SCHEDULED date (not today's date)
                 const scheduledDateObj = new Date(scheduledDate);
                 const monthKey = `${scheduledDateObj.getFullYear()}-${String(scheduledDateObj.getMonth() + 1).padStart(2, '0')}`;
-                
+
                 // Mark this month as added if not already
                 if (!recurring.addedToExpenses) {
                     recurring.addedToExpenses = [];
@@ -865,15 +865,34 @@ const Expenses = {
                     window.Storage.save();
                     console.log(`Marked recurring expense "${recurring.name}" as added for ${monthKey} (manually added on ${todayStr})`);
                 }
-                
-                // Store recurring ID in the expense for future reference
+
+                // Store recurring ID + payment method in the expense. Until now
+                // the manual "Add" path didn't carry paymentMethod over, so the
+                // user had to re-pick it every time. The auto-add path on the
+                // recurring side does this — match that behaviour here.
                 if (expense) {
                     expense.recurringId = recurringId;
                     expense.isRecurring = true;
+
+                    if (recurring.paymentMethod) {
+                        expense.paymentMethod = recurring.paymentMethod;
+
+                        // If paid via credit card, bump the card's outstanding
+                        // — same side-effect the auto-add path applies.
+                        if (recurring.paymentMethod.type === 'credit_card' && recurring.paymentMethod.id) {
+                            const card = (window.DB.cards || []).find(c => String(c.id) === String(recurring.paymentMethod.id));
+                            if (card) {
+                                const oldAmount = parseFloat(card.outstanding) || 0;
+                                card.outstanding = oldAmount + parseFloat(amount);
+                            }
+                        }
+                    }
+
+                    window.Storage.save();
                 }
             }
         }
-        
+
         this.render();
         Utils.showSuccess('Added to expenses!');
     },
