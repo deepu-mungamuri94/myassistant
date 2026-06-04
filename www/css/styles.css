@@ -294,13 +294,23 @@ details > summary .details-arrow {
      primary   → KPI cards the user checks daily (spending, breakdown, budget)
      secondary → reference charts (lighter shadow, tighter padding)
    ============================================================ */
+/*
+ * Card margins were stacking because `overflow: hidden` creates a new block
+ * formatting context, which prevents adjacent margins from collapsing.
+ * Result: a primary mb (0.75) + a secondary mt (1.25 via dash-tier-break) =
+ * ~32px of dead space between Budget Split and the first chart card.
+ *
+ * The fix: smaller mb on every tier and a much smaller tier-break boost.
+ * The dashboard now reads as a denser, single column without losing the
+ * visual separation between hero / primary / secondary tiers.
+ */
 .dash-card-hero {
     background: #ffffff;
     border-radius: 1rem;
     padding: 1rem;
     box-shadow: 0 4px 16px -4px rgba(99, 102, 241, 0.18), 0 2px 6px -2px rgba(0, 0, 0, 0.06);
     border: 1px solid rgba(99, 102, 241, 0.12);
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.625rem;
     max-width: 100%;
     overflow: hidden;
 }
@@ -310,7 +320,7 @@ details > summary .details-arrow {
     border-radius: 0.875rem;
     padding: 0.875rem;
     box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.06), 0 1px 3px -1px rgba(0, 0, 0, 0.04);
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
     max-width: 100%;
     overflow: hidden;
 }
@@ -321,14 +331,27 @@ details > summary .details-arrow {
     padding: 0.75rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     border: 1px solid rgba(0, 0, 0, 0.04);
-    margin-bottom: 0.625rem;
+    margin-bottom: 0.5rem;
     max-width: 100%;
     overflow: hidden;
 }
 
-/* Visual separator between tiers — primary block → secondary block */
+/* Final card on the dashboard shouldn't add tail space. */
+#dashboard-content > .dash-card-hero:last-child,
+#dashboard-content > .dash-card-primary:last-child,
+#dashboard-content > .dash-card-secondary:last-child,
+#dashboard-content > details.dash-card-secondary:last-child {
+    margin-bottom: 0;
+}
+
+/*
+ * Slight visual break between primary tier (KPI cards) and secondary tier
+ * (charts). Used as an additive top margin on the FIRST secondary card —
+ * brings the total gap up from 0.5rem (≈8px) to ≈12px without reintroducing
+ * the old 2rem chasm.
+ */
 .dash-tier-break {
-    margin-top: 1.25rem;
+    margin-top: 0.25rem;
 }
 
 .dash-card-secondary > summary {

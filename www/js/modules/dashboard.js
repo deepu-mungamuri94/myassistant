@@ -966,20 +966,26 @@ const Dashboard = {
             return;
         }
 
-        try {
-            this.renderIncomeExpenseChart();
-            this.renderCategoryChart();
-            // Loans + Credit Card Bills are inside <details> and collapsed by default.
-            // Rendering Chart.js into a hidden parent gives a 0×0 canvas, so we lazy-
-            // render on first open via renderLoansChartIfNeeded / renderCreditCardBillsChartIfNeeded.
-            const loansEl = document.getElementById('loans-section');
-            if (loansEl && loansEl.open) this.renderLoansChart();
-            const ccEl = document.getElementById('credit-card-bills-section');
-            if (ccEl && ccEl.open) this.renderCreditCardBillsChart();
-            this.renderInvestmentsTrendChart();
-        } catch (error) {
-            console.error('Error initializing charts:', error);
-        }
+        // Each chart in its OWN try/catch — previously these were wrapped in a
+        // single block, so a throw in any earlier chart silently aborted the
+        // chain. The Investments chart is rendered last, so a hiccup elsewhere
+        // (empty data, missing canvas, transient DOM state) made it disappear
+        // until the user changed the timeframe (which calls render directly).
+        const safe = (label, fn) => {
+            try { fn(); } catch (err) { console.error(`Error initializing ${label}:`, err); }
+        };
+
+        safe('income/expense chart', () => this.renderIncomeExpenseChart());
+        safe('category chart', () => this.renderCategoryChart());
+        // Loans + Credit Card Bills are inside <details>. Rendering Chart.js
+        // into a hidden parent gives a 0×0 canvas, so we lazy-render on first
+        // open via renderLoansChartIfNeeded / renderCreditCardBillsChartIfNeeded.
+        // CC Bills now defaults to open, so we render it eagerly here.
+        const loansEl = document.getElementById('loans-section');
+        if (loansEl && loansEl.open) safe('loans chart', () => this.renderLoansChart());
+        const ccEl = document.getElementById('credit-card-bills-section');
+        if (ccEl && ccEl.open) safe('credit card bills chart', () => this.renderCreditCardBillsChart());
+        safe('investments trend chart', () => this.renderInvestmentsTrendChart());
     },
 
     /**
