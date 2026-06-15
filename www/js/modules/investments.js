@@ -2796,56 +2796,163 @@ Respond ONLY with valid JSON (no markdown, no explanation):
     },
 
     /**
-     * Internal helper: single Yahoo Finance fetch attempt for a ticker.
+     * Generic JSON GET. Uses CapacitorHttp on native (avoids CORS) and falls
+     * back to fetch() on web. Throws an Error with a `.status` property on
+     * non-2xx so callers can detect transient (429/5xx) failures.
      */
-    async _fetchPriceFromYahooOnce(ticker) {
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
-        let data;
-
+    async _httpGetJson(url) {
+        const headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        };
         if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) {
-            const response = await window.Capacitor.Plugins.CapacitorHttp.get({
-                url,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            });
-            if (response.status !== 200) {
-                const err = new Error(`Yahoo Finance API returned ${response.status}`);
+            const response = await window.Capacitor.Plugins.CapacitorHttp.get({ url, headers });
+            if (response.status < 200 || response.status >= 300) {
+                const err = new Error(`HTTP ${response.status}`);
                 err.status = response.status;
                 throw err;
             }
-            data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-        } else {
-            const response = await fetch(url);
-            if (!response.ok) {
-                const err = new Error(`Yahoo Finance API returned ${response.status}`);
-                err.status = response.status;
-                throw err;
-            }
-            data = await response.json();
+            return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
         }
-
-        const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-        if (!price) throw new Error('Price not found in response');
-        return Math.round(price * 100) / 100;
+        const response = await fetch(url, { headers });
+        if (!response.ok) {
+            const err = new Error(`HTTP ${response.status}`);
+            err.status = response.status;
+            throw err;
+        }
+        return response.json();
     },
 
     /**
-     * Fetch stock price from Yahoo Finance with one automatic retry on transient
-     * 5xx / 429 errors (2-second backoff). Other errors bubble immediately.
+     * Single Yahoo Finance quote fetch for a ticker. Tries query1 then query2
+     * (the two hosts fail independently under load / rate-limiting). Returns
+     * { price, currency, symbol } so callers can also learn the real currency
+     * (USD vs INR) straight from the exchange rather than guessing.
      */
-    async fetchPriceFromYahoo(ticker) {
+    async _fetchQuoteOnce(ticker) {
+        const hosts = ['query1', 'query2'];
+        let lastErr;
+        for (const host of hosts) {
+            const url = `https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`;
+            try {
+                const data = await this._httpGetJson(url);
+                const meta = data?.chart?.result?.[0]?.meta;
+                const price = meta?.regularMarketPrice;
+                if (price == null) throw new Error('Price not found in response');
+                return {
+                    price: Math.round(price * 100) / 100,
+                    currency: meta.currency || null,
+                    symbol: meta.symbol || ticker,
+                };
+            } catch (e) {
+                lastErr = e;
+                // Only fall through to the other host on transient errors.
+                const transient = e.status && (e.status === 429 || (e.status >= 500 && e.status < 600));
+                if (!transient && host === 'query1' && hosts.length > 1) {
+                    // Non-transient (e.g. 404 = bad ticker) — no point trying the
+                    // other host with the same ticker, bail immediately.
+                    throw e;
+                }
+            }
+        }
+        throw lastErr || new Error('Quote fetch failed');
+    },
+
+    /**
+     * Fetch a quote with one automatic retry on transient (429/5xx) errors.
+     * Returns { price, currency, symbol }.
+     */
+    async fetchQuoteFromYahoo(ticker) {
         try {
-            return await this._fetchPriceFromYahooOnce(ticker);
+            return await this._fetchQuoteOnce(ticker);
         } catch (error) {
-            // Retry once for transient errors only (5xx, 429 rate-limit)
             const isTransient = error.status &&
                 (error.status === 429 || (error.status >= 500 && error.status < 600));
             if (!isTransient) throw error;
             console.warn(`Transient Yahoo error (${error.status}) for ${ticker}; retrying in 2s...`);
             await new Promise(r => setTimeout(r, 2000));
-            return await this._fetchPriceFromYahooOnce(ticker);
+            return await this._fetchQuoteOnce(ticker);
         }
+    },
+
+    /**
+     * Back-compat: return just the price number.
+     */
+    async fetchPriceFromYahoo(ticker) {
+        const quote = await this.fetchQuoteFromYahoo(ticker);
+        return quote.price;
+    },
+
+    /**
+     * Resolve a company name to candidate tickers via Yahoo's symbol-search
+     * endpoint. This is what makes BSE-only stocks (e.g. Eco Recycling →
+     * EORECO.BO) and US stocks (Salesforce → CRM) resolve reliably without
+     * depending on the LLM guessing the exact suffix. Returns an array of
+     * symbol strings, ranked NSE → BSE → US/other.
+     */
+    async searchYahooSymbol(name) {
+        const q = encodeURIComponent(name);
+        const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${q}&quotesCount=10&newsCount=0`;
+        const data = await this._httpGetJson(url);
+        const quotes = (data?.quotes || []).filter(quote =>
+            quote.symbol && (quote.quoteType === 'EQUITY' || quote.quoteType === 'ETF' || quote.quoteType === 'MUTUALFUND')
+        );
+        // Rank: .NS (NSE) first, then .BO (BSE), then plain US tickers, then rest.
+        const rank = (sym) => sym.endsWith('.NS') ? 0 : sym.endsWith('.BO') ? 1 : (sym.includes('.') ? 3 : 2);
+        return quotes
+            .map(quote => quote.symbol)
+            .sort((a, b) => rank(a) - rank(b));
+    },
+
+    /**
+     * Update one share's price from the market, robustly.
+     *
+     * Strategy (stops at first ticker that returns a price):
+     *   1. The share's already-known working ticker (if any).
+     *   2. Yahoo symbol-search candidates for the share name (NSE → BSE → US).
+     *
+     * On success it persists the WORKING ticker + currency + exchange back onto
+     * the share, so subsequent reloads hit step 1 directly. Throws if every
+     * candidate fails. Mutates `share` but does NOT save — caller saves.
+     */
+    async _updateShareFromMarket(share) {
+        const candidates = [];
+        const push = (t) => { if (t && !candidates.includes(t)) candidates.push(t); };
+
+        // 1. Cached working ticker first.
+        push(share.ticker);
+
+        // 2. Symbol search by name (covers BSE-only + US + suffix mistakes).
+        try {
+            const found = await this.searchYahooSymbol(share.name);
+            found.forEach(push);
+        } catch (e) {
+            console.warn(`Yahoo symbol search failed for "${share.name}":`, e.message);
+        }
+
+        if (candidates.length === 0) {
+            throw new Error('No ticker found (symbol search returned nothing)');
+        }
+
+        let lastErr;
+        for (const ticker of candidates) {
+            try {
+                const quote = await this.fetchQuoteFromYahoo(ticker);
+                share.ticker = ticker;
+                share.price = quote.price;
+                if (quote.currency) {
+                    share.currency = quote.currency === 'USD' ? 'USD' : 'INR';
+                }
+                share.exchange = ticker.endsWith('.NS') ? 'NSE'
+                    : ticker.endsWith('.BO') ? 'BSE'
+                    : (share.currency === 'USD' ? 'US' : (share.exchange || ''));
+                share.lastUpdated = new Date().toISOString();
+                return quote.price;
+            } catch (e) {
+                lastErr = e;
+                console.warn(`Ticker ${ticker} failed for "${share.name}":`, e.message);
+            }
+        }
+        throw lastErr || new Error('All ticker candidates failed');
     },
 
     /**
@@ -2899,100 +3006,43 @@ Respond ONLY with valid JSON (no markdown, no explanation):
         });
         
         try {
-            // Step 1: Fetch tickers from LLM (only for shares without tickers - saves API calls)
-            // Note: Individual reload always fetches ticker to catch symbol changes
-            const sharesNeedingTickers = activeShares.filter(s => !s.ticker);
-            
-            if (sharesNeedingTickers.length > 0) {
-                // Show progress: Fetching stock symbols
-                Utils.showProgressModal(`🔍 Fetching stock symbols...<br><span class="text-sm text-gray-600">Analyzing ${sharesNeedingTickers.length} stock(s)</span>`, true);
-                
-                const tickerData = await this.fetchTickersFromLLM();
-                
-                // Update shares with ticker info
-                activeShares.forEach(share => {
-                    const tickerInfo = tickerData[share.name];
-                    if (tickerInfo && tickerInfo.ticker) {
-                        share.ticker = tickerInfo.ticker;
-                        share.exchange = tickerInfo.exchange;
-                        share.currency = tickerInfo.currency;
-                    }
-                });
-                
-                window.Storage.save();
-            } else {
-                // Skip ticker fetch, go straight to price update
-                Utils.showProgressModal(`📊 Fetching stock prices...<br><span class="text-sm text-gray-600">Updating ${activeShares.length} stock(s)</span>`, true);
-            }
-            
-            // Update progress: Fetching stock prices
-            Utils.updateProgressModal(`📊 Fetching stock prices...<br><span class="text-sm text-gray-600">Updating ${activeShares.length} stock(s)</span>`, true);
-            
-            // Step 2: Fetch prices from Yahoo Finance for shares with tickers
+            Utils.showProgressModal(`📊 Fetching stock prices...<br><span class="text-sm text-gray-600">Updating ${activeShares.length} stock(s)</span>`, true);
+
+            // Each share resolves its own ticker via cached-ticker → Yahoo
+            // symbol-search (NSE → BSE → US), so we no longer need a separate
+            // LLM ticker step. This is what makes BSE-only and US stocks work.
             let successCount = 0;
             let errorCount = 0;
             const errors = [];
-            
+
             for (let i = 0; i < activeShares.length; i++) {
                 const share = activeShares[i];
-                
-                // Update progress with current stock
+
                 Utils.updateProgressModal(`📊 Fetching stock prices...<br><span class="text-sm text-gray-600">Updating ${share.name} (${i + 1}/${activeShares.length})</span>`, true);
-                
-                if (!share.ticker) {
-                    errorCount++;
-                    errors.push(share.name);
-                    
-                    // Show error in UI
-                    const shareDiv = document.querySelector(`[data-share="${share.name}"]`);
-                    if (shareDiv) {
-                        const priceSpan = shareDiv.querySelector('.share-price');
-                        if (priceSpan) {
-                            priceSpan.innerHTML = `<span class="text-xs text-red-600">No ticker</span>`;
-                        }
-                        
-                        // Show inline error
-                        const errorDiv = shareDiv.querySelector('.share-error');
-                        if (errorDiv) {
-                            errorDiv.textContent = 'Unable to find ticker symbol';
-                            errorDiv.classList.remove('hidden');
-                        }
-                    }
-                    continue;
-                }
-                
+
                 try {
-                    const newPrice = await this.fetchPriceFromYahoo(share.ticker);
-                    share.price = newPrice;
-                    share.lastUpdated = new Date().toISOString();
-                    
-                    // Also update portfolio entries with this share
+                    await this._updateShareFromMarket(share);
                     this.updatePortfolioSharePrice(share.name, share.price, share.currency);
-                    
                     successCount++;
-                    
                 } catch (error) {
                     errorCount++;
                     errors.push(share.name);
-                    
-                    // Show error in UI
+
                     const shareDiv = document.querySelector(`[data-share="${share.name}"]`);
                     if (shareDiv) {
                         const priceSpan = shareDiv.querySelector('.share-price');
                         if (priceSpan) {
-                            priceSpan.innerHTML = `<span class="text-xs text-red-600">API error</span>`;
+                            priceSpan.innerHTML = `<span class="text-xs text-red-600">Not found</span>`;
                         }
-                        
-                        // Show inline error
                         const errorDiv = shareDiv.querySelector('.share-error');
                         if (errorDiv) {
-                            errorDiv.textContent = `Failed to fetch price: ${error.message}`;
+                            errorDiv.textContent = `Couldn't fetch price: ${error.message}`;
                             errorDiv.classList.remove('hidden');
                         }
                     }
                 }
             }
-            
+
             window.Storage.save();
             
             // Re-render the modal with updated prices
@@ -3091,32 +3141,16 @@ Respond ONLY with valid JSON (no markdown, no explanation):
         }
 
         try {
-            // Step 1: Only call the LLM if we don't already have a ticker. Cached
-            // tickers rarely change in practice; this skips an unnecessary AI call.
-            if (!share.ticker) {
-                Utils.updateProgressModal(`🔍 Fetching stock symbol...<br><span class="text-sm text-gray-600">Analyzing ${shareName}</span>`, true);
-                const tickerData = await this.fetchTickersFromLLM();
-                const tickerInfo = tickerData[shareName];
-
-                if (tickerInfo && tickerInfo.ticker) {
-                    share.ticker = tickerInfo.ticker;
-                    share.exchange = tickerInfo.exchange;
-                    share.currency = tickerInfo.currency;
-                    window.Storage.save();
-                } else {
-                    throw new Error('Could not fetch ticker from LLM');
-                }
-            }
-
-            // Step 2: Fetch price from Yahoo Finance (with one automatic retry on transient errors)
+            // Resolve ticker + price in one robust pass: tries the cached
+            // ticker, then Yahoo symbol-search candidates (NSE → BSE → US), so
+            // BSE-only stocks (Eco Recycling → EORECO.BO) and US stocks
+            // (Salesforce → CRM) work without depending on an LLM guess.
             Utils.updateProgressModal(`📊 Fetching price from market...<br><span class="text-sm text-gray-600">Updating ${shareName}</span>`, true);
-            const newPrice = await this.fetchPriceFromYahoo(share.ticker);
-            share.price = newPrice;
-            share.lastUpdated = new Date().toISOString();
-            
+            const newPrice = await this._updateShareFromMarket(share);
+
             // Also update portfolio entries with this share
             this.updatePortfolioSharePrice(share.name, share.price, share.currency);
-            
+
             window.Storage.save();
             
             // Update display
@@ -3402,6 +3436,26 @@ Respond ONLY with valid JSON (no markdown, no explanation):
             return;
         }
 
+        // Auto-calibrate the India premium: if the user just auto-fetched (so
+        // we have the raw 24K spot) and is now saving a corrected rate, back-
+        // solve the premium that maps spot → their number. Future auto-fetches
+        // then match their real source (jeweller / IBJA) without a code change.
+        //   manualRate = spot24K × (1 + premium) × purityFactor
+        //   ⇒ premium  = manualRate / (spot24K × purityFactor) − 1
+        let calibrated = false;
+        if (this._lastGold24KSpot && this._lastGold24KSpot > 0) {
+            const purityFactor = purity === '22K' ? 0.916 : 1.0;
+            const impliedPremium = (newRate / (this._lastGold24KSpot * purityFactor)) - 1;
+            // Sanity-clamp to a plausible band (3%–35%) so a typo doesn't poison
+            // the premium. Outside the band we leave the premium untouched.
+            if (impliedPremium >= 0.03 && impliedPremium <= 0.35) {
+                window.DB.goldIndiaPremium = Math.round(impliedPremium * 1000) / 1000;
+                calibrated = true;
+            }
+            // One-shot: don't reuse a stale spot for the next manual save.
+            this._lastGold24KSpot = null;
+        }
+
         // Sync portfolio GOLD entries' price field with the new rate
         this.updatePortfolioGoldPrice(this.getGoldRate());
 
@@ -3410,15 +3464,34 @@ Respond ONLY with valid JSON (no markdown, no explanation):
         this.render();
 
         setTimeout(() => {
-            Utils.showSuccess('Gold rate updated!<br>Portfolio values recalculated');
+            const calibMsg = calibrated
+                ? `<br><span class="text-xs">India premium calibrated to ${Math.round(window.DB.goldIndiaPremium * 100)}% — future auto-fetches will match</span>`
+                : '';
+            Utils.showSuccess(`Gold rate updated!<br>Portfolio values recalculated${calibMsg}`);
         }, 100);
     },
 
+    // India landed-cost premium over international spot. Indian retail gold is
+    // ~ spot + 6% basic customs duty + 3% GST + small jeweller/refining margin,
+    // which lands around +13–16% over the raw international price converted to
+    // INR. 0.14 (14%) is a sensible default that tracks IBJA/retail closely.
+    // Stored in DB so it's tunable if duty/GST policy changes.
+    GOLD_INDIA_PREMIUM_DEFAULT: 0.14,
+
     /**
-     * Auto-fetch gold rate (₹/gram) using Yahoo Finance.
-     * For 24K we use GOLDBEES.NS (Nippon India ETF Gold BeES, tracks 24K spot
-     * fairly well: ~1 unit ≈ 0.01g, so price × 100 ≈ ₹/gram). For other purities
-     * we scale the result by the standard purity factor.
+     * Auto-fetch gold rate (₹/gram) for the Indian market.
+     *
+     * Method (deterministic, matches Indian retail far better than the old
+     * GOLDBEES×100 heuristic, which drifted because 1 ETF unit is no longer
+     * ~0.01g of spot):
+     *   1. International spot: GC=F (COMEX gold front-month) in USD/troy-oz.
+     *   2. Convert: USD/oz → INR/gram  =  (spot × USDINR) / 31.1035.
+     *   3. Apply India landed premium (duty + GST + margin), default +14%.
+     *   4. Apply purity factor (24K = 1.0, 22K = 0.916).
+     *
+     * USD-INR comes from the stored exchange rate (or a live frankfurter
+     * fetch if we don't have one). Shows the breakdown so the number is
+     * auditable before saving.
      */
     async autoFetchGoldRate() {
         const btn = document.getElementById('gold-rate-autofetch-btn');
@@ -3428,19 +3501,44 @@ Respond ONLY with valid JSON (no markdown, no explanation):
             btn.innerHTML = '<svg class="w-4 h-4 animate-spin inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Fetching...';
         }
         try {
-            // Default purity is 22K — most Indian gold investments (jewellery, coins) are 22K.
             const purity = document.getElementById('gold-rate-purity')?.value || '22K';
-            // GOLDBEES.NS is in INR; price ≈ ₹/0.01g of 24K spot → multiply by 100 for ₹/gram (24K)
-            const etfPrice = await this.fetchPriceFromYahoo('GOLDBEES.NS');
-            const pricePerGram24K = etfPrice * 100;
 
-            // Apply purity factor (24K = 99.9% pure, 22K = 91.6% pure)
+            // 1. International spot (USD per troy ounce).
+            const spotUsdPerOz = await this.fetchPriceFromYahoo('GC=F');
+
+            // 2. USD-INR — prefer the stored rate; fetch live if missing.
+            let usdInr = this.getExchangeRate();
+            if (!usdInr || usdInr <= 0) {
+                const fx = await this._httpGetJson('https://api.frankfurter.app/latest?from=USD&to=INR');
+                usdInr = fx?.rates?.INR;
+            }
+            if (!usdInr || usdInr <= 0) throw new Error('USD-INR rate unavailable');
+
+            const GRAMS_PER_TROY_OZ = 31.1035;
+            const inrPerGram24KSpot = (spotUsdPerOz * usdInr) / GRAMS_PER_TROY_OZ;
+
+            // Stash the raw (pre-premium) 24K spot so a later manual Save can
+            // back-solve the premium for calibration. See saveGoldRate().
+            this._lastGold24KSpot = inrPerGram24KSpot;
+
+            // 3. India landed premium (duty + GST + margin).
+            const premium = (typeof window.DB.goldIndiaPremium === 'number')
+                ? window.DB.goldIndiaPremium
+                : this.GOLD_INDIA_PREMIUM_DEFAULT;
+            const inrPerGram24K = inrPerGram24KSpot * (1 + premium);
+
+            // 4. Purity factor.
             const purityFactor = purity === '22K' ? 0.916 : 1.0;
-            const finalRate = Math.round(pricePerGram24K * purityFactor);
+            const finalRate = Math.round(inrPerGram24K * purityFactor);
 
             const input = document.getElementById('gold-rate-input');
             if (input) input.value = finalRate;
-            Utils.showInfo(`✓ Fetched ${purity} gold rate: ₹${Utils.formatIndianNumber(finalRate)}/g — review & save`);
+
+            Utils.showInfo(
+                `✓ ${purity} gold: ₹${Utils.formatIndianNumber(finalRate)}/g` +
+                `<br><span class="text-xs">spot $${spotUsdPerOz.toFixed(0)}/oz × ₹${usdInr.toFixed(1)} ÷ 31.1 + ${Math.round(premium * 100)}% India premium${purity === '22K' ? ' × 0.916' : ''}</span>` +
+                `<br><span class="text-xs">Review & Save</span>`
+            );
         } catch (e) {
             console.error('Auto-fetch gold rate failed:', e);
             Utils.showError(`Auto-fetch failed: ${e.message}. Please enter manually.`);

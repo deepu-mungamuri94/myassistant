@@ -3740,11 +3740,14 @@ const Dashboard = {
                     </div>
                 `).join('');
 
+                // All categories start collapsed (no default-open) so the table
+                // reads as a tidy list of category totals; the chevron signals
+                // each row expands to its items.
                 return `
-                    <details class="border-b border-emerald-50 last:border-b-0" ${idx === 0 ? 'open' : ''}>
+                    <details class="border-b border-emerald-50 last:border-b-0">
                         <summary class="flex items-center justify-between px-3 py-3 cursor-pointer hover:bg-emerald-50/30 transition-colors list-none">
                             <div class="flex items-center gap-2 min-w-0">
-                                <span class="text-emerald-600 text-xs details-arrow">▾</span>
+                                <span class="text-emerald-500 text-xs details-arrow flex-shrink-0">▾</span>
                                 <span class="text-sm font-semibold text-gray-800 truncate">${Utils.escapeHtml(group.category)}</span>
                                 <span class="text-[10px] px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded font-semibold flex-shrink-0">${group.items.length}</span>
                             </div>

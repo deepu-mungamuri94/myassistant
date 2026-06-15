@@ -2453,10 +2453,10 @@
 
             <button id="gold-rate-autofetch-btn" onclick="Investments.autoFetchGoldRate()" class="w-full px-4 py-2 mb-3 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 rounded-lg transition-all text-sm font-semibold flex items-center justify-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                Auto-fetch latest (GOLDBEES.NS · NSE)
+                Auto-fetch latest (intl spot × USD-INR)
             </button>
 
-            <p class="text-xs text-gray-600 mb-4">🪙 Auto-fetch derives ₹/gram from the GOLDBEES ETF and applies the purity factor. Review before saving.</p>
+            <p class="text-xs text-gray-600 mb-4">🪙 Auto-fetch = international spot (USD/oz) × USD-INR ÷ 31.1, plus India duty+GST premium and the purity factor. Review before saving.</p>
 
             <div class="flex space-x-3">
                 <button onclick="Investments.saveGoldRate()" class="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
