@@ -4638,7 +4638,12 @@ const Dashboard = {
             
         } catch (error) {
             console.error('AI Insights error:', error);
-            Utils.showError('Failed to get AI insights. Please try again.');
+            // Surface the message so the user can tell apart prompt-build
+            // failures (our bug) from API failures (rate limit, key missing,
+            // network). Truncated to keep the toast readable.
+            const msg = (error && (error.message || error.toString())) || '';
+            const detail = msg ? `: ${msg.slice(0, 120)}` : '';
+            Utils.showError(`Failed to get AI insights${detail}. Please try again.`);
         } finally {
             // Restore AI provider info messages state
             window.AIProvider.suppressInfoMessages = previousSuppressState;
@@ -5335,6 +5340,74 @@ const Dashboard = {
             isCashTight: fullSurplus < 0
         };
 
+        // ===== Multi-month outlook =====
+        // Look 3 months past the target month for "heavier" months — months
+        // where scheduled fixed obligations (recurring + EMIs + plans due by
+        // then) outsize the target-month forecast. The AI uses this to tell
+        // the user whether to PARK this month's surplus for an upcoming
+        // expense crunch instead of immediately routing it to investments.
+        const lookAhead = [];
+        for (let i = 1; i <= 3; i++) {
+            const ahead = new Date(targetYear, targetMonth - 1 + i, 1);
+            const ay = ahead.getFullYear();
+            const am = ahead.getMonth() + 1;
+            const monthLabel = ahead.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+            const aRecurring = (this.getRecurringExpenseItemsForMonth(ay, am) || [])
+                .reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+            const aEmis = (this.getEmiItemsForMonth(ay, am) || [])
+                .filter(e => e.type === 'loan' || e.type === 'card')
+                .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+
+            const monthEnd = new Date(ay, am, 0);
+            const aPlans = pendingPlans
+                .filter(p => p.planByDate)
+                .filter(p => {
+                    const d = new Date(p.planByDate);
+                    return d > targetMonthEnd && d <= monthEnd;
+                })
+                .map(p => ({ name: p.name, amount: parseFloat(p.amount) || 0, planByDate: p.planByDate }));
+            const aPlansTotal = aPlans.reduce((s, p) => s + p.amount, 0);
+
+            // "Fixed" here = obligations that don't depend on actual spending
+            // (recurring + EMIs + SIPs as a baseline + plans dated for that
+            // month). Compared against the TARGET month's same baseline so
+            // we can flag heavier-than-usual months.
+            const aFixed = aRecurring + aEmis + sipsCommitment + aPlansTotal;
+            const targetBaseline = upcomingRecurringTotal + upcomingEmiTotal + sipsCommitment + targetPlansTotal;
+            const deltaVsTarget = aFixed - targetBaseline;
+
+            lookAhead.push({
+                year: ay,
+                month: am,
+                monthLabel,
+                recurringTotal: Math.round(aRecurring),
+                emiTotal: Math.round(aEmis),
+                plansTotal: Math.round(aPlansTotal),
+                plans: aPlans,
+                fixed: Math.round(aFixed),
+                deltaVsTarget: Math.round(deltaVsTarget),
+            });
+        }
+
+        // Aggregate "park-for-future" budget — sum of positive deltas across
+        // the next 3 months. If everything ahead is lighter or equal, this
+        // is 0 and the AI should send surplus to EF / investments instead.
+        const parkForFuture = lookAhead.reduce((s, m) => s + Math.max(0, m.deltaVsTarget), 0);
+        const heaviestMonth = lookAhead.reduce(
+            (acc, m) => (acc == null || m.deltaVsTarget > acc.deltaVsTarget) ? m : acc,
+            null
+        );
+
+        data.upcomingMonthsOutlook = {
+            months: lookAhead,
+            parkForFuture: Math.round(parkForFuture),
+            heaviestMonth: heaviestMonth && heaviestMonth.deltaVsTarget > 0 ? heaviestMonth : null,
+            // Convenience handle for the prompt — the most actionable surplus
+            // worth setting aside this month for an upcoming heavier month.
+            shouldParkSome: parkForFuture > 0 && fullSurplus > 0,
+        };
+
         return data;
     },
     
@@ -5987,50 +6060,93 @@ ${data.annualPatterns?.hasPatterns ? `**Recurring annual patterns**:\n${patterns
 ${data.yearOverYear?.hasData ? `\n**Last year same month**:\n${yoyText.split('\n').slice(0, 3).join('\n')}` : ''}
 
 ═══════════════════════════════════════════════════════════════
+## ${monthName.toUpperCase()} — UPCOMING MONTHS LOOKAHEAD
+
+${(() => {
+    const lk = data.upcomingMonthsOutlook;
+    if (!lk || !lk.months?.length) return '_(no lookahead data)_';
+    // sipsCommitment lives on the forecast object — not the build-prompt scope.
+    // Earlier this referenced a bare `sipsCommitment` variable that only exists
+    // in prepareExpenseAnalysisData, which threw a ReferenceError and bubbled
+    // up as "Failed to get AI insights".
+    const sipsTotal = Math.round(fc.sipsCommitment || 0);
+    const rows = lk.months.map(m => {
+        const arrow = m.deltaVsTarget > 0 ? `🔺 +₹${Math.abs(m.deltaVsTarget).toLocaleString()} heavier` : (m.deltaVsTarget < 0 ? `🔻 -₹${Math.abs(m.deltaVsTarget).toLocaleString()} lighter` : '— same');
+        return `  • **${m.monthLabel}**: fixed ₹${m.fixed.toLocaleString()} (recurring ₹${m.recurringTotal.toLocaleString()} + EMIs ₹${m.emiTotal.toLocaleString()} + SIPs ₹${sipsTotal.toLocaleString()}${m.plansTotal > 0 ? ` + plans ₹${m.plansTotal.toLocaleString()}` : ''})  vs ${monthShort} ${arrow}`;
+    }).join('\n');
+    const heavy = lk.heaviestMonth
+        ? `\n\n**Heaviest upcoming month**: ${lk.heaviestMonth.monthLabel} (+₹${Math.abs(lk.heaviestMonth.deltaVsTarget).toLocaleString()} vs ${monthShort}).`
+        : '';
+    const park = lk.parkForFuture > 0
+        ? `\n\n**Total extra needed across the next 3 months**: ₹${lk.parkForFuture.toLocaleString()}. If ${monthShort} ends with a surplus, parking up to this amount avoids forcing borrowing/SIP-pause later.`
+        : `\n\n**Next 3 months are equal or lighter** than ${monthShort}. No need to park surplus for upcoming obligations — direct it to emergency fund or investments instead.`;
+    return rows + heavy + park;
+})()}
+
+═══════════════════════════════════════════════════════════════
 ## YOUR RESPONSE — STRICT FORMAT (mandatory)
 
-You MUST output ALL six headers below in this exact order. If a section
-has nothing notable, write a one-line "all good" status — do NOT skip the
-header. Use the EXACT numbers from Sections A–F. Bullet points only —
-NO tables. Aim for 400–600 words total.
+You MUST output ALL SEVEN headers below in this exact order. If a header has
+nothing notable, write a one-line "all good" status — do NOT skip the header.
+Bullet points only — NO tables. Aim for 400–600 words total.
+
+Write directly to the user. Do NOT mention "Section A", "Section B", or any
+section letters in your response — the user is reading bullets, not a report
+template. Cite specific item names and ₹ amounts instead of source labels.
 
 **📊 ${monthShort.toUpperCase()} OUTLOOK**
 2–3 bullets:
-• Cash-flow status using Section C surplus/shortfall (cite the ₹ amount).
-• Net-worth + emergency-fund status from Section A (one line; flag if status is critical/low).
-• Budget split status from Section B (one line; flag if any category deviates).
+• Cash-flow status — surplus or shortfall in ₹ for ${monthShort}.
+• Net-worth + emergency-fund status (one line; flag if EF is critical/low).
+• Budget-split status (one line; flag if any category deviates from target).
 
 **💸 EXPENSE PLAN — where ${monthShort} cash will go**
 3–4 bullets:
-• Already-committed total (fixed obligations from Section C) and % of income.
+• Already-committed total (fixed obligations) and % of income.
 • Variable spend headroom remaining: ₹${Math.round((fc.expectedIncome || 0) - (fc.fullFixed || 0) - (fc.targetPlansTotal || 0) - (fc.investmentTargetGap || 0)).toLocaleString()}.
-• Top 2–3 spending categories from Section B with their leading items.
-• Plans due in ${monthShort} (cite item names + ₹ from Section C if any).
+• Top 2–3 spending categories with their leading items.
+• Plans due in ${monthShort} — cite item names + ₹ if any.
 
 **📈 INVESTMENT PLAN**
-3 bullets — must distinguish PLANNED (SIPs in Section A/D) from REALIZED (actual purchases in Section D's monthly avg). The two are different numbers and you must cite both:
+3 bullets — must distinguish PLANNED (SIPs auto-deducted) from REALIZED
+(actual purchases logged). The two are independent numbers — cite both:
 • ${analysisMonths}-mo realized avg ₹${Math.round(inv.monthlyAvg || 0).toLocaleString()}/mo vs target ₹${Math.round(fc.investmentTargetTotal || 0).toLocaleString()}/mo (severity: "${inv.severity || 'unknown'}"). State the gap in ₹.
-• Planned SIP commitment ₹${(data.sips?.total || 0).toLocaleString()}/mo (${data.sips?.count || 0} SIP${(data.sips?.count || 0) === 1 ? '' : 's'}) vs target — does the plan alone clear the target? If not, what's the top-up?
+• Planned SIP commitment ₹${(data.sips?.total || 0).toLocaleString()}/mo (${data.sips?.count || 0} SIP${(data.sips?.count || 0) === 1 ? '' : 's'}). Does the plan alone clear the target? If not, what's the top-up?
 • Emergency fund — if status is critical/low, EF top-up MUST come before any new SIP recommendation.
+
+**💰 SURPLUS PLAN — what to do with the leftover ₹${Math.max(0, Math.round(fc.projectedSurplus || 0)).toLocaleString()}**
+Required when there's a positive surplus this month. Pick ONE primary destination using this priority order:
+${(() => {
+    const lk = data.upcomingMonthsOutlook || {};
+    const surplus = Math.max(0, Math.round(fc.projectedSurplus || 0));
+    const ef = data.financialHealth?.emergencyFund || {};
+    const efShortfall = Math.round(ef.shortfall || 0);
+    const efStatus = ef.status || 'unknown';
+    return `1. **PARK FOR UPCOMING HEAVY MONTHS** — if the lookahead shows any month heavier than ${monthShort} (parkForFuture = ₹${(lk.parkForFuture || 0).toLocaleString()}). Suggest moving up to that amount into a savings/sweep account so the heavy month doesn't force borrowing or pausing SIPs. Name the specific upcoming month and the ₹.
+2. **TOP UP EMERGENCY FUND** — if EF status is "${efStatus}" and shortfall is ₹${efShortfall.toLocaleString()}. Suggest moving the smaller of (remaining surplus, EF shortfall) into the EF.
+3. **EXTRA INVESTING** — only if (a) no heavy upcoming month and (b) EF is healthy. Suggest topping up the SIP target gap (₹${Math.round(fc.investmentTargetGap || 0).toLocaleString()}) or one-time MF/FD allocation.
+
+You MUST split the ₹${surplus.toLocaleString()} surplus across these in priority order. Do not skip a higher priority to recommend a lower one.`;
+})()}
 
 **🏦 DEBT STATUS**
 2–3 bullets:
 • Loans: ${data.loans.length === 0 ? 'none' : `${data.loans.length} active, ₹${Math.round(data.insights.totalLoans).toLocaleString()}/mo`}. Flag any high-interest loan (personal >12%, home >9%) for prepayment if cash allows.
 • Card EMIs: ${data.emis.length === 0 ? 'none' : `${data.emis.length} active, ₹${Math.round(data.insights.totalEmis).toLocaleString()}/mo`}.
-• Card bills past-due (Section E) — if any, this is the #1 priority before anything else.
+• Past-due card bills — if any, this is the #1 priority before anything else.
 
 **🔮 PREDICTIONS & RISKS**
 2–3 bullets:
-• Annual patterns from Section F (cite specific year + ₹ as evidence; e.g. "Mar 2024 spent ₹X on tax-saving").
-• Risk factors: market exposure (Section A), upcoming-bill spike, EF shortfall.
-• Cash-tight months ahead based on known commitments.
+• Annual patterns (cite specific year + ₹ as evidence; e.g. "Mar 2024 spent ₹X on tax-saving").
+• Risk factors: market exposure, upcoming-bill spike, EF shortfall.
+• Cash-tight months ahead — name them by month label and the ₹ delta.
 
 **🎯 TOP 3 ACTIONS** (highest impact first)
-Each action MUST: (a) name a real item/category from Sections A–F, (b) include the ₹ delta, (c) explain HOW (one specific behaviour) and WHY (which Section data point it ties to).
+Each action MUST: (a) name a real item/category, (b) include the ₹ delta, (c) explain HOW (one specific behaviour) and WHY (which data point you're tying to — describe it, don't just label it).
 
 1. **[Exact item / lever]** — current ₹X → target ₹Y (saves ₹Z/mo)
    → How: [one specific change]
-   → Why: [Section A/B/C/D/E/F evidence]
+   → Why: [evidence in plain English — e.g. "this category has been ₹X over budget for 3 of last 6 months"]
 
 2. **[…]** — same shape
 
@@ -6042,23 +6158,29 @@ Each action MUST: (a) name a real item/category from Sections A–F, (b) include
 ## CRITICAL RULES
 
 ### Numeric discipline (read this BEFORE writing the response):
-• **Every ₹ amount in your response must be copy-pasted verbatim from Sections A–F.** No rounding, no estimating, no "approximately". If the data says ₹13,847 you write ₹13,847, not "~₹14k".
-• **Do not multiply or sum numbers in your head.** If you need a derived number, only use sums/differences that are ALREADY computed in Sections A–F (e.g. fc.fullFixed, fc.projectedSurplus, inv.monthlyAvg). Never compute a new total like "12 × monthly = annual" — that's a guess.
-• **Never confuse PLANNED with REALIZED.** Planned SIPs (Section A) are the monthly auto-deduct commitment. Realized investments (Section D monthly avg) are actual purchases logged. They are independent numbers — do not substitute one for the other or add them together.
-• **If a number is ₹0 in Sections A–F, treat it as zero — do not infer it must be "missing data".** When Section A says "_No active SIPs._", do not assume there are SIPs you can't see.
+• **Every ₹ amount in your response must be copy-pasted verbatim from the data above.** No rounding, no estimating, no "approximately". If the data says ₹13,847 you write ₹13,847, not "~₹14k".
+• **Do not multiply or sum numbers in your head.** Only use totals that are already computed for you (full fixed total, projected surplus, monthly avg, etc.). Never compute a new total like "12 × monthly = annual" — that's a guess.
+• **Never confuse PLANNED with REALIZED.** Planned SIPs are the monthly auto-deduct commitment. Realized investments are actual purchases logged. They are independent numbers — do not substitute one for the other or add them together.
+• **If a number is ₹0 in the data, treat it as zero — do not infer it must be "missing".** When the data says "_No active SIPs._", do not assume there are SIPs you can't see.
 • **No tables. No code blocks. No long parenthetical math.** Keep each bullet to one line of plain English with one or two ₹ citations.
 
 ### Recommendation rules:
-• **Use ONLY numbers/names from Sections A–F**. No invented amounts, no generic advice.
+• **Use ONLY numbers and item names from the data above.** No invented amounts, no generic advice.
 • **NEVER suggest reducing**: rent, mortgage, utilities, health insurance, education, basic groceries, mandatory EMIs, SIPs into core goals.
 • **DO suggest reducing**: food delivery, online shopping, lifestyle subscriptions, entertainment, dining out, impulse upgrades.
-• **Emergency fund first**: if Section A says critical/low (<3 / <6 months), DO NOT recommend new long-term investments — recommend topping up the EF instead.
-• **Past-due card bills first**: if Section E shows past-due bills, the very first action must be clearing them (interest is typically 36–48% APR).
+• **Emergency fund first**: if EF status is critical/low (<3 / <6 months), DO NOT recommend new long-term investments — recommend topping up the EF instead (after parking for heavier upcoming months, if any).
+• **Past-due card bills first**: if there are past-due bills, the very first action must be clearing them (interest is typically 36–48% APR).
 • **Loan flagging threshold**: personal >12%, home >9%, ≤3 months remaining = ending-soon redirect.
-• **Every recommendation needs a ₹ amount AND a Section reference.**
+• **Every recommendation needs a ₹ amount AND a plain-English reason.**
+
+### Surplus allocation rules:
+• If a future month is heavier than ${monthShort}, recommend parking BEFORE recommending EF top-up or new investments. Otherwise the user is forced to scramble next month.
+• If EF is critical/low, EF top-up beats new SIPs every time.
+• Suggest "extra investing" only when nothing else needs the surplus — over-investing while EF is critical is a real risk.
+• Never tell the user to "save more" without naming WHICH bucket and HOW MUCH.
 
 ### Self-check before submitting:
-For each ₹ amount you wrote, point to the EXACT Section line it came from. If you can't, delete the number and rewrite the bullet with a number you CAN cite.`;
+For each ₹ amount you wrote, ask: can a reader find this exact number in the data above? If not, delete the bullet and rewrite it with a number you CAN ground. Make sure no "Section A/B/C/..." text leaks into the output — write directly to the user.`;
     },
     
     /**
