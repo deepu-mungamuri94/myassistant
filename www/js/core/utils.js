@@ -550,34 +550,149 @@ const Utils = {
      * @param {string} message - Message to display
      * @param {boolean} showLoading - Whether to show the loading spinner
      */
-    showProgressModal(message = 'Loading...', showLoading = true) {
-        const modal = document.getElementById('progress-modal');
+    /**
+     * Internal: switch the header icon to one of 'spinner' | 'success' | 'error'.
+     */
+    _setProgressHeaderIcon(state) {
         const spinner = document.getElementById('progress-spinner');
         const successIcon = document.getElementById('progress-success-icon');
         const errorIcon = document.getElementById('progress-error-icon');
+        if (!spinner || !successIcon || !errorIcon) return;
+        spinner.classList.toggle('hidden', state !== 'spinner');
+        successIcon.classList.toggle('hidden', state !== 'success');
+        errorIcon.classList.toggle('hidden', state !== 'error');
+    },
+
+    showProgressModal(message = 'Loading...', showLoading = true) {
+        const modal = document.getElementById('progress-modal');
         const messageEl = document.getElementById('progress-modal-message');
+        const titleEl = document.getElementById('progress-modal-title');
         const closeBtn = document.getElementById('progress-modal-close-btn');
-        
-        if (!modal || !spinner || !successIcon || !errorIcon || !messageEl || !closeBtn) return;
-        
+        const stepList = document.getElementById('progress-step-list');
+
+        if (!modal || !messageEl || !closeBtn) return;
+
         // Aggressively hide common-info-modal if visible
         const infoModal = document.getElementById('common-info-modal');
         if (infoModal && !infoModal.classList.contains('hidden')) {
             infoModal.classList.add('hidden');
         }
-        
-        // Reset state: show spinner, hide icons, hide close button
-        spinner.classList.remove('hidden');
-        successIcon.classList.add('hidden');
-        errorIcon.classList.add('hidden');
+
+        // Reset to working state: spinner in header, no close button.
+        this._setProgressHeaderIcon(showLoading ? 'spinner' : 'success');
         closeBtn.classList.add('hidden');
-        
-        if (!showLoading) {
-            spinner.classList.add('hidden');
-        }
-        
+
+        // Legacy free-form mode — hide the step list, show the message.
+        if (stepList) { stepList.classList.add('hidden'); stepList.innerHTML = ''; }
+        if (titleEl) titleEl.textContent = 'Working…';
+        messageEl.classList.remove('hidden');
         messageEl.innerHTML = message;
         modal.classList.remove('hidden');
+    },
+
+    // ---------------------------------------------------------------
+    // Step-checklist API — for multi-stage operations (e.g. portfolio
+    // reload). Each step animates: pending → spinner → green check (or
+    // red x), then the next step starts. Far clearer than a single
+    // changing line of text.
+    //
+    //   Utils.showProgressSteps('Refreshing portfolio', [
+    //     { id: 'fx',     label: 'Exchange rate' },
+    //     { id: 'gold',   label: 'Gold rate' },
+    //     { id: 'stocks', label: 'Stock prices' },
+    //   ]);
+    //   Utils.setProgressStep('fx', 'active');
+    //   Utils.setProgressStep('fx', 'done', '₹86.50');
+    //   ...
+    //   Utils.finishProgressSteps('success', 'Portfolio refreshed');
+    // ---------------------------------------------------------------
+    showProgressSteps(title, steps) {
+        const modal = document.getElementById('progress-modal');
+        const titleEl = document.getElementById('progress-modal-title');
+        const messageEl = document.getElementById('progress-modal-message');
+        const closeBtn = document.getElementById('progress-modal-close-btn');
+        const stepList = document.getElementById('progress-step-list');
+        if (!modal || !stepList) return;
+
+        const infoModal = document.getElementById('common-info-modal');
+        if (infoModal && !infoModal.classList.contains('hidden')) {
+            infoModal.classList.add('hidden');
+        }
+
+        this._setProgressHeaderIcon('spinner');
+        closeBtn.classList.add('hidden');
+        if (titleEl) titleEl.textContent = title || 'Working…';
+        if (messageEl) { messageEl.classList.add('hidden'); messageEl.innerHTML = ''; }
+
+        stepList.classList.remove('hidden');
+        stepList.innerHTML = steps.map(s => `
+            <li id="progress-step-${s.id}" class="flex items-center gap-3 text-sm transition-opacity duration-200 opacity-50">
+                <span class="progress-step-icon flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                    <span class="w-2.5 h-2.5 rounded-full border-2 border-gray-300"></span>
+                </span>
+                <span class="progress-step-label text-gray-500 flex-1">${s.label}</span>
+                <span class="progress-step-detail text-xs text-gray-400 tabular-nums"></span>
+            </li>
+        `).join('');
+
+        modal.classList.remove('hidden');
+    },
+
+    /**
+     * Update a single step. state: 'active' | 'done' | 'failed'.
+     * Optional `detail` shows a small trailing value (e.g. "₹86.50").
+     */
+    setProgressStep(id, state, detail) {
+        const li = document.getElementById(`progress-step-${id}`);
+        if (!li) return;
+        const iconWrap = li.querySelector('.progress-step-icon');
+        const label = li.querySelector('.progress-step-label');
+        const detailEl = li.querySelector('.progress-step-detail');
+
+        if (state === 'active') {
+            li.classList.remove('opacity-50');
+            li.classList.add('opacity-100');
+            label.className = 'progress-step-label text-gray-800 font-medium flex-1';
+            iconWrap.innerHTML = `<svg class="w-4 h-4 animate-spin text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>`;
+        } else if (state === 'done') {
+            li.classList.remove('opacity-50');
+            li.classList.add('opacity-100');
+            label.className = 'progress-step-label text-gray-700 flex-1';
+            iconWrap.innerHTML = `<svg class="w-5 h-5 text-emerald-500 animate-scale-in" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>`;
+        } else if (state === 'failed') {
+            li.classList.remove('opacity-50');
+            li.classList.add('opacity-100');
+            label.className = 'progress-step-label text-gray-700 flex-1';
+            iconWrap.innerHTML = `<svg class="w-5 h-5 text-red-500 animate-scale-in" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>`;
+        }
+        if (detail !== undefined && detailEl) {
+            detailEl.textContent = detail || '';
+            detailEl.className = 'progress-step-detail text-xs tabular-nums ' +
+                (state === 'failed' ? 'text-red-500' : 'text-gray-500');
+        }
+    },
+
+    /**
+     * Finish a step run: set the header icon, optional summary line, and reveal
+     * the close button. state: 'success' | 'error'. Auto-closes on success
+     * only when `autoClose` is true.
+     */
+    finishProgressSteps(state, summary, autoClose = false) {
+        const titleEl = document.getElementById('progress-modal-title');
+        const messageEl = document.getElementById('progress-modal-message');
+        const closeBtn = document.getElementById('progress-modal-close-btn');
+
+        this._setProgressHeaderIcon(state === 'success' ? 'success' : 'error');
+        if (titleEl) titleEl.textContent = state === 'success' ? 'Done' : 'Finished with errors';
+        if (summary && messageEl) {
+            messageEl.classList.remove('hidden');
+            messageEl.innerHTML = `<span class="mt-1 inline-block">${summary}</span>`;
+        }
+        if (autoClose && state === 'success') {
+            setTimeout(() => this.closeProgressModal(), 1400);
+        } else if (closeBtn) {
+            closeBtn.classList.remove('hidden');
+        }
     },
 
     /**
@@ -587,23 +702,16 @@ const Utils = {
      */
     updateProgressModal(message, showLoading = true) {
         const modal = document.getElementById('progress-modal');
-        const spinner = document.getElementById('progress-spinner');
         const messageEl = document.getElementById('progress-modal-message');
-        
-        if (!modal || !spinner || !messageEl) return;
-        
-        // Aggressively hide common-info-modal if visible
+        if (!modal || !messageEl) return;
+
         const infoModal = document.getElementById('common-info-modal');
         if (infoModal && !infoModal.classList.contains('hidden')) {
             infoModal.classList.add('hidden');
         }
-        
-        if (showLoading) {
-            spinner.classList.remove('hidden');
-        } else {
-            spinner.classList.add('hidden');
-        }
-        
+
+        if (showLoading) this._setProgressHeaderIcon('spinner');
+        messageEl.classList.remove('hidden');
         messageEl.innerHTML = message;
     },
 
@@ -614,28 +722,19 @@ const Utils = {
      */
     showProgressSuccess(message, autoClose = false) {
         const modal = document.getElementById('progress-modal');
-        const spinner = document.getElementById('progress-spinner');
-        const successIcon = document.getElementById('progress-success-icon');
-        const errorIcon = document.getElementById('progress-error-icon');
         const messageEl = document.getElementById('progress-modal-message');
+        const titleEl = document.getElementById('progress-modal-title');
         const closeBtn = document.getElementById('progress-modal-close-btn');
-        
-        if (!modal || !spinner || !successIcon || !errorIcon || !messageEl || !closeBtn) return;
-        
-        // Hide spinner and error, show success
-        spinner.classList.add('hidden');
-        errorIcon.classList.add('hidden');
-        successIcon.classList.remove('hidden');
-        
+        if (!modal || !messageEl || !closeBtn) return;
+
+        this._setProgressHeaderIcon('success');
+        if (titleEl) titleEl.textContent = 'Done';
+        messageEl.classList.remove('hidden');
         messageEl.innerHTML = message;
-        
+
         if (autoClose) {
-            // Auto-close after 1.5 seconds
-            setTimeout(() => {
-                this.closeProgressModal();
-            }, 1500);
+            setTimeout(() => this.closeProgressModal(), 1500);
         } else {
-            // Show close button for manual close
             closeBtn.classList.remove('hidden');
         }
     },
@@ -646,22 +745,15 @@ const Utils = {
      */
     showProgressError(message) {
         const modal = document.getElementById('progress-modal');
-        const spinner = document.getElementById('progress-spinner');
-        const successIcon = document.getElementById('progress-success-icon');
-        const errorIcon = document.getElementById('progress-error-icon');
         const messageEl = document.getElementById('progress-modal-message');
+        const titleEl = document.getElementById('progress-modal-title');
         const closeBtn = document.getElementById('progress-modal-close-btn');
-        
-        if (!modal || !spinner || !successIcon || !errorIcon || !messageEl || !closeBtn) return;
-        
-        // Hide spinner and success, show error
-        spinner.classList.add('hidden');
-        successIcon.classList.add('hidden');
-        errorIcon.classList.remove('hidden');
-        
+        if (!modal || !messageEl || !closeBtn) return;
+
+        this._setProgressHeaderIcon('error');
+        if (titleEl) titleEl.textContent = 'Something went wrong';
+        messageEl.classList.remove('hidden');
         messageEl.innerHTML = message;
-        
-        // Show close button for manual close
         closeBtn.classList.remove('hidden');
     },
 

@@ -200,6 +200,17 @@ const Investments = {
     },
     
     /**
+     * Flag set when the user manually edits the Budget Month / Year so the
+     * date-change auto-suggestion stops overwriting their choice. Reset each
+     * time the investment form opens (see handleTypeChange).
+     */
+    markBudgetMonthManual() {
+        this._budgetMonthManuallySet = true;
+        const hint = document.getElementById('income-month-hint');
+        if (hint) hint.classList.add('hidden');
+    },
+
+    /**
      * Update income month suggestion when investment date changes
      */
     updateIncomeSuggestion() {
@@ -207,16 +218,23 @@ const Investments = {
         const incomeMonthSelect = document.getElementById('investment-income-month');
         const incomeYearInput = document.getElementById('investment-income-year');
         const suggestionHint = document.getElementById('income-month-hint');
-        
+
         if (!dateInput || !incomeMonthSelect || !incomeYearInput) return;
-        
+
         const investmentDate = dateInput.value;
         if (!investmentDate) return;
-        
+
+        // If the user has manually chosen a Budget Month (e.g. attributing a
+        // purchase made this month to a past bonus month), don't clobber it
+        // when the investment date changes. Previously this auto-overwrite
+        // silently reset their selection back to the date's month, so the
+        // investment landed in the wrong month.
+        if (this._budgetMonthManuallySet) return;
+
         const suggestion = this.suggestIncomeMonth(investmentDate);
         incomeMonthSelect.value = suggestion.month;
         incomeYearInput.value = suggestion.year;
-        
+
         // Update hint
         if (suggestionHint) {
             const paySchedule = window.DB.settings?.paySchedule || 'first_week';
@@ -308,6 +326,13 @@ const Investments = {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                             </svg>
                             <h3 class="text-lg font-bold">Portfolio</h3>
+                            <button id="portfolio-reload-all-btn" onclick="event.stopPropagation(); Investments.reloadPortfolioData()"
+                                    title="Refresh USD-INR, gold rate & all stock prices"
+                                    class="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                </svg>
+                            </button>
                         </div>
                         <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(totalValue))}</p>
                     </div>
@@ -743,8 +768,16 @@ const Investments = {
 
         const line4 = (inv.type === 'EPF' ? '' : (inv.description ? `<p class="text-gray-600 text-xs mt-1">${inv.description}</p>` : ''));
 
-        // No edit button for monthly investments (they're independent from portfolio)
-        const editButton = '';
+        // Edit ONLY the date + budget month of a monthly entry (not name /
+        // qty / price — those stay fixed). Monthly entries are independent of
+        // the portfolio, so this just re-attributes the entry to a month.
+        const editButton = `
+            <button onclick="Investments.openEditMonthlyDatesModal(${inv.id})" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit date / budget month">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+            </button>
+        `;
 
         return `
             <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
@@ -1490,7 +1523,7 @@ const Investments = {
                 </div>
                 <p class="text-xs text-blue-600 mb-2">Count this investment towards which month's budget?</p>
                 <div class="grid grid-cols-2 gap-2">
-                    <select id="investment-income-month" class="p-2 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                    <select id="investment-income-month" onchange="Investments.markBudgetMonthManual()" class="p-2 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                         <option value="1" ${suggestion.month === 1 ? 'selected' : ''}>January</option>
                         <option value="2" ${suggestion.month === 2 ? 'selected' : ''}>February</option>
                         <option value="3" ${suggestion.month === 3 ? 'selected' : ''}>March</option>
@@ -1505,12 +1538,18 @@ const Investments = {
                         <option value="12" ${suggestion.month === 12 ? 'selected' : ''}>December</option>
                     </select>
                     <input type="number" id="investment-income-year" value="${suggestion.year}" min="2020" max="2100"
+                           onchange="Investments.markBudgetMonthManual()"
                            class="p-2 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                 </div>
             </div>
         `;
 
         dynamicFields.innerHTML = html;
+
+        // Fresh form: Budget Month follows the auto-suggestion until the user
+        // edits it. When editing an existing investment, treat its stored
+        // budget month as a manual choice so populateEditFields' value sticks.
+        this._budgetMonthManuallySet = !!isEditing;
 
         // Add event listener for monthly checkbox
         document.getElementById('investment-track-monthly').addEventListener('change', (e) => {
@@ -1852,10 +1891,23 @@ const Investments = {
             ? (document.getElementById('investment-is-emergency-fund')?.checked || false)
             : false;
         const date = trackMonthly ? document.getElementById('investment-date').value : null;
-        
-        // Get income month attribution (for monthly investments)
-        const incomeMonth = trackMonthly ? parseInt(document.getElementById('investment-income-month')?.value) : null;
-        const incomeYear = trackMonthly ? parseInt(document.getElementById('investment-income-year')?.value) : null;
+
+        // Get income (budget) month attribution for monthly investments. Guard
+        // against a missing/blank field producing NaN — if that happened the
+        // grouping would silently fall back to the investment date's month,
+        // which is exactly the "shows in current month" bug. Fall back to the
+        // date-derived suggestion instead so we always store a real number.
+        let incomeMonth = null;
+        let incomeYear = null;
+        if (trackMonthly) {
+            incomeMonth = parseInt(document.getElementById('investment-income-month')?.value, 10);
+            incomeYear = parseInt(document.getElementById('investment-income-year')?.value, 10);
+            if (!Number.isInteger(incomeMonth) || !Number.isInteger(incomeYear)) {
+                const fallback = this.suggestIncomeMonth(date || new Date().toISOString().split('T')[0]);
+                if (!Number.isInteger(incomeMonth)) incomeMonth = fallback.month;
+                if (!Number.isInteger(incomeYear)) incomeYear = fallback.year;
+            }
+        }
 
         let investmentData = {
             name,
@@ -2340,8 +2392,81 @@ const Investments = {
         
         // Trigger type change to show fields
         this.handleTypeChange();
-        
+
         document.getElementById('investment-modal').classList.remove('hidden');
+    },
+
+    /**
+     * Open the lightweight "edit date + budget month" modal for a MONTHLY
+     * investment. Deliberately limited to date/attribution — name, quantity
+     * and price are intentionally not editable here.
+     */
+    openEditMonthlyDatesModal(id) {
+        const inv = (window.DB.monthlyInvestments || []).find(i => parseInt(i.id) === parseInt(id));
+        if (!inv) {
+            Utils.showError('Investment not found');
+            return;
+        }
+
+        document.getElementById('edit-monthly-dates-id').value = inv.id;
+        document.getElementById('edit-monthly-dates-name').textContent =
+            `${inv.name} · ${inv.type}`;
+
+        const dateInput = document.getElementById('edit-monthly-date-input');
+        if (dateInput) dateInput.value = inv.date || '';
+
+        // Pre-fill budget month from the stored attribution, falling back to
+        // the investment date for legacy entries that predate the field.
+        let bm = inv.incomeMonth, by = inv.incomeYear;
+        if (!bm || !by) {
+            const d = new Date(inv.date);
+            bm = d.getMonth() + 1;
+            by = d.getFullYear();
+        }
+        document.getElementById('edit-monthly-income-month').value = bm;
+        document.getElementById('edit-monthly-income-year').value = by;
+
+        document.getElementById('edit-monthly-dates-modal').classList.remove('hidden');
+    },
+
+    closeEditMonthlyDatesModal() {
+        document.getElementById('edit-monthly-dates-modal').classList.add('hidden');
+    },
+
+    /**
+     * Persist the edited date + budget month onto the monthly investment.
+     * Only those three fields are touched; everything else is left intact.
+     */
+    saveEditMonthlyDates() {
+        const id = parseInt(document.getElementById('edit-monthly-dates-id').value, 10);
+        const date = document.getElementById('edit-monthly-date-input').value;
+        const incomeMonth = parseInt(document.getElementById('edit-monthly-income-month').value, 10);
+        const incomeYear = parseInt(document.getElementById('edit-monthly-income-year').value, 10);
+
+        if (!date) {
+            Utils.showError('Please pick an investment date');
+            return;
+        }
+        if (!Number.isInteger(incomeMonth) || !Number.isInteger(incomeYear)) {
+            Utils.showError('Please pick a valid budget month and year');
+            return;
+        }
+
+        const list = window.DB.monthlyInvestments || [];
+        const idx = list.findIndex(i => parseInt(i.id) === id);
+        if (idx === -1) {
+            Utils.showError('Investment not found');
+            return;
+        }
+
+        list[idx].date = date;
+        list[idx].incomeMonth = incomeMonth;
+        list[idx].incomeYear = incomeYear;
+        window.Storage.save();
+
+        this.closeEditMonthlyDatesModal();
+        this.render();
+        Utils.showSuccess('Date & budget month updated!');
     },
 
     /**
@@ -2956,6 +3081,133 @@ Respond ONLY with valid JSON (no markdown, no explanation):
     },
 
     /**
+     * Headless USD-INR fetch (no modal DOM). Returns the rate or throws.
+     * Shared by the exchange modal's auto-fetch and the one-click portfolio
+     * reload so both use the same source.
+     */
+    async _fetchUsdInr() {
+        const data = await this._httpGetJson('https://api.frankfurter.app/latest?from=USD&to=INR');
+        const rate = data?.rates?.INR;
+        if (!rate || rate <= 0) throw new Error('USD-INR not found');
+        return Math.round(rate * 100) / 100;
+    },
+
+    /**
+     * Headless gold ₹/gram fetch (no modal DOM). Uses the SAME method as the
+     * gold modal: international spot (GC=F) × USD-INR ÷ 31.1035 + India premium
+     * × purity factor. `usdInr` is passed in so we don't fetch FX twice.
+     * Returns ₹/gram for the stored purity (defaults 22K), or throws.
+     */
+    async _fetchGoldRatePerGram(usdInr) {
+        const purity = (window.DB.goldRatePerGram && window.DB.goldRatePerGram.purity) || '22K';
+        const spotUsdPerOz = await this.fetchPriceFromYahoo('GC=F');
+        if (!usdInr || usdInr <= 0) usdInr = this.getExchangeRate();
+        if (!usdInr || usdInr <= 0) throw new Error('USD-INR unavailable for gold calc');
+        const GRAMS_PER_TROY_OZ = 31.1035;
+        const premium = (typeof window.DB.goldIndiaPremium === 'number')
+            ? window.DB.goldIndiaPremium
+            : this.GOLD_INDIA_PREMIUM_DEFAULT;
+        const purityFactor = purity === '22K' ? 0.916 : 1.0;
+        const inrPerGram = ((spotUsdPerOz * usdInr) / GRAMS_PER_TROY_OZ) * (1 + premium) * purityFactor;
+        return { rate: Math.round(inrPerGram), purity };
+    },
+
+    /**
+     * One-click portfolio refresh: USD-INR → gold rate → all stock prices.
+     * Each step is independent (a failure in one doesn't block the others)
+     * and the result is summarised in a single toast. This replaces clicking
+     * each rate button separately.
+     */
+    async reloadPortfolioData() {
+        const btn = document.getElementById('portfolio-reload-all-btn');
+        const spin = btn ? btn.querySelector('svg') : null;
+        if (btn) btn.disabled = true;
+        if (spin) spin.classList.add('animate-spin');
+
+        if (window.AIProvider) window.AIProvider.suppressInfoMessages = true;
+
+        const activeShares = (window.DB.sharePrices || []).filter(sp => sp.active);
+
+        // Animated step checklist: each line shows pending → spinner → check/x.
+        Utils.showProgressSteps('Refreshing portfolio', [
+            { id: 'fx', label: 'Exchange rate (USD-INR)' },
+            { id: 'gold', label: 'Gold rate' },
+            { id: 'stocks', label: `Stock prices${activeShares.length ? ` (${activeShares.length})` : ''}` },
+        ]);
+
+        const failed = [];
+
+        // 1. USD-INR — fetch first so gold can reuse it.
+        let usdInr = null;
+        Utils.setProgressStep('fx', 'active');
+        try {
+            usdInr = await this._fetchUsdInr();
+            this.setExchangeRate(usdInr);   // persists + timestamps
+            Utils.setProgressStep('fx', 'done', `₹${usdInr.toFixed(2)}`);
+        } catch (e) {
+            console.warn('Reload: USD-INR failed', e);
+            failed.push('USD-INR');
+            usdInr = this.getExchangeRate();   // fall back to stored for gold calc
+            Utils.setProgressStep('fx', 'failed', 'failed');
+        }
+
+        // 2. Gold rate.
+        Utils.setProgressStep('gold', 'active');
+        try {
+            const gold = await this._fetchGoldRatePerGram(usdInr);
+            this.setGoldRate(gold.rate, gold.purity);          // persists + timestamps
+            this.updatePortfolioGoldPrice(this.getGoldRate()); // sync GOLD holdings
+            Utils.setProgressStep('gold', 'done', `₹${Utils.formatIndianNumber(gold.rate)}/g`);
+        } catch (e) {
+            console.warn('Reload: gold failed', e);
+            failed.push('Gold');
+            Utils.setProgressStep('gold', 'failed', 'failed');
+        }
+
+        // 3. All active stock prices (reuses the robust per-share resolver).
+        let stockOk = 0;
+        const stockFail = [];
+        if (activeShares.length === 0) {
+            Utils.setProgressStep('stocks', 'done', 'none');
+        } else {
+            Utils.setProgressStep('stocks', 'active', `0/${activeShares.length}`);
+            for (let i = 0; i < activeShares.length; i++) {
+                const share = activeShares[i];
+                try {
+                    await this._updateShareFromMarket(share);
+                    this.updatePortfolioSharePrice(share.name, share.price, share.currency);
+                    stockOk++;
+                } catch (e) {
+                    console.warn(`Reload: stock ${share.name} failed`, e);
+                    stockFail.push(share.name);
+                }
+                Utils.setProgressStep('stocks', 'active', `${i + 1}/${activeShares.length}`);
+            }
+            if (stockFail.length === 0) {
+                Utils.setProgressStep('stocks', 'done', `${stockOk} updated`);
+            } else {
+                Utils.setProgressStep('stocks', stockOk > 0 ? 'done' : 'failed', `${stockOk} ok · ${stockFail.length} failed`);
+                failed.push(`${stockFail.length} stock(s): ${stockFail.join(', ')}`);
+            }
+        }
+
+        window.Storage.save();
+
+        if (btn) btn.disabled = false;
+        if (spin) spin.classList.remove('animate-spin');
+        if (window.AIProvider) window.AIProvider.suppressInfoMessages = false;
+
+        this.render();
+
+        // Single summary line under the checklist.
+        if (failed.length === 0) {
+            Utils.finishProgressSteps('success', 'Everything up to date.', true);
+        } else {
+            Utils.finishProgressSteps('error', `Couldn't update: ${failed.join(' · ')}`);
+        }
+    },
+
+    /**
      * Reload all share prices (LLM + Yahoo Finance)
      * Step 1: Fetch tickers from LLM (if not already stored)
      * Step 2: Fetch prices from Yahoo Finance
@@ -3534,10 +3786,12 @@ Respond ONLY with valid JSON (no markdown, no explanation):
             const input = document.getElementById('gold-rate-input');
             if (input) input.value = finalRate;
 
+            // showInfo renders via textContent (safe), so pass plain text with
+            // newlines rather than HTML tags — otherwise <br>/<span> show literally.
             Utils.showInfo(
-                `✓ ${purity} gold: ₹${Utils.formatIndianNumber(finalRate)}/g` +
-                `<br><span class="text-xs">spot $${spotUsdPerOz.toFixed(0)}/oz × ₹${usdInr.toFixed(1)} ÷ 31.1 + ${Math.round(premium * 100)}% India premium${purity === '22K' ? ' × 0.916' : ''}</span>` +
-                `<br><span class="text-xs">Review & Save</span>`
+                `✓ ${purity} gold: ₹${Utils.formatIndianNumber(finalRate)}/g\n` +
+                `spot $${spotUsdPerOz.toFixed(0)}/oz × ₹${usdInr.toFixed(1)} ÷ 31.1 + ${Math.round(premium * 100)}% India premium${purity === '22K' ? ' × 0.916' : ''}\n` +
+                `Review & Save`
             );
         } catch (e) {
             console.error('Auto-fetch gold rate failed:', e);

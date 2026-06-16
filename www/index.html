@@ -2469,6 +2469,52 @@
         </div>
     </div>
     
+    <!-- EDIT MONTHLY INVESTMENT DATE / BUDGET MONTH MODAL -->
+    <div id="edit-monthly-dates-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) Investments.closeEditMonthlyDatesModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 class="text-xl font-bold mb-1 bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">Edit Date &amp; Budget Month</h2>
+            <p id="edit-monthly-dates-name" class="text-sm text-gray-500 mb-4">—</p>
+
+            <input type="hidden" id="edit-monthly-dates-id">
+
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Investment Date</label>
+            <input type="date" id="edit-monthly-date-input"
+                   class="w-full p-2 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+            <div class="mb-4 p-3 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg border border-blue-200">
+                <label class="text-sm font-semibold text-blue-800">Budget Month</label>
+                <p class="text-xs text-blue-600 mb-2">Count this investment towards which month's budget?</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="edit-monthly-income-month" class="p-2 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                    </select>
+                    <input type="number" id="edit-monthly-income-year" min="2020" max="2100"
+                           class="p-2 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                </div>
+            </div>
+
+            <div class="flex space-x-3">
+                <button onclick="Investments.saveEditMonthlyDates()" class="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:shadow-lg transition-all font-semibold">
+                    Save
+                </button>
+                <button onclick="Investments.closeEditMonthlyDatesModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- CUSTOM DELETE CONFIRMATION MODAL -->
     <div id="delete-confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col">
@@ -2608,7 +2654,7 @@
                 <h3 class="text-xl font-bold text-blue-600 mb-3 animate-fade-in-up">Information</h3>
                 
                 <!-- Info Message (Customizable) -->
-                <p id="info-modal-message" class="text-gray-700 text-center leading-relaxed animate-fade-in-up">Information message</p>
+                <p id="info-modal-message" class="text-gray-700 text-center leading-relaxed animate-fade-in-up" style="white-space: pre-line;">Information message</p>
                 
                 <!-- Close Button (Bottom) -->
                 <button onclick="(function() { const modal = document.getElementById('common-info-modal'); Utils.hideModal('common-info-modal'); if (modal._infoCallback) { modal._infoCallback(); modal._infoCallback = null; } })()" class="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-semibold">
@@ -2619,40 +2665,39 @@
     </div>
     
     <!-- PROGRESS MODAL (Used for showing loading status with updates) -->
-    <div id="progress-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-[20000] flex items-center justify-center">
-        <!-- Close Button (Top Right - initially hidden, fixed position) -->
-        <button id="progress-modal-close-btn" onclick="Utils.closeProgressModal()" class="hidden fixed top-8 right-8 text-gray-400 hover:text-white transition-colors z-[20001]">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-        </button>
-        
-        <div class="flex flex-col items-center">
-            <!-- Loading Spinner (shown during progress) -->
-            <div id="progress-spinner" class="mb-4">
-                <svg class="w-16 h-16 animate-spin text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                </svg>
+    <div id="progress-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[20000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-scale-in">
+            <!-- Header -->
+            <div class="relative bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-4 flex items-center gap-3">
+                <!-- Inline status icon (spinner during work, swaps to check/x at end) -->
+                <div id="progress-header-icon" class="flex-shrink-0">
+                    <svg id="progress-spinner" class="w-6 h-6 animate-spin text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    <svg id="progress-success-icon" class="hidden w-6 h-6 text-white animate-scale-in" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <svg id="progress-error-icon" class="hidden w-6 h-6 text-white animate-scale-in" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </div>
+                <h3 id="progress-modal-title" class="text-white font-bold text-base flex-1 leading-tight">Working…</h3>
+                <!-- Close button (hidden until done; visible, modern) -->
+                <button id="progress-modal-close-btn" onclick="Utils.closeProgressModal()" class="hidden flex-shrink-0 w-8 h-8 rounded-full bg-white/20 hover:bg-white/35 text-white flex items-center justify-center transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
             </div>
-            
-            <!-- Success Icon (hidden initially) -->
-            <div id="progress-success-icon" class="hidden">
-                <svg class="w-24 h-24 animate-scale-in" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="#10B981" stroke-width="4" class="animate-fade-in"/>
-                    <path d="M30 50 L42 62 L70 34" stroke="#10B981" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round" class="animate-draw-check"/>
-                </svg>
+
+            <!-- Body -->
+            <div class="px-5 py-4">
+                <!-- Step checklist (populated when using the steps API) -->
+                <ul id="progress-step-list" class="hidden space-y-2.5"></ul>
+
+                <!-- Free-form status message (legacy callers / final summary) -->
+                <p id="progress-modal-message" class="text-sm text-gray-700 leading-relaxed whitespace-pre-line">Loading…</p>
             </div>
-            
-            <!-- Error Icon (hidden initially) -->
-            <div id="progress-error-icon" class="hidden">
-                <svg class="w-24 h-24" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="#EF4444" stroke-width="4" class="animate-fade-in"/>
-                    <path d="M35 35 L65 65 M65 35 L35 65" stroke="#EF4444" stroke-width="6" stroke-linecap="round" class="animate-draw-x"/>
-                </svg>
-            </div>
-            
-            <!-- Status Message -->
-            <p id="progress-modal-message" class="mt-6 text-base font-medium text-white animate-fade-in-up text-center leading-relaxed whitespace-pre-line max-w-md mx-auto px-4">Loading...</p>
         </div>
     </div>
     
