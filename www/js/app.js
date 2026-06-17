@@ -11,6 +11,11 @@ const App = {
         try {
             // Configure status bar for mobile
             await this.configureStatusBar();
+
+            // Accessibility: dialog semantics, icon-button labels, focus trap, Esc-to-close
+            if (window.A11y && typeof window.A11y.init === 'function') {
+                window.A11y.init();
+            }
             
             // Load data from storage
             window.Storage.load();
@@ -185,45 +190,21 @@ const App = {
      * Setup global event handlers
      */
     setupEventHandlers() {
+        // Generic, user-safe message. Full details (which can contain user data,
+        // tokens, or internal paths) go to the console only.
+        const GENERIC_ERROR = 'Something went wrong. Please try again.';
+
         // Global error handler
         window.onerror = function(msg, url, lineNo, columnNo, error) {
             console.error('Global error:', { msg, url, lineNo, columnNo, error });
-            
-            // Show detailed error in UI for mobile debugging
-            const errorMessage = error ? error.message : msg;
-            const fileName = url ? url.split('/').pop() : 'Unknown';
-            const errorDetails = `
-Error: ${errorMessage}
-
-Location: ${fileName}:${lineNo}:${columnNo}
-
-Type: Global Error
-            `.trim();
-            
-            window.Utils.showError(errorDetails);
+            window.Utils.showError(GENERIC_ERROR);
             return false;
         };
         
         // Unhandled promise rejection handler
         window.onunhandledrejection = function(event) {
             console.error('Unhandled promise rejection:', event.reason);
-            
-            // Show detailed error in UI for mobile debugging
-            const errorMessage = event.reason ? 
-                (event.reason.message || event.reason.toString()) : 
-                'Unknown promise rejection';
-            
-            const errorDetails = `
-Error: ${errorMessage}
-
-Type: Unhandled Promise Rejection
-
-${event.reason && event.reason.stack ? 
-    'Stack: ' + event.reason.stack.split('\n').slice(0, 2).join('\n') : 
-    'No stack trace available'}
-            `.trim();
-            
-            window.Utils.showError(errorDetails);
+            window.Utils.showError(GENERIC_ERROR);
         };
         
         // App lifecycle listeners (for native app)

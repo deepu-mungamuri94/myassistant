@@ -3856,7 +3856,7 @@ const Dashboard = {
                                 <div class="py-3 border-b border-gray-100 last:border-0">
                                     <!-- Title and Amount -->
                                     <div class="flex justify-between items-start mb-2">
-                                        <div class="font-semibold text-gray-800 text-sm">${item.name}</div>
+                                        <div class="font-semibold text-gray-800 text-sm">${Utils.escapeHtml(item.name)}</div>
                                         <div class="text-sm font-bold text-${progressColor}-600">₹${Utils.formatIndianNumber(item.amount)}</div>
                                     </div>
                                     
@@ -3874,7 +3874,7 @@ const Dashboard = {
                                     <!-- Date and Description -->
                                     <div class="flex items-center gap-2 text-xs text-gray-500">
                                         <span>📅 ${item.date}</span>
-                                        ${item.description ? `<span>•</span><span class="italic">${item.description}</span>` : ''}
+                                        ${item.description ? `<span>•</span><span class="italic">${Utils.escapeHtml(item.description)}</span>` : ''}
                                     </div>
                                 </div>
                             `;
@@ -3884,9 +3884,9 @@ const Dashboard = {
                         return `
                             <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
                                 <div class="flex-1">
-                                    <div class="font-medium text-gray-800 text-sm">${item.name}</div>
+                                    <div class="font-medium text-gray-800 text-sm">${Utils.escapeHtml(item.name)}</div>
                                     <div class="flex items-center gap-2 text-xs text-gray-500">
-                                        ${item.category ? `<span>${item.category}</span>` : ''}
+                                        ${item.category ? `<span>${Utils.escapeHtml(item.category)}</span>` : ''}
                                         ${item.category && item.date ? '<span>•</span>' : ''}
                                         ${item.date ? `<span>${item.date}</span>` : ''}
                                     </div>
@@ -7833,6 +7833,41 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
         return { amount: amt, paidAt: latest.paidAt || latest.paidDate };
     },
 
+    /**
+     * Ensure window.DB.settlementData[monthKey] exists with the expected shape,
+     * creating it (with the supplied expanded-sections defaults) if missing and
+     * backfilling any sub-structures missing from older saved data. Replaces the
+     * ~20 hand-copied initializer literals that had started to drift apart.
+     *
+     * Note: `enabledSips` is intentionally left untouched so showSettlementModal's
+     * "first open → enable all active SIPs" (undefined) semantics still work.
+     */
+    _ensureSettlement(monthKey, defaultExpanded) {
+        const baseExpanded = () => defaultExpanded
+            ? { ...defaultExpanded }
+            : { cards: false, recurring: false, loans: false, sips: false, custom: false, summary: false };
+        if (!window.DB.settlementData) window.DB.settlementData = {};
+        let sd = window.DB.settlementData[monthKey];
+        if (!sd) {
+            sd = window.DB.settlementData[monthKey] = {
+                cardSelections: {},
+                enabledRecurring: [],
+                enabledLoanEmis: [],
+                enabledCards: [],
+                customItems: [],
+                expandedSections: baseExpanded()
+            };
+            return sd;
+        }
+        if (!sd.cardSelections) sd.cardSelections = {};
+        if (!Array.isArray(sd.enabledRecurring)) sd.enabledRecurring = [];
+        if (!Array.isArray(sd.enabledLoanEmis)) sd.enabledLoanEmis = [];
+        if (!Array.isArray(sd.enabledCards)) sd.enabledCards = [];
+        if (!Array.isArray(sd.customItems)) sd.customItems = [];
+        if (!sd.expandedSections) sd.expandedSections = baseExpanded();
+        return sd;
+    },
+
     showSettlementModal(year, month) {
         // Save scroll positions before re-rendering
         const scrollPositions = {};
@@ -7851,6 +7886,49 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
             if (loansScrollable) scrollPositions.loans = loansScrollable.scrollTop;
         }
         
+        // Single source of truth for all derived numbers/health flags so the
+        // full render and the in-place refresh (_refreshSettlementTotals) can
+        // never drift apart.
+        const ctx = this._computeSettlementContext(year, month);
+        const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+        // Build modal HTML
+        const modalHTML = this._buildSettlementModalHtml(year, month, ctx, monthName);
+
+        // Remove existing modal if any
+        const modalToRemove = document.getElementById('settlement-modal');
+        if (modalToRemove) modalToRemove.remove();
+
+        // Add modal to body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+        // Restore scroll positions after a brief delay to ensure DOM is ready
+        setTimeout(() => {
+            const newModal = document.getElementById('settlement-modal');
+            if (newModal) {
+                if (scrollPositions.modal !== undefined) {
+                    const modalContent = newModal.querySelector('#settlement-modal-content');
+                    if (modalContent) modalContent.scrollTop = scrollPositions.modal;
+                }
+                if (scrollPositions.recurring !== undefined) {
+                    const recurringContent = newModal.querySelector('#recurring-content .max-h-48.overflow-y-auto');
+                    if (recurringContent) recurringContent.scrollTop = scrollPositions.recurring;
+                }
+                if (scrollPositions.loans !== undefined) {
+                    const loansContent = newModal.querySelector('#loans-content .max-h-48.overflow-y-auto');
+                    if (loansContent) loansContent.scrollTop = scrollPositions.loans;
+                }
+            }
+        }, 10);
+    },
+
+    /**
+     * Compute every derived value the settlement modal renders (income, the
+     * per-section totals, grand total, balance, and the debt/investment health
+     * indicators). Used by both showSettlementModal and _refreshSettlementTotals
+     * so totals shown in the UI always match.
+     */
+    _computeSettlementContext(year, month) {
         // Calculate default income/recurring month based on pay schedule
         const paySchedule = window.DB.settings.paySchedule || 'first_week';
         let defaultIncomeYear = year;
@@ -8041,11 +8119,37 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
             ? `Healthy (${loansPercent.toFixed(1)}% vs ${maxLoanPercent}% safe limit)`
             : `High (${loansPercent.toFixed(1)}% exceeds ${maxLoanPercent}% safe limit)`;
         const loansStatusColor = loansHealthy ? 'text-green-600' : 'text-red-600';
-        
-        const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-        
-        // Build modal HTML
-        const modalHTML = `
+
+        return {
+            defaultIncomeYear, defaultIncomeMonth, monthKey, settlementData,
+            income, isEstimatedIncome, cardData, isLastPaidMode,
+            recurringItems, loanEmiItems, sipItems,
+            cardsTotal, recurringTotal, loansTotal, sipsTotal, customItemsTotal,
+            totalDeductions, balance,
+            sipsPercent, loansPercent, investmentTarget, maxLoanPercent,
+            sipsHealthy, loansHealthy,
+            sipsStatusIcon, sipsStatusText, sipsStatusColor,
+            loansStatusIcon, loansStatusText, loansStatusColor
+        };
+    },
+
+    /**
+     * Build the full settlement modal HTML from a precomputed context.
+     */
+    _buildSettlementModalHtml(year, month, ctx, monthName) {
+        const {
+            defaultIncomeYear, defaultIncomeMonth, settlementData,
+            income, isEstimatedIncome, cardData, isLastPaidMode,
+            recurringItems, loanEmiItems, sipItems,
+            cardsTotal, recurringTotal, loansTotal, sipsTotal, customItemsTotal,
+            totalDeductions, balance,
+            sipsPercent, loansPercent, investmentTarget, maxLoanPercent,
+            sipsHealthy, loansHealthy,
+            sipsStatusIcon, sipsStatusText, sipsStatusColor,
+            loansStatusIcon, loansStatusText, loansStatusColor
+        } = ctx;
+
+        return `
             <div id="settlement-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) Dashboard.closeSettlementModal()">
                 <div id="settlement-modal-content" class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                     <div class="sticky top-0 bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 flex justify-between items-center rounded-t-2xl z-10">
@@ -8094,7 +8198,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                                     <p class="text-xs text-blue-600 font-medium">Final Balance</p>
                                 </div>
                                 <!-- Second line: Amount -->
-                                <p class="text-xl font-bold text-blue-900 mb-1">₹${Utils.formatIndianNumber(balance)}</p>
+                                <p id="settlement-balance" class="text-xl font-bold text-blue-900 mb-1">₹${Utils.formatIndianNumber(balance)}</p>
                                 <!-- Below: Info text -->
                                 <p class="text-[10px] text-blue-500">Income - Deductions</p>
                             </div>
@@ -8112,7 +8216,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <span class="text-xs font-bold text-gray-900">₹${Utils.formatIndianNumber(cardsTotal)}</span>
+                                    <span id="settlement-cards-total" class="text-xs font-bold text-gray-900">₹${Utils.formatIndianNumber(cardsTotal)}</span>
                                     <svg id="cards-arrow" class="w-4 h-4 text-gray-500 transform transition-transform ${settlementData.expandedSections?.cards ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                     </svg>
@@ -8216,7 +8320,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <span class="text-xs font-bold text-gray-900">₹${Utils.formatIndianNumber(recurringTotal)}</span>
+                                    <span id="settlement-recurring-total" class="text-xs font-bold text-gray-900">₹${Utils.formatIndianNumber(recurringTotal)}</span>
                                     <svg id="recurring-arrow" class="w-4 h-4 text-gray-500 transform transition-transform ${settlementData.expandedSections?.recurring ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                     </svg>
@@ -8272,19 +8376,8 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    ${income > 0 && loanEmiItems.length > 0 ? `
-                                    <div class="flex items-center justify-center w-5 h-5 rounded-full ${loansHealthy ? 'bg-green-500' : 'bg-red-500'}" title="${loansStatusText}">
-                                        ${loansHealthy
-                                            ? `<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
-                                               </svg>`
-                                            : `<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                               </svg>`
-                                        }
-                                    </div>
-                                    ` : ''}
-                                    <span class="text-xs font-bold text-gray-900">₹${Utils.formatIndianNumber(loansTotal)}</span>
+                                    <span id="settlement-loans-badge">${this._loansHealthBadgeHtml(ctx)}</span>
+                                    <span id="settlement-loans-total" class="text-xs font-bold text-gray-900">₹${Utils.formatIndianNumber(loansTotal)}</span>
                                     <svg id="loans-arrow" class="w-4 h-4 text-gray-500 transform transition-transform ${settlementData.expandedSections?.loans ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                     </svg>
@@ -8308,20 +8401,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                                         </button>
                                     </div>
                                 </div>
-                                ${income > 0 && loanEmiItems.length > 0 ? `
-                                <div class="mb-2 p-2 rounded-lg ${loansHealthy ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}">
-                                    <div class="flex items-center gap-1.5 mb-1">
-                                        <span class="text-sm">${loansStatusIcon}</span>
-                                        <p class="text-[10px] font-semibold ${loansStatusColor}">${loansHealthy ? 'Healthy Debt Level' : 'Debt Warning'}</p>
-                                    </div>
-                                    <p class="text-[10px] ${loansHealthy ? 'text-green-700' : 'text-red-700'}">
-                                        ${loansHealthy
-                                            ? `Your loan EMIs are ${loansPercent.toFixed(1)}% of income (safe limit: ${maxLoanPercent}%). Well managed! 👍`
-                                            : `Your loan EMIs are ${loansPercent.toFixed(1)}% of income (safe limit: ${maxLoanPercent}%). Consider restructuring or prepayment. ⚠️`
-                                        }
-                                    </p>
-                                </div>
-                                ` : ''}
+                                <div id="settlement-loans-healthbox">${this._loansHealthBoxHtml(ctx)}</div>
                                 <div class="max-h-48 overflow-y-auto">
                                 ${loanEmiItems.length > 0 ? loanEmiItems.map(emi => {
                                     const isEnabled = settlementData.enabledLoanEmis.includes(emi.name);
@@ -8354,39 +8434,15 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    ${income > 0 ? `
-                                    <div class="flex items-center justify-center w-5 h-5 rounded-full ${sipsHealthy ? 'bg-green-500' : 'bg-orange-500'}" title="${sipsStatusText}">
-                                        ${sipsHealthy
-                                            ? `<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
-                                               </svg>`
-                                            : `<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                               </svg>`
-                                        }
-                                    </div>
-                                    ` : ''}
-                                    <span class="text-xs font-bold text-gray-900">₹${Utils.formatIndianNumber(sipsTotal)}</span>
+                                    <span id="settlement-sips-badge">${this._sipsHealthBadgeHtml(ctx)}</span>
+                                    <span id="settlement-sips-total" class="text-xs font-bold text-gray-900">₹${Utils.formatIndianNumber(sipsTotal)}</span>
                                     <svg id="sips-arrow" class="w-4 h-4 text-gray-500 transform transition-transform ${settlementData.expandedSections?.sips ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                     </svg>
                                 </div>
                             </button>
                             <div id="sips-content" class="${settlementData.expandedSections?.sips ? '' : 'hidden'} px-3 pb-3 pt-3 space-y-1.5 border-t border-gray-200">
-                                ${income > 0 ? `
-                                <div class="mb-2 p-2 rounded-lg ${sipsHealthy ? 'bg-green-50 border border-green-200' : 'bg-orange-50 border border-orange-200'}">
-                                    <div class="flex items-center gap-1.5 mb-1">
-                                        <span class="text-sm">${sipsStatusIcon}</span>
-                                        <p class="text-[10px] font-semibold ${sipsStatusColor}">${sipsHealthy ? 'Healthy Investment' : 'Investment Warning'}</p>
-                                    </div>
-                                    <p class="text-[10px] ${sipsHealthy ? 'text-green-700' : 'text-orange-700'}">
-                                        ${sipsHealthy
-                                            ? `Your SIPs are ${sipsPercent.toFixed(1)}% of income (target: ${investmentTarget}%). Keep it up! 🎯`
-                                            : `Your SIPs are ${sipsPercent.toFixed(1)}% of income (target: ${investmentTarget}%). Consider increasing investments. 📊`
-                                        }
-                                    </p>
-                                </div>
-                                ` : ''}
+                                <div id="settlement-sips-healthbox">${this._sipsHealthBoxHtml(ctx)}</div>
                                 <div class="max-h-48 overflow-y-auto">
                                 ${sipItems.length > 0 ? sipItems.map(sip => {
                                     const isEnabled = settlementData.enabledSips.includes(sip.name);
@@ -8419,7 +8475,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <span class="text-xs font-bold text-gray-900">₹${Utils.formatIndianNumber(customItemsTotal)}</span>
+                                    <span id="settlement-custom-total" class="text-xs font-bold text-gray-900">₹${Utils.formatIndianNumber(customItemsTotal)}</span>
                                     <svg id="custom-arrow" class="w-4 h-4 text-gray-500 transform transition-transform ${settlementData.expandedSections?.custom ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                     </svg>
@@ -8462,7 +8518,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <span class="text-xs font-bold text-red-600">₹${Utils.formatIndianNumber(totalDeductions)}</span>
+                                    <span id="settlement-total-deductions" class="text-xs font-bold text-red-600">₹${Utils.formatIndianNumber(totalDeductions)}</span>
                                     <svg id="summary-arrow" class="w-4 h-4 text-red-500 transform transition-transform ${settlementData.expandedSections?.summary ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                     </svg>
@@ -8472,23 +8528,23 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                                 <div class="space-y-1">
                                     <div class="flex justify-between text-xs">
                                         <span class="text-red-600">Credit Card Bills:</span>
-                                        <span class="font-semibold text-red-700">₹${Utils.formatIndianNumber(cardsTotal)}</span>
+                                        <span id="settlement-summary-cards" class="font-semibold text-red-700">₹${Utils.formatIndianNumber(cardsTotal)}</span>
                                     </div>
                                     <div class="flex justify-between text-xs">
                                         <span class="text-red-600">Recurring Payments:</span>
-                                        <span class="font-semibold text-red-700">₹${Utils.formatIndianNumber(recurringTotal)}</span>
+                                        <span id="settlement-summary-recurring" class="font-semibold text-red-700">₹${Utils.formatIndianNumber(recurringTotal)}</span>
                                     </div>
                                     <div class="flex justify-between text-xs">
                                         <span class="text-red-600">Loan EMIs:</span>
-                                        <span class="font-semibold text-red-700">₹${Utils.formatIndianNumber(loansTotal)}</span>
+                                        <span id="settlement-summary-loans" class="font-semibold text-red-700">₹${Utils.formatIndianNumber(loansTotal)}</span>
                                     </div>
                                     <div class="flex justify-between text-xs">
                                         <span class="text-red-600">SIPs (Planned):</span>
-                                        <span class="font-semibold text-red-700">₹${Utils.formatIndianNumber(sipsTotal)}</span>
+                                        <span id="settlement-summary-sips" class="font-semibold text-red-700">₹${Utils.formatIndianNumber(sipsTotal)}</span>
                                     </div>
                                     <div class="flex justify-between text-xs">
                                         <span class="text-red-600">Custom Items:</span>
-                                        <span class="font-semibold text-red-700">₹${Utils.formatIndianNumber(customItemsTotal)}</span>
+                                        <span id="settlement-summary-custom" class="font-semibold text-red-700">₹${Utils.formatIndianNumber(customItemsTotal)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -8497,42 +8553,119 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                 </div>
             </div>
         `;
-        
-        // Remove existing modal if any
-        const modalToRemove = document.getElementById('settlement-modal');
-        if (modalToRemove) modalToRemove.remove();
-        
-        // Add modal to body
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-        
-        // Restore scroll positions after a brief delay to ensure DOM is ready
-        setTimeout(() => {
-            const newModal = document.getElementById('settlement-modal');
-            if (newModal) {
-                // Restore main modal container scroll position (most important for checkbox UX)
-                if (scrollPositions.modal !== undefined) {
-                    const modalContent = newModal.querySelector('#settlement-modal-content');
-                    if (modalContent) {
-                        modalContent.scrollTop = scrollPositions.modal;
-                    }
-                }
-                // Restore nested scrollable areas
-                if (scrollPositions.recurring !== undefined) {
-                    const recurringContent = newModal.querySelector('#recurring-content .max-h-48.overflow-y-auto');
-                    if (recurringContent) {
-                        recurringContent.scrollTop = scrollPositions.recurring;
-                    }
-                }
-                if (scrollPositions.loans !== undefined) {
-                    const loansContent = newModal.querySelector('#loans-content .max-h-48.overflow-y-auto');
-                    if (loansContent) {
-                        loansContent.scrollTop = scrollPositions.loans;
-                    }
-                }
-            }
-        }, 10);
     },
-    
+
+    _loansHealthBadgeHtml(ctx) {
+        const { income, loanEmiItems, loansHealthy, loansStatusText } = ctx;
+        if (!(income > 0 && loanEmiItems.length > 0)) return '';
+        return `
+            <div class="flex items-center justify-center w-5 h-5 rounded-full ${loansHealthy ? 'bg-green-500' : 'bg-red-500'}" title="${loansStatusText}">
+                ${loansHealthy
+                    ? `<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>`
+                    : `<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`
+                }
+            </div>`;
+    },
+
+    _loansHealthBoxHtml(ctx) {
+        const { income, loanEmiItems, loansHealthy, loansStatusIcon, loansStatusColor, loansPercent, maxLoanPercent } = ctx;
+        if (!(income > 0 && loanEmiItems.length > 0)) return '';
+        return `
+            <div class="mb-2 p-2 rounded-lg ${loansHealthy ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}">
+                <div class="flex items-center gap-1.5 mb-1">
+                    <span class="text-sm">${loansStatusIcon}</span>
+                    <p class="text-[10px] font-semibold ${loansStatusColor}">${loansHealthy ? 'Healthy Debt Level' : 'Debt Warning'}</p>
+                </div>
+                <p class="text-[10px] ${loansHealthy ? 'text-green-700' : 'text-red-700'}">
+                    ${loansHealthy
+                        ? `Your loan EMIs are ${loansPercent.toFixed(1)}% of income (safe limit: ${maxLoanPercent}%). Well managed! 👍`
+                        : `Your loan EMIs are ${loansPercent.toFixed(1)}% of income (safe limit: ${maxLoanPercent}%). Consider restructuring or prepayment. ⚠️`
+                    }
+                </p>
+            </div>`;
+    },
+
+    _sipsHealthBadgeHtml(ctx) {
+        const { income, sipsHealthy, sipsStatusText } = ctx;
+        if (!(income > 0)) return '';
+        return `
+            <div class="flex items-center justify-center w-5 h-5 rounded-full ${sipsHealthy ? 'bg-green-500' : 'bg-orange-500'}" title="${sipsStatusText}">
+                ${sipsHealthy
+                    ? `<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>`
+                    : `<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`
+                }
+            </div>`;
+    },
+
+    _sipsHealthBoxHtml(ctx) {
+        const { income, sipsHealthy, sipsStatusIcon, sipsStatusColor, sipsPercent, investmentTarget } = ctx;
+        if (!(income > 0)) return '';
+        return `
+            <div class="mb-2 p-2 rounded-lg ${sipsHealthy ? 'bg-green-50 border border-green-200' : 'bg-orange-50 border border-orange-200'}">
+                <div class="flex items-center gap-1.5 mb-1">
+                    <span class="text-sm">${sipsStatusIcon}</span>
+                    <p class="text-[10px] font-semibold ${sipsStatusColor}">${sipsHealthy ? 'Healthy Investment' : 'Investment Warning'}</p>
+                </div>
+                <p class="text-[10px] ${sipsHealthy ? 'text-green-700' : 'text-orange-700'}">
+                    ${sipsHealthy
+                        ? `Your SIPs are ${sipsPercent.toFixed(1)}% of income (target: ${investmentTarget}%). Keep it up! 🎯`
+                        : `Your SIPs are ${sipsPercent.toFixed(1)}% of income (target: ${investmentTarget}%). Consider increasing investments. 📊`
+                    }
+                </p>
+            </div>`;
+    },
+
+    /**
+     * Recompute settlement totals/health and update only the affected DOM
+     * nodes in place. Used by the numeric toggles so we don't tear down and
+     * rebuild the entire modal (which loses focus/scroll and is wasteful).
+     * Falls back to a full re-render if the modal isn't in the expected shape.
+     */
+    _refreshSettlementTotals(year, month) {
+        const modal = document.getElementById('settlement-modal');
+        if (!modal) return;
+        const ctx = this._computeSettlementContext(year, month);
+        const fmt = (n) => `₹${Utils.formatIndianNumber(n)}`;
+
+        const setText = (id, text) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = text;
+            return !!el;
+        };
+
+        // Section header totals + grand total + balance + summary breakdown
+        const ok =
+            setText('settlement-balance', fmt(ctx.balance)) &
+            setText('settlement-cards-total', fmt(ctx.cardsTotal)) &
+            setText('settlement-recurring-total', fmt(ctx.recurringTotal)) &
+            setText('settlement-loans-total', fmt(ctx.loansTotal)) &
+            setText('settlement-sips-total', fmt(ctx.sipsTotal)) &
+            setText('settlement-custom-total', fmt(ctx.customItemsTotal)) &
+            setText('settlement-total-deductions', fmt(ctx.totalDeductions)) &
+            setText('settlement-summary-cards', fmt(ctx.cardsTotal)) &
+            setText('settlement-summary-recurring', fmt(ctx.recurringTotal)) &
+            setText('settlement-summary-loans', fmt(ctx.loansTotal)) &
+            setText('settlement-summary-sips', fmt(ctx.sipsTotal)) &
+            setText('settlement-summary-custom', fmt(ctx.customItemsTotal));
+
+        if (!ok) {
+            // DOM not in expected shape (older markup) — safe full re-render.
+            this.showSettlementModal(year, month);
+            return;
+        }
+
+        // Health badges/boxes (loans + sips) — rebuild their container markup
+        // from the same helpers the full render uses.
+        const loansBadge = document.getElementById('settlement-loans-badge');
+        if (loansBadge) loansBadge.innerHTML = this._loansHealthBadgeHtml(ctx);
+        const loansBox = document.getElementById('settlement-loans-healthbox');
+        if (loansBox) loansBox.innerHTML = this._loansHealthBoxHtml(ctx);
+        const sipsBadge = document.getElementById('settlement-sips-badge');
+        if (sipsBadge) sipsBadge.innerHTML = this._sipsHealthBadgeHtml(ctx);
+        const sipsBox = document.getElementById('settlement-sips-healthbox');
+        if (sipsBox) sipsBox.innerHTML = this._sipsHealthBoxHtml(ctx);
+    },
+
     /**
      * Close Settlement Modal
      */
@@ -8546,13 +8679,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
      */
     toggleSettlementSection(section, year, month) {
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-        if (!window.DB.settlementData) window.DB.settlementData = {};
-        if (!window.DB.settlementData[monthKey]) {
-            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: false, recurring: false, loans: false, custom: false, summary: false } };
-        }
-        if (!window.DB.settlementData[monthKey].expandedSections) {
-            window.DB.settlementData[monthKey].expandedSections = { cards: false, recurring: false, loans: false, custom: false, summary: false };
-        }
+        this._ensureSettlement(monthKey, { cards: false, recurring: false, loans: false, custom: false, summary: false });
         
         // Toggle the state
         const currentState = window.DB.settlementData[monthKey].expandedSections[section] || false;
@@ -8578,21 +8705,12 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
      */
     toggleCardEnabled(year, month, cardId, checked) {
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-        if (!window.DB.settlementData) window.DB.settlementData = {};
-        if (!window.DB.settlementData[monthKey]) {
-            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: true, recurring: false, loans: false, custom: false, summary: false } };
-        }
-        if (!Array.isArray(window.DB.settlementData[monthKey].enabledCards)) {
-            window.DB.settlementData[monthKey].enabledCards = [];
-        }
-        if (!window.DB.settlementData[monthKey].expandedSections) {
-            window.DB.settlementData[monthKey].expandedSections = { cards: true, recurring: false, loans: false, custom: false, summary: false };
-        }
+        const sd = this._ensureSettlement(monthKey, { cards: true, recurring: false, loans: false, custom: false, summary: false });
         
         // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: true, recurring: false, loans: false, custom: false, summary: false };
+        const expandedState = sd.expandedSections;
         
-        const enabledCards = window.DB.settlementData[monthKey].enabledCards || [];
+        const enabledCards = sd.enabledCards;
         const cardIdStr = String(cardId);
         const index = enabledCards.findIndex(id => String(id) === cardIdStr);
         
@@ -8619,10 +8737,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
      */
     updateSettlementIncomeMonth(year, month, incomeMonthValue) {
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-        if (!window.DB.settlementData) window.DB.settlementData = {};
-        if (!window.DB.settlementData[monthKey]) {
-            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: {} };
-        }
+        this._ensureSettlement(monthKey, {});
         window.DB.settlementData[monthKey].incomeMonth = incomeMonthValue;
         window.Storage.save();
         
@@ -8640,13 +8755,10 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
      */
     updateSettlementRecurringMonth(year, month, recurringMonthValue) {
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-        if (!window.DB.settlementData) window.DB.settlementData = {};
-        if (!window.DB.settlementData[monthKey]) {
-            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: {} };
-        }
+        const sd = this._ensureSettlement(monthKey, {});
         
         // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: true, loans: false, custom: false, summary: false };
+        const expandedState = sd.expandedSections;
         
         window.DB.settlementData[monthKey].recurringMonth = recurringMonthValue;
         window.DB.settlementData[monthKey].expandedSections = expandedState;
@@ -8666,13 +8778,10 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
      */
     updateSettlementLoansMonth(year, month, loansMonthValue) {
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-        if (!window.DB.settlementData) window.DB.settlementData = {};
-        if (!window.DB.settlementData[monthKey]) {
-            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: {} };
-        }
+        const sd = this._ensureSettlement(monthKey, {});
         
         // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: false, loans: true, custom: false, summary: false };
+        const expandedState = sd.expandedSections;
         
         window.DB.settlementData[monthKey].loansMonth = loansMonthValue;
         window.DB.settlementData[monthKey].expandedSections = expandedState;
@@ -8692,21 +8801,12 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
      */
     toggleLoanEmiItem(year, month, itemName) {
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-        if (!window.DB.settlementData) window.DB.settlementData = {};
-        if (!window.DB.settlementData[monthKey]) {
-            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: false, recurring: false, loans: true, custom: false, summary: false } };
-        }
-        if (!window.DB.settlementData[monthKey].enabledLoanEmis) {
-            window.DB.settlementData[monthKey].enabledLoanEmis = [];
-        }
-        if (!window.DB.settlementData[monthKey].expandedSections) {
-            window.DB.settlementData[monthKey].expandedSections = { cards: false, recurring: false, loans: true, custom: false, summary: false };
-        }
+        const sd = this._ensureSettlement(monthKey, { cards: false, recurring: false, loans: true, custom: false, summary: false });
         
         // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: false, loans: true, custom: false, summary: false };
+        const expandedState = sd.expandedSections;
         
-        const enabledLoanEmis = window.DB.settlementData[monthKey].enabledLoanEmis;
+        const enabledLoanEmis = sd.enabledLoanEmis;
         const index = enabledLoanEmis.indexOf(itemName);
         if (index > -1) {
             enabledLoanEmis.splice(index, 1);
@@ -8715,7 +8815,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
         }
         window.DB.settlementData[monthKey].expandedSections = expandedState;
         window.Storage.save();
-        this.showSettlementModal(year, month);
+        this._refreshSettlementTotals(year, month);
     },
 
     /**
@@ -8723,21 +8823,15 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
      */
     toggleSipItem(year, month, itemName) {
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-        if (!window.DB.settlementData) window.DB.settlementData = {};
-        if (!window.DB.settlementData[monthKey]) {
-            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledSips: [], enabledCards: [], customItems: [], expandedSections: { cards: false, recurring: false, loans: false, sips: true, custom: false, summary: false } };
-        }
-        if (!Array.isArray(window.DB.settlementData[monthKey].enabledSips)) {
-            window.DB.settlementData[monthKey].enabledSips = [];
-        }
-        if (!window.DB.settlementData[monthKey].expandedSections) {
-            window.DB.settlementData[monthKey].expandedSections = { cards: false, recurring: false, loans: false, sips: true, custom: false, summary: false };
+        const sd = this._ensureSettlement(monthKey, { cards: false, recurring: false, loans: false, sips: true, custom: false, summary: false });
+        if (!Array.isArray(sd.enabledSips)) {
+            sd.enabledSips = [];
         }
 
         // Preserve expanded state (keep SIPs section open while toggling)
-        const expandedState = { ...window.DB.settlementData[monthKey].expandedSections, sips: true };
+        const expandedState = { ...sd.expandedSections, sips: true };
 
-        const enabledSips = window.DB.settlementData[monthKey].enabledSips;
+        const enabledSips = sd.enabledSips;
         const index = enabledSips.indexOf(itemName);
         if (index > -1) {
             enabledSips.splice(index, 1);
@@ -8746,7 +8840,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
         }
         window.DB.settlementData[monthKey].expandedSections = expandedState;
         window.Storage.save();
-        this.showSettlementModal(year, month);
+        this._refreshSettlementTotals(year, month);
     },
     
     /**
@@ -8770,13 +8864,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
     /** Internal: persist the cards-section view mode and re-render. */
     _setCardViewMode(year, month, mode) {
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-        if (!window.DB.settlementData) window.DB.settlementData = {};
-        if (!window.DB.settlementData[monthKey]) {
-            window.DB.settlementData[monthKey] = {
-                cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [],
-                enabledCards: [], customItems: [], expandedSections: {}
-            };
-        }
+        this._ensureSettlement(monthKey, {});
         window.DB.settlementData[monthKey].cardViewMode = mode;
         window.Storage.save();
         this.showSettlementModal(year, month);
@@ -8787,24 +8875,15 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
      */
     updateCardSelection(year, month, cardId, selectionType) {
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-        if (!window.DB.settlementData) window.DB.settlementData = {};
-        if (!window.DB.settlementData[monthKey]) {
-            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: true, recurring: false, loans: false, custom: false, summary: false } };
-        }
-        if (!window.DB.settlementData[monthKey].cardSelections) {
-            window.DB.settlementData[monthKey].cardSelections = {};
-        }
-        if (!window.DB.settlementData[monthKey].expandedSections) {
-            window.DB.settlementData[monthKey].expandedSections = { cards: true, recurring: false, loans: false, custom: false, summary: false };
-        }
+        const sd = this._ensureSettlement(monthKey, { cards: true, recurring: false, loans: false, custom: false, summary: false });
         
         // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: true, recurring: false, loans: false, custom: false, summary: false };
+        const expandedState = sd.expandedSections;
         
         window.DB.settlementData[monthKey].cardSelections[cardId] = selectionType;
         window.DB.settlementData[monthKey].expandedSections = expandedState;
         window.Storage.save();
-        this.showSettlementModal(year, month);
+        this._refreshSettlementTotals(year, month);
     },
     
     /**
@@ -8812,21 +8891,12 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
      */
     toggleRecurringItem(year, month, itemName) {
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-        if (!window.DB.settlementData) window.DB.settlementData = {};
-        if (!window.DB.settlementData[monthKey]) {
-            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], enabledLoanEmis: [], enabledCards: [], customItems: [], expandedSections: { cards: false, recurring: true, loans: false, custom: false, summary: false } };
-        }
-        if (!window.DB.settlementData[monthKey].enabledRecurring) {
-            window.DB.settlementData[monthKey].enabledRecurring = [];
-        }
-        if (!window.DB.settlementData[monthKey].expandedSections) {
-            window.DB.settlementData[monthKey].expandedSections = { cards: false, recurring: true, loans: false, custom: false, summary: false };
-        }
+        const sd = this._ensureSettlement(monthKey, { cards: false, recurring: true, loans: false, custom: false, summary: false });
         
         // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: true, loans: false, custom: false, summary: false };
+        const expandedState = sd.expandedSections;
         
-        const enabledRecurring = window.DB.settlementData[monthKey].enabledRecurring;
+        const enabledRecurring = sd.enabledRecurring;
         const index = enabledRecurring.indexOf(itemName);
         if (index > -1) {
             enabledRecurring.splice(index, 1);
@@ -8835,7 +8905,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
         }
         window.DB.settlementData[monthKey].expandedSections = expandedState;
         window.Storage.save();
-        this.showSettlementModal(year, month);
+        this._refreshSettlementTotals(year, month);
     },
     
     /**
@@ -8926,15 +8996,9 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
         }
         
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-        if (!window.DB.settlementData) window.DB.settlementData = {};
-        if (!window.DB.settlementData[monthKey]) {
-            window.DB.settlementData[monthKey] = { cardSelections: {}, enabledRecurring: [], customItems: [] };
-        }
-        if (!window.DB.settlementData[monthKey].customItems) {
-            window.DB.settlementData[monthKey].customItems = [];
-        }
+        const sd = this._ensureSettlement(monthKey, { cards: false, recurring: false, loans: false, custom: true, summary: false });
         // Preserve expanded state
-        const expandedState = window.DB.settlementData[monthKey].expandedSections || { cards: false, recurring: false, loans: false, custom: true, summary: false };
+        const expandedState = sd.expandedSections;
         
         window.DB.settlementData[monthKey].customItems.push({ name: name, amount: amount });
         window.DB.settlementData[monthKey].expandedSections = expandedState;

@@ -61,6 +61,37 @@ const CloudBackup = {
         } catch (e) {
             console.error('[CloudBackup] Failed to register appUrlOpen listener:', e);
         }
+
+        // Flush a pending backup when the app is backgrounded. Without this,
+        // closing the app inside the debounce window (default 5 min) would lose
+        // the most recent changes from the cloud copy until the next launch.
+        try {
+            await App.addListener('appStateChange', ({ isActive }) => {
+                if (!isActive) this._onAppPaused();
+            });
+            console.log('[CloudBackup] appStateChange listener registered');
+        } catch (e) {
+            console.error('[CloudBackup] Failed to register appStateChange listener:', e);
+        }
+    },
+
+    /**
+     * App went to the background. Persist to disk immediately, and if a cloud
+     * backup is still pending (i.e. the user changed something within the
+     * debounce window), push it now before the OS can suspend/kill us.
+     */
+    _onAppPaused() {
+        try {
+            if (window.Storage && typeof window.Storage.flush === 'function') {
+                window.Storage.flush();
+            }
+        } catch (e) {
+            console.warn('[CloudBackup] flush-on-pause failed:', e);
+        }
+        if (this._debounceTimer && this.isReady()) {
+            console.log('[CloudBackup] App paused with pending changes — uploading now');
+            this.uploadNow().catch((e) => console.warn('[CloudBackup] pause upload failed:', e));
+        }
     },
 
     /**

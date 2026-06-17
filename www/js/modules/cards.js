@@ -1925,7 +1925,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
      * Keeps the most recent unpaid bill, marks the rest as 'cleared'. Useful
      * after the buggy SMS sync left several leftover unpaid records behind.
      */
-    confirmClearStaleBills(cardId, keepBillId) {
+    async confirmClearStaleBills(cardId, keepBillId) {
         const cardIdStr = String(cardId);
         const keepIdStr = keepBillId ? String(keepBillId) : '';
         const unpaid = (window.DB.cardBills || []).filter(b =>
@@ -1935,7 +1935,11 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             Utils.showInfo('No stale bills to clear');
             return;
         }
-        if (!confirm(`Clear ${unpaid.length} stale unpaid bill(s) on this card? They\'ll be marked as cleared in payment history. This does not change your outstanding amount.`)) {
+        const ok = await window.Utils.confirm(
+            `Clear ${unpaid.length} stale unpaid bill(s) on this card? They'll be marked as cleared in payment history. This does not change your outstanding amount.`,
+            'Clear Stale Bills'
+        );
+        if (!ok) {
             return;
         }
         const cleared = this.clearOtherUnpaidBills(cardIdStr, keepIdStr, new Date().toISOString());
@@ -2755,12 +2759,16 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
      * the card's outstanding. The escape hatch when SMS sync left the data
      * in an unrecoverable state. Confirms first.
      */
-    resetAllBillsFromManager(cardId) {
+    async resetAllBillsFromManager(cardId) {
         const cardIdStr = String(cardId);
         const card = (window.DB.cards || []).find(c => String(c.id) === cardIdStr);
         const cardName = card ? card.name : 'this card';
         const removed = (window.DB.cardBills || []).filter(b => String(b.cardId) === cardIdStr).length;
-        if (!confirm(`Delete ALL ${removed} bill record(s) on ${cardName} and reset outstanding to ₹0?\n\nThis cannot be undone.`)) {
+        const ok = await window.Utils.confirm(
+            `Delete ALL ${removed} bill record(s) on ${cardName} and reset outstanding to ₹0?\n\nThis cannot be undone.`,
+            'Reset All Bills'
+        );
+        if (!ok) {
             return;
         }
         if (Array.isArray(window.DB.cardBills)) {
@@ -3696,8 +3704,8 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
             const disabled = otherGroup ? 'disabled' : '';
             const checked = inThisGroup ? 'checked' : '';
             const label = otherGroup 
-                ? `${card.name} <span class="text-xs text-gray-400">(in ${otherGroup.name})</span>`
-                : card.name;
+                ? `${Utils.escapeHtml(card.name)} <span class="text-xs text-gray-400">(in ${Utils.escapeHtml(otherGroup.name)})</span>`
+                : Utils.escapeHtml(card.name);
             
             return `
             <label class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer ${disabled ? 'opacity-50' : ''}">

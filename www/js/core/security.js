@@ -209,8 +209,12 @@ const Security = {
         });
     },
     
+    // ---- PIN lockout policy (defends a short PIN against brute force) ----
+    LOCK_THRESHOLD: 5, // allow this many failures before lockout kicks in
+    PBKDF2_ITERATIONS: 200000,
+
     /**
-     * Hash PIN using SHA-256
+     * Legacy PIN hash (unsalted SHA-256). Kept only to verify & migrate old PINs.
      */
     async hashPin(pin) {
         const encoder = new TextEncoder();
@@ -219,29 +223,99 @@ const Security = {
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     },
-    
+
     /**
-     * Setup PIN
+     * Salted, slow PIN hash (PBKDF2-SHA256). Current scheme.
+     */
+    async _hashPinV2(pin, saltBase64) {
+        const salt = window.Crypto.base64ToArrayBuffer(saltBase64);
+        return await window.Crypto.deriveBitsHex(pin, salt, this.PBKDF2_ITERATIONS, 256);
+    },
+
+    /**
+     * How long (ms) PIN entry is currently locked out. 0 = not locked.
+     */
+    getLockoutRemainingMs() {
+        const until = (window.DB.security && window.DB.security.pinLockoutUntil) || 0;
+        return Math.max(0, until - Date.now());
+    },
+
+    _lockoutMsForAttempts(attempts) {
+        if (attempts < this.LOCK_THRESHOLD) return 0;
+        const over = attempts - this.LOCK_THRESHOLD; // 0, 1, 2, ...
+        const ms = 30000 * Math.pow(2, over); // 30s, 60s, 120s, ...
+        return Math.min(ms, 15 * 60 * 1000); // cap at 15 minutes
+    },
+
+    _recordPinFailure() {
+        const sec = window.DB.security;
+        sec.failedPinAttempts = (sec.failedPinAttempts || 0) + 1;
+        const lock = this._lockoutMsForAttempts(sec.failedPinAttempts);
+        if (lock > 0) {
+            sec.pinLockoutUntil = Date.now() + lock;
+        }
+        window.Storage.save();
+    },
+
+    _recordPinSuccess() {
+        const sec = window.DB.security;
+        sec.failedPinAttempts = 0;
+        sec.pinLockoutUntil = 0;
+        window.Storage.save();
+    },
+
+    /**
+     * Setup PIN (salted PBKDF2)
      */
     async setupPin(pin) {
         if (!pin || pin.length !== 4) {
             throw new Error('PIN must be exactly 4 digits');
         }
-        
-        const pinHash = await this.hashPin(pin);
-        window.DB.security.pinHash = pinHash;
-        window.DB.security.isSetup = true;
+
+        const sec = window.DB.security;
+        sec.pinSalt = window.Crypto.randomSaltBase64(16);
+        sec.pinHash = await this._hashPinV2(pin, sec.pinSalt);
+        sec.pinVersion = 2;
+        sec.isSetup = true;
+        sec.failedPinAttempts = 0;
+        sec.pinLockoutUntil = 0;
         window.Storage.save();
-        
+
         console.log('✅ PIN setup successfully');
     },
-    
+
     /**
-     * Verify PIN
+     * Verify PIN. Enforces lockout, supports legacy hash, and transparently
+     * upgrades old unsalted PINs to the salted scheme on first successful entry.
      */
     async verifyPin(pin) {
-        const pinHash = await this.hashPin(pin);
-        return pinHash === window.DB.security.pinHash;
+        // Hard stop while locked out.
+        if (this.getLockoutRemainingMs() > 0) {
+            return false;
+        }
+
+        const sec = window.DB.security;
+        let ok = false;
+
+        if (sec.pinVersion === 2 && sec.pinSalt) {
+            ok = (await this._hashPinV2(pin, sec.pinSalt)) === sec.pinHash;
+        } else {
+            // Legacy unsalted SHA-256 path
+            ok = (await this.hashPin(pin)) === sec.pinHash;
+            if (ok) {
+                // Migrate to salted PBKDF2 transparently
+                sec.pinSalt = window.Crypto.randomSaltBase64(16);
+                sec.pinHash = await this._hashPinV2(pin, sec.pinSalt);
+                sec.pinVersion = 2;
+            }
+        }
+
+        if (ok) {
+            this._recordPinSuccess();
+        } else {
+            this._recordPinFailure();
+        }
+        return ok;
     },
     
     /**
@@ -403,8 +477,12 @@ const Security = {
             throw new Error('New PIN must be at least 4 digits');
         }
         
-        const newPinHash = await this.hashPin(newPin);
-        window.DB.security.pinHash = newPinHash;
+        const sec = window.DB.security;
+        sec.pinSalt = window.Crypto.randomSaltBase64(16);
+        sec.pinHash = await this._hashPinV2(newPin, sec.pinSalt);
+        sec.pinVersion = 2;
+        sec.failedPinAttempts = 0;
+        sec.pinLockoutUntil = 0;
         window.Storage.save();
         
         console.log('✅ PIN changed successfully');
@@ -416,8 +494,13 @@ const Security = {
     async resetSecurity() {
         window.DB.security = {
             pinHash: null,
+            pinSalt: null,
+            pinVersion: 1,
+            failedPinAttempts: 0,
+            pinLockoutUntil: 0,
             biometricEnabled: false,
-            isSetup: false
+            isSetup: false,
+            masterPassword: ''
         };
         this.isUnlocked = false;
         window.Storage.save();

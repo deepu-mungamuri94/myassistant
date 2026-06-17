@@ -509,7 +509,7 @@ const Investments = {
             <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
                 <div class="flex justify-between items-start mb-2">
                     <div class="flex items-center">
-                        <span class="font-semibold text-gray-800">${inv.name}</span>
+                        <span class="font-semibold text-gray-800">${Utils.escapeHtml(inv.name)}</span>
                         ${typeBadge}
                     </div>
                     <div class="flex gap-1.5">
@@ -783,7 +783,7 @@ const Investments = {
             <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
                 <div class="flex justify-between items-start mb-2">
                     <div class="flex items-center">
-                        <span class="font-semibold text-gray-800">${inv.name}</span>
+                        <span class="font-semibold text-gray-800">${Utils.escapeHtml(inv.name)}</span>
                         ${typeBadge}
                     </div>
                     <div class="flex gap-1.5">

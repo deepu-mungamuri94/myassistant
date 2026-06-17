@@ -101,6 +101,44 @@ const Crypto = {
     },
 
     /**
+     * Derive a hex digest from a secret using PBKDF2-SHA256.
+     * Used for slow, salted PIN hashing (resists brute force of short PINs).
+     */
+    async deriveBitsHex(password, salt, iterations = 200000, bits = 256) {
+        const encoder = new TextEncoder();
+        const passwordKey = await window.crypto.subtle.importKey(
+            'raw',
+            encoder.encode(password),
+            { name: 'PBKDF2' },
+            false,
+            ['deriveBits']
+        );
+        const derived = await window.crypto.subtle.deriveBits(
+            { name: 'PBKDF2', salt: salt, iterations: iterations, hash: 'SHA-256' },
+            passwordKey,
+            bits
+        );
+        return this.arrayBufferToHex(derived);
+    },
+
+    /**
+     * Convert ArrayBuffer to hex string
+     */
+    arrayBufferToHex(buffer) {
+        return Array.from(new Uint8Array(buffer))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+    },
+
+    /**
+     * Generate a cryptographically-random salt, base64-encoded
+     */
+    randomSaltBase64(len = 16) {
+        const salt = window.crypto.getRandomValues(new Uint8Array(len));
+        return this.arrayBufferToBase64(salt);
+    },
+
+    /**
      * Convert ArrayBuffer to Base64
      */
     arrayBufferToBase64(buffer) {

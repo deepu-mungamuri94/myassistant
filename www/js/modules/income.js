@@ -1705,8 +1705,8 @@ const Income = {
     /**
      * Delete tax slab
      */
-    deleteTaxSlab(index) {
-        if (!confirm('Are you sure you want to delete this tax slab?')) return;
+    async deleteTaxSlab(index) {
+        if (!(await window.Utils.confirm('Are you sure you want to delete this tax slab?', 'Delete Tax Slab'))) return;
         
         const data = this.getData();
         data.taxSlabs.splice(index, 1);
@@ -1720,8 +1720,8 @@ const Income = {
     /**
      * Reset to default slabs
      */
-    resetToDefaultSlabs() {
-        if (!confirm('Reset to default tax slabs? This will remove all custom slabs.')) return;
+    async resetToDefaultSlabs() {
+        if (!(await window.Utils.confirm('Reset to default tax slabs? This will remove all custom slabs.', 'Reset Tax Slabs'))) return;
         
         const data = this.getData();
         data.taxSlabs = this.getDefaultTaxSlabs();
@@ -1971,8 +1971,8 @@ const Income = {
     /**
      * Delete surcharge slab
      */
-    deleteSurchargeSlab(index) {
-        if (!confirm('Are you sure you want to delete this surcharge slab?')) return;
+    async deleteSurchargeSlab(index) {
+        if (!(await window.Utils.confirm('Are you sure you want to delete this surcharge slab?', 'Delete Surcharge Slab'))) return;
         
         const data = this.getData();
         data.surchargeSlabs.splice(index, 1);
@@ -1994,8 +1994,8 @@ const Income = {
     /**
      * Reset surcharge slabs to default
      */
-    resetSurchargeSlabs() {
-        if (!confirm('Reset to default surcharge slabs? This will remove all custom slabs.')) return;
+    async resetSurchargeSlabs() {
+        if (!(await window.Utils.confirm('Reset to default surcharge slabs? This will remove all custom slabs.', 'Reset Surcharge Slabs'))) return;
         
         const data = this.getData();
         data.surchargeSlabs = this.getDefaultSurchargeSlabs();
@@ -2272,7 +2272,7 @@ const Income = {
     /**
      * Delete salary with confirmation
      */
-    deleteSalaryWithConfirm(id) {
+    async deleteSalaryWithConfirm(id) {
         const salary = this.getSalaryById(id);
         if (!salary) return;
         
@@ -2288,7 +2288,7 @@ const Income = {
         
         message += '\n\nThis action cannot be undone.';
         
-        if (confirm(message)) {
+        if (await window.Utils.confirm(message, 'Delete Salary')) {
             // Delete salary
             this.deleteSalary(id);
             

@@ -15,7 +15,7 @@ const GeminiAI = {
             throw new Error('Please configure your Gemini API key in Settings');
         }
         
-        const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+        const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         
         let fullPrompt = prompt;
         let systemInstruction = window.AIProvider.getSystemInstruction(context);
@@ -44,9 +44,16 @@ const GeminiAI = {
             payload.tools = [{ "google_search": {} }];
         }
         
-        const response = await fetch(`${API_ENDPOINT}?key=${apiKey}`, {
+        // Key is passed as a query param (not an x-goog-api-key header): the app
+        // calls Gemini via the WebView's fetch (CapacitorHttp is not enabled), so
+        // a custom header triggers a CORS preflight that fails ("Failed to fetch").
+        // In a native app the URL isn't shared with browser history/referrers, so
+        // the query-param approach is safe here.
+        const response = await fetch(API_ENDPOINT, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(payload)
         });
         

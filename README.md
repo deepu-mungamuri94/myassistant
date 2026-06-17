@@ -92,12 +92,46 @@ cd myassistant
 # Install dependencies
 npm install
 
-# Sync Capacitor
+# Sync web assets + plugins into the Android project
 npx cap sync android
 
 # Open in Android Studio
 npx cap open android
 ```
+
+> ℹ️ **Vendored front-end libraries.** The app loads Tailwind, Chart.js, marked,
+> and Capacitor's web modules from `www/vendor/` (not from a CDN) so it works
+> fully offline. **These files are committed to the repo**, so a fresh clone is
+> ready to build with no extra step. You only need to regenerate them when
+> **bumping a pinned version** — edit the version in `www/vendor/download-vendors.sh`,
+> then run `bash www/vendor/download-vendors.sh` and `npx cap sync android` again.
+> (Note: the script fetches Tailwind from its unversioned play-CDN URL, so the
+> committed copy is your pinned, known-good build.)
+
+### Build & run
+
+```bash
+# After the steps above, either open Android Studio and press Run ▶, or:
+cd android && ./gradlew installDebug   # installs a debug build on a connected device/emulator
+```
+
+Whenever you change anything under `www/`, re-run `npx cap sync android` before
+rebuilding. If you edited `index.html`'s vendored `<script>` references or bumped
+a pinned version, re-run `download-vendors.sh` first.
+
+### Verifying a build (smoke test)
+
+After installing, a 30-second sanity pass:
+
+1. **Vendoring is correct** — the app launches **styled** (gradients/cards, not raw
+   HTML), the dashboard **charts render**, and AI replies render as **markdown**.
+   If it's unstyled or charts are missing, `download-vendors.sh` didn't run.
+2. **Unlock works** — the PIN screen appears, the field is auto-focused, and PIN /
+   biometric unlock succeeds.
+3. **Confirm dialogs** — a delete action (e.g. a SIP or a plan) shows the in-app
+   themed confirm modal (not a native browser dialog) and both Confirm/Cancel work.
+4. **Cloud backup** (if configured) — make a change, background the app, reopen, and
+   confirm Settings shows a healthy/recent backup status.
 
 ---
 

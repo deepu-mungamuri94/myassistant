@@ -6,14 +6,53 @@
 const Storage = {
     STORAGE_KEY: 'myassistant_db',
 
+    // Debounced writes: every user action used to do a synchronous full
+    // JSON.stringify(window.DB) on the main thread (and reschedule a cloud
+    // upload). We now coalesce rapid saves into a single write.
+    SAVE_DEBOUNCE_MS: 500,
+    _saveTimer: null,
+    _dirty: false,
+    _flushHooksInstalled: false,
+
     /**
-     * Save database to local storage
-     * Future-proof: Saves ALL DB fields automatically
+     * Mark the DB dirty and schedule a debounced write.
+     * Returns true synchronously (the write itself happens shortly after).
+     * Use flush() when you need the data on disk immediately (e.g. before reload).
      */
     save() {
+        this._dirty = true;
+        if (this._saveTimer) {
+            return true; // a flush is already scheduled
+        }
+        this._saveTimer = setTimeout(() => {
+            this._saveTimer = null;
+            this._writeNow();
+        }, this.SAVE_DEBOUNCE_MS);
+        return true;
+    },
+
+    /**
+     * Force any pending write to disk right now (synchronous).
+     * Returns true on success, false on failure.
+     */
+    flush() {
+        if (this._saveTimer) {
+            clearTimeout(this._saveTimer);
+            this._saveTimer = null;
+        }
+        if (!this._dirty) {
+            return true;
+        }
+        return this._writeNow();
+    },
+
+    /**
+     * Internal: serialize and persist window.DB. Handles quota errors.
+     */
+    _writeNow() {
         try {
-            // JSON.stringify serializes ENTIRE DB object with all current and future fields
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(window.DB));
+            this._dirty = false;
             // Trigger debounced cloud backup (no-op if not configured / signed in)
             if (window.CloudBackup && typeof window.CloudBackup.scheduleUpload === 'function') {
                 try { window.CloudBackup.scheduleUpload(); } catch (e) { /* never let backup break save */ }
@@ -21,7 +60,10 @@ const Storage = {
             return true;
         } catch (e) {
             console.error('Storage error:', e);
-            if (window.Utils) {
+            // Keep _dirty = true so a later flush/save retries.
+            if (this._isQuotaError(e)) {
+                this._handleQuotaExceeded();
+            } else if (window.Utils) {
                 window.Utils.showError('Failed to save data');
             }
             return false;
@@ -29,10 +71,82 @@ const Storage = {
     },
 
     /**
+     * Storage is full. Offer to roll off old records (paid bills / aged expenses)
+     * via DataLifecycle; fall back to a guidance message. Async + fire-and-forget
+     * since the synchronous write already failed.
+     */
+    async _handleQuotaExceeded() {
+        let summary = null;
+        try {
+            if (window.DataLifecycle && typeof window.DataLifecycle.summarize === 'function') {
+                summary = window.DataLifecycle.summarize();
+            }
+        } catch (_) { /* ignore */ }
+
+        if (summary && summary.total > 0 && window.Utils && typeof window.Utils.confirm === 'function') {
+            const ok = await window.Utils.confirm(
+                `Device storage is full.\n\nYou have ${summary.total} record(s) older than ${summary.retentionYears} years ` +
+                `(${summary.expenses} expenses, ${summary.cardBills} paid card bills). Remove them to free space?\n\n` +
+                `Tip: export a backup first if you might need the old data.`,
+                'Storage Full'
+            );
+            if (ok) {
+                try {
+                    const res = window.DataLifecycle.prune();
+                    window.Utils.showSuccess(
+                        `✅ Freed space — removed ${res.expensesRemoved + res.cardBillsRemoved} old record(s).`
+                    );
+                } catch (err) {
+                    console.error('Prune failed:', err);
+                    window.Utils.showError('Could not free space automatically. Please export and delete old data.');
+                }
+                return;
+            }
+        }
+
+        if (window.Utils) {
+            window.Utils.showError(
+                '⚠️ Device storage is full — your latest changes could not be saved.\n\n' +
+                'Export a backup, then delete old expenses/bills to free space.'
+            );
+        }
+    },
+
+    /**
+     * Detect a localStorage quota-exceeded error across browser/WebView variants.
+     */
+    _isQuotaError(e) {
+        if (!e) return false;
+        return (
+            e.name === 'QuotaExceededError' ||
+            e.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+            e.code === 22 ||
+            e.code === 1014 ||
+            /quota/i.test(e.message || '')
+        );
+    },
+
+    /**
+     * Install listeners that flush pending writes when the app is backgrounded
+     * or closed, so the debounce window can't lose the last change.
+     */
+    _installFlushHooks() {
+        if (this._flushHooksInstalled) return;
+        this._flushHooksInstalled = true;
+        const flush = () => this.flush();
+        window.addEventListener('pagehide', flush);
+        window.addEventListener('beforeunload', flush);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') this.flush();
+        });
+    },
+
+    /**
      * Load database from local storage
      * Future-proof: Loads ALL DB fields automatically
      */
     load() {
+        this._installFlushHooks();
         try {
             const stored = localStorage.getItem(this.STORAGE_KEY);
             if (stored) {
@@ -301,7 +415,7 @@ const Storage = {
             window.DB.security.isSetup = localIsSetup;
             window.DB.security.masterPassword = password; // Use the password that successfully decrypted the data
             
-            this.save();
+            this.flush(); // critical restore — persist immediately
             
             console.log('✅ Security settings updated:');
             console.log('   PIN: ' + (localPinHash ? 'Kept (device-specific)' : 'Not set'));

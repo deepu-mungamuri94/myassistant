@@ -706,8 +706,8 @@ const Plans = {
     /**
      * Handle mark pending action
      */
-    handleMarkPending(id) {
-        if (!confirm('Move this plan back to Pending?')) return;
+    async handleMarkPending(id) {
+        if (!(await window.Utils.confirm('Move this plan back to Pending?', 'Move to Pending'))) return;
         try {
             this.markPending(id);
             window.Utils.showSuccess('✅ Plan moved to Pending');
@@ -720,10 +720,10 @@ const Plans = {
     /**
      * Handle delete action
      */
-    handleDelete(id) {
+    async handleDelete(id) {
         const plan = this.getById(id);
         if (!plan) return;
-        if (!confirm(`Delete plan "${plan.name}"? This cannot be undone.`)) return;
+        if (!(await window.Utils.confirm(`Delete plan "${plan.name}"? This cannot be undone.`, 'Delete Plan'))) return;
         try {
             this.delete(id);
             window.Utils.showSuccess('✅ Plan deleted');

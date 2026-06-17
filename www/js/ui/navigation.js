@@ -923,8 +923,8 @@ const Navigation = {
             
             window.Security.isUnlocked = false;
             
-            // Save completely empty state
-            window.Storage.save();
+            // Save completely empty state (flush immediately — a reload follows)
+            window.Storage.flush();
             
             console.log('✅ Complete DB flush - all fields reset to initial state');
             
@@ -1131,6 +1131,7 @@ const Navigation = {
             if (window.Loading) window.Loading.hide();
             this.closeCloudRestoreModal();
             this.closeSettings();
+            window.Storage.flush(); // persist restored data before reload
             window.Utils.showSuccess('✅ Restore complete! Reloading…', 2500);
             setTimeout(() => window.location.reload(), 1500);
         } catch (e) {

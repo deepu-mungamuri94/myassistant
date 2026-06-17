@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>My Assistant - Smart Credit Card Advisor</title>
     
-    <!-- Tailwind CSS via CDN - loaded synchronously for reliability -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS (vendored locally for offline use; see www/vendor/download-vendors.sh) -->
+    <script src="vendor/tailwindcss.js"></script>
     
     <!-- Custom Styles -->
     <link rel="stylesheet" href="css/styles.css">
@@ -39,11 +39,16 @@
         }
     </style>
     
-    <!-- Capacitor Core (for native features) -->
+    <!-- Lets status-bar's internal `import ... from '@capacitor/core'` resolve to our local copy -->
+    <script type="importmap">
+    { "imports": { "@capacitor/core": "./vendor/capacitor-core.esm.js" } }
+    </script>
+
+    <!-- Capacitor Core (vendored locally for offline use; see www/vendor/download-vendors.sh) -->
     <script type="module">
-        import { Capacitor, registerPlugin } from 'https://cdn.jsdelivr.net/npm/@capacitor/core@latest/dist/index.js';
-        import { StatusBar } from 'https://cdn.jsdelivr.net/npm/@capacitor/status-bar@latest/dist/index.js';
-        import { CapacitorHttp } from 'https://cdn.jsdelivr.net/npm/@capacitor/core@latest/dist/index.js';
+        import { Capacitor, registerPlugin } from './vendor/capacitor-core.esm.js';
+        import { StatusBar } from './vendor/capacitor-status-bar.esm.js';
+        import { CapacitorHttp } from './vendor/capacitor-core.esm.js';
         
         // Import App plugin
         const App = registerPlugin('App');
@@ -167,7 +172,7 @@
         
         <!-- Settings Button with Dropdown -->
         <div class="relative">
-            <button id="settings-menu-btn" onclick="Navigation.toggleSettingsMenu(event)" class="p-2 text-white hover:bg-white/20 rounded-lg transition-all duration-200">
+            <button id="settings-menu-btn" onclick="Navigation.toggleSettingsMenu(event)" aria-label="Settings menu" aria-haspopup="true" class="p-2 text-white hover:bg-white/20 rounded-lg transition-all duration-200">
                 <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
                 </svg>
@@ -3864,15 +3869,12 @@
     <!-- Core modules first -->
     <script src="js/core/database.js"></script>
     <script src="js/core/utils.js"></script>
-    <script src="js/core/dataAccess.js"></script>
     <script src="js/utils/crypto.js"></script>
-    <script src="js/utils/formatters.js"></script>
-    <script src="js/utils/validators.js"></script>
-    <script src="js/utils/calculations.js"></script>
     <!-- Markdown renderer for AI responses -->
-    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <script src="vendor/marked.min.js"></script>
     <script src="js/utils/aiRenderer.js"></script>
     <script src="js/core/storage.js"></script>
+    <script src="js/core/dataLifecycle.js"></script>
     <script src="js/core/cloudBackup.js"></script>
     <script src="js/core/security.js"></script>
     <script src="js/core/loading.js"></script>
@@ -3887,8 +3889,8 @@
     <script src="js/ai/provider.js"></script>
     
     <!-- Chart.js Library -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script src="vendor/chart.umd.min.js"></script>
+    <script src="vendor/chartjs-plugin-datalabels.min.js"></script>
     
     <!-- Data modules -->
     <script src="js/modules/dashboard.js"></script>
@@ -3912,6 +3914,7 @@
     <script src="js/ui/modals.js"></script>
     <script src="js/ui/chat.js"></script>
     <script src="js/ui/navigation.js"></script>
+    <script src="js/ui/a11y.js"></script>
     
     <!-- Main app initialization (must be last) -->
     <script src="js/app.js"></script>
@@ -7832,6 +7835,20 @@ Technical: ${error.stack ? error.stack.split('\n')[0] : 'No stack trace'}
                     Utils.showError('Please enter your PIN');
                     return;
                 }
+
+                // Respect lockout from repeated failed attempts
+                const lockMs = window.Security.getLockoutRemainingMs();
+                if (lockMs > 0) {
+                    const secs = Math.ceil(lockMs / 1000);
+                    const errorElement = document.getElementById('security-unlock-error');
+                    if (errorElement) {
+                        errorElement.classList.remove('hidden');
+                        const errorText = errorElement.querySelector('p');
+                        if (errorText) errorText.textContent = `🔒 Too many attempts. Try again in ${secs}s.`;
+                    }
+                    document.getElementById('security-unlock-pin').value = '';
+                    return;
+                }
                 
                 Loading.show('Verifying PIN...');
                 
@@ -7863,12 +7880,17 @@ Technical: ${error.stack ? error.stack.split('\n')[0] : 'No stack trace'}
                         window.App.init();
                     }
                 } else {
-                    // Show error
+                    // Show error (include lockout countdown if we just got locked out)
                     const errorElement = document.getElementById('security-unlock-error');
+                    const lockRemaining = window.Security.getLockoutRemainingMs();
                     if (errorElement) {
                         errorElement.classList.remove('hidden');
                         const errorText = errorElement.querySelector('p');
-                        if (errorText) errorText.textContent = '❌ Incorrect PIN';
+                        if (errorText) {
+                            errorText.textContent = lockRemaining > 0
+                                ? `🔒 Too many attempts. Try again in ${Math.ceil(lockRemaining / 1000)}s.`
+                                : '❌ Incorrect PIN';
+                        }
                     }
                     
                     // Shake animation

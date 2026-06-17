@@ -80,8 +80,12 @@ const Sips = {
         return true;
     },
 
-    remove(id) {
-        if (!confirm('Remove this SIP from your plan? Actual purchases under Portfolio are not affected.')) return;
+    async remove(id) {
+        const ok = await window.Utils.confirm(
+            'Remove this SIP from your plan? Actual purchases under Portfolio are not affected.',
+            'Remove SIP'
+        );
+        if (!ok) return;
         window.DB.sips = (window.DB.sips || []).filter(s => String(s.id) !== String(id));
         window.Storage.save();
         this.render();
@@ -93,7 +97,37 @@ const Sips = {
         if (!sip) return;
         sip.active = !sip.active;
         window.Storage.save();
-        this.render();
+
+        // In-place DOM update (avoids re-rendering the whole section on every toggle)
+        const container = document.getElementById('investments-sips-section');
+        const row = container && container.querySelector(`[data-sip-row="${CSS.escape(String(id))}"]`);
+        const btn = container && container.querySelector(`[data-sip-toggle="${CSS.escape(String(id))}"]`);
+        if (!row || !btn) {
+            this.render(); // fallback if DOM isn't in expected shape
+            return;
+        }
+        const active = sip.active !== false;
+        row.classList.toggle('opacity-50', !active);
+        btn.classList.toggle('bg-indigo-600', active);
+        btn.classList.toggle('border-indigo-600', active);
+        btn.classList.toggle('bg-white', !active);
+        btn.classList.toggle('border-gray-300', !active);
+        btn.title = active ? 'Active in settlement' : 'Disabled - not counted in settlement';
+        btn.innerHTML = active
+            ? '<svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>'
+            : '';
+
+        this._updateHeader();
+    },
+
+    /**
+     * Refresh just the section header total + active count (no full re-render).
+     */
+    _updateHeader() {
+        const totalEl = document.getElementById('sips-header-total');
+        const countEl = document.getElementById('sips-header-count');
+        if (totalEl) totalEl.textContent = `₹${Utils.formatIndianNumber(Math.round(this.getActiveTotal()))}`;
+        if (countEl) countEl.textContent = String((window.DB.sips || []).filter(s => s.active !== false).length);
     },
 
     // -----------------------------------------------------------
@@ -135,11 +169,11 @@ const Sips = {
         }
     },
 
-    deleteFromModal() {
+    async deleteFromModal() {
         const id = document.getElementById('sip-id').value;
         if (id) {
-            this.remove(id);
             this.closeModal();
+            await this.remove(id);
         }
     },
 
@@ -149,7 +183,19 @@ const Sips = {
 
     toggleBody() {
         this.bodyVisible = !this.bodyVisible;
-        this.render();
+
+        // In-place show/hide (avoids re-rendering all rows just to collapse)
+        const body = document.getElementById('sips-body');
+        const header = document.getElementById('sips-header');
+        const chevron = document.getElementById('sips-header-chevron');
+        if (!body || !header || !chevron) {
+            this.render();
+            return;
+        }
+        body.classList.toggle('hidden', !this.bodyVisible);
+        chevron.classList.toggle('-rotate-90', !this.bodyVisible);
+        header.classList.toggle('rounded-t-xl', this.bodyVisible);
+        header.classList.toggle('rounded-xl', !this.bodyVisible);
     },
 
     render() {
@@ -170,8 +216,8 @@ const Sips = {
         ` : sips.map(s => {
             const active = s.active !== false;
             return `
-                <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 last:border-b-0 ${active ? '' : 'opacity-50'}">
-                    <button onclick="Sips.toggleActive('${s.id}')"
+                <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 last:border-b-0 ${active ? '' : 'opacity-50'}" data-sip-row="${s.id}">
+                    <button onclick="Sips.toggleActive('${s.id}')" data-sip-toggle="${s.id}"
                             class="w-5 h-5 rounded border-2 ${active ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-300'} flex items-center justify-center transition-all flex-shrink-0"
                             title="${active ? 'Active in settlement' : 'Disabled - not counted in settlement'}">
                         ${active ? '<svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>' : ''}
@@ -192,18 +238,18 @@ const Sips = {
         container.innerHTML = `
             <div class="bg-white rounded-xl shadow-md overflow-hidden mb-6">
                 <!-- Header (clickable) -->
-                <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 ${isVisible ? 'rounded-t-xl' : 'rounded-xl'} cursor-pointer" onclick="Sips.toggleBody()">
+                <div id="sips-header" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 ${isVisible ? 'rounded-t-xl' : 'rounded-xl'} cursor-pointer" onclick="Sips.toggleBody()">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center gap-2">
-                            <svg class="w-5 h-5 transition-transform duration-200 ${isVisible ? '' : '-rotate-90'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg id="sips-header-chevron" class="w-5 h-5 transition-transform duration-200 ${isVisible ? '' : '-rotate-90'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                             </svg>
                             <div>
                                 <h3 class="text-lg font-bold leading-tight">SIPs</h3>
-                                <p class="text-[11px] opacity-80 leading-tight">Planned monthly · ${activeCount} active</p>
+                                <p class="text-[11px] opacity-80 leading-tight">Planned monthly · <span id="sips-header-count">${activeCount}</span> active</p>
                             </div>
                         </div>
-                        <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(total))}</p>
+                        <p id="sips-header-total" class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(total))}</p>
                     </div>
                 </div>
 

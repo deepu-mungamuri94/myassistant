@@ -60,7 +60,11 @@ const DB = {
     // Backward compatibility: Store groqApiKey at root level
     groqApiKey: '',
     security: {
-        pinHash: null, // SHA-256 hash of PIN
+        pinHash: null, // PIN digest (v2: PBKDF2-SHA256 hex; legacy v1: SHA-256 hex)
+        pinSalt: null, // base64 salt for v2 PIN hashing
+        pinVersion: 1, // 1 = legacy unsalted SHA-256, 2 = salted PBKDF2
+        failedPinAttempts: 0, // consecutive failed PIN attempts (for lockout)
+        pinLockoutUntil: 0, // epoch ms until which PIN entry is locked out
         biometricEnabled: false, // Whether biometric is enabled
         isSetup: false, // Whether security is set up
         masterPassword: '' // Master password for export/import encryption
