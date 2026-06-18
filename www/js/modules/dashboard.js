@@ -187,7 +187,7 @@ const Dashboard = {
                     <h3 class="text-sm font-semibold">Expenses by Category</h3>
                     <div class="relative">
                         <input type="month" id="category-month-selector" value="${this.getCurrentMonthValue()}" onchange="Dashboard.updateCategoryButton(); Dashboard.renderCategoryChart()" class="absolute opacity-0 pointer-events-none" />
-                        <button id="category-month-button" onclick="document.getElementById('category-month-selector').showPicker()" class="px-3 py-1.5 border border-purple-300 rounded-lg text-xs font-medium text-purple-700 hover:bg-purple-50 transition-all whitespace-nowrap">
+                        <button id="category-month-button" onclick="document.getElementById('category-month-selector').showPicker()" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50 transition-all whitespace-nowrap">
                             ${this.getFormattedMonth(this.getCurrentMonthValue())} ▼
                         </button>
                     </div>
@@ -204,7 +204,7 @@ const Dashboard = {
             <div class="dash-card-secondary">
                 <div class="flex justify-between items-center mb-3 max-w-full">
                     <h3 class="text-sm font-semibold">Income vs Expenses</h3>
-                    <button onclick="Dashboard.openMonthRangeModal()" class="px-3 py-1.5 border border-blue-300 rounded-lg text-xs font-medium text-blue-700 hover:bg-blue-50 transition-all whitespace-nowrap">
+                    <button onclick="Dashboard.openMonthRangeModal()" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50 transition-all whitespace-nowrap">
                         <span id="month-range-label">${this.getMonthRangeLabel()}</span> ▼
                     </button>
                 </div>
@@ -267,6 +267,12 @@ const Dashboard = {
             this.initializeCharts();
         }, 100);
 
+        // Animate the meter numbers on first paint, and keep animating on every
+        // partial re-render (month switches replace section markup via
+        // outerHTML/innerHTML — see _installMeterAnimator).
+        this._installMeterAnimator();
+        this._animateMeters(container);
+
         // Surface a one-shot popup if Needs or Wants have exceeded their cap
         // for the current month. Dismissal is keyed by YYYY-MM, so it resets
         // automatically next calendar month. Run on a microtask so it doesn't
@@ -275,8 +281,140 @@ const Dashboard = {
     },
 
     /**
+     * Install a one-time MutationObserver on #dashboard-content that runs the
+     * count-up whenever new meters are inserted. This covers the partial
+     * re-render paths (switchFirstLineMonthView, updateBudgetMonth, filter
+     * month change, etc.) without having to call _animateMeters at each site.
+     * The CSS ring sweep self-triggers on element creation, so the observer
+     * only needs to drive the numbers. Coalesced via requestAnimationFrame so
+     * a burst of mutations animates once.
+     */
+    _installMeterAnimator() {
+        if (this._meterObserver) return; // already installed
+        const container = document.getElementById('dashboard-content');
+        if (!container || typeof MutationObserver === 'undefined') return;
+
+        let queued = false;
+        this._meterObserver = new MutationObserver((mutations) => {
+            const hasNewMeter = mutations.some((m) =>
+                Array.from(m.addedNodes).some((n) =>
+                    n.nodeType === 1 && (n.matches?.('.meter-val[data-count-to]') || n.querySelector?.('.meter-val[data-count-to]'))
+                )
+            );
+            if (!hasNewMeter || queued) return;
+            queued = true;
+            requestAnimationFrame(() => {
+                queued = false;
+                this._animateMeters(container);
+            });
+        });
+        this._meterObserver.observe(container, { childList: true, subtree: true });
+    },
+
+    /**
      * Render First Line Cards (Recurring, Loans/EMIs, Regular Expenses)
      */
+    /**
+     * Render one circular "meter-reading" gauge for a KPI tile.
+     *
+     * The conic-gradient ring (see .meter in styles.css) fills clockwise to
+     * `pct`; the value sits in the centre with the ₹ amount under it and the
+     * label below the dial. Replaces the old solid gradient tiles — every KPI
+     * here is a percentage, so a ring fill is a meaningful glanceable visual.
+     *
+     * @param {Object} o
+     * @param {string} o.label   - text under the circle (e.g. "Needs")
+     * @param {string|number} o.value - headline number (already rounded/fixed). Pass 'N/A' to dim it.
+     * @param {number} o.pct     - 0–100 fill for the ring (clamped). Defaults to value when numeric.
+     * @param {string} o.amount  - sub-line under the value (e.g. "₹38,200"). Optional.
+     * @param {string} o.c1      - ring gradient start colour (hex).
+     * @param {string} o.c2      - ring gradient end colour (hex).
+     * @param {string} [o.onclick] - click handler; omit for a non-interactive dial.
+     * @param {string} [o.status]  - small marker shown after the label (✓ / ⚠ / ↓ …).
+     * @param {string} [o.prefix]  - prepended to the value (e.g. "~" for projected).
+     * @param {string} [o.unit]    - unit glyph after the value (default "%"). Pass '' to drop it.
+     */
+    _renderMeter(o) {
+        const isNA = o.value === 'N/A' || o.value === null || o.value === undefined;
+        const pctRaw = o.pct != null ? o.pct : (isNA ? 0 : parseFloat(o.value));
+        const pct = Math.max(0, Math.min(100, isNaN(pctRaw) ? 0 : pctRaw));
+        const unit = o.unit != null ? o.unit : '%';
+        // The numeric headline counts up on render (see _animateMeters). We tag
+        // it with data-count-to (the target number) and data-suffix (the unit
+        // glyph in a faded span) so the animator can rebuild the markup each
+        // frame. Non-numeric headlines (N/A, "—") are left static.
+        let valHtml;
+        if (isNA) {
+            valHtml = `<div class="meter-val meter-na">N/A</div>`;
+        } else {
+            const num = parseFloat(o.value);
+            const animatable = !isNaN(num);
+            const suffix = unit ? `<span>${unit}</span>` : '';
+            const countAttrs = animatable
+                ? ` data-count-to="${num}" data-decimals="${(String(o.value).split('.')[1] || '').length}" data-prefix="${o.prefix || ''}" data-suffix="${unit}"`
+                : '';
+            valHtml = `<div class="meter-val"${countAttrs}>${o.prefix || ''}${o.value}${suffix}</div>`;
+        }
+        const onclick = o.onclick ? ` onclick="${o.onclick}"` : '';
+        // --pct-target is the real fill; the CSS meter-fill keyframe animates
+        // the registered --pct from 0 up to it on creation.
+        return `
+            <div class="meter-wrap"${onclick}>
+                <div class="meter" style="--pct-target:${pct}; --c1:${o.c1}; --c2:${o.c2};">
+                    <div class="meter-inner">
+                        ${valHtml}
+                        ${o.amount ? `<div class="meter-amt">${o.amount}</div>` : ''}
+                    </div>
+                </div>
+                <div class="meter-label">${o.label}${o.status ? ` <span class="meter-status">${o.status}</span>` : ''}</div>
+            </div>`;
+    },
+
+    /**
+     * Count-up animation for meter headline numbers. Scans a container for
+     * `.meter-val[data-count-to]` elements and tweens each from 0 to its target
+     * over ~0.9s (matching the ring sweep), preserving the original decimals,
+     * prefix (e.g. "~") and unit suffix. Honours prefers-reduced-motion by
+     * snapping straight to the final value. Idempotent: the data-count-to attr
+     * is removed once animated so re-scans skip already-done numbers.
+     */
+    _animateMeters(root) {
+        const scope = root || document.getElementById('dashboard-content');
+        if (!scope) return;
+        const els = scope.querySelectorAll('.meter-val[data-count-to]');
+        if (!els.length) return;
+
+        const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const fmt = (n, decimals, prefix, suffix) =>
+            `${prefix}${n.toFixed(decimals)}${suffix ? `<span>${suffix}</span>` : ''}`;
+
+        els.forEach((el) => {
+            const target = parseFloat(el.dataset.countTo);
+            const decimals = parseInt(el.dataset.decimals, 10) || 0;
+            const prefix = el.dataset.prefix || '';
+            const suffix = el.dataset.suffix || '';
+            el.removeAttribute('data-count-to'); // mark done
+
+            if (reduce || isNaN(target)) {
+                el.innerHTML = fmt(target || 0, decimals, prefix, suffix);
+                return;
+            }
+
+            const duration = 900;
+            let startTs = null;
+            const step = (ts) => {
+                if (startTs === null) startTs = ts;
+                const t = Math.min(1, (ts - startTs) / duration);
+                // easeOutCubic — fast start, gentle settle (matches the ring).
+                const eased = 1 - Math.pow(1 - t, 3);
+                el.innerHTML = fmt(target * eased, decimals, prefix, suffix);
+                if (t < 1) requestAnimationFrame(step);
+                else el.innerHTML = fmt(target, decimals, prefix, suffix);
+            };
+            requestAnimationFrame(step);
+        });
+    },
+
     renderFirstLineCards() {
         const isCurrent = this.firstLineMonthView === 'current';
         const now = new Date();
@@ -319,40 +457,30 @@ const Dashboard = {
                     </button>
                 </div>
             </div>
-            <div class="grid grid-cols-3 gap-3 max-w-full">
-                <div onclick="Dashboard.showMonthList('recurring', ${targetYear}, ${targetMonth})" class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                    <div class="text-xs opacity-90 leading-tight">Recurring</div>
-                    <div class="flex-1 flex items-center justify-center">
-                        <div class="text-3xl font-bold">${recurringPercent}<span class="text-lg opacity-80">%</span></div>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(recurringExpenses)}</div>
-                        <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
-                    </div>
-                </div>
-                <div onclick="Dashboard.showMonthList('emis', ${targetYear}, ${targetMonth})" class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                    <div class="text-xs opacity-90 leading-tight">Loans & EMIs</div>
-                    <div class="flex-1 flex items-center justify-center">
-                        <div class="text-3xl font-bold">${emisPercent}<span class="text-lg opacity-80">%</span></div>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(totalEmis)}</div>
-                        <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
-                    </div>
-                </div>
-                <div onclick="Dashboard.showMonthList('regular', ${targetYear}, ${targetMonth})" class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                    <div class="flex items-center justify-between">
-                        <div class="text-xs opacity-90 leading-tight">${regularLabel}</div>
-                        ${isProjected ? '<span class="text-[9px] bg-white/25 px-1.5 py-0.5 rounded font-semibold">est.</span>' : ''}
-                    </div>
-                    <div class="flex-1 flex items-center justify-center">
-                        <div class="text-3xl font-bold">${isProjected ? '~' : ''}${regularPercent}<span class="text-lg opacity-80">%</span></div>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="text-xs opacity-90">${isProjected ? '~' : ''}₹${Utils.formatIndianNumber(regularExpenses)}</div>
-                        <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
-                    </div>
-                </div>
+            <div class="grid grid-cols-3 gap-2 max-w-full">
+                ${this._renderMeter({
+                    label: 'Recurring',
+                    value: recurringPercent,
+                    amount: `₹${Utils.formatIndianNumber(recurringExpenses)}`,
+                    c1: '#f97316', c2: '#f59e0b',
+                    onclick: `Dashboard.showMonthList('recurring', ${targetYear}, ${targetMonth})`
+                })}
+                ${this._renderMeter({
+                    label: 'Loans & EMIs',
+                    value: emisPercent,
+                    amount: `₹${Utils.formatIndianNumber(totalEmis)}`,
+                    c1: '#3b82f6', c2: '#4f46e5',
+                    onclick: `Dashboard.showMonthList('emis', ${targetYear}, ${targetMonth})`
+                })}
+                ${this._renderMeter({
+                    label: regularLabel,
+                    value: regularPercent,
+                    prefix: isProjected ? '~' : '',
+                    amount: `${isProjected ? '~' : ''}₹${Utils.formatIndianNumber(regularExpenses)}`,
+                    c1: '#14b8a6', c2: '#0d9488',
+                    status: isProjected ? '<span class="text-[9px] text-teal-600 font-semibold">est.</span>' : '',
+                    onclick: `Dashboard.showMonthList('regular', ${targetYear}, ${targetMonth})`
+                })}
             </div>
             ${isCurrent ? this.renderSettlementSection(targetYear, targetMonth) : ''}
             ${!isCurrent ? this.renderAIInsightsSection(targetYear, targetMonth) : ''}
@@ -428,7 +556,7 @@ const Dashboard = {
             <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
                 <h3 class="text-sm font-semibold">📈 Investments</h3>
                 <div class="flex items-center gap-2">
-                    <button onclick="Dashboard.openInvestmentRangeModal()" class="px-2 py-1 border border-emerald-300 rounded-lg text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-all whitespace-nowrap">
+                    <button onclick="Dashboard.openInvestmentRangeModal()" class="px-2 py-1 border border-gray-300 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50 transition-all whitespace-nowrap">
                         <span id="investment-range-label">${this.getInvestmentRangeLabel()}</span> ▼
                     </button>
                     <div class="flex bg-gray-100 rounded-lg p-0.5">
@@ -491,7 +619,7 @@ const Dashboard = {
             </summary>
             <div class="flex items-center justify-end gap-2 mb-3 flex-wrap">
                 <div class="flex items-center gap-2">
-                    <button onclick="Dashboard.openCreditCardRangeModal()" class="px-2 py-1 border border-indigo-300 rounded-lg text-xs font-medium text-indigo-600 hover:bg-indigo-50 transition-all whitespace-nowrap">
+                    <button onclick="Dashboard.openCreditCardRangeModal()" class="px-2 py-1 border border-gray-300 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50 transition-all whitespace-nowrap">
                         <span id="credit-card-range-label">${this.getCreditCardRangeLabel()}</span> ▼
                     </button>
                     <div class="flex bg-gray-100 rounded-lg p-0.5">
@@ -1308,11 +1436,12 @@ const Dashboard = {
         const wantsStatus = hasIncome ? (wantsOk ? '✓' : `+${wantsDiff}%`) : '';
         const investStatus = hasIncome ? (investOk ? '✓' : `${investDiff}%`) : '';
 
-        // Per-zone badge HTML for a spend card. Compact so it fits a 3-col grid on mobile.
-        const zoneBadge = (zone, limit) => {
-            if (zone === 'danger') return `<span class="text-[9px] bg-red-600 px-1.5 py-0.5 rounded font-semibold" title="Over ${limit}% — exceeded limit">&gt;${limit}%</span>`;
-            if (zone === 'warn')   return `<span class="text-[9px] bg-amber-500 px-1.5 py-0.5 rounded font-semibold" title="Within 10% of the ${limit}% cap">⚠ ${limit}%</span>`;
-            return `<span class="text-[9px] bg-green-500 px-1.5 py-0.5 rounded font-semibold">≤${limit}%</span>`;
+        // Per-zone status for a circle meter's label. Plain coloured text
+        // (no pill) so it reads cleanly under the dial on the light card.
+        const meterZone = (zone, limit) => {
+            if (zone === 'danger') return `<span class="text-[9px] text-red-600 font-semibold" title="Over ${limit}% — exceeded limit">&gt;${limit}%</span>`;
+            if (zone === 'warn')   return `<span class="text-[9px] text-amber-500 font-semibold" title="Within 10% of the ${limit}% cap">⚠ ${limit}%</span>`;
+            return `<span class="text-[9px] text-green-600 font-semibold">≤${limit}%</span>`;
         };
         
         // Budget rule title
@@ -1346,71 +1475,47 @@ const Dashboard = {
                     </div>
                     <div class="relative">
                         <input type="month" id="budget-month-selector" value="${budgetMonth}" onchange="Dashboard.updateBudgetMonth()" class="absolute opacity-0 pointer-events-none" />
-                        <button id="budget-month-button" onclick="document.getElementById('budget-month-selector').showPicker()" class="px-3 py-1.5 border border-amber-300 rounded-lg text-xs font-medium text-amber-700 hover:bg-amber-50 transition-all whitespace-nowrap">
+                        <button id="budget-month-button" onclick="document.getElementById('budget-month-selector').showPicker()" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50 transition-all whitespace-nowrap">
                             ${this.getFormattedMonth(budgetMonth)} ▼
                         </button>
                     </div>
                 </div>
                 
-                <div class="grid grid-cols-3 gap-3 max-w-full">
-                    <!-- Needs Card -->
-                    <div onclick="${hasIncome ? `Dashboard.showBudgetBreakdown('needs')` : `Navigation.navigateTo('income')`}" class="bg-gradient-to-br from-gray-600 to-gray-700 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                        <div class="flex items-center justify-between mb-1">
-                            <div class="text-xs font-medium">Needs</div>
-                            ${hasIncome ? zoneBadge(needsZone, needsIdeal) : ''}
-                        </div>
-                        <div class="flex-1 flex items-center justify-center">
-                            ${hasIncome
-                                ? `<div class="text-3xl font-bold">${needsPercent}<span class="text-lg opacity-80">%</span></div>`
-                                : `<div class="text-[11px] font-semibold opacity-90 text-center leading-tight">Add income<br>to enable →</div>`
-                            }
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(needs))}</div>
-                            <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
-                        </div>
-                    </div>
-
-                    <!-- Wants Card -->
-                    <div onclick="${hasIncome ? `Dashboard.showBudgetBreakdown('wants')` : `Navigation.navigateTo('income')`}" class="bg-gradient-to-br from-pink-500 to-rose-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                        <div class="flex items-center justify-between mb-1">
-                            <div class="text-xs font-medium">Wants</div>
-                            ${hasIncome ? zoneBadge(wantsZone, wantsIdeal) : ''}
-                        </div>
-                        <div class="flex-1 flex items-center justify-center">
-                            ${hasIncome
-                                ? `<div class="text-3xl font-bold">${wantsPercent}<span class="text-lg opacity-80">%</span></div>`
-                                : `<div class="text-[11px] font-semibold opacity-90 text-center leading-tight">Add income<br>to enable →</div>`
-                            }
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(wants))}</div>
-                            <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
-                        </div>
-                    </div>
-
-                    <!-- Investments Card -->
-                    <div onclick="${hasIncome ? `Dashboard.showBudgetBreakdown('investments')` : `Navigation.navigateTo('income')`}" class="bg-gradient-to-br from-orange-500 to-amber-500 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                        <div class="flex items-center justify-between mb-1">
-                            <div class="text-xs font-medium">Invest</div>
-                            ${hasIncome
-                                ? (investOk
-                                    ? `<span class="text-[9px] bg-green-500 px-1.5 py-0.5 rounded font-semibold">≥${investIdeal}%</span>`
-                                    : `<span class="text-[9px] bg-red-600 px-1.5 py-0.5 rounded font-semibold">&lt;${investIdeal}%</span>`)
-                                : ''
-                            }
-                        </div>
-                        <div class="flex-1 flex items-center justify-center">
-                            ${hasIncome
-                                ? `<div class="text-3xl font-bold">${investPercent}<span class="text-lg opacity-80">%</span></div>`
-                                : `<div class="text-[11px] font-semibold opacity-90 text-center leading-tight">Add income<br>to enable →</div>`
-                            }
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(investments))}</div>
-                            <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
-                        </div>
-                    </div>
+                <div class="grid grid-cols-3 gap-2 max-w-full">
+                    ${this._renderMeter({
+                        label: 'Needs',
+                        value: hasIncome ? needsPercent : '—',
+                        unit: hasIncome ? '%' : '',
+                        pct: hasIncome ? parseFloat(needsPercent) : 0,
+                        amount: hasIncome ? `₹${Utils.formatIndianNumber(Math.round(needs))}` : 'Add income →',
+                        c1: '#1e3a8a', c2: '#1e40af',
+                        status: hasIncome ? meterZone(needsZone, needsIdeal) : '',
+                        onclick: hasIncome ? `Dashboard.showBudgetBreakdown('needs')` : `Navigation.navigateTo('income')`
+                    })}
+                    ${this._renderMeter({
+                        label: 'Wants',
+                        value: hasIncome ? wantsPercent : '—',
+                        unit: hasIncome ? '%' : '',
+                        pct: hasIncome ? parseFloat(wantsPercent) : 0,
+                        amount: hasIncome ? `₹${Utils.formatIndianNumber(Math.round(wants))}` : 'Add income →',
+                        c1: '#ec4899', c2: '#db2777',
+                        status: hasIncome ? meterZone(wantsZone, wantsIdeal) : '',
+                        onclick: hasIncome ? `Dashboard.showBudgetBreakdown('wants')` : `Navigation.navigateTo('income')`
+                    })}
+                    ${this._renderMeter({
+                        label: 'Invest',
+                        value: hasIncome ? investPercent : '—',
+                        unit: hasIncome ? '%' : '',
+                        pct: hasIncome ? parseFloat(investPercent) : 0,
+                        amount: hasIncome ? `₹${Utils.formatIndianNumber(Math.round(investments))}` : 'Add income →',
+                        c1: '#4f46e5', c2: '#9333ea',
+                        status: hasIncome
+                            ? (investOk
+                                ? `<span class="text-[9px] text-green-600 font-semibold">≥${investIdeal}%</span>`
+                                : `<span class="text-[9px] text-red-600 font-semibold">&lt;${investIdeal}%</span>`)
+                            : '',
+                        onclick: hasIncome ? `Dashboard.showBudgetBreakdown('investments')` : `Navigation.navigateTo('income')`
+                    })}
                 </div>
                 ${this._renderBudgetZoneBanner({ needsZone, wantsZone, needsPercent, wantsPercent, needsIdeal, wantsIdeal })}
             </div>
@@ -7474,56 +7579,40 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                     </div>
                     <div class="relative flex-shrink-0">
                         <input type="month" id="filter-month-selector" value="${filterMonth}" onchange="Dashboard.updateFilterMonthButton()" class="absolute opacity-0 pointer-events-none" />
-                        <button id="filter-month-button" onclick="document.getElementById('filter-month-selector').showPicker()" class="px-3 py-1.5 border border-red-300 rounded-lg text-xs font-medium text-red-700 hover:bg-red-50 transition-all whitespace-nowrap">
+                        <button id="filter-month-button" onclick="document.getElementById('filter-month-selector').showPicker()" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50 transition-all whitespace-nowrap">
                             ${this.getFormattedMonth(filterMonth)} ▼
                         </button>
                     </div>
                 </div>
                 ${paySchedule === 'last_week' ? `<p class="text-[10px] text-gray-400 mt-1 mb-2">Compared with ${incomeData.monthName} ${incomeData.year} income</p>` : '<div class="mb-3"></div>'}
                 
-                <!-- Breakdown Cards -->
-                <div class="grid grid-cols-3 gap-3 max-w-full">
-                    <div onclick="Dashboard.showMonthlyBreakdownList('expenses')" class="bg-gradient-to-br from-red-500 to-red-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                        <div class="text-xs opacity-90 leading-tight">Expenses</div>
-                        <div class="flex-1 flex items-center justify-center">
-                            ${hasIncomeData 
-                                ? `<div class="text-3xl font-bold">${expensesPercent}<span class="text-lg opacity-80">%</span></div>`
-                                : `<div class="text-xl font-bold opacity-70">N/A</div>`
-                            }
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(expenses))}</div>
-                            <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
-                        </div>
-                    </div>
-                    
-                    <div onclick="Dashboard.showMonthlyBreakdownList('investments')" class="bg-gradient-to-br from-yellow-500 to-orange-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                        <div class="text-xs opacity-90 leading-tight">Investments</div>
-                        <div class="flex-1 flex items-center justify-center">
-                            ${hasIncomeData 
-                                ? `<div class="text-3xl font-bold">${investmentsPercent}<span class="text-lg opacity-80">%</span></div>`
-                                : `<div class="text-xl font-bold opacity-70">N/A</div>`
-                            }
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(investments))}</div>
-                            <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-gradient-to-br ${hasIncomeData && balance >= 0 ? 'from-teal-500 to-cyan-600' : 'from-gray-500 to-gray-600'} rounded-lg p-3 text-white shadow-lg relative flex flex-col">
-                        <div class="text-xs opacity-90 leading-tight">Balance</div>
-                        <div class="flex-1 flex items-center justify-center">
-                            ${hasIncomeData
-                                ? `<div class="text-3xl font-bold">${balancePercent}<span class="text-lg opacity-80">%</span></div>`
-                                : `<div class="text-xl font-bold opacity-70">N/A</div>`
-                            }
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <div class="text-xs opacity-90">${hasIncomeData ? '₹' + Utils.formatIndianNumber(Math.round(balance)) : 'No income data'}</div>
-                            <button onclick="event.stopPropagation(); Dashboard.showTooltip(event, '${hasIncomeData ? 'Balance: Income - (Expenses + Investments)' : 'No income data for ' + incomeData.monthName + ' ' + incomeData.year}')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
-                        </div>
-                    </div>
+                <!-- Breakdown meters -->
+                <div class="grid grid-cols-3 gap-2 max-w-full">
+                    ${this._renderMeter({
+                        label: 'Expenses',
+                        value: hasIncomeData ? expensesPercent : 'N/A',
+                        amount: `₹${Utils.formatIndianNumber(Math.round(expenses))}`,
+                        c1: '#ef4444', c2: '#dc2626',
+                        onclick: `Dashboard.showMonthlyBreakdownList('expenses')`
+                    })}
+                    ${this._renderMeter({
+                        label: 'Investments',
+                        value: hasIncomeData ? investmentsPercent : 'N/A',
+                        amount: `₹${Utils.formatIndianNumber(Math.round(investments))}`,
+                        c1: '#06b6d4', c2: '#0891b2',
+                        onclick: `Dashboard.showMonthlyBreakdownList('investments')`
+                    })}
+                    ${this._renderMeter({
+                        label: 'Balance',
+                        value: hasIncomeData ? balancePercent : 'N/A',
+                        // Balance can be negative — clamp the ring at 0 but keep the real number.
+                        pct: hasIncomeData ? Math.max(0, parseFloat(balancePercent)) : 0,
+                        amount: hasIncomeData ? `₹${Utils.formatIndianNumber(Math.round(balance))}` : 'No income data',
+                        c1: hasIncomeData && balance >= 0 ? '#22c55e' : '#9ca3af',
+                        c2: hasIncomeData && balance >= 0 ? '#16a34a' : '#6b7280',
+                        // Tapping the dial shows the same explainer the old "i" badge did.
+                        onclick: `Dashboard.showTooltip(event, '${hasIncomeData ? 'Balance: Income - (Expenses + Investments)' : 'No income data for ' + incomeData.monthName + ' ' + incomeData.year}')`
+                    })}
                 </div>
                 ${this._renderEndOfMonthAdvice({ filterMonth, expenseYear, expenseMonth, hasIncomeData, balance })}
             </div>
@@ -7750,8 +7839,8 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                     {
                         label: 'Investments',
                         data: data.map(d => Math.round(d.investments)),
-                        borderColor: '#f59e0b',  // amber-500 — matches Investments tile
-                        backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                        borderColor: '#06b6d4',  // cyan-500 — matches Investments circle
+                        backgroundColor: 'rgba(6, 182, 212, 0.08)',
                         tension: 0.35,
                         borderWidth: borderWidth,
                         pointRadius: pointRadius,
@@ -7761,8 +7850,8 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                     {
                         label: 'Balance',
                         data: data.map(d => Math.round(d.balance)),
-                        borderColor: '#14b8a6',  // teal-500 — matches Balance tile
-                        backgroundColor: 'rgba(20, 184, 166, 0.12)',
+                        borderColor: '#22c55e',  // green-500 — matches Balance circle
+                        backgroundColor: 'rgba(34, 197, 94, 0.12)',
                         tension: 0.35,
                         borderWidth: borderWidth,
                         pointRadius: pointRadius,

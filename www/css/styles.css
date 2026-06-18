@@ -367,6 +367,142 @@ details > summary .details-arrow {
 }
 
 /* ============================================================
+   CIRCULAR METER GAUGES (KPI tiles)
+   Tiles whose headline is a percentage render as a "meter-reading"
+   dial: a conic-gradient ring fills clockwise to the value, the
+   rounded number sits in the centre with the ₹ amount under it, and
+   the label drops below the circle. See Dashboard._renderMeter().
+   ============================================================ */
+/*
+ * Registering --pct as a typed custom property makes it interpolatable, so
+ * the conic-gradient ring can ANIMATE its fill (a plain custom prop can't be
+ * transitioned). --pct-target holds each meter's real value (set inline);
+ * the ring animation sweeps --pct from 0 up to it on creation.
+ */
+@property --pct {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+}
+@keyframes meter-fill {
+    from { --pct: 0; }
+    to   { --pct: var(--pct-target, 0); }
+}
+@keyframes meter-pop {
+    from { opacity: 0; transform: scale(0.86); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+.meter-wrap {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+/* Non-clickable dials (e.g. Balance) shouldn't look tappable. */
+.meter-wrap:not([onclick]) { cursor: default; }
+.meter-wrap[onclick]:active .meter { transform: scale(0.95); }
+
+.meter {
+    position: relative;
+    width: 100%;
+    max-width: 92px;
+    aspect-ratio: 1 / 1;
+    margin: 0 auto;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.12s ease;
+    box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.12);
+    /*
+     * The disc is filled with a soft tint of the category colour; the number
+     * inside takes a deep, saturated shade of the same hue. Both are derived
+     * from --c1/--c2 via color-mix so each meter (and any future one) gets a
+     * matching pair for free. The plain declarations above the color-mix lines
+     * are fallbacks for WebViews without color-mix() — they degrade to a
+     * white-disc / dark-number look rather than breaking.
+     */
+    background: #ffffff;
+    background: color-mix(in srgb, var(--c1) 13%, #ffffff);
+    color: #111827;
+    color: color-mix(in srgb, var(--c2) 72%, #000000);
+}
+/*
+ * The progress ring: a conic-gradient (bold --c1→--c2 arc 0→--pct, then a
+ * faint neutral track) masked into an 8px-wide annulus on the outer edge. The
+ * bold arc sits in a darker, more saturated colour than the pastel disc, so it
+ * reads as a distinct completion gauge around the lighter fill.
+ */
+.meter::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    /*
+     * --pct (registered, animatable) drives the arc. Its static value is the
+     * real target, so the ring is correct without JS or when animation is off;
+     * the meter-fill keyframe sweeps it 0→target on creation. `both` keeps the
+     * final frame after the run.
+     */
+    --pct: var(--pct-target, 0);
+    animation: meter-fill 0.9s cubic-bezier(0.34, 1.1, 0.64, 1) both;
+    background: conic-gradient(var(--c1), var(--c2) calc(var(--pct) * 1%), rgba(0, 0, 0, 0.08) 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 8px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 8px));
+}
+.meter-inner {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    /* Number + amount fade/scale in alongside the ring sweep and count-up. */
+    animation: meter-pop 0.5s ease both;
+    line-height: 1;
+    color: inherit;
+}
+.meter-val {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: inherit;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+}
+.meter-val span {
+    font-size: 0.8rem;
+    font-weight: 700;
+    opacity: 0.6;
+}
+.meter-val.meter-na {
+    font-size: 1.05rem;
+    color: inherit;
+    opacity: 0.7;
+}
+.meter-amt {
+    font-size: 0.63rem;
+    color: inherit;
+    opacity: 0.72;
+    margin-top: 3px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+.meter-label {
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #374151;
+    margin-top: 0.4rem;
+}
+.meter-status { font-size: 0.72rem; }
+
+/*
+ * Respect reduced-motion: skip the ring sweep and the number/ring entrance.
+ * The static --pct fallback already renders the correct fill, and the JS
+ * count-up snaps to the final value under the same media query.
+ */
+@media (prefers-reduced-motion: reduce) {
+    .meter::before { animation: none; }
+    .meter-inner { animation: none; }
+}
+
+/* ============================================================
    AI response rendering (.ai-content)
    Used by AIRenderer for card benefits, chat advisor, dashboard
    insights — keeps formatting consistent across all AI output.

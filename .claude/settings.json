@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | grep -qE '/www/|capacitor\\.config\\.json' && cd /Users/dmungamuri/AndroidStudioProjects/myassistant && npx cap sync android 2>&1 | tail -1 || true",
+            "statusMessage": "Syncing Android (cap sync)…",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}
