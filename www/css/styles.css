@@ -497,9 +497,24 @@ details > summary .details-arrow {
  * The static --pct fallback already renders the correct fill, and the JS
  * count-up snaps to the final value under the same media query.
  */
+/* Budget-exceeded popup: backdrop fades in, the centred card pops in. Gives
+   the alert a deliberate entrance so it reads as part of the app, not a
+   detached box that blinked into place. */
+@keyframes popup-backdrop-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes popup-card-in {
+    from { opacity: 0; transform: scale(0.92) translateY(8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.popup-backdrop { animation: popup-backdrop-in 0.18s ease-out; }
+.popup-card { animation: popup-card-in 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+
 @media (prefers-reduced-motion: reduce) {
     .meter::before { animation: none; }
     .meter-inner { animation: none; }
+    .popup-backdrop, .popup-card { animation: none; }
 }
 
 /* ============================================================

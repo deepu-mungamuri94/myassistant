@@ -1656,39 +1656,45 @@ const Dashboard = {
         const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         const rows = breached.map(b => `
             <div class="flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                <div class="flex items-center gap-2">
-                    <span class="text-base">🚨</span>
-                    <div>
-                        <div class="text-sm font-bold text-red-800">${b.label}</div>
-                        <div class="text-[11px] text-red-700">cap ${b.cap}%</div>
-                    </div>
+                <div>
+                    <div class="text-sm font-bold text-red-800">${b.label}</div>
+                    <div class="text-[11px] text-red-700">cap ${b.cap}%</div>
                 </div>
                 <div class="text-lg font-bold text-red-700">${b.pct.toFixed(1)}%</div>
             </div>
         `).join('');
 
+        // Centred modal that pops in (see .popup-card / .popup-backdrop in
+        // styles.css). A circular icon at the top replaces the old coloured
+        // header bar so the card reads as one cohesive piece rather than a
+        // detached banner floating at the screen edge.
         const html = `
-        <div id="budget-exceeded-popup" class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+        <div id="budget-exceeded-popup" class="popup-backdrop fixed inset-0 bg-slate-900/45 z-50 flex items-center justify-center p-5"
+             style="backdrop-filter: blur(2px);"
              onclick="if(event.target===this) Dashboard.closeBudgetExceededPopup()">
-            <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden">
-                <div class="bg-gradient-to-r from-red-600 to-rose-600 text-white px-4 py-3 flex items-center justify-between">
-                    <h3 class="text-base font-bold">Budget exceeded</h3>
-                    <button onclick="Dashboard.closeBudgetExceededPopup()" class="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-lg leading-none">×</button>
-                </div>
-                <div class="p-4 space-y-3">
-                    <div class="text-xs text-gray-600 leading-relaxed">
-                        Your <strong>${monthName}</strong> spending has crossed the budget rule. Plan better — trim non-essential spend or rebalance the rule.
+            <div class="popup-card bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden">
+                <div class="p-5">
+                    <div class="flex items-start gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-xl">🚨</div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-base font-bold text-gray-900 leading-tight">Budget exceeded</h3>
+                            <p class="text-xs text-gray-500 mt-0.5">${monthName}</p>
+                        </div>
+                        <button onclick="Dashboard.closeBudgetExceededPopup()" class="w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 text-lg leading-none flex-shrink-0">×</button>
                     </div>
-                    <div class="space-y-2">
+                    <p class="text-xs text-gray-600 leading-relaxed mb-3">
+                        Your spending has crossed the budget rule. Trim non-essential spend or rebalance the rule.
+                    </p>
+                    <div class="space-y-2 mb-4">
                         ${rows}
                     </div>
-                    <div class="flex gap-2 pt-1">
+                    <div class="flex gap-2">
                         <button onclick="Dashboard.dismissBudgetPopupForMonth('${currentKey}')"
-                                class="flex-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition-colors">
+                                class="flex-1 px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition-colors">
                             Don't show this month
                         </button>
                         <button onclick="Dashboard.closeBudgetExceededPopup()"
-                                class="flex-1 px-3 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white text-xs font-bold rounded-lg hover:shadow-md transition-all">
+                                class="flex-1 px-3 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 text-white text-xs font-bold rounded-lg hover:shadow-md transition-all">
                             Got it
                         </button>
                     </div>

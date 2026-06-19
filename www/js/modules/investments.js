@@ -1341,9 +1341,18 @@ const Investments = {
                             <div class="relative">
                                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
                                 <input type="number" id="investment-price" placeholder="0.00" step="0.0001" min="0"
-                                       class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                       class="w-full p-2 pl-8 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                                        oninput="Investments.calculateAmount(); Investments.clearFieldError('price');"
                                        onblur="Investments.validateField('price')">
+                                <!-- Wrapper owns the centering transform; the inner svg owns the
+                                     spin. Keeping them on separate elements stops animate-spin's
+                                     rotate() from clobbering -translate-y-1/2 (which made it jump). -->
+                                <span id="investment-price-spinner" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4">
+                                    <svg class="w-4 h-4 animate-spin text-green-600" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                    </svg>
+                                </span>
                             </div>
                             <div id="investment-price-error" class="hidden mt-1 text-sm text-red-600 flex items-start gap-1">
                                 <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -1382,10 +1391,18 @@ const Investments = {
                                     <option value="INR">₹</option>
                                     <option value="USD">$</option>
                                 </select>
-                                <input type="number" id="investment-price" placeholder="0.00" step="0.01" min="0"
-                                       class="flex-1 p-2 border border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 min-w-0"
-                                       oninput="Investments.calculateAmount(); Investments.clearFieldError('price');"
-                                       onblur="Investments.validateField('price')">
+                                <div class="relative flex-1 min-w-0">
+                                    <input type="number" id="investment-price" placeholder="0.00" step="0.01" min="0"
+                                           class="w-full p-2 pr-8 border border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                           oninput="Investments.calculateAmount(); Investments.clearFieldError('price');"
+                                           onblur="Investments.validateField('price')">
+                                    <span id="investment-price-spinner" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4">
+                                        <svg class="w-4 h-4 animate-spin text-green-600" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                        </svg>
+                                    </span>
+                                </div>
                             </div>
                             <div id="investment-price-error" class="hidden mt-1 text-sm text-red-600 flex items-start gap-1">
                                 <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -1728,7 +1745,7 @@ const Investments = {
             box.innerHTML = `<div class="px-3 py-2 text-sm text-gray-400">Searching funds…</div>`;
             box.classList.remove('hidden');
         }
-        this._mfSearchTimer = setTimeout(() => this._runMfSearch(q), 500);
+        this._mfSearchTimer = setTimeout(() => this._runMfSearch(q), 300);
     },
 
     /** Perform the actual search + render results. */
@@ -1762,6 +1779,34 @@ const Investments = {
     },
 
     /**
+     * Toggle the "fetching price/NAV" state after a pick. While ON: the price
+     * field is read-only with a spinner + "Fetching…" text, and the Save button
+     * is disabled so nothing can be saved with a half-loaded price. Restores the
+     * field + Save button when OFF. `label` customises the placeholder.
+     */
+    _setPriceFetching(on, label = 'Fetching price…') {
+        const priceInput = document.getElementById('investment-price');
+        const saveBtn = document.getElementById('investment-save-btn');
+        const spinner = document.getElementById('investment-price-spinner');
+        const nameInput = document.getElementById('investment-name');
+        if (priceInput) {
+            priceInput.readOnly = on;
+            priceInput.classList.toggle('bg-gray-100', on);
+            if (on) { priceInput.value = ''; priceInput.placeholder = label; }
+            else if (priceInput.placeholder === label) { priceInput.placeholder = '0.00'; }
+        }
+        if (spinner) spinner.classList.toggle('hidden', !on);
+        // Lock the name box too, so typing can't re-trigger a search that
+        // races the in-flight price/NAV fetch.
+        if (nameInput) nameInput.readOnly = on;
+        if (saveBtn) {
+            saveBtn.disabled = on;
+            saveBtn.classList.toggle('opacity-60', on);
+            saveBtn.classList.toggle('cursor-not-allowed', on);
+        }
+    },
+
+    /**
      * User picked a scheme: store its code, set the (full) name, hide the list,
      * then fetch the latest NAV into the editable price field.
      */
@@ -1776,18 +1821,17 @@ const Investments = {
         const priceInput = document.getElementById('investment-price');
         if (priceInput) {
             const prev = priceInput.value;
-            priceInput.value = '';
-            priceInput.placeholder = 'Fetching NAV…';
+            this._setPriceFetching(true, 'Fetching NAV…');
             try {
                 const { nav } = await this.fetchMfNav(schemeCode);
+                this._setPriceFetching(false, 'Fetching NAV…');
                 priceInput.value = nav;
-                priceInput.placeholder = '0.00';
                 this.clearFieldError('price');
                 this.calculateAmount();
             } catch (e) {
                 console.warn('NAV prefill failed:', e.message);
+                this._setPriceFetching(false, 'Fetching NAV…');
                 priceInput.value = prev;
-                priceInput.placeholder = '0.00';
                 this.showFieldError('price', 'Could not fetch NAV — enter it manually.');
             }
         }
@@ -1829,7 +1873,7 @@ const Investments = {
         }
         // Show local immediately + a "searching" hint, then fetch remote.
         this._renderShareSuggestions(box, localNames, [], true);
-        this._shareSearchTimer = setTimeout(() => this._runShareSearch(q, localNames), 500);
+        this._shareSearchTimer = setTimeout(() => this._runShareSearch(q, localNames), 300);
     },
 
     /** Previously-used SHARES names from the portfolio that match the query. */
@@ -1938,12 +1982,11 @@ const Investments = {
         const priceInput = document.getElementById('investment-price');
         if (priceInput) {
             const prev = priceInput.value;
-            priceInput.value = '';
-            priceInput.placeholder = 'Fetching price…';
+            this._setPriceFetching(true, 'Fetching price…');
             try {
                 const quote = await this.fetchQuoteFromYahoo(symbol);
+                this._setPriceFetching(false, 'Fetching price…');
                 priceInput.value = quote.price;
-                priceInput.placeholder = '0.00';
                 if (quote.currency && curEl) {
                     curEl.value = quote.currency === 'USD' ? 'USD' : 'INR';
                 }
@@ -1951,8 +1994,8 @@ const Investments = {
                 this.calculateAmount();
             } catch (e) {
                 console.warn('Price prefill failed:', e.message);
+                this._setPriceFetching(false, 'Fetching price…');
                 priceInput.value = prev;
-                priceInput.placeholder = '0.00';
                 // Non-fatal: ticker is still stored, user can type the price.
             }
         }
