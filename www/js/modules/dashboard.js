@@ -5796,42 +5796,25 @@ const Dashboard = {
                 .join('\n');
         }
         
-        // Build loans summary - separate into problem loans and healthy loans
-        const problemLoans = data.loans.filter(l => l.loanCategory === 'high-interest');
-        const healthyLoans = data.loans.filter(l => l.loanCategory !== 'high-interest');
-        const endingSoonLoans = data.loans.filter(l => l.remainingMonths <= 3 && l.remainingMonths > 0);
+        // Build loans summary — every loan is listed with its rate (see below).
         
         let loansText = '';
         if (data.loans.length > 0) {
             // Quick summary line
             loansText = `**Summary**: ${data.loans.length} active loan(s), Total EMI: ₹${Math.round(data.insights.totalLoans).toLocaleString()}/month\n\n`;
-            
-            // Only show detailed info for problem loans
-            if (problemLoans.length > 0) {
-                loansText += `⚠️ **NEEDS ATTENTION** (High Interest):\n`;
-                loansText += problemLoans.map(l => {
-                    let text = `• ${l.name}: ₹${Math.round(l.emiAmount).toLocaleString()}/month @ **${l.interestRate}%** (${l.paidEmis}/${l.totalTenure} paid)`;
-                    text += `\n  → Balance: ₹${Math.round(l.remainingAmount).toLocaleString()} | Consider pre-closure`;
-                    return text;
-                }).join('\n');
-                loansText += '\n\n';
-            }
-            
-            // Show loans ending soon
-            if (endingSoonLoans.length > 0) {
-                loansText += `🎉 **ENDING SOON** (≤3 months left):\n`;
-                loansText += endingSoonLoans.map(l => 
-                    `• ${l.name}: ${l.remainingMonths} EMI(s) left (₹${Math.round(l.remainingAmount).toLocaleString()} remaining)`
-                ).join('\n');
-                loansText += '\n\n';
-            }
-            
-            // Brief list of healthy loans (no action needed)
-            if (healthyLoans.length > 0 && problemLoans.length === 0) {
-                loansText += `✓ **On Track**: `;
-                loansText += healthyLoans.map(l => `${l.name} (${l.interestRate}%)`).join(', ');
-                loansText += ' - No action needed';
-            }
+
+            // List EVERY loan with its interest rate, EMI, balance and progress.
+            // Previously the rate was only printed for high-interest loans (and
+            // for healthy ones only when there were zero problem loans), so a
+            // mixed portfolio reached the AI with EMIs but no rates — making it
+            // say "interest rates aren't mentioned". Now each loan always shows
+            // its rate; the high-interest ones additionally get a flag.
+            loansText += `All loans (rate · EMI · balance · progress):\n`;
+            loansText += data.loans.map(l => {
+                const flag = l.loanCategory === 'high-interest' ? ' ⚠️ HIGH-INTEREST — consider pre-closure' : '';
+                const endingSoon = (l.remainingMonths <= 3 && l.remainingMonths > 0) ? ` 🎉 only ${l.remainingMonths} EMI(s) left` : '';
+                return `• ${l.name}: **${l.interestRate}%** · ₹${Math.round(l.emiAmount).toLocaleString()}/mo · balance ₹${Math.round(l.remainingAmount).toLocaleString()} · ${l.paidEmis}/${l.totalTenure} paid${flag}${endingSoon}`;
+            }).join('\n');
         } else {
             loansText = 'No active loans ✓';
         }
@@ -6035,10 +6018,16 @@ const Dashboard = {
             const efBadge = ef.status === 'critical' ? '🚨 CRITICAL'
                 : ef.status === 'low' ? '⚠ LOW'
                 : '✅ HEALTHY';
+            // Current EF balance MUST be stated explicitly. The TOP 3 ACTIONS
+            // format asks for "current ₹X → target ₹Y"; without the current ₹
+            // here the model fabricates "current 0" even when cash/flagged
+            // investments cover it. liquid = cash balance + flagged EF holdings.
+            const efTarget = Math.round((ef.targetMonths || 0) * (ef.monthlyEssentials || 0));
+            const efComposition = `cash ₹${(ef.cashBalance || 0).toLocaleString()}${(ef.flaggedTotal || 0) > 0 ? ` + flagged investments ₹${ef.flaggedTotal.toLocaleString()}` : ''}`;
             fhText = `**Net Worth**: ₹${fh.netWorth.toLocaleString()}  (assets ₹${fh.assets.toLocaleString()} − liabilities ₹${fh.liabilities.toLocaleString()})
 **Cash & Savings**: ₹${fh.cashSavings.toLocaleString()}
 **Market Risk**: ₹${fh.riskAmount.toLocaleString()} (${fh.riskPercent}% of net worth)
-**Emergency Fund**: ${ef.months}mo coverage of ₹${ef.monthlyEssentials.toLocaleString()}/mo essentials → ${efBadge}${ef.shortfall > 0 ? ` (shortfall ₹${ef.shortfall.toLocaleString()} to reach ${ef.targetMonths}mo)` : ''}`;
+**Emergency Fund**: current balance **₹${(ef.liquid || 0).toLocaleString()}** (${efComposition}) = ${ef.months}mo of ₹${ef.monthlyEssentials.toLocaleString()}/mo essentials → ${efBadge}${ef.shortfall > 0 ? ` — shortfall ₹${ef.shortfall.toLocaleString()} to reach ${ef.targetMonths}mo target (₹${efTarget.toLocaleString()})` : ` (target ${ef.targetMonths}mo = ₹${efTarget.toLocaleString()} already met ✓)`}`;
         } else {
             fhText = '_(financial health not computed)_';
         }
@@ -6277,6 +6266,7 @@ Each action MUST: (a) name a real item/category, (b) include the ₹ delta, (c) 
 • **Never confuse PLANNED with REALIZED.** Planned SIPs are the monthly auto-deduct commitment. Realized investments are actual purchases logged. They are independent numbers — do not substitute one for the other or add them together.
 • **If a number is ₹0 in the data, treat it as zero — do not infer it must be "missing".** When the data says "_No active SIPs._", do not assume there are SIPs you can't see.
 • **No tables. No code blocks. No long parenthetical math.** Keep each bullet to one line of plain English with one or two ₹ citations.
+• **Do not manually bold ₹ amounts** — the app already highlights them. Bold percentages and labels instead. Put a blank line before each **header** so it renders cleanly.
 
 ### Recommendation rules:
 • **Use ONLY numbers and item names from the data above.** No invented amounts, no generic advice.

@@ -131,7 +131,12 @@ RESPONSE FORMAT:
 Focus on: reward rates, category-specific benefits, cashback, milestone bonuses.
 Never ask for or reference sensitive information like card numbers or CVV.
 DO NOT list all cards - only show the top 3 with comparison and final recommendation.
-Use Indian Rupee (₹) for all amounts.`;
+
+FORMATTING (mobile screen):
+- Keep the two headers above EXACTLY as written ("📊 **TOP 3 CARDS COMPARISON**" and "✅ **FINAL RECOMMENDATION**"). Put a blank line before each.
+- Bullet points only — NO tables, NO code blocks, NO LaTeX.
+- **Bold percentages and reward rates.** Do NOT manually bold ₹ amounts (the app highlights them automatically).
+- Use Indian Rupee (₹) for all amounts. Keep lines short.`;
 
             case 'expenses':
                 return `You are an expense analysis expert for Indian personal finance.
@@ -218,11 +223,14 @@ Capabilities:
 - Compound interest, EMI math, retirement planning estimates
 - Currency conversions, inflation-adjusted returns
 
-Style:
-- Be concise and direct. Use bullet points for comparisons.
-- Use Indian Rupee (₹) and Indian numbering (lakh/crore) by default.
+Style (formatted for a mobile screen):
+- Be concise and direct, second person ("you"/"your").
+- For anything with parts, group under \`###\` headers led by a relevant emoji, with a blank line before each header.
+- Use bullet points for comparisons; each bullet one line, leading with a **bold label**. NO tables, NO code blocks, NO LaTeX.
+- **Bold percentages.** Do NOT manually bold ₹ amounts (the app highlights them automatically). Use ₹ and Indian numbering (lakh/crore).
+- Show your math inline in plain text when calculating (so the user can verify) — no LaTeX or code fences.
+- For a substantive comparison or plan, end with a short "### 🎯 Next steps" block (1–3 actions). Skip it for a simple one-line concept answer.
 - For specific tax/legal questions, add a brief disclaimer: "This is general guidance, not professional tax advice."
-- Show your math when calculating (so the user can verify).
 - If you're not sure about a specific Indian regulation, say so rather than guessing.`;
 
             default:
@@ -734,8 +742,10 @@ Based on the benefits data I have for each card, compare ALL cards and provide:
 - Any important conditions, exclusions, or tips
 
 If benefits are not available for any card, mention that and provide general guidance.
-DO NOT list all cards - only show the top 3 with comparison and final recommendation.`;
-        
+DO NOT list all cards - only show the top 3 with comparison and final recommendation.
+
+FORMATTING (mobile screen): keep the two headers above EXACTLY as written with a blank line before each. Bullet points only — NO tables, NO code blocks, NO LaTeX. **Bold percentages and reward rates**; do NOT manually bold ₹ amounts (the app highlights them). Use ₹ for all amounts.`;
+
         return await this.call(prompt, null);
     }
 };

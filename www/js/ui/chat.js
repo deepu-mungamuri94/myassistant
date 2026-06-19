@@ -275,25 +275,28 @@ Return ONLY a JSON object, no extra text or explanation outside the JSON.`;
             }
         }
 
+        // Feature-specific content the analysis must cover (investments vs expenses).
         const analysisGuidance = isInvestments
-            ? `
-
-For portfolio analysis questions, provide:
-- Asset allocation percentages and diversification analysis
-- Specific gaps or over-concentration issues
-- Concrete recommendations with amounts/percentages
-- Risk-reward considerations
-- Action steps for rebalancing if needed
-- If income is provided in USER PROFILE, frame recommendations as "₹X/month = Y% of income"`
-            : `
-
-If income is provided in USER PROFILE, frame totals as percentages of income too (e.g., "₹6K = 12% of your income"). Use TODAY'S DATE for relative time phrases.`;
+            ? `Cover, as relevant:
+- **Asset allocation** — % split across types and any over-concentration.
+- **Diversification gaps** — missing/under-weight asset classes.
+- **Risk-reward** — equity vs. fixed-income balance for the goal.
+- If income is in USER PROFILE, frame suggestions as "₹X/month = Y% of income".`
+            : `Cover, as relevant:
+- **Where the money went** — top categories/items with their share.
+- **Trends/comparisons** — change vs. earlier periods if visible in the data.
+- If income is in USER PROFILE, frame totals as a % of income (e.g. "₹6,000 = 12% of income").`;
 
         // Add explanation of what was queried if available
         const queryExplanation = queryResult.explanation ? `\n\nQuery executed: ${queryResult.explanation}` : '';
         const zeroResults = queryResult.result.count === 0 || queryResult.result.value === 0;
 
-        return `Today's date: ${todayIso}. ${profileBlock}
+        // Shared house style (see also provider.js / dashboard.js). Keeps every
+        // markdown AI surface consistent: emoji section headers, scannable
+        // bullets, no tables, grounded numbers, a short action block. ₹ amounts
+        // are auto-highlighted by AIRenderer, so we DON'T bold them (avoids
+        // double-emphasis) — but we DO bold percentages and labels.
+        return `Today's date: ${todayIso}.${profileBlock}
 
 User asked: "${userQuery}"
 
@@ -301,14 +304,18 @@ I executed a query on my ${datasetName} database and got these results:
 
 ${resultSummary}${queryExplanation}
 
-Please provide a clear, helpful analysis of these results that directly answers the user's question. Format your response with:
-- Key insights and numbers (with percentages for ${isInvestments ? 'asset allocation' : 'spending patterns'})
-- Breakdowns or comparisons if relevant
-- Actionable recommendations if applicable${analysisGuidance}
+Write a clear analysis that directly answers the question, formatted for a mobile screen.
 
-${zeroResults ? `IMPORTANT: Zero results were found. Do NOT invent numbers. Tell the user honestly "No matching ${datasetName} found." Then suggest 2-3 alternative search terms, broader date ranges, or related categories they could try.` : ''}
+FORMAT:
+- Group with \`###\` headers, each led by a relevant emoji. Put a blank line before every header.
+- Bullet points only — NO tables, NO code blocks, NO LaTeX.
+- Each bullet: one line, lead with a **bold label**, then the value/insight.
+- **Bold all percentages.** Do NOT bold ₹ amounts (the app highlights them automatically). Use ₹ and Indian numbering (lakh/crore) as a gloss only — never replace an exact figure.
+- ${analysisGuidance}
+- End with a \`### 🎯 Next steps\` block: 1–3 concrete actions, each with a ₹ amount and a one-line why. Omit only if there's genuinely nothing actionable.
 
-Keep it concise and mobile-friendly. Use bullet points and clear sections.`;
+Use only figures present in the results above — never invent, round, or recompute totals. A value of ₹0 means zero, not missing.
+${zeroResults ? `\nIMPORTANT: Zero results were found. Do NOT invent numbers. Tell the user honestly "No matching ${datasetName} found." Then suggest 2-3 alternative search terms, broader date ranges, or related categories they could try.` : ''}`;
     },
 
     /**

@@ -373,12 +373,14 @@ const Cards = {
 
 5. FORMATTING RULES:
 - Use simple bullet points (- or *), NOT tables or complex formatting
-- Use bold (**text**) for emphasis on offer names
+- Use bold (**text**) for emphasis on offer names and reward rates/percentages
+- Do NOT manually bold ₹ amounts — the app highlights them automatically
 - Keep lines short for mobile readability
-- Use clear section headings (### Heading)
+- Use clear section headings (### Heading), with a BLANK LINE before each heading so it renders correctly
 - ABSOLUTELY NO LaTeX: no $...$ math mode, no \\text{}, no \\times, no \\$
 - For multiplication use "×" or "x", NOT \\times or $\\times$
 - Write as plain text/Markdown only
+- A benefit may span more than one line when caps/exclusions need it — completeness wins over brevity here
 
 6. CURRENCY RULES (CRITICAL):
 - ALL amounts must be in Indian Rupees (₹) ONLY
