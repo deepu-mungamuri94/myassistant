@@ -505,7 +505,7 @@
     <div class="w-full overflow-x-hidden" style="margin-top: calc(3.5rem + max(1rem, env(safe-area-inset-top))); padding-bottom: env(safe-area-inset-bottom);">
         
         <!-- DASHBOARD VIEW -->
-        <div id="dashboard-view" class="px-4 pt-1 pb-4 min-h-screen max-w-full overflow-x-hidden">
+        <div id="dashboard-view" class="px-2 pt-1 pb-4 min-h-screen max-w-full overflow-x-hidden">
             <!-- Dashboard Content -->
             <div id="dashboard-content" class="max-w-full overflow-x-hidden">
                 <!-- Charts will be rendered here -->
@@ -575,7 +575,7 @@
         
         <!-- INCOME VIEW -->
         <div id="income-view" class="hidden">
-            <div class="px-5 pt-2 pb-6">
+            <div class="px-2 pt-2 pb-6">
                 <!-- Floating Edit Button (Top Right) -->
                 <button onclick="if(window.Income) window.Income.openForm()" class="fixed right-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Edit Income">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -592,7 +592,7 @@
         
         <!-- EXPENSES VIEW -->
         <div id="expenses-view" class="hidden">
-            <div class="px-5 pt-2 pb-32">
+            <div class="px-2 pt-2 pb-32">
                 <!-- Floating + Button (Top Right) -->
                 <button onclick="openExpenseModal()" class="fixed right-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Expense">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -648,7 +648,7 @@
         
         <!-- RECURRING PAYMENTS VIEW -->
         <div id="recurring-view" class="hidden">
-            <div class="px-5 pt-2 pb-6">
+            <div class="px-2 pt-2 pb-6">
                 <!-- Floating + Button (Top Right) -->
                 <button onclick="openRecurringExpenseModal()" class="fixed right-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Recurring Payment">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -665,7 +665,7 @@
 
         <!-- PLANS VIEW -->
         <div id="plans-view" class="hidden">
-            <div class="px-5 pt-2 pb-6">
+            <div class="px-2 pt-2 pb-6">
                 <!-- Floating + Button (Top Right) -->
                 <button onclick="Plans.openModal()" class="fixed right-4 bg-gradient-to-r from-orange-600 to-rose-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Plan">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -694,7 +694,7 @@
         
         <!-- LOANS VIEW -->
         <div id="loans-view" class="hidden">
-            <div class="px-5 pt-2 pb-24">
+            <div class="px-2 pt-2 pb-24">
                 <!-- Floating + Button (Bottom Right) - Will change color based on tab -->
                 <button id="loans-add-btn" onclick="openLoanOrLentModal()" class="fixed right-4 bottom-20 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Loan">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -711,7 +711,7 @@
         
         <!-- CARDS VIEW -->
         <div id="cards-view" class="hidden">
-            <div class="px-5 pt-2 pb-24">
+            <div class="px-2 pt-2 pb-24">
                 <!-- Floating + Button (Bottom Right) -->
                 <button onclick="openCardModal()" class="fixed right-4 bottom-20 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Card">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -733,7 +733,7 @@
         
         <!-- INVESTMENTS VIEW -->
         <div id="investments-view" class="hidden">
-            <div class="px-5 pt-2 pb-32">
+            <div class="px-2 pt-2 pb-32">
                 <!-- Floating + Button (Top Right) -->
                 <button onclick="Investments.openInvestmentModal()" class="fixed right-4 bg-gradient-to-br from-green-500 via-emerald-600 to-green-700 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Investment">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -770,7 +770,7 @@
         
         <!-- CREDENTIALS VIEW -->
         <div id="credentials-view" class="hidden">
-            <div class="px-4 pt-2 pb-32">
+            <div class="px-2 pt-2 pb-32">
                 <!-- Floating + Button (Bottom Right) -->
                 <button onclick="openCredentialModal()" class="fixed right-4 bottom-20 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Credential">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
