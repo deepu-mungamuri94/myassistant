@@ -24,6 +24,28 @@ const Investments = {
     // don't spawn parallel Yahoo Finance calls for the same ticker.
     _sharePriceReloadsInFlight: new Set(),
 
+    // Debounce timer for the MF fund-search box, and the scheme code picked
+    // from the search results for the investment currently being added/edited.
+    _mfSearchTimer: null,
+    _selectedSchemeCode: null,
+
+    // Same idea for the SHARES picker: debounce timer and the ticker picked
+    // from live Yahoo results (null = none picked; manual entry is still
+    // allowed for shares, unlike MFs). _selectedExchange is shown in the chip.
+    _shareSearchTimer: null,
+    _selectedTicker: null,
+    _selectedExchange: null,
+
+    // Search hardening (keeps us well under any API rate limit):
+    //   _searchCache    — Map<key, results> so a repeated/back-spaced query is
+    //                     served from memory instead of refetching.
+    //   _searchInFlight — Map<key, Promise> so two identical concurrent lookups
+    //                     share one network request.
+    // Both live for the session only (cleared on reload) and are size-capped.
+    _searchCache: new Map(),
+    _searchInFlight: new Map(),
+    _SEARCH_CACHE_MAX: 100,
+
     /**
      * Initialize the module
      */
@@ -1119,6 +1141,9 @@ const Investments = {
      */
     openInvestmentModal() {
         this.editingInvestment = null;
+        this._selectedSchemeCode = null;   // no MF scheme picked yet
+        this._selectedTicker = null;       // no share ticker picked yet
+        this._selectedExchange = null;
         document.getElementById('investment-modal-title').textContent = 'Add Investment';
         document.getElementById('investment-id').value = '';
         document.getElementById('investment-editing').value = 'false';
@@ -1170,9 +1195,15 @@ const Investments = {
         const type = document.getElementById('investment-type').value;
         const dynamicFields = document.getElementById('investment-dynamic-fields');
         const saveBtn = document.getElementById('investment-save-btn');
-        
+
         // Clear all field errors
         this.clearAllFieldErrors();
+
+        // Switching type discards any MF scheme / share ticker picked earlier.
+        this._selectedSchemeCode = null;
+        this._selectedTicker = null;
+        this._selectedExchange = null;
+        this._hideTickerChip();
         
         if (!type) {
             dynamicFields.innerHTML = '';
@@ -1213,20 +1244,55 @@ const Investments = {
 
         // Name field (with autocomplete) - disabled for EPF when editing
         const nameDisabled = (isEditing && type === 'EPF') ? 'disabled' : '';
-        const nameClass = (isEditing && type === 'EPF') ? 
-            'w-full p-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed' : 
+        const nameClass = (isEditing && type === 'EPF') ?
+            'w-full p-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed' :
             'w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500';
-        
+
+        // The name field's behaviour depends on type:
+        //  - MF:     live scheme search (mfapi.in). A pick is REQUIRED (the
+        //            scheme code resolves the right NAV), full name allowed.
+        //  - SHARES: blended search — local saved names + live Yahoo results.
+        //            Picking is OPTIONAL (locks ticker/currency, prefills
+        //            price); manual entry still works for unlisted shares.
+        //  - other:  the original free-text + local-history autocomplete.
+        const isMf = (type === 'MF');
+        const isShares = (type === 'SHARES');
+        const nameLabel = isMf ? 'Fund (search by name)' : (isShares ? 'Name (search or type)' : 'Name');
+        const namePlaceholder = isMf ? 'e.g. DSP Healthcare Direct Growth'
+            : (isShares ? 'e.g. Reliance, INFY, Apple' : 'Enter name');
+        const nameMaxlen = isMf ? 100 : (isShares ? 60 : 32);
+        const nameOnInput = isMf
+            ? 'Investments.onMfNameInput(this.value)'
+            : (isShares
+                ? 'Investments.onShareNameInput(this.value)'
+                : 'Investments.showNameSuggestions(this.value); Investments.clearNameError();');
+        const nameOnFocus = isMf
+            ? 'Investments.onMfNameInput(this.value)'
+            : (isShares
+                ? 'Investments.onShareNameInput(this.value)'
+                : 'Investments.showNameSuggestions(this.value)');
+        // MF skips blur-validation (the scheme search owns the name and blur
+        // would race the result click). SHARES keeps duplicate validation but
+        // its select handlers fire it after setting the name.
+        const nameOnBlur = isMf ? '' : 'Investments.validateNameDuplicate()';
+        const nameHint = isMf
+            ? '<p class="text-[10px] text-gray-500 mt-1">Pick your exact plan — Direct/Regular and Growth/IDCW have different NAVs.</p>'
+            : (isShares
+                ? '<p class="text-[10px] text-gray-500 mt-1">Pick a result to auto-fill price &amp; lock the exact ticker, or just type a name.</p>'
+                : '');
+
         html += `
             <div class="mb-3 relative">
-                <label class="block text-sm font-semibold text-gray-700 mb-1">Name</label>
-                <input type="text" id="investment-name" placeholder="Enter name" maxlength="32" ${nameDisabled}
+                <label class="block text-sm font-semibold text-gray-700 mb-1">${nameLabel}</label>
+                <input type="text" id="investment-name" placeholder="${namePlaceholder}" maxlength="${nameMaxlen}" ${nameDisabled}
                        class="${nameClass}"
-                       oninput="Investments.showNameSuggestions(this.value); Investments.clearNameError();"
-                       onfocus="Investments.showNameSuggestions(this.value)"
-                       onblur="Investments.validateNameDuplicate()"
+                       oninput="${nameOnInput}"
+                       onfocus="${nameOnFocus}"
+                       ${nameOnBlur ? `onblur="${nameOnBlur}"` : ''}
                        autocomplete="off">
                 <div id="investment-name-suggestions" class="hidden absolute w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto z-50 mt-1"></div>
+                <div id="investment-ticker-chip" class="hidden mt-1.5"></div>
+                ${nameHint}
                 <div id="investment-name-error" class="hidden mt-1 text-sm text-red-600 flex items-start gap-1">
                     <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
@@ -1633,17 +1699,323 @@ const Investments = {
         }
     },
 
+    // ---------------------------------------------------------------------
+    // MF fund search (used only when type === 'MF')
+    //
+    // Typing in the name box fires a debounced search against mfapi.in. The
+    // user picks an exact scheme (incl. Direct/Regular + Growth/IDCW); that
+    // stores the scheme code and prefills the latest NAV (still editable so
+    // it can be set to the purchase NAV). Until a scheme is picked,
+    // _selectedSchemeCode is cleared so we never save a half-typed MF.
+    // ---------------------------------------------------------------------
+
     /**
-     * Show name error message below input field
+     * Debounced handler wired to the name box's oninput when type === 'MF'.
+     * Editing the name after a pick invalidates the previously selected scheme.
+     */
+    onMfNameInput(value) {
+        this._selectedSchemeCode = null;        // editing invalidates prior pick
+        this.clearNameError();
+        if (this._mfSearchTimer) clearTimeout(this._mfSearchTimer);
+        const q = (value || '').trim();
+        const box = document.getElementById('investment-name-suggestions');
+        if (q.length < 3) {
+            if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+            return;
+        }
+        // Loading hint while we debounce + fetch.
+        if (box) {
+            box.innerHTML = `<div class="px-3 py-2 text-sm text-gray-400">Searching funds…</div>`;
+            box.classList.remove('hidden');
+        }
+        this._mfSearchTimer = setTimeout(() => this._runMfSearch(q), 500);
+    },
+
+    /** Perform the actual search + render results. */
+    async _runMfSearch(query) {
+        const box = document.getElementById('investment-name-suggestions');
+        if (!box) return;
+        try {
+            const results = await this.searchMutualFunds(query);
+            // Guard: the user may have cleared/changed the box while we waited.
+            const current = (document.getElementById('investment-name')?.value || '').trim();
+            if (current !== query) return;
+
+            if (results.length === 0) {
+                box.innerHTML = `<div class="px-3 py-2 text-sm text-gray-400">No matching funds. Check the spelling.</div>`;
+                box.classList.remove('hidden');
+                return;
+            }
+            box.innerHTML = results.map(r => `
+                <div class="px-3 py-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                     onclick="Investments.selectMutualFund(${r.schemeCode}, '${String(r.schemeName).replace(/'/g, "\\'")}')">
+                    <div class="text-sm text-gray-700 leading-snug">${r.schemeName}</div>
+                    <div class="text-[10px] text-gray-400">Scheme ${r.schemeCode}</div>
+                </div>
+            `).join('');
+            box.classList.remove('hidden');
+        } catch (e) {
+            console.warn('MF search failed:', e.message);
+            box.innerHTML = `<div class="px-3 py-2 text-sm text-red-500">Search failed — check your connection.</div>`;
+            box.classList.remove('hidden');
+        }
+    },
+
+    /**
+     * User picked a scheme: store its code, set the (full) name, hide the list,
+     * then fetch the latest NAV into the editable price field.
+     */
+    async selectMutualFund(schemeCode, schemeName) {
+        this._selectedSchemeCode = schemeCode;
+        const nameInput = document.getElementById('investment-name');
+        if (nameInput) nameInput.value = schemeName;
+        this.hideNameSuggestions();
+        this.clearNameError();
+
+        // Prefill the latest NAV (editable — user can override with purchase NAV).
+        const priceInput = document.getElementById('investment-price');
+        if (priceInput) {
+            const prev = priceInput.value;
+            priceInput.value = '';
+            priceInput.placeholder = 'Fetching NAV…';
+            try {
+                const { nav } = await this.fetchMfNav(schemeCode);
+                priceInput.value = nav;
+                priceInput.placeholder = '0.00';
+                this.clearFieldError('price');
+                this.calculateAmount();
+            } catch (e) {
+                console.warn('NAV prefill failed:', e.message);
+                priceInput.value = prev;
+                priceInput.placeholder = '0.00';
+                this.showFieldError('price', 'Could not fetch NAV — enter it manually.');
+            }
+        }
+    },
+
+    // ---------------------------------------------------------------------
+    // SHARES live search (used only when type === 'SHARES')
+    //
+    // Additive, NOT forced: the dropdown blends your previously-used share
+    // names (instant, offline) with live Yahoo results (company + exchange).
+    // You can still type any name and save it — picking is optional and exists
+    // mainly to lock the exact ticker/currency and prefill the price. Editing
+    // the name after a pick clears the stored ticker so it isn't stale.
+    // ---------------------------------------------------------------------
+
+    /** Debounced handler wired to the name box's oninput when type === 'SHARES'. */
+    onShareNameInput(value) {
+        // If a ticker is already linked, the name is now a free-text DISPLAY
+        // label — typing must NOT re-search or drop the link. The user unlinks
+        // explicitly via the chip's ✕. So we just keep the chip and bail.
+        if (this._selectedTicker) {
+            this.clearNameError();
+            const box = document.getElementById('investment-name-suggestions');
+            if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+            return;
+        }
+
+        this.clearNameError();
+        if (this._shareSearchTimer) clearTimeout(this._shareSearchTimer);
+        const q = (value || '').trim();
+        const box = document.getElementById('investment-name-suggestions');
+
+        // Local matches (previous SHARES names) render instantly, no network.
+        const localNames = this._localShareNameMatches(q);
+        if (q.length < 2) {
+            // Too short for remote search — show local matches only (or hide).
+            this._renderShareSuggestions(box, localNames, [], false);
+            return;
+        }
+        // Show local immediately + a "searching" hint, then fetch remote.
+        this._renderShareSuggestions(box, localNames, [], true);
+        this._shareSearchTimer = setTimeout(() => this._runShareSearch(q, localNames), 500);
+    },
+
+    /** Previously-used SHARES names from the portfolio that match the query. */
+    _localShareNameMatches(query) {
+        const q = (query || '').trim().toLowerCase();
+        if (!q) return [];
+        const names = [...new Set((window.DB.portfolioInvestments || [])
+            .filter(inv => inv.type === 'SHARES')
+            .map(inv => inv.name))];
+        return names.filter(n => n.toLowerCase().includes(q)).slice(0, 5);
+    },
+
+    /** Run the remote Yahoo search and re-render the blended dropdown. */
+    async _runShareSearch(query, localNames) {
+        const box = document.getElementById('investment-name-suggestions');
+        if (!box) return;
+        try {
+            const remote = await this.searchShares(query);
+            // Guard: the user may have changed the box while we waited.
+            const current = (document.getElementById('investment-name')?.value || '').trim();
+            if (current !== query) return;
+            this._renderShareSuggestions(box, localNames, remote, false);
+        } catch (e) {
+            console.warn('Share search failed:', e.message);
+            // Network failed — keep local matches usable, drop the spinner.
+            this._renderShareSuggestions(box, localNames, [], false);
+        }
+    },
+
+    /**
+     * Render the blended dropdown: local names first (tagged "saved"), then a
+     * divider, then live Yahoo results (company + exchange). `loading` shows a
+     * searching hint in the remote section.
+     */
+    _renderShareSuggestions(box, localNames, remote, loading) {
+        if (!box) return;
+        const esc = (s) => String(s).replace(/'/g, "\\'");
+        let html = '';
+
+        if (localNames.length) {
+            html += localNames.map(name => `
+                <div class="px-3 py-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100"
+                     onclick="Investments.selectShareName('${esc(name)}')">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-700">${name}</span>
+                        <span class="text-[9px] text-gray-400 font-semibold uppercase">saved</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        if (loading) {
+            html += `<div class="px-3 py-2 text-sm text-gray-400">Searching market…</div>`;
+        } else if (remote.length) {
+            html += remote.map(r => `
+                <div class="px-3 py-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                     onclick="Investments.selectShare('${esc(r.symbol)}', '${esc(r.name)}', '${r.currency}', '${esc(r.exchange)}')">
+                    <div class="text-sm text-gray-700 leading-snug">${r.name}</div>
+                    <div class="text-[10px] text-gray-400">${r.symbol}${r.exchange ? ' · ' + r.exchange : ''}</div>
+                </div>
+            `).join('');
+        } else if (!localNames.length) {
+            box.classList.add('hidden');
+            box.innerHTML = '';
+            return;
+        }
+
+        box.innerHTML = html;
+        box.classList.remove('hidden');
+    },
+
+    /**
+     * Pick a LOCAL (already-saved) share name: just set the name. Ticker stays
+     * unresolved (reload will resolve it), matching today's behaviour for
+     * names typed by hand.
+     */
+    selectShareName(name) {
+        this._selectedTicker = null;
+        this._selectedExchange = null;
+        this._hideTickerChip();
+        const nameInput = document.getElementById('investment-name');
+        if (nameInput) nameInput.value = name;
+        this.hideNameSuggestions();
+        this.validateNameDuplicate();
+    },
+
+    /**
+     * Pick a LIVE Yahoo result: store the exact ticker + currency, show the
+     * "linked" chip, and prefill the current price (editable, so it can be set
+     * to the purchase price). The name is now a free-text label the user owns.
+     */
+    async selectShare(symbol, name, currency, exchange = '') {
+        this._selectedTicker = symbol;
+        this._selectedExchange = exchange || '';
+        const nameInput = document.getElementById('investment-name');
+        if (nameInput) nameInput.value = name;
+        this.hideNameSuggestions();
+        this.clearNameError();
+        this._showTickerChip(symbol, exchange);
+
+        // Set currency dropdown to match the exchange.
+        const curEl = document.getElementById('investment-currency');
+        if (curEl) { curEl.value = currency === 'USD' ? 'USD' : 'INR'; }
+
+        // Prefill current price (editable). Reload later re-confirms currency.
+        const priceInput = document.getElementById('investment-price');
+        if (priceInput) {
+            const prev = priceInput.value;
+            priceInput.value = '';
+            priceInput.placeholder = 'Fetching price…';
+            try {
+                const quote = await this.fetchQuoteFromYahoo(symbol);
+                priceInput.value = quote.price;
+                priceInput.placeholder = '0.00';
+                if (quote.currency && curEl) {
+                    curEl.value = quote.currency === 'USD' ? 'USD' : 'INR';
+                }
+                this.clearFieldError('price');
+                this.calculateAmount();
+            } catch (e) {
+                console.warn('Price prefill failed:', e.message);
+                priceInput.value = prev;
+                priceInput.placeholder = '0.00';
+                // Non-fatal: ticker is still stored, user can type the price.
+            }
+        }
+
+        // Duplicate check now that the (possibly different) name is set.
+        this.validateNameDuplicate();
+    },
+
+    /**
+     * Show the "linked ticker" chip under the name field. Tells the user which
+     * symbol drives the price (the readable name is theirs to edit), with a ✕
+     * to unlink and search again. Idempotent — re-render replaces the contents.
+     */
+    _showTickerChip(symbol, exchange) {
+        const host = document.getElementById('investment-ticker-chip');
+        if (!host) return;
+        const exch = exchange ? `<span class="opacity-70"> · ${exchange}</span>` : '';
+        host.innerHTML = `
+            <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-50 text-blue-700 text-[11px] font-semibold border border-blue-200">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 010 5.656l-3 3a4 4 0 11-5.656-5.656l1.5-1.5m6.656-2.828a4 4 0 015.656 0l-1.5 1.5m-8.485 1.343l4.243-4.243"/>
+                </svg>
+                <span>Live price: ${symbol}${exch}</span>
+                <button type="button" onclick="Investments.unlinkTicker()" title="Unlink &amp; search again"
+                        class="ml-0.5 w-4 h-4 rounded-full hover:bg-blue-200 flex items-center justify-center leading-none">✕</button>
+            </span>`;
+        host.classList.remove('hidden');
+    },
+
+    /** Hide/clear the linked-ticker chip. */
+    _hideTickerChip() {
+        const host = document.getElementById('investment-ticker-chip');
+        if (host) { host.classList.add('hidden'); host.innerHTML = ''; }
+    },
+
+    /**
+     * Unlink the price source: drop the stored ticker/exchange, hide the chip,
+     * and re-enable search so the user can pick a different stock. The current
+     * display name is kept (they can edit it or re-pick).
+     */
+    unlinkTicker() {
+        this._selectedTicker = null;
+        this._selectedExchange = null;
+        this._hideTickerChip();
+        const nameInput = document.getElementById('investment-name');
+        if (nameInput) { nameInput.focus(); this.onShareNameInput(nameInput.value); }
+    },
+
+    /**
+     * Show name error message below input field. Pass a known type token for
+     * the standard "already exists" message, or the literal 'mf-unpicked'
+     * token for the MF scheme-not-selected case.
      */
     showNameError(type) {
         const errorDiv = document.getElementById('investment-name-error');
         const errorText = document.getElementById('investment-name-error-text');
-        
+
         if (errorDiv && errorText) {
-            errorText.textContent = `${type} with this name already exists. Choose a different name (add suffix) or delete existing one first.`;
+            errorText.textContent = type === 'mf-unpicked'
+                ? 'Pick a fund from the search list so we can link its live NAV.'
+                : `${type} with this name already exists. Choose a different name (add suffix) or delete existing one first.`;
             errorDiv.classList.remove('hidden');
-            
+
             // Scroll error into view if needed
             errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
@@ -1938,6 +2310,13 @@ const Investments = {
             // Round price to 2 decimal places
             investmentData.price = Math.round(price * 100) / 100;
             investmentData.currency = currency;
+            // If picked from live search, store the exact ticker so reloads
+            // skip the name-guess step (and can't grab the wrong exchange).
+            // The exchange label is kept only to re-show the chip on edit.
+            if (this._selectedTicker) {
+                investmentData.ticker = this._selectedTicker;
+                if (this._selectedExchange) investmentData.exchange = this._selectedExchange;
+            }
         } else if (type === 'MF') {
             // Mutual funds: fractional units, INR-only NAV. Sub-category drives
             // emergency-fund eligibility hints and (future) tax-view splits.
@@ -1946,6 +2325,12 @@ const Investments = {
             const mfCategory = document.getElementById('investment-mf-category')?.value || 'EQUITY';
 
             let hasError = false;
+            // A scheme must be picked from search — that's what links the right
+            // NAV. Without it we'd have a free-text name and no way to refresh.
+            if (!this._selectedSchemeCode) {
+                this.showNameError('mf-unpicked');
+                hasError = true;
+            }
             if (!quantity || quantity <= 0) {
                 this.showFieldError('quantity', 'Please enter valid units greater than 0');
                 hasError = true;
@@ -1961,6 +2346,9 @@ const Investments = {
             investmentData.price = Math.round(price * 10000) / 10000;
             investmentData.currency = 'INR';
             investmentData.mfCategory = mfCategory;
+            // Scheme code links this MF to live NAV (mfapi.in). Stored as a
+            // string for stable lookups / JSON round-trips.
+            investmentData.schemeCode = String(this._selectedSchemeCode);
         } else if (type === 'GOLD') {
             const quantity = parseFloat(document.getElementById('investment-quantity').value);
             const price = parseFloat(document.getElementById('investment-price').value);
@@ -2080,7 +2468,7 @@ const Investments = {
                 
                 // Persist latest unit price for SHARES and MF (shared store)
                 if (data.type === 'SHARES' || data.type === 'MF') {
-                    this.updateSharePrice(data.name, data.price, data.currency || 'INR');
+                    this.updateSharePrice(data.name, data.price, data.currency || 'INR', data.schemeCode || null, data.ticker || null);
                 }
 
                 window.Storage.save();
@@ -2139,7 +2527,7 @@ const Investments = {
 
             // Update unit-price storage for SHARES and MF (both share the same store)
             if (data.type === 'SHARES' || data.type === 'MF') {
-                this.updateSharePrice(data.name, data.price, data.currency || 'INR');
+                this.updateSharePrice(data.name, data.price, data.currency || 'INR', data.schemeCode || null, data.ticker || null);
             }
         } else {
             // Add new
@@ -2152,7 +2540,7 @@ const Investments = {
             });
 
             if (data.type === 'SHARES' || data.type === 'MF') {
-                this.updateSharePrice(data.name, data.price, data.currency || 'INR');
+                this.updateSharePrice(data.name, data.price, data.currency || 'INR', data.schemeCode || null, data.ticker || null);
             }
         }
         
@@ -2188,7 +2576,7 @@ const Investments = {
             // Persist latest unit price for SHARES and MFs (they share the
             // sharePrices store keyed by name).
             if (data.type === 'SHARES' || data.type === 'MF') {
-                this.updateSharePrice(data.name, data.price, data.currency || 'INR');
+                this.updateSharePrice(data.name, data.price, data.currency || 'INR', data.schemeCode || null, data.ticker || null);
             }
 
             window.DB.portfolioInvestments = portfolioInvestments;
@@ -2199,28 +2587,39 @@ const Investments = {
     },
 
     /**
-     * Update or add share price in storage
+     * Update or add share price in storage. For MFs, pass `schemeCode` so the
+     * record is tagged for NAV refresh via mfapi.in (and the value is kept at
+     * 4-decimal NAV precision instead of 2-decimal price precision). For SHARES
+     * picked from live search, pass `ticker` so the reload resolver can use the
+     * exact symbol instead of re-guessing it from the name.
      */
-    updateSharePrice(name, price, currency) {
+    updateSharePrice(name, price, currency, schemeCode = null, ticker = null) {
         const sharePrices = window.DB.sharePrices || [];
         const existing = sharePrices.find(sp => sp.name === name);
-        
+        // MF values are 4-decimal NAVs; share prices are 2-decimal.
+        const rounded = schemeCode
+            ? Math.round(price * 10000) / 10000
+            : Math.round(price * 100) / 100;
+
         if (existing) {
-            // Round price to 2 decimal places
-            existing.price = Math.round(price * 100) / 100;
+            existing.price = rounded;
             existing.currency = currency;
             existing.lastUpdated = new Date().toISOString();
+            if (schemeCode) existing.schemeCode = String(schemeCode);
+            if (ticker) existing.ticker = ticker;
         } else {
-            sharePrices.push({
+            const rec = {
                 name,
-                // Round price to 2 decimal places
-                price: Math.round(price * 100) / 100,
+                price: rounded,
                 currency,
                 active: true,
                 lastUpdated: new Date().toISOString()
-            });
+            };
+            if (schemeCode) rec.schemeCode = String(schemeCode);
+            if (ticker) rec.ticker = ticker;
+            sharePrices.push(rec);
         }
-        
+
         window.DB.sharePrices = sharePrices;
         window.Storage.save();
     },
@@ -2305,7 +2704,7 @@ const Investments = {
         }
 
         if (newData.type === 'SHARES' || newData.type === 'MF') {
-            this.updateSharePrice(newData.name, newData.price, newData.currency || 'INR');
+            this.updateSharePrice(newData.name, newData.price, newData.currency || 'INR', newData.schemeCode || null, newData.ticker || null);
         }
 
         window.Storage.save();
@@ -2350,7 +2749,7 @@ const Investments = {
         Object.assign(existing, newData);
 
         if (newData.type === 'SHARES' || newData.type === 'MF') {
-            this.updateSharePrice(newData.name, newData.price, newData.currency || 'INR');
+            this.updateSharePrice(newData.name, newData.price, newData.currency || 'INR', newData.schemeCode || null, newData.ticker || null);
         }
 
         window.Storage.save();
@@ -2476,6 +2875,17 @@ const Investments = {
         document.getElementById('investment-name').value = investment.name;
 
         if (investment.type === 'SHARES') {
+            // Keep the locked ticker (if this share was picked from search) so
+            // saving an edit doesn't drop it, and re-show its chip. The name
+            // stays a free-text label (editing it no longer re-searches).
+            this._selectedTicker = investment.ticker
+                || this.getLatestSharePrice(investment.name)?.ticker || null;
+            this._selectedExchange = investment.exchange || null;
+            if (this._selectedTicker) {
+                this._showTickerChip(this._selectedTicker, this._selectedExchange || '');
+            } else {
+                this._hideTickerChip();
+            }
             document.getElementById('investment-quantity').value = investment.quantity;
 
             // For portfolio investments, use latest price from storage; for monthly, use historical price
@@ -2492,6 +2902,9 @@ const Investments = {
             // Same shape as SHARES (units + price) plus the sub-category.
             // We reuse the SHARES sharePrices store for latest NAV updates so
             // a manual NAV refresh works without a separate code path.
+            // Restore the linked scheme code so saving keeps the live-NAV link
+            // and editing the name (which clears it) is an explicit re-pick.
+            this._selectedSchemeCode = investment.schemeCode || null;
             document.getElementById('investment-quantity').value = investment.quantity;
             const latestSharePrice = this.getLatestSharePrice(investment.name);
             document.getElementById('investment-price').value = latestSharePrice ? latestSharePrice.price : investment.price;
@@ -2947,6 +3360,92 @@ Respond ONLY with valid JSON (no markdown, no explanation):
         return response.json();
     },
 
+    // ---------------------------------------------------------------------
+    // Mutual-fund NAV (mfapi.in)
+    //
+    // MFs are disambiguated by scheme code, NOT name: "DSP Healthcare Fund"
+    // exists as Regular/Direct × Growth/IDCW — four different schemes, four
+    // different NAVs. The search endpoint returns every plan as a distinct
+    // { schemeCode, schemeName }; the latest endpoint returns that exact
+    // scheme's NAV. Both are public, no-auth, JSON, and go through the shared
+    // _httpGetJson (CapacitorHttp on native → no CORS).
+    // ---------------------------------------------------------------------
+
+    /**
+     * Wrap a search fetcher with a session cache + in-flight dedup, so repeated
+     * or back-spaced queries (and two concurrent identical lookups) cost zero
+     * extra network calls. `key` namespaces caches per source ("mf" vs "yh").
+     * Failures are NOT cached — a transient 429 shouldn't poison the key.
+     */
+    async _cachedSearch(key, fetcher) {
+        if (this._searchCache.has(key)) return this._searchCache.get(key);
+        if (this._searchInFlight.has(key)) return this._searchInFlight.get(key);
+
+        const p = (async () => fetcher())();
+        this._searchInFlight.set(key, p);
+        try {
+            const result = await p;
+            // Simple FIFO cap so the Map can't grow unbounded over a session.
+            if (this._searchCache.size >= this._SEARCH_CACHE_MAX) {
+                this._searchCache.delete(this._searchCache.keys().next().value);
+            }
+            this._searchCache.set(key, result);
+            return result;
+        } finally {
+            this._searchInFlight.delete(key);
+        }
+    },
+
+    /**
+     * Search mutual-fund schemes by name. Returns up to `limit` results, each
+     * { schemeCode, schemeName } — schemeName includes the plan/option so the
+     * user can pick the exact Direct/Regular + Growth/IDCW variant.
+     */
+    async searchMutualFunds(query, limit = 25) {
+        const q = (query || '').trim();
+        if (q.length < 3) return [];   // mfapi needs a few chars to be useful
+        return this._cachedSearch(`mf:${q.toLowerCase()}:${limit}`, async () => {
+            const url = `https://api.mfapi.in/mf/search?q=${encodeURIComponent(q)}`;
+            const data = await this._httpGetJson(url);
+            if (!Array.isArray(data)) return [];
+            return data.slice(0, limit).map(r => ({
+                schemeCode: r.schemeCode,
+                schemeName: r.schemeName,
+            }));
+        });
+    },
+
+    /**
+     * Latest NAV for a scheme code. Returns { nav, date, schemeName } or throws.
+     * NAV is parsed to a Number (mfapi returns it as a string like "104.80200").
+     */
+    async fetchMfNav(schemeCode) {
+        if (!schemeCode) throw new Error('No scheme code');
+        const url = `https://api.mfapi.in/mf/${encodeURIComponent(schemeCode)}/latest`;
+        const data = await this._httpGetJson(url);
+        const latest = data?.data?.[0];
+        const nav = latest ? parseFloat(latest.nav) : NaN;
+        if (!nav || isNaN(nav) || nav <= 0) throw new Error('NAV not found for scheme');
+        return {
+            nav: Math.round(nav * 10000) / 10000,   // NAV is 4-decimal
+            date: latest.date || null,
+            schemeName: data?.meta?.scheme_name || null,
+        };
+    },
+
+    /**
+     * Refresh a sharePrices record that represents an MF (has .schemeCode) from
+     * mfapi.in. Mirrors _updateShareFromMarket's contract: mutates the record
+     * in place (price, lastUpdated) and returns the new NAV, or throws.
+     */
+    async _updateMfNavFromMarket(record) {
+        const { nav } = await this.fetchMfNav(record.schemeCode);
+        record.price = nav;
+        record.currency = 'INR';
+        record.lastUpdated = new Date().toISOString();
+        return nav;
+    },
+
     /**
      * Single Yahoo Finance quote fetch for a ticker. Tries query1 then query2
      * (the two hosts fail independently under load / rate-limiting). Returns
@@ -3029,6 +3528,54 @@ Respond ONLY with valid JSON (no markdown, no explanation):
     },
 
     /**
+     * Rich share search for the add/edit picker. Same Yahoo endpoint as
+     * searchYahooSymbol but returns { symbol, name, exchange, currency } so the
+     * dropdown can show the company name and exchange, and a pick can store the
+     * exact ticker + currency up front (instead of guessing on first reload).
+     * Currency is inferred from the symbol suffix (.NS/.BO → INR, else USD).
+     */
+    async searchShares(query, limit = 10) {
+        const qq = (query || '').trim();
+        if (qq.length < 2) return [];
+        return this._cachedSearch(`yh:${qq.toLowerCase()}:${limit}`, async () => {
+            const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(qq)}&quotesCount=${limit}&newsCount=0`;
+            const data = await this._httpGetJson(url);
+            const rank = (sym) => sym.endsWith('.NS') ? 0 : sym.endsWith('.BO') ? 1 : (sym.includes('.') ? 3 : 2);
+            return (data?.quotes || [])
+                .filter(q => q.symbol && (q.quoteType === 'EQUITY' || q.quoteType === 'ETF'))
+                .sort((a, b) => rank(a.symbol) - rank(b.symbol))
+                .slice(0, limit)
+                .map(q => ({
+                    symbol: q.symbol,
+                    // longname is the clean human form ("Infosys Limited"); shortname
+                    // is often ALL-CAPS or truncated ("INFOSYS LTD CEDEAR (1 REP 1 ADR").
+                    // Prefer longname, fall back to a tidied shortname, then symbol.
+                    name: this._cleanShareName(q.longname || q.shortname || q.symbol),
+                    exchange: q.exchDisp || q.exchange || '',
+                    // INR for Indian listings, USD otherwise. Reload re-confirms the
+                    // real currency from the quote, so this is just a sensible start.
+                    currency: (q.symbol.endsWith('.NS') || q.symbol.endsWith('.BO')) ? 'INR' : 'USD',
+                }));
+        });
+    },
+
+    /**
+     * Tidy a raw vendor company name into something readable for the name field:
+     * collapse whitespace, strip trailing junk, and Title-Case anything that
+     * arrived ALL-CAPS (leaving mixed-case names like "Infosys Limited" alone).
+     */
+    _cleanShareName(raw) {
+        let s = String(raw || '').replace(/\s+/g, ' ').trim();
+        if (!s) return s;
+        // ALL-CAPS (no lowercase letters) → Title Case, but keep short tokens
+        // like LTD/ETF/NSE readable. Mixed-case names are left untouched.
+        if (!/[a-z]/.test(s)) {
+            s = s.toLowerCase().replace(/\b([a-z])([a-z']*)/g, (m, a, b) => a.toUpperCase() + b);
+        }
+        return s;
+    },
+
+    /**
      * Update one share's price from the market, robustly.
      *
      * Strategy (stops at first ticker that returns a price):
@@ -3040,6 +3587,13 @@ Respond ONLY with valid JSON (no markdown, no explanation):
      * candidate fails. Mutates `share` but does NOT save — caller saves.
      */
     async _updateShareFromMarket(share) {
+        // MFs (records with a scheme code) refresh NAV via mfapi.in, not Yahoo.
+        // All reload loops funnel through here, so this one branch covers the
+        // global reload, the per-row reload, and the one-click portfolio reload.
+        if (share.schemeCode) {
+            return this._updateMfNavFromMarket(share);
+        }
+
         const candidates = [];
         const push = (t) => { if (t && !candidates.includes(t)) candidates.push(t); };
 
