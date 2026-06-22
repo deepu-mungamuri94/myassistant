@@ -341,7 +341,12 @@ const FinancialHealth = {
         const nwColor = nwIsPositive ? 'emerald' : 'rose';
         const nwSign = nwIsPositive ? '' : '-';
 
-        const efBadge = {
+        // With no essentials data the coverage is unknowable ('—'); the status
+        // would otherwise default to 'critical' and show a misleading red badge.
+        // Surface a neutral 'Set up' chip instead until there's data to grade.
+        const efBadge = ef.monthlyEssentials === 0
+            ? { label: 'Set up', cls: 'bg-white/25' }
+            : {
             critical: { label: 'Critical', cls: 'bg-rose-500' },
             low:      { label: 'Low',      cls: 'bg-amber-500' },
             good:     { label: 'Healthy',  cls: 'bg-emerald-500' },
@@ -361,7 +366,7 @@ const FinancialHealth = {
         const riskPct = nw.risk?.percentOfNetWorth || 0;
         const showRisk = nw.total > 0 && (nw.risk?.amount || 0) > 0;
         const riskBadge = showRisk
-            ? `<span class="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-semibold" title="Market risk: ${riskPct.toFixed(0)}% of net worth in equities">Risk: ${riskPct.toFixed(0)}%</span>`
+            ? `<span class="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-semibold" title="Market risk: ${riskPct.toFixed(0)}% of net worth in equities">${riskPct.toFixed(0)}% equity</span>`
             : '';
 
         return `
@@ -388,7 +393,7 @@ const FinancialHealth = {
                      class="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg p-3 text-white shadow-lg flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
                     <div class="flex items-center justify-between mb-1">
                         <div class="text-xs font-medium opacity-90">Emergency Fund</div>
-                        <span class="text-[9px] ${efBadge.cls} px-1.5 py-0.5 rounded font-semibold">${efBadge.label}</span>
+                        <span class="text-[11px] ${efBadge.cls} px-1.5 py-0.5 rounded font-semibold">${efBadge.label}</span>
                     </div>
                     <div class="flex-1 flex items-center justify-center py-1">
                         <div class="text-2xl font-bold leading-tight">${efMonthsDisplay}</div>
@@ -434,7 +439,7 @@ const FinancialHealth = {
                 <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] flex flex-col overflow-hidden">
                     <div class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 flex items-center justify-between flex-shrink-0">
                         <h3 class="text-base font-bold">📊 Net Worth Breakdown</h3>
-                        <button onclick="document.getElementById('net-worth-modal').remove()" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center">×</button>
+                        <button onclick="document.getElementById('net-worth-modal').remove()" aria-label="Close" title="Close" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center">×</button>
                     </div>
                     <div class="p-4 overflow-y-auto flex-1 space-y-3">
 
@@ -566,12 +571,12 @@ const FinancialHealth = {
                 const typeLabel = inv.type === 'FD' ? 'FD'
                     : inv.type === 'EPF' ? 'EPF'
                     : inv.type === 'GOLD' ? 'Gold'
-                    : inv.type === 'MF' ? `MF · ${inv.mfCategory || 'EQUITY'}`
+                    : inv.type === 'MF' ? `MF · ${({ EQUITY: 'Equity', HYBRID: 'Hybrid', DEBT: 'Debt', LIQUID: 'Liquid', ELSS: 'Tax-saver (ELSS)' })[inv.mfCategory] || inv.mfCategory || 'Equity'}`
                     : 'Shares';
                 return `
                     <div class="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-b-0 text-xs">
                         <div class="flex items-center gap-2 min-w-0">
-                            <span class="text-[9px] uppercase tracking-wide bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-semibold flex-shrink-0">${typeLabel}</span>
+                            <span class="text-[11px] uppercase tracking-wide bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-semibold flex-shrink-0">${typeLabel}</span>
                             <span class="text-gray-700 truncate">${Utils.escapeHtml(inv.name)}</span>
                         </div>
                         <span class="font-medium text-gray-800 flex-shrink-0">${fmt(value)}</span>
@@ -587,7 +592,7 @@ const FinancialHealth = {
         const cs = window.DB.cashSavings || { current: 0, history: [], lastUpdatedAt: 0 };
         const lastUpdatedText = cs.lastUpdatedAt
             ? new Date(cs.lastUpdatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-            : 'never';
+            : 'not set yet';
 
         const historyRows = (cs.history && cs.history.length > 0)
             ? cs.history.slice().reverse().map(h => `
@@ -602,7 +607,7 @@ const FinancialHealth = {
             <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden">
                 <div class="bg-gradient-to-r from-cyan-600 to-blue-600 text-white p-4 flex items-center justify-between flex-shrink-0">
                     <h3 class="text-base font-bold">🛡️ Emergency Fund</h3>
-                    <button onclick="document.getElementById('emergency-fund-modal').remove()" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center">×</button>
+                    <button onclick="document.getElementById('emergency-fund-modal').remove()" aria-label="Close" title="Close" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center">×</button>
                 </div>
                 <div class="p-4 overflow-y-auto flex-1 space-y-3">
 

@@ -492,6 +492,19 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
     },
 
     /**
+     * Tapped the Terms button on a card that has no benefits yet. Explain the
+     * next step instead of doing nothing: configure AI, or hit Update to fetch.
+     */
+    promptEnableAIForBenefits(cardId) {
+        const aiReady = window.AIProvider && window.AIProvider.isConfigured();
+        if (aiReady) {
+            window.Utils.showInfo('No benefits yet — tap “Update” to fetch this card’s reward terms.');
+        } else {
+            window.Utils.showInfo('Enable AI in Settings to fetch card benefits, then tap “Update”.');
+        }
+    },
+
+    /**
      * Manually refresh benefits for a card
      */
     async refreshBenefits(cardId) {
@@ -1506,10 +1519,10 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                             </svg>
                             EMIs (${card.emis && card.emis.filter(e => !e.completed).length || 0})
                         </button>
-                        <button onclick="${card.benefits ? `Cards.showBenefitsModal('${cardIdStr}')` : 'void(0)'}"
-                                class="flex-1 text-xs ${card.benefits ? 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700' : 'bg-gray-400 cursor-not-allowed opacity-60'} text-white px-3 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 shadow-md"
-                                title="${card.benefits ? 'View terms' : 'No terms fetched yet'}"
-                                ${!card.benefits ? 'disabled' : ''}>
+                        <button onclick="${card.benefits ? `Cards.showBenefitsModal('${cardIdStr}')` : `Cards.promptEnableAIForBenefits('${cardIdStr}')`}"
+                                class="flex-1 text-xs ${card.benefits ? 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700' : 'bg-gray-400 hover:bg-gray-500 opacity-80'} text-white px-3 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 shadow-md"
+                                title="${card.benefits ? 'View terms' : 'No terms fetched yet — tap for how to fetch'}"
+                                aria-label="${card.benefits ? 'View card benefit terms' : 'How to fetch card benefit terms'}">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -2680,9 +2693,9 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 </div>
                 ` : ''}
                 <div class="flex-1 overflow-y-auto">${rowsHtml}</div>
-                <div class="border-t flex">
-                    <button onclick="Cards.resetAllBillsFromManager('${cardIdStr}')" class="flex-1 py-2.5 text-red-600 hover:bg-red-50 text-sm font-medium" title="Delete every bill record on this card and zero outstanding">🗑 Reset All Bills</button>
-                    <button onclick="document.getElementById('bills-manager-modal').remove()" class="flex-1 py-2.5 text-gray-500 hover:bg-gray-50 text-sm">Close</button>
+                <div class="border-t flex items-center justify-between px-3 py-2">
+                    <button onclick="Cards.resetAllBillsFromManager('${cardIdStr}')" class="text-[11px] text-red-500 hover:text-red-700 hover:underline" title="Delete every bill record on this card and zero outstanding">🗑 Reset all bills</button>
+                    <button onclick="document.getElementById('bills-manager-modal').remove()" class="px-4 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg">Close</button>
                 </div>
             </div>
         `;
@@ -3194,7 +3207,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                                 📅 ${Utils.escapeHtml(emi.firstEmiDate || emi.date)} → ${Utils.escapeHtml(endDateStr)}
                             </p>
                         </div>
-                        ${totalAmount ? `<p class="text-xs font-semibold text-blue-700 ml-2">₹${Utils.formatIndianNumber(totalAmount)}</p>` : ''}
+                        ${totalAmount ? `<p class="text-xs font-semibold text-blue-700 ml-2">₹${Utils.formatIndianNumber(totalAmount)}</p>` : `<p class="text-[11px] font-medium text-amber-600 ml-2" title="This EMI has no monthly amount — edit it to set one">amount not set</p>`}
                     </div>
                     <p class="text-xs text-gray-600 mt-1">Progress: ${emi.paidCount}/${emi.totalCount} EMIs ${emi.emiAmount ? `(₹${Utils.formatIndianNumber(emi.emiAmount)}/month)` : ''}</p>
                     <div class="w-full bg-gray-200/60 rounded-full h-1.5 mt-1">

@@ -798,7 +798,7 @@ const Income = {
                             <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(ctc)}</p>
                         </div>
                         <div>
-                            <p class="text-xs opacity-90">Income Credit (${currentYear})</p>
+                            <p class="text-xs opacity-90">Income Credit (${currentYear}) · est.</p>
                             <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(aggregated.totalNetPay))}</p>
                         </div>
                     </div>
@@ -1185,6 +1185,10 @@ const Income = {
      */
     renderPayslipsTab(yearlyPayslips, bonus) {
         return `
+            <div class="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p class="text-xs font-semibold text-blue-800">Estimated figures</p>
+                <p class="text-[11px] text-blue-700 mt-0.5 leading-snug">Calculated from your CTC, not actual payslips. Assumes Basic = 40% of CTC, bonus split 25% mid-year / 75% year-end, and Professional Tax of ₹200/month. Your real payslip may differ.</p>
+            </div>
             <div class="space-y-2">
                 ${yearlyPayslips.map(monthlySlip => {
                     // Determine border and background color
@@ -1602,12 +1606,12 @@ const Income = {
                     <p class="text-xs text-gray-600">₹${Utils.formatIndianNumber(slab.min)} - ${slab.max === Infinity ? 'Above' : '₹' + Utils.formatIndianNumber(slab.max)} @ ${slab.rate}%</p>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="Income.editTaxSlab(${index})" class="text-blue-600 hover:text-blue-800 p-1" title="Edit">
+                    <button onclick="Income.editTaxSlab(${index})" class="text-blue-600 hover:text-blue-800 p-2" title="Edit" aria-label="Edit tax slab">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                         </svg>
                     </button>
-                    <button onclick="Income.deleteTaxSlab(${index})" class="text-red-600 hover:text-red-800 p-1" title="Delete">
+                    <button onclick="Income.deleteTaxSlab(${index})" class="text-red-600 hover:text-red-800 p-2" title="Delete" aria-label="Delete tax slab">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
                         </svg>

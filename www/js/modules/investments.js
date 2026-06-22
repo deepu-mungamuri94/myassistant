@@ -92,7 +92,11 @@ const Investments = {
         if (!window.DB.sharePrices) {
             window.DB.sharePrices = [];
         }
-        
+
+        // Heal any holding whose price record is missing or stuck inactive, so
+        // reload fetches it and the portfolio shows live (not stale) prices.
+        this._reconcileSharePrices();
+
         // Initialize current month as expanded by default
         const now = new Date();
         const currentMonthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
@@ -159,6 +163,31 @@ const Investments = {
         else if (ageDays < 365) label = `${Math.floor(ageDays / 30)} mo ago`;
         else label = `${Math.floor(ageDays / 365)}y+ ago`;
         return { hasData: true, ageDays, isStale, label };
+    },
+
+    /**
+     * Small "as of <age>" pill for a holding's price/NAV, from its sharePrices
+     * `lastUpdated`. Makes it clear the figure is the last fetched value, not
+     * necessarily live — and turns amber when older than RATE_STALE_DAYS so a
+     * weeks-old price isn't read as current. Returns '' when never fetched.
+     */
+    _priceAsOfPill(record) {
+        const ts = record && record.lastUpdated;
+        if (!ts) return '';
+        const ageMs = Date.now() - new Date(ts).getTime();
+        const ageDays = Math.max(0, Math.floor(ageMs / (1000 * 60 * 60 * 24)));
+        let label;
+        if (ageDays === 0) {
+            const hours = Math.floor(ageMs / (1000 * 60 * 60));
+            label = hours < 1 ? 'just now' : `${hours}h ago`;
+        } else if (ageDays === 1) label = 'yesterday';
+        else if (ageDays < 30) label = `${ageDays}d ago`;
+        else if (ageDays < 365) label = `${Math.floor(ageDays / 30)}mo ago`;
+        else label = `${Math.floor(ageDays / 365)}y+ ago`;
+        const stale = ageDays > this.RATE_STALE_DAYS;
+        const cls = stale ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500';
+        const tip = stale ? `Price is ${ageDays} days old — tap reload to refresh` : `Last updated ${label}`;
+        return `<span class="text-[9px] ${cls} px-1.5 py-0.5 rounded font-medium" title="${tip}">${stale ? '⚠ ' : ''}as of ${label}</span>`;
     },
 
     /**
@@ -413,7 +442,11 @@ const Investments = {
      */
     renderPortfolioTab(investments, exchangeRate, goldRate, sharePrices) {
         if (investments.length === 0) {
-            return `<div class="text-center py-8 text-gray-500">No investments yet</div>`;
+            return `<div class="text-center py-8 text-gray-500">
+                <div class="text-3xl mb-2">📊</div>
+                <p class="text-sm">No holdings here yet</p>
+                <p class="text-xs text-gray-400 mt-1">Tap the + button to add stocks, funds, gold, FDs or EPF.</p>
+            </div>`;
         }
 
         // Group by type
@@ -487,8 +520,12 @@ const Investments = {
             const sharePrice = sharePrices.find(sp => sp.name === inv.name && sp.active);
             const currentPrice = sharePrice ? sharePrice.price : inv.price;
             const currencySymbol = (sharePrice?.currency || inv.currency) === 'USD' ? '$' : '₹';
-            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Price:</span> ${currencySymbol}${Utils.formatIndianNumber(parseFloat(currentPrice).toFixed(2))}</span>`;
+            const sharePill = this._priceAsOfPill(sharePrice);
+            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">Price:</span> ${currencySymbol}${Utils.formatIndianNumber(parseFloat(currentPrice).toFixed(2))}</span>${sharePill ? ' ' + sharePill : ''}`;
             line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Qty:</span> ${inv.quantity}</span>`;
+            if (inv.ticker) {
+                line3 += `<span class="text-[11px] text-blue-600 font-medium" title="Price tracked from ${Utils.escapeHtml(inv.ticker)}">· ${Utils.escapeHtml(inv.ticker)}</span>`;
+            }
             if ((sharePrice?.currency || inv.currency) === 'USD') {
                 const usdAmount = currentPrice * inv.quantity;
                 line3 += `<span class="text-gray-600 text-xs">$${Utils.formatIndianNumber(usdAmount.toFixed(2))}</span>`;
@@ -498,7 +535,8 @@ const Investments = {
             // include the sub-category, and skip USD logic (INR-only).
             const navRecord = sharePrices.find(sp => sp.name === inv.name && sp.active);
             const currentNav = navRecord ? navRecord.price : inv.price;
-            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">NAV:</span> ₹${Utils.formatIndianNumber(parseFloat(currentNav).toFixed(4))}</span>`;
+            const navPill = this._priceAsOfPill(navRecord);
+            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">NAV:</span> ₹${Utils.formatIndianNumber(parseFloat(currentNav).toFixed(4))}</span>${navPill ? ' ' + navPill : ''}`;
             line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Units:</span> ${inv.quantity}</span>`;
             if (inv.mfCategory) {
                 line3 += `<span class="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded font-semibold uppercase">${inv.mfCategory}</span>`;
@@ -511,7 +549,9 @@ const Investments = {
             line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Interest:</span> ${inv.interestRate}%</span>`;
             line3 += `<span class="text-gray-600 text-xs"><span class="font-bold">End:</span> ${Utils.formatLocalDate(new Date(inv.endDate))}</span>`;
         } else if (inv.type === 'EPF') {
-            line2 = inv.description ? `<span class="text-gray-600 text-xs">${inv.description}</span>` : '';
+            line2 = inv.description
+                ? `<span class="text-gray-600 text-xs">${inv.description}</span>`
+                : `<span class="text-gray-600 text-xs"><span class="font-bold">Balance:</span> ₹${Utils.formatIndianNumber(inv.amount)}</span>`;
             line3 = `<span class="text-gray-600 text-xs"></span>`;
         }
 
@@ -520,7 +560,7 @@ const Investments = {
         // Edit available for every type now. FDs especially benefit since
         // users may need to flip the emergency-fund flag on existing entries.
         const editButton = `
-            <button onclick="Investments.editInvestment(${inv.id}, false)" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
+            <button onclick="Investments.editInvestment(${inv.id}, false)" class="text-blue-600 hover:text-blue-800 p-2 -m-1" title="Edit" aria-label="Edit ${Utils.escapeHtml(inv.name)}">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                 </svg>
@@ -536,7 +576,7 @@ const Investments = {
                     </div>
                     <div class="flex gap-1.5">
                         ${editButton}
-                        <button onclick="Investments.confirmDelete(${inv.id}, false)" class="text-red-500 hover:text-red-700 p-0.5" title="Delete">
+                        <button onclick="Investments.confirmDelete(${inv.id}, false)" class="text-red-500 hover:text-red-700 p-2 -m-1" title="Delete" aria-label="Delete ${Utils.escapeHtml(inv.name)}">
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
                             </svg>
@@ -611,7 +651,11 @@ const Investments = {
         `;
 
         if (filtered.length === 0) {
-            html += `<div class="text-center py-12 text-gray-500">No monthly investments found</div>`;
+            html += `<div class="text-center py-12 text-gray-500">
+                <div class="text-3xl mb-2">🗓️</div>
+                <p class="text-sm">No monthly investments in this view</p>
+                <p class="text-xs text-gray-400 mt-1">Add one with the + button, or widen the date filter above.</p>
+            </div>`;
             html += `</div></div>`; // Close tab content and container
             container.innerHTML = html;
             return;
@@ -780,11 +824,13 @@ const Investments = {
             line3 = `<span class="text-gray-600 text-xs"><span class="font-bold">Qty:</span> ${inv.quantity}gm</span>`;
             line3 += `<span class="text-gray-600 text-xs">${Utils.formatLocalDate(new Date(inv.date))}</span>`;
         } else if (inv.type === 'FD') {
-            line2 = `<span class="text-gray-600 text-xs"></span>`;
-            line3 = `<span class="text-gray-600 text-xs"></span>`;
+            line2 = `<span class="text-gray-600 text-xs"><span class="font-bold">FD:</span> ₹${Utils.formatIndianNumber(inv.amount)}</span>`;
+            line3 = `<span class="text-gray-600 text-xs">${inv.interestRate ? `<span class="font-bold">${inv.interestRate}%</span>` : ''}${inv.tenure ? ` · ${inv.tenure}mo` : ''}</span>`;
             line3 += `<span class="text-gray-600 text-xs">${Utils.formatLocalDate(new Date(inv.date))}</span>`;
         } else if (inv.type === 'EPF') {
-            line2 = inv.description ? `<span class="text-gray-600 text-xs">${inv.description}</span>` : '';
+            line2 = inv.description
+                ? `<span class="text-gray-600 text-xs">${inv.description}</span>`
+                : `<span class="text-gray-600 text-xs"><span class="font-bold">EPF:</span> ₹${Utils.formatIndianNumber(inv.amount)}</span>`;
             line3 = `<span class="text-gray-600 text-xs">${Utils.formatLocalDate(new Date(inv.date))}</span>`;
         }
 
@@ -794,7 +840,7 @@ const Investments = {
         // qty / price — those stay fixed). Monthly entries are independent of
         // the portfolio, so this just re-attributes the entry to a month.
         const editButton = `
-            <button onclick="Investments.openEditMonthlyDatesModal(${inv.id})" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit date / budget month">
+            <button onclick="Investments.openEditMonthlyDatesModal(${inv.id})" class="text-blue-600 hover:text-blue-800 p-2 -m-1" title="Edit date / budget month" aria-label="Edit date or budget month for ${Utils.escapeHtml(inv.name)}">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
@@ -810,7 +856,7 @@ const Investments = {
                     </div>
                     <div class="flex gap-1.5">
                         ${editButton}
-                        <button onclick="Investments.confirmDelete(${inv.id}, true)" class="text-red-500 hover:text-red-700 p-0.5" title="Delete">
+                        <button onclick="Investments.confirmDelete(${inv.id}, true)" class="text-red-500 hover:text-red-700 p-2 -m-1" title="Delete" aria-label="Delete ${Utils.escapeHtml(inv.name)}">
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
                             </svg>
@@ -1145,6 +1191,7 @@ const Investments = {
         this._selectedTicker = null;       // no share ticker picked yet
         this._selectedExchange = null;
         document.getElementById('investment-modal-title').textContent = 'Add Investment';
+        document.getElementById('investment-save-btn').textContent = 'Add';
         document.getElementById('investment-id').value = '';
         document.getElementById('investment-editing').value = 'false';
         document.getElementById('investment-type').value = '';
@@ -1759,7 +1806,10 @@ const Investments = {
             if (current !== query) return;
 
             if (results.length === 0) {
-                box.innerHTML = `<div class="px-3 py-2 text-sm text-gray-400">No matching funds. Check the spelling.</div>`;
+                box.innerHTML = `<div class="px-3 py-3 text-sm text-gray-500 flex items-start gap-2">
+                    <span class="text-base leading-none">🔍</span>
+                    <span>No funds match “${Utils.escapeHtml(query)}”. Try the AMC name (e.g. “DSP”, “Axis”) or check the spelling.</span>
+                </div>`;
                 box.classList.remove('hidden');
                 return;
             }
@@ -1773,7 +1823,10 @@ const Investments = {
             box.classList.remove('hidden');
         } catch (e) {
             console.warn('MF search failed:', e.message);
-            box.innerHTML = `<div class="px-3 py-2 text-sm text-red-500">Search failed — check your connection.</div>`;
+            box.innerHTML = `<div class="px-3 py-2.5 flex items-center justify-between gap-2">
+                <span class="text-sm text-red-600 flex items-center gap-1.5"><span>⚠</span> Network error — couldn’t reach the fund list.</span>
+                <button type="button" onclick="Investments.onMfNameInput(document.getElementById('investment-name').value)" class="text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 px-2 py-1 rounded">Retry</button>
+            </div>`;
             box.classList.remove('hidden');
         }
     },
@@ -1789,6 +1842,22 @@ const Investments = {
         const saveBtn = document.getElementById('investment-save-btn');
         const spinner = document.getElementById('investment-price-spinner');
         const nameInput = document.getElementById('investment-name');
+        // Escape hatch: a stuck/slow fetch must never trap the user in a locked
+        // form. Arm an 8s timeout that re-enables manual entry; clear it on any
+        // OFF transition (the success/error paths already call _setPriceFetching
+        // (false), so a later result still fills the value if it arrives).
+        if (this._priceFetchTimeout) {
+            clearTimeout(this._priceFetchTimeout);
+            this._priceFetchTimeout = null;
+        }
+        if (on) {
+            this._priceFetchTimeout = setTimeout(() => {
+                this._priceFetchTimeout = null;
+                this._setPriceFetching(false, label);
+                const p = document.getElementById('investment-price');
+                if (p && !p.value) p.placeholder = 'Taking too long — enter it manually';
+            }, 8000);
+        }
         if (priceInput) {
             priceInput.readOnly = on;
             priceInput.classList.toggle('bg-gray-100', on);
@@ -1898,7 +1967,17 @@ const Investments = {
             this._renderShareSuggestions(box, localNames, remote, false);
         } catch (e) {
             console.warn('Share search failed:', e.message);
-            // Network failed — keep local matches usable, drop the spinner.
+            // Network failed — keep local matches usable, drop the spinner. If
+            // there were no local matches either, surface an actionable retry
+            // instead of leaving the box silently empty/hidden.
+            if (!localNames.length) {
+                box.innerHTML = `<div class="px-3 py-2.5 flex items-center justify-between gap-2">
+                    <span class="text-sm text-red-600 flex items-center gap-1.5"><span>⚠</span> Network error — couldn’t reach market search.</span>
+                    <button type="button" onclick="Investments.onShareNameInput(document.getElementById('investment-name').value)" class="text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 px-2 py-1 rounded">Retry</button>
+                </div>`;
+                box.classList.remove('hidden');
+                return;
+            }
             this._renderShareSuggestions(box, localNames, [], false);
         }
     },
@@ -1936,8 +2015,13 @@ const Investments = {
                 </div>
             `).join('');
         } else if (!localNames.length) {
-            box.classList.add('hidden');
-            box.innerHTML = '';
+            // Not loading, no remote hits, no saved names: tell the user plainly
+            // and remind them they can still type any name to save it.
+            box.innerHTML = `<div class="px-3 py-3 text-sm text-gray-500 flex items-start gap-2">
+                <span class="text-base leading-none">🔍</span>
+                <span>No market matches. Type the full name to save it manually — price reload will try to link it later.</span>
+            </div>`;
+            box.classList.remove('hidden');
             return;
         }
 
@@ -2248,8 +2332,15 @@ const Investments = {
             
             const amount = price * quantity;
             const inrAmount = currency === 'USD' ? amount * exchangeRate : amount;
-            
+
             amountDisplay.textContent = `₹${Utils.formatIndianNumber(Math.round(inrAmount))}`;
+            // For USD, surface the FX rate used (and flag it when stale) so the
+            // user knows the INR figure depends on a possibly-old rate.
+            if (currency === 'USD') {
+                const fresh = this.getRateFreshness(window.DB.exchangeRate);
+                amountDisplay.innerHTML = `₹${Utils.formatIndianNumber(Math.round(inrAmount))}`
+                    + ` <span class="text-[11px] font-medium ${fresh.isStale ? 'text-amber-700' : 'text-yellow-600'}" title="${fresh.hasData ? 'USD→INR updated ' + fresh.label : 'USD→INR rate never updated'}">@ ₹${exchangeRate.toFixed(2)}/USD${fresh.isStale ? ' ⚠ stale' : ''}</span>`;
+            }
         } else if (type === 'GOLD') {
             const quantity = parseFloat(document.getElementById('investment-quantity').value) || 0;
             const price = parseFloat(document.getElementById('investment-price').value) || 0;
@@ -2648,6 +2739,11 @@ const Investments = {
             existing.price = rounded;
             existing.currency = currency;
             existing.lastUpdated = new Date().toISOString();
+            // Re-activate: writing a price means a holding with this name exists
+            // again. Without this, a stock that was deleted (→ marked inactive)
+            // and later re-added stays inactive — so reload skips it AND the
+            // portfolio shows its stale entry price forever.
+            existing.active = true;
             if (schemeCode) existing.schemeCode = String(schemeCode);
             if (ticker) existing.ticker = ticker;
         } else {
@@ -2665,6 +2761,53 @@ const Investments = {
 
         window.DB.sharePrices = sharePrices;
         window.Storage.save();
+    },
+
+    /**
+     * Reconcile the sharePrices store against current holdings so prices stay
+     * fetchable and fresh. For every SHARES/MF holding:
+     *   - if it has no price record, create one (active) from its stored price
+     *     so reload can fetch a live value (covers old backups / imports);
+     *   - if its record exists but is inactive, re-activate it (it's held again).
+     * Also carries the holding's ticker/schemeCode onto the record if missing,
+     * so reload can resolve the symbol without a name search.
+     * Idempotent and only saves when something actually changed.
+     */
+    _reconcileSharePrices() {
+        const holdings = (window.DB.portfolioInvestments || [])
+            .filter(inv => inv.type === 'SHARES' || inv.type === 'MF');
+        if (holdings.length === 0) return;
+        const store = window.DB.sharePrices || (window.DB.sharePrices = []);
+        let changed = false;
+
+        // First holding per name wins for seeding price/ticker/currency.
+        const seen = new Set();
+        for (const inv of holdings) {
+            if (seen.has(inv.name)) continue;
+            seen.add(inv.name);
+            const rec = store.find(sp => sp.name === inv.name);
+            if (!rec) {
+                const isMf = inv.type === 'MF';
+                const newRec = {
+                    name: inv.name,
+                    price: isMf
+                        ? Math.round((parseFloat(inv.price) || 0) * 10000) / 10000
+                        : Math.round((parseFloat(inv.price) || 0) * 100) / 100,
+                    currency: inv.currency || 'INR',
+                    active: true,
+                    lastUpdated: inv.lastUpdated || null,
+                };
+                if (inv.schemeCode) newRec.schemeCode = String(inv.schemeCode);
+                if (inv.ticker) newRec.ticker = inv.ticker;
+                store.push(newRec);
+                changed = true;
+            } else {
+                if (!rec.active) { rec.active = true; changed = true; }
+                if (!rec.ticker && inv.ticker) { rec.ticker = inv.ticker; changed = true; }
+                if (!rec.schemeCode && inv.schemeCode) { rec.schemeCode = String(inv.schemeCode); changed = true; }
+            }
+        }
+        if (changed) window.Storage.save();
     },
 
     /**
@@ -2815,6 +2958,7 @@ const Investments = {
         this.editingInvestment = { ...investment, isMonthly };
         
         document.getElementById('investment-modal-title').textContent = 'Update Investment';
+        document.getElementById('investment-save-btn').textContent = 'Update';
         document.getElementById('investment-id').value = id;
         document.getElementById('investment-is-monthly').value = isMonthly ? 'true' : 'false';
         document.getElementById('investment-editing').value = 'true';

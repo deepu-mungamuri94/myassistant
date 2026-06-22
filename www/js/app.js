@@ -128,18 +128,11 @@ const App = {
                 window.Chat.updateWelcomeMessage();
             }
             
-            // Check if API key is configured
-            if (!window.DB.settings.geminiApiKey && !window.DB.settings.chatGptApiKey && !window.DB.settings.perplexityApiKey) {
-                setTimeout(() => {
-                    if (window.Utils) {
-                        window.Utils.showInfo('Welcome! Please configure your AI settings.');
-                    }
-                    setTimeout(() => {
-                        window.Navigation.openSettings();
-                    }, 1000);
-                }, 500);
-            }
-            
+            // AI keys are optional (set during onboarding or later in Settings).
+            // We intentionally do NOT force-open Settings on launch when keys are
+            // missing — the core app works without them, and the AI Advisor
+            // prompts to add a key only when the user actually opens it.
+
             // Setup global event handlers
             this.setupEventHandlers();
             
@@ -292,22 +285,22 @@ const App = {
                     setTimeout(() => pinInput.focus(), 300);
                 }
                 
-                // TEMPORARY: Always show biometric button for design validation
+                // Only reveal the biometric button when biometrics are enabled
+                // AND actually available on this device (mirror first-launch path).
                 const bioSection = document.getElementById('biometric-unlock-section');
-                if (bioSection) bioSection.classList.remove('hidden');
-                
-                // Try biometric if enabled
+                if (bioSection) bioSection.classList.add('hidden');
+
                 if (window.DB.security.biometricEnabled) {
-                    // const bioSection = document.getElementById('biometric-unlock-section');
-                    // if (bioSection) bioSection.classList.remove('hidden');
-                    
                     setTimeout(async () => {
                         try {
                             const isAvailable = await window.Security.isBiometricAvailable();
-                            if (isAvailable && window.unlockWithBiometric) {
-                                window.unlockWithBiometric().catch(() => {
-                                    console.log('ℹ️ Biometric cancelled');
-                                });
+                            if (isAvailable) {
+                                if (bioSection) bioSection.classList.remove('hidden');
+                                if (window.unlockWithBiometric) {
+                                    window.unlockWithBiometric().catch(() => {
+                                        console.log('ℹ️ Biometric cancelled');
+                                    });
+                                }
                             }
                         } catch (error) {
                             console.log('ℹ️ Biometric check failed:', error);

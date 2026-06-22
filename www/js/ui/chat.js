@@ -128,7 +128,15 @@ const Chat = {
         } catch (error) {
             const loadingElement = document.getElementById(loadingId);
             if (loadingElement) loadingElement.remove();
-            this.addMessage('assistant', `❌ Error: ${error.message}`);
+            // The provider layer throws a key-related message when no AI key is
+            // configured. Surface a friendly, actionable note instead of a raw
+            // "Error:" line (routing stays manual — we just point the way).
+            const isKeyError = /api key|key not configured|key configured|add (api )?keys/i.test(error.message || '');
+            if (isKeyError) {
+                this.addMessage('assistant', `🤖 **AI isn't set up yet**\n\nAdd a free or paid AI key to start chatting.\n\n📍 Go to Menu → AI Settings and add a key (Groq, Gemini, ChatGPT or Perplexity).`);
+            } else {
+                this.addMessage('assistant', `❌ Error: ${error.message}`);
+            }
             console.error('Chat error:', error);
         } finally {
             // Re-enable input and button
@@ -741,10 +749,36 @@ ${zeroResults ? `\nIMPORTANT: Zero results were found. Do NOT invent numbers. Te
     /**
      * Clear chat history
      */
-    clear() {
-        this.updateWelcomeMessage();
+    /**
+     * Explicit "Clear" button. Confirms first when there's history to lose —
+     * wiping a conversation is destructive and used to happen with no warning.
+     */
+    async clear() {
+        const hasHistory = Array.isArray(window.DB.chatHistory) && window.DB.chatHistory.length > 0;
+        if (!hasHistory) { this.updateWelcomeMessage(); return; }
+
+        let ok = true;
+        if (window.Utils && typeof window.Utils.confirm === 'function') {
+            ok = await window.Utils.confirm("This permanently clears the current conversation. Continue?", 'Clear conversation?');
+        } else {
+            ok = confirm('Clear this conversation? This can\'t be undone.');
+        }
+        if (!ok) return;
+
         window.DB.chatHistory = [];
         window.Storage.save();
+        this.updateWelcomeMessage();
+    },
+
+    /**
+     * Fired when the user changes the Context dropdown. Switching context must
+     * NOT destroy the conversation (it silently did before). We only refresh
+     * the welcome hint when the thread is empty; an ongoing conversation is
+     * preserved so a related follow-up question doesn't lose prior answers.
+     */
+    onContextSwitch() {
+        const hasHistory = Array.isArray(window.DB.chatHistory) && window.DB.chatHistory.length > 0;
+        if (!hasHistory) this.updateWelcomeMessage();
     },
 
     /**

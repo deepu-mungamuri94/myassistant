@@ -58,11 +58,13 @@ const Toast = {
                 this.dismissHandler = null;
             };
             
-            // Add event listeners after a small delay to prevent immediate dismissal
+            // Arm tap-to-dismiss after a delay long enough that the tap which
+            // triggered the error (or an in-flight tap) doesn't instantly close
+            // it before the user can read the message.
             setTimeout(() => {
                 document.addEventListener('click', this.dismissHandler, { once: true });
                 document.addEventListener('touchstart', this.dismissHandler, { once: true });
-            }, 100);
+            }, 500);
         }
         
         // Auto-hide after duration

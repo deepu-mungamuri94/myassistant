@@ -255,6 +255,20 @@ const RecurringExpenses = {
     },
 
     /**
+     * The effective due-day for a given month, clamped to that month's last day.
+     * A payment set for the 31st must fall on Feb 28/29, Apr 30, etc. — without
+     * this, `new Date(year, month-1, 31)` rolls over into the next month (Feb 31
+     * → Mar 3), landing the auto-added expense on the wrong date entirely.
+     * @param {number} day   1–31 as configured by the user
+     * @param {number} year
+     * @param {number} month 1–12
+     */
+    effectiveDay(day, year, month) {
+        const lastDay = new Date(year, month, 0).getDate(); // day 0 of next month
+        return Math.min(parseInt(day) || 1, lastDay);
+    },
+
+    /**
      * Get upcoming recurring expenses (due in current month but date not reached)
      */
     getUpcoming() {
@@ -274,9 +288,10 @@ const RecurringExpenses = {
                 return;
             }
             
-            // Check if date hasn't arrived yet
-            if (currentDay < recurring.day) {
-                const dueDate = new Date(currentYear, currentMonth - 1, recurring.day);
+            // Check if date hasn't arrived yet (clamp the day to this month).
+            const effDay = this.effectiveDay(recurring.day, currentYear, currentMonth);
+            if (currentDay < effDay) {
+                const dueDate = new Date(currentYear, currentMonth - 1, effDay);
                 upcoming.push({
                     ...recurring,
                     dueDate: Utils.formatLocalDate(dueDate)
@@ -308,9 +323,10 @@ const RecurringExpenses = {
                 return;
             }
             
-            // Show if date has passed or is today (whether added or not)
-            if (currentDay >= recurring.day) {
-                const dueDate = new Date(currentYear, currentMonth - 1, recurring.day);
+            // Show if date has passed or is today (clamp the day to this month).
+            const effDay = this.effectiveDay(recurring.day, currentYear, currentMonth);
+            if (currentDay >= effDay) {
+                const dueDate = new Date(currentYear, currentMonth - 1, effDay);
                 const wasAdded = recurring.addedToExpenses && recurring.addedToExpenses.includes(currentMonthKey);
                 completed.push({
                     ...recurring,
@@ -440,16 +456,18 @@ const RecurringExpenses = {
                         continue;
                     }
                     
-                    // Check if the due date has passed
-                    const dueDate = new Date(year, month - 1, recurring.day);
+                    // Check if the due date has passed (clamp the day to this
+                    // month so a "31st" payment lands on the last valid day).
+                    const effDay = this.effectiveDay(recurring.day, year, month);
+                    const dueDate = new Date(year, month - 1, effDay);
                     if (dueDate > today) {
                         continue; // Future date, don't add yet
                     }
-                    
+
                     const dueDateStr = Utils.formatLocalDate(dueDate);
-                    
+
                     // Skip if due date fell during a suspension period (works for any frequency)
-                    if (this._wasDueDateDuringSuspension(recurring, new Date(year, month - 1, recurring.day))) {
+                    if (this._wasDueDateDuringSuspension(recurring, dueDate)) {
                         continue;
                     }
                     
@@ -807,7 +825,16 @@ const RecurringExpenses = {
         const recurringExpenses = this.getAll();
         
         if (recurringExpenses.length === 0) {
-            list.innerHTML = '<p class="text-gray-500 text-center py-8">No recurring expenses yet. Add your first one!</p>';
+            list.innerHTML = `
+                <div class="text-center py-12">
+                    <div class="text-6xl mb-4">🔄</div>
+                    <p class="text-gray-500 text-sm mb-4">No recurring expenses yet</p>
+                    <button onclick="openRecurringExpenseModal()"
+                            class="px-6 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:shadow-lg transition-all transform hover:scale-105 font-semibold">
+                        + Add your first recurring expense
+                    </button>
+                </div>
+            `;
             return;
         }
         
@@ -852,6 +879,7 @@ const RecurringExpenses = {
                     <p class="text-[10px] opacity-80">${nextMonthName} • Expected recurring</p>
                 </div>
             </div>
+            ${suspendedExpenses.length > 0 ? `<p class="text-[11px] text-gray-500 -mt-2 mb-4">⏸ ${suspendedExpenses.length} suspended item${suspendedExpenses.length !== 1 ? 's' : ''} not included in the above estimates</p>` : ''}
         `;
         
         // Tab container (Active | Suspended) - like Loans
@@ -974,21 +1002,21 @@ const RecurringExpenses = {
                         <div class="flex justify-between items-start mb-2">
                             <div onclick="RecurringExpenses.showDetailsModal(${recurring.id})" class="flex items-center gap-2 flex-wrap cursor-pointer flex-1">
                                 ${recurring.paymentMethod ? this.getPaymentMethodIcon(recurring.paymentMethod) : ''}
-                                <h4 class="font-bold text-gray-800 text-sm">${Utils.escapeHtml(this.truncateName(recurring.name, 22))}</h4>
+                                <h4 class="font-bold text-gray-800 text-sm" title="${Utils.escapeHtml(recurring.name || '')}">${Utils.escapeHtml(this.truncateName(recurring.name, 22))}</h4>
                                 ${recurring.category ? `<span class="text-xs bg-orange-200 text-orange-800 px-1.5 py-0.5 rounded">${Utils.escapeHtml(recurring.category)}</span>` : ''}
                             </div>
                             <div class="flex gap-2 ml-4">
-                                    <button onclick="RecurringExpenses.showSuspendModal(${recurring.id})" class="text-amber-600 hover:text-amber-800 p-0.5" title="Suspend">
+                                    <button onclick="RecurringExpenses.showSuspendModal(${recurring.id})" class="text-amber-600 hover:text-amber-800 p-2" title="Suspend" aria-label="Suspend recurring expense">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
                                     </button>
-                                    <button onclick="openRecurringExpenseModal(${recurring.id})" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
+                                    <button onclick="openRecurringExpenseModal(${recurring.id})" class="text-blue-600 hover:text-blue-800 p-2" title="Edit" aria-label="Edit recurring expense">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                         </svg>
                                     </button>
-                                    <button onclick="RecurringExpenses.deleteWithConfirm(${recurring.id})" class="text-red-600 hover:text-red-800 p-0.5" title="Delete">
+                                    <button onclick="RecurringExpenses.deleteWithConfirm(${recurring.id})" class="text-red-600 hover:text-red-800 p-2" title="Delete" aria-label="Delete recurring expense">
                                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                         </svg>
@@ -1104,21 +1132,21 @@ const RecurringExpenses = {
                                     <div class="flex justify-between items-start mb-2">
                                         <div onclick="RecurringExpenses.showDetailsModal(${recurring.id})" class="flex items-center gap-2 flex-wrap cursor-pointer flex-1">
                                             ${recurring.paymentMethod ? this.getPaymentMethodIcon(recurring.paymentMethod) : ''}
-                                            <h4 class="font-bold text-gray-800 text-sm">${Utils.escapeHtml(this.truncateName(recurring.name, 22))}</h4>
+                                            <h4 class="font-bold text-gray-800 text-sm" title="${Utils.escapeHtml(recurring.name || '')}">${Utils.escapeHtml(this.truncateName(recurring.name, 22))}</h4>
                                             ${recurring.category ? `<span class="text-xs bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded">${Utils.escapeHtml(recurring.category)}</span>` : ''}
                                         </div>
                                         <div class="flex gap-2 ml-4">
-                                            <button onclick="RecurringExpenses.resume(${recurring.id}); RecurringExpenses.render(); Utils.showSuccess('Resumed!');" class="text-green-600 hover:text-green-800 p-0.5" title="Resume">
+                                            <button onclick="RecurringExpenses.resume(${recurring.id}); RecurringExpenses.render(); Utils.showSuccess('Resumed!');" class="text-green-600 hover:text-green-800 p-2" title="Resume" aria-label="Resume recurring expense">
                                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                                     <path d="M8 5v14l11-7z"/>
                                                 </svg>
                                             </button>
-                                            <button onclick="openRecurringExpenseModal(${recurring.id})" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit">
+                                            <button onclick="openRecurringExpenseModal(${recurring.id})" class="text-blue-600 hover:text-blue-800 p-2" title="Edit" aria-label="Edit recurring expense">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                                 </svg>
                                             </button>
-                                            <button onclick="RecurringExpenses.deleteWithConfirm(${recurring.id})" class="text-red-600 hover:text-red-800 p-0.5" title="Delete">
+                                            <button onclick="RecurringExpenses.deleteWithConfirm(${recurring.id})" class="text-red-600 hover:text-red-800 p-2" title="Delete" aria-label="Delete recurring expense">
                                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                                 </svg>

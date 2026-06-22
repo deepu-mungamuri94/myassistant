@@ -33,7 +33,9 @@ const Utils = {
      * Format currency in Indian Rupees
      */
     formatCurrency(amount) {
-        return `₹${parseFloat(amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        const number = parseFloat(amount);
+        if (isNaN(number)) return '₹0';
+        return `₹${number.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
     },
 
     /**

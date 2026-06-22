@@ -520,7 +520,7 @@
                     <div class="flex justify-between items-center">
                         <div class="flex items-center gap-2">
                             <span class="text-sm font-medium text-purple-800">Context:</span>
-                            <select id="chat-mode" onchange="Chat.updateWelcomeMessage(); Chat.clear();" class="px-3 py-1.5 bg-white text-purple-700 rounded-lg text-sm font-semibold border-2 border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all">
+                            <select id="chat-mode" onchange="Chat.onContextSwitch()" class="px-3 py-1.5 bg-white text-purple-700 rounded-lg text-sm font-semibold border-2 border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all">
                                 <option value="cards">💳 Cards</option>
                                 <option value="general">💬 General</option>
                                 <option value="expenses">📊 Expenses</option>
@@ -575,9 +575,9 @@
         
         <!-- INCOME VIEW -->
         <div id="income-view" class="hidden">
-            <div class="px-2 pt-2 pb-6">
+            <div class="px-2 pt-2 pb-24">
                 <!-- Floating Edit Button (Top Right) -->
-                <button onclick="if(window.Income) window.Income.openForm()" class="fixed right-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Edit Income">
+                <button onclick="if(window.Income) window.Income.openForm()" class="fixed right-4 bottom-20 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Edit Income" aria-label="Edit Income">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
                     </svg>
@@ -594,7 +594,7 @@
         <div id="expenses-view" class="hidden">
             <div class="px-2 pt-2 pb-32">
                 <!-- Floating + Button (Top Right) -->
-                <button onclick="openExpenseModal()" class="fixed right-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Expense">
+                <button onclick="openExpenseModal()" class="fixed right-4 bottom-20 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Expense" aria-label="Add Expense">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                     </svg>
@@ -648,9 +648,9 @@
         
         <!-- RECURRING PAYMENTS VIEW -->
         <div id="recurring-view" class="hidden">
-            <div class="px-2 pt-2 pb-6">
+            <div class="px-2 pt-2 pb-24">
                 <!-- Floating + Button (Top Right) -->
-                <button onclick="openRecurringExpenseModal()" class="fixed right-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Recurring Payment">
+                <button onclick="openRecurringExpenseModal()" class="fixed right-4 bottom-20 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Recurring Payment" aria-label="Add Recurring Payment">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                     </svg>
@@ -665,9 +665,9 @@
 
         <!-- PLANS VIEW -->
         <div id="plans-view" class="hidden">
-            <div class="px-2 pt-2 pb-6">
+            <div class="px-2 pt-2 pb-24">
                 <!-- Floating + Button (Top Right) -->
-                <button onclick="Plans.openModal()" class="fixed right-4 bg-gradient-to-r from-orange-600 to-rose-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Plan">
+                <button onclick="Plans.openModal()" class="fixed right-4 bottom-20 bg-gradient-to-r from-orange-600 to-rose-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Plan" aria-label="Add Plan">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                     </svg>
@@ -696,7 +696,7 @@
         <div id="loans-view" class="hidden">
             <div class="px-2 pt-2 pb-24">
                 <!-- Floating + Button (Bottom Right) - Will change color based on tab -->
-                <button id="loans-add-btn" onclick="openLoanOrLentModal()" class="fixed right-4 bottom-20 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Loan">
+                <button id="loans-add-btn" onclick="openLoanOrLentModal()" class="fixed right-4 bottom-20 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Loan" aria-label="Add Loan">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                     </svg>
@@ -713,7 +713,7 @@
         <div id="cards-view" class="hidden">
             <div class="px-2 pt-2 pb-24">
                 <!-- Floating + Button (Bottom Right) -->
-                <button onclick="openCardModal()" class="fixed right-4 bottom-20 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Card">
+                <button onclick="openCardModal()" class="fixed right-4 bottom-20 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Card" aria-label="Add Card">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                     </svg>
@@ -735,7 +735,7 @@
         <div id="investments-view" class="hidden">
             <div class="px-2 pt-2 pb-32">
                 <!-- Floating + Button (Top Right) -->
-                <button onclick="Investments.openInvestmentModal()" class="fixed right-4 bg-gradient-to-br from-green-500 via-emerald-600 to-green-700 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" style="top: calc(3.5rem + env(safe-area-inset-top) + 1rem);" title="Add Investment">
+                <button onclick="Investments.openInvestmentModal()" class="fixed right-4 bottom-20 bg-gradient-to-br from-green-500 via-emerald-600 to-green-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Investment" aria-label="Add Investment">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                     </svg>
@@ -772,7 +772,7 @@
         <div id="credentials-view" class="hidden">
             <div class="px-2 pt-2 pb-32">
                 <!-- Floating + Button (Bottom Right) -->
-                <button onclick="openCredentialModal()" class="fixed right-4 bottom-20 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Credential">
+                <button onclick="openCredentialModal()" class="fixed right-4 bottom-20 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Credential" aria-label="Add Credential">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                     </svg>
@@ -1245,7 +1245,7 @@
             <div class="p-6 pt-4 border-t border-gray-200 bg-white rounded-b-2xl">
                 <div class="flex gap-3">
                     <button id="investment-save-btn" onclick="Investments.saveInvestment()" disabled class="flex-1 px-4 py-2 bg-gray-300 text-gray-500 rounded-lg font-semibold cursor-not-allowed">
-                        Update
+                        Save
                     </button>
                     <button onclick="Investments.closeInvestmentModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold">
                         Cancel
@@ -1969,6 +1969,7 @@
             <div class="mb-3">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Day of Month *</label>
                 <input type="number" id="recurring-modal-day" placeholder="Day (1-31)" min="1" max="31" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" oninput="clearFieldError('recurring-modal-day')">
+                <p class="text-[11px] text-gray-500 mt-1">Days 29–31 fall on the last day in shorter months (e.g. 31 → Feb 28).</p>
                 <div id="recurring-modal-day-error" class="text-red-600 text-xs mt-1 hidden"></div>
             </div>
             
@@ -2963,15 +2964,7 @@
             <input type="text" id="credential-modal-tag" placeholder="Tag (e.g., Work, Personal, Bank)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
             
             <div class="mb-3">
-                <div class="relative">
-                    <input type="password" id="credential-modal-username" placeholder="Username *" class="w-full p-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="clearFieldError('credential-modal-username')">
-                    <button type="button" onclick="togglePasswordVisibility('credential-modal-username')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
-                        <svg id="credential-modal-username-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                        </svg>
-                    </button>
-                </div>
+                <input type="text" id="credential-modal-username" placeholder="Username *" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="clearFieldError('credential-modal-username')">
                 <div id="credential-modal-username-error" class="text-red-600 text-xs mt-1 hidden"></div>
             </div>
             
@@ -3018,13 +3011,25 @@
                     </div>
                     <div>
                         <label class="text-xs text-gray-500 font-semibold">Username</label>
-                        <p id="view-username" class="text-base font-medium text-gray-800"></p>
+                        <div class="flex items-center gap-2">
+                            <p id="view-username" class="text-base font-medium text-gray-800 flex-1"></p>
+                            <button onclick="copyCredentialField('username')" class="p-2 -m-1 text-blue-600 hover:text-blue-800" title="Copy username" aria-label="Copy username">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <label class="text-xs text-gray-500 font-semibold">Password</label>
                         <div class="flex items-center gap-2">
                             <p id="view-password" class="text-base font-mono text-gray-800 flex-1">••••••••</p>
-                            <button onclick="toggleViewPassword()" class="text-blue-600 hover:text-blue-800">
+                            <button onclick="copyCredentialField('password')" class="p-2 -m-1 text-blue-600 hover:text-blue-800" title="Copy password" aria-label="Copy password">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                </svg>
+                            </button>
+                            <button onclick="toggleViewPassword()" class="p-2 -m-1 text-blue-600 hover:text-blue-800" title="Show/hide password" aria-label="Show or hide password">
                                 <svg id="view-password-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -3174,11 +3179,12 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">First EMI Date</label>
             <input type="date" id="emi-form-first-date" class="w-full p-2 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="calculateRemainingEMIs()">
             
-            <label class="block text-sm font-medium text-gray-700 mb-1">Monthly EMI Amount (optional)</label>
-            <div class="relative mb-3">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Monthly EMI Amount</label>
+            <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
-                <input type="number" id="emi-form-amount" placeholder="5000" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="number" id="emi-form-amount" placeholder="5000" min="0" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
+            <p class="text-[11px] text-amber-600 mt-1 mb-3">Leave blank only if unknown — a 0 amount understates your loan totals.</p>
             
             <div class="grid grid-cols-2 gap-2 mb-3">
                 <div>
@@ -3337,17 +3343,16 @@
                 <h2 class="text-2xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
                     Configure AI Providers
                 </h2>
-                <p class="text-gray-600 text-sm mt-2">Set up your AI API keys for smart features</p>
+                <p class="text-gray-600 text-sm mt-2">Optional — only for the AI Advisor & auto card benefits</p>
             </div>
-            
+
             <div class="space-y-4">
-                <div class="bg-amber-50 border-2 border-amber-300 rounded-lg p-3 mb-4">
-                    <p class="text-sm text-amber-900 font-semibold mb-2">
-                        ⚠️ Gemini or Perplexity is REQUIRED
+                <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-3 mb-4">
+                    <p class="text-sm text-blue-900 font-semibold mb-2">
+                        ℹ️ This step is optional
                     </p>
-                    <p class="text-xs text-amber-800">
-                        Card Benefits feature needs web search capability. You must provide at least ONE of: Gemini or Perplexity.<br>
-                        Groq/ChatGPT are optional (for faster chat).
+                    <p class="text-xs text-blue-800">
+                        The whole app — expenses, income, budgets, investments, loans — works without any keys. Add a key only if you want the AI Advisor or automatic card-benefit lookup. For those, Gemini or Perplexity gives the best results (they support web search). You can add or change keys anytime in Settings → AI Provider.
                     </p>
                 </div>
                 
@@ -3422,7 +3427,10 @@
             </div>
             
             <button onclick="completeAIKeysSetup()" class="w-full mt-6 px-6 py-3 bg-gradient-to-r from-pink-600 to-rose-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 font-bold text-lg">
-                Start Using App
+                Save &amp; Start
+            </button>
+            <button onclick="skipAIKeysSetup()" class="w-full mt-2 px-6 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all font-semibold text-sm">
+                Skip for now — I'll add keys later
             </button>
         </div>
     </div>
@@ -3524,7 +3532,7 @@
                     </div>
                     <span class="relative bg-slate-900 px-3 text-slate-500 text-xs">or</span>
                 </div>
-                <button id="biometric-unlock-btn" onclick="unlockWithBiometric()" 
+                <button id="biometric-unlock-btn" onclick="unlockWithBiometric()"
                         class="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-white font-medium transition-colors flex items-center justify-center gap-2">
                     <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
@@ -3532,11 +3540,47 @@
                     Use Fingerprint
                 </button>
             </div>
+
+            <!-- Forgot PIN: honest recovery path so the unlock screen is never a
+                 true dead-end. Data is encrypted behind the PIN and cannot be
+                 decrypted without it, so the only safe option is restore-from-
+                 backup or a fresh start. showForgotPin() explains this. -->
+            <div class="text-center mt-6">
+                <button onclick="showForgotPin()" class="text-slate-400 hover:text-slate-200 text-sm underline underline-offset-2 transition-colors">
+                    Forgot PIN?
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FORGOT PIN HELP MODAL -->
+    <div id="forgot-pin-modal" class="hidden fixed inset-0 bg-slate-900/95 z-[10001] flex items-center justify-center p-6">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full">
+            <div class="text-center mb-4">
+                <div class="w-14 h-14 mx-auto bg-amber-100 rounded-full flex items-center justify-center mb-3 text-2xl">🔑</div>
+                <h2 class="text-lg font-bold text-gray-800">Forgot your PIN?</h2>
+            </div>
+            <p class="text-sm text-gray-600 leading-relaxed mb-3">
+                For your security, your data is encrypted with your PIN. It <strong>can't be unlocked or recovered</strong> without it — not even by us.
+            </p>
+            <p class="text-sm text-gray-600 leading-relaxed mb-4">
+                Your options:
+            </p>
+            <ul class="text-sm text-gray-600 space-y-2 mb-5 list-disc pl-5">
+                <li>If you have a <strong>backup file</strong> (or a Google Drive backup), you can start fresh and restore it from Settings → Import.</li>
+                <li>Otherwise, you'll need to <strong>reset the app</strong> and set a new PIN. This erases the data on this device.</li>
+            </ul>
+            <button onclick="forgotPinReset()" class="w-full px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-bold hover:shadow-lg transition-all">
+                Reset app &amp; set a new PIN
+            </button>
+            <button onclick="document.getElementById('forgot-pin-modal').classList.add('hidden')" class="w-full mt-2 px-4 py-2.5 text-gray-600 hover:bg-gray-100 rounded-lg font-semibold text-sm transition-colors">
+                Go back &amp; try again
+            </button>
         </div>
     </div>
     
     <!-- CHANGE PIN MODAL -->
-    <div id="change-pin-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4">
+    <div id="change-pin-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeChangePinModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
             <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-2">
                 <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3659,7 +3703,7 @@
     </div>
     
     <!-- CATEGORY SELECTION MODAL -->
-    <div id="category-selection-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-[15000] flex items-center justify-center p-4">
+    <div id="category-selection-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-[15000] flex items-center justify-center p-4" onclick="if(event.target===this) closeCategoryModal()">
         <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col">
             <!-- Header -->
             <div class="p-6 border-b">
@@ -3805,7 +3849,7 @@
     </div>
     
     <!-- ERROR MODAL -->
-    <div id="error-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-[10015] flex items-center justify-center p-4">
+    <div id="error-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-[10015] flex items-center justify-center p-4" onclick="if(event.target===this) Navigation.closeErrorModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
             <div class="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mx-auto mb-4">
                 <svg class="w-8 h-8 text-red-600" fill="currentColor" viewBox="0 0 20 20">
@@ -7097,7 +7141,7 @@ Technical: ${error.stack ? error.stack.split('\n')[0] : 'No stack trace'}
                 return;
             }
             
-            const cred = window.DB.credentials.find(c => c.id === id);
+            const cred = window.DB.credentials.find(c => String(c.id) === String(id));
             
             if (!cred) {
                 Utils.showError('Credential not found');
@@ -7251,13 +7295,45 @@ Technical: ${error.stack ? error.stack.split('\n')[0] : 'No stack trace'}
         window.toggleViewPassword = function() {
             currentViewPasswordVisible = !currentViewPasswordVisible;
             const passwordEl = document.getElementById('view-password');
-            
+
             if (currentViewPasswordVisible) {
                 passwordEl.textContent = currentViewPassword;
             } else {
                 passwordEl.textContent = '••••••••';
             }
         }
+
+        // Copy a credential field to the clipboard. Username comes from the
+        // (always-plain) view-username element; password uses the real stored
+        // value (currentViewPassword), never the masked dots. Falls back to a
+        // hidden-textarea + execCommand on WebViews without navigator.clipboard.
+        window.copyCredentialField = function(field) {
+            const value = field === 'password'
+                ? currentViewPassword
+                : (document.getElementById('view-username')?.textContent || '');
+            if (!value) return;
+            const done = () => { if (window.Utils) window.Utils.showSuccess(field === 'password' ? 'Password copied' : 'Username copied'); };
+            const fallback = () => {
+                try {
+                    const ta = document.createElement('textarea');
+                    ta.value = value;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.focus(); ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    done();
+                } catch (e) {
+                    if (window.Utils) window.Utils.showError('Could not copy');
+                }
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(value).then(done).catch(fallback);
+            } else {
+                fallback();
+            }
+        };
         
         window.editCredentialFromView = function() {
             window.closeCredentialViewModal();
@@ -8028,39 +8104,81 @@ Technical: ${error.stack ? error.stack.split('\n')[0] : 'No stack trace'}
             const groqKey = document.getElementById('onboarding-groq-key').value.trim();
             const chatgptKey = document.getElementById('onboarding-chatgpt-key').value.trim();
             const perplexityKey = document.getElementById('onboarding-perplexity-key').value.trim();
-            
-            // Check if at least ONE AI key is provided
-            if (!geminiKey && !groqKey && !chatgptKey && !perplexityKey) {
-                Utils.showError('⚠️ At least ONE AI API key is required!\n\nChoose any:\n• Gemini (recommended)\n• Groq (fastest chat)\n• ChatGPT\n• Perplexity');
-                return;
-            }
-            
-            // IMPORTANT: Check for web search capability (needed for card benefits)
-            if (!geminiKey && !perplexityKey) {
-                Utils.showError('⚠️ Warning: Card Benefits feature requires web search!\n\nYou need at least ONE of:\n• Gemini (recommended)\n• Perplexity\n\nGroq/ChatGPT alone will work for chat, but NOT for fetching card benefits.');
-                return;
-            }
-            
-            // Save API keys
+
+            // AI keys are OPTIONAL — the core app (expenses, income, budgets,
+            // investments, loans) works fully without them. Keys only unlock the
+            // optional AI Advisor + auto card-benefits. So we save whatever was
+            // entered (possibly nothing) and let the user in either way; they can
+            // add keys later from Settings → AI Provider.
             window.DB.settings.geminiApiKey = geminiKey;
             window.DB.groqApiKey = groqKey;
             window.DB.settings.groqApiKey = groqKey;
             window.DB.settings.chatGptApiKey = chatgptKey;
             window.DB.settings.perplexityApiKey = perplexityKey;
             window.Storage.save();
-            
-            // Hide modal
+
             document.getElementById('ai-keys-setup-modal').classList.add('hidden');
-            
-            Utils.showSuccess('✅ Setup complete! Welcome to My Assistant!');
-            
+
+            const anyKey = geminiKey || groqKey || chatgptKey || perplexityKey;
+            Utils.showSuccess(anyKey ? '✅ Setup complete! Welcome to My Assistant!' : '✅ All set! You can add AI keys anytime from Settings.');
+
             // Start the app
             setTimeout(() => {
                 window.App.init();
             }, 1000);
         }
+
+        /**
+         * Skip AI setup entirely — finish onboarding with no keys. The AI
+         * Advisor will prompt to add a key the first time it's used.
+         */
+        function skipAIKeysSetup() {
+            window.Storage.save();
+            document.getElementById('ai-keys-setup-modal').classList.add('hidden');
+            Utils.showSuccess('✅ All set! Add AI keys anytime from Settings → AI Provider.');
+            setTimeout(() => { window.App.init(); }, 800);
+        }
+        window.skipAIKeysSetup = skipAIKeysSetup;
         
+        /**
+         * Forgot-PIN flow shown from the unlock screen. Just reveals the help
+         * modal that explains recovery options (data is encrypted behind the
+         * PIN, so it can't be decrypted without it).
+         */
+        function showForgotPin() {
+            document.getElementById('forgot-pin-modal').classList.remove('hidden');
+        }
+
+        /**
+         * Last resort from the locked screen: wipe the encrypted data blob (which
+         * also holds the PIN hash) and reload so the user lands on fresh setup.
+         * Confirmed first. This is the only way out for a truly forgotten PIN —
+         * the data can't be decrypted without it, so there's nothing to preserve
+         * here beyond any backup the user already has elsewhere.
+         */
+        async function forgotPinReset() {
+            let ok = true;
+            if (window.Utils && typeof window.Utils.confirm === 'function') {
+                ok = await window.Utils.confirm(
+                    'This erases the data stored on this device and lets you set a new PIN. If you have a backup file or Google Drive backup, you can restore it afterwards. Continue?',
+                    'Reset app?'
+                );
+            } else {
+                ok = confirm('This erases the data on this device and lets you set a new PIN. Continue?');
+            }
+            if (!ok) return;
+            try {
+                localStorage.removeItem(window.Storage ? window.Storage.STORAGE_KEY : 'myassistant_db');
+            } catch (e) {
+                console.error('Forgot-PIN reset failed to clear storage:', e);
+            }
+            // Reload from scratch — app boots into first-run security setup.
+            window.location.reload();
+        }
+
         // Make security functions globally accessible
+        window.showForgotPin = showForgotPin;
+        window.forgotPinReset = forgotPinReset;
         window.setupSecurity = setupSecurity;
         window.unlockWithPin = unlockWithPin;
         window.unlockWithBiometric = unlockWithBiometric;

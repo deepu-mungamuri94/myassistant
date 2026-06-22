@@ -154,15 +154,79 @@ const Dashboard = {
     /**
      * Render dashboard
      */
+    /**
+     * True when the user has entered NO financial data at all. For brand-new
+     * users the normal dashboard is a wall of ₹0 / "—" / "N/A" that looks
+     * broken, so we show a friendly welcome + setup card instead (_renderWelcome).
+     *
+     * IMPORTANT: this must check EVERY store that produces a visible dashboard /
+     * net-worth figure — otherwise we'd hide real data behind the welcome
+     * screen. Cash & savings and money-lent both feed the Net Worth tile, and
+     * plans/salaries are real user data too. Missing any of these would be a
+     * silent data-hiding bug.
+     */
+    _isFirstRun() {
+        const hasIncome = (this.getMinimumNetPay && this.getMinimumNetPay() > 0);
+        const hasExpenses = (window.DB.expenses || []).length > 0;
+        const hasInvestments = (window.DB.portfolioInvestments || []).length > 0
+            || (window.DB.monthlyInvestments || []).length > 0;
+        const hasLoans = (window.DB.loans || []).length > 0;
+        const hasCards = (window.DB.cards || []).length > 0;
+        const hasRecurring = window.RecurringExpenses && window.RecurringExpenses.getAll().length > 0;
+        const cs = window.DB.cashSavings;
+        const hasCash = !!cs && (((cs.current || 0) > 0) || ((cs.history || []).length > 0));
+        const hasLent = (window.DB.moneyLent || []).length > 0;
+        const hasPlans = (window.DB.plans || []).length > 0;
+        const hasSalaries = (window.DB.salaries || []).length > 0;
+        return !(hasIncome || hasExpenses || hasInvestments || hasLoans || hasCards
+            || hasRecurring || hasCash || hasLent || hasPlans || hasSalaries);
+    },
+
+    /**
+     * Welcome / get-started card shown to a brand-new user instead of empty
+     * tiles. Guides them to the highest-value first actions.
+     */
+    _renderWelcome() {
+        const step = (onclick, emoji, title, desc) => `
+            <button onclick="${onclick}" class="w-full flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all text-left active:scale-[0.99]">
+                <div class="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-xl flex-shrink-0">${emoji}</div>
+                <div class="min-w-0">
+                    <div class="text-sm font-semibold text-gray-800">${title}</div>
+                    <div class="text-xs text-gray-500 leading-snug">${desc}</div>
+                </div>
+                <div class="ml-auto text-gray-300 text-lg flex-shrink-0">›</div>
+            </button>`;
+        return `
+            <div class="dash-card-hero text-center">
+                <div class="text-4xl mb-2">👋</div>
+                <h2 class="text-lg font-bold text-gray-800 mb-1">Welcome to your money dashboard</h2>
+                <p class="text-xs text-gray-500 mb-4 px-2">Add a few details and this screen fills with your net worth, spending, budget and forecasts. Start with any of these:</p>
+                <div class="space-y-2 text-left">
+                    ${step("Navigation.navigateTo('income')", '💰', 'Add your income', 'Your salary/pay — powers budget % and forecasts.')}
+                    ${step("Navigation.navigateTo('expenses')", '🧾', 'Log an expense', 'Track where your money goes.')}
+                    ${step("FinancialHealth.showEmergencyFundBreakdown()", '🏦', 'Set your cash & savings', 'Unlocks net worth and emergency-fund coverage.')}
+                    ${step("Navigation.navigateTo('investments')", '📈', 'Add an investment', 'Funds, stocks, FD, gold, EPF.')}
+                </div>
+                <p class="text-[11px] text-gray-400 mt-4">You can always reach these from the ☰ menu too.</p>
+            </div>`;
+    },
+
     render() {
         const container = document.getElementById('dashboard-content');
         if (!container) return;
-        
+
         // Initialize excluded categories
         this.initExcludedCategories();
-        
+
         // Destroy all existing chart instances first
         this.destroyAllCharts();
+
+        // Brand-new user with zero data → friendly welcome instead of a grid
+        // of zeros that reads as a broken screen.
+        if (this._isFirstRun()) {
+            container.innerHTML = this._renderWelcome();
+            return;
+        }
         
         // Get number of months from selected range
         const monthsCount = this.getMonthsCount();
@@ -366,7 +430,8 @@ const Dashboard = {
                         ${o.amount ? `<div class="meter-amt">${o.amount}</div>` : ''}
                     </div>
                 </div>
-                <div class="meter-label">${o.label}${o.status ? ` <span class="meter-status">${o.status}</span>` : ''}</div>
+                <div class="meter-label">${o.label}</div>
+                ${o.status ? `<div class="meter-status">${o.status}</div>` : ''}
             </div>`;
     },
 
@@ -440,7 +505,7 @@ const Dashboard = {
         // The bucket is "everything that isn't recurring or an EMI" but the
         // tile is too small for the long form; the modal title and AI prompt
         // still spell it out as "Other spend" for clarity.
-        const regularLabel = 'Other';
+        const regularLabel = 'Other spend';
         
         return `
         <div class="dash-card-primary" id="first-line-cards-section">
@@ -478,7 +543,7 @@ const Dashboard = {
                     prefix: isProjected ? '~' : '',
                     amount: `${isProjected ? '~' : ''}₹${Utils.formatIndianNumber(regularExpenses)}`,
                     c1: '#14b8a6', c2: '#0d9488',
-                    status: isProjected ? '<span class="text-[9px] text-teal-600 font-semibold">est.</span>' : '',
+                    status: isProjected ? '<span class="text-[11px] text-teal-600 font-semibold">est.</span>' : '',
                     onclick: `Dashboard.showMonthList('regular', ${targetYear}, ${targetMonth})`
                 })}
             </div>
@@ -3445,6 +3510,13 @@ const Dashboard = {
         
         let html = '<div style="display: flex; flex-direction: column; gap: 6px;">';
         
+        // No expenses at all for the selected month — the pie canvas renders
+        // nothing, so surface a one-line placeholder in the legend slot.
+        if (allData.length === 0) {
+            legendContainer.innerHTML = '<div style="color: #9ca3af; font-size: 11px; font-style: italic; padding: 8px 4px; text-align: center;">No expenses this month yet</div>';
+            return;
+        }
+        
         // Show message if no categories are visible
         if (visibleTotal === 0 && allData.length > 0) {
             html += `
@@ -4088,6 +4160,7 @@ const Dashboard = {
                     </div>
                     <div class="flex items-center gap-2">
                         <button onclick="Dashboard.reloadAIInsights(${cached.year || new Date().getFullYear()}, ${cached.month || new Date().getMonth() + 2})" 
+                                aria-label="Refresh AI insights" title="Refresh AI insights"
                                 class="flex items-center gap-1 px-2 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-lg transition-colors">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -4165,6 +4238,7 @@ const Dashboard = {
                         </div>
                     </div>
                     <button onclick="document.getElementById('ai-insights-modal').classList.add('hidden')" 
+                            aria-label="Close" title="Close"
                             class="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center text-white text-xl transition-all hover:scale-110">
                         ×
                     </button>
@@ -4189,7 +4263,7 @@ const Dashboard = {
                 <!-- Floating Refresh Button -->
                 <button onclick="document.getElementById('ai-insights-modal').classList.add('hidden'); Dashboard.reloadAIInsights(${year}, ${month})" 
                         class="absolute bottom-4 right-4 w-14 h-14 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-10 hover:scale-110"
-                        title="Refresh Insights">
+                        aria-label="Refresh Insights" title="Refresh Insights">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                     </svg>
@@ -7567,7 +7641,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                         <h3 class="text-sm font-semibold text-gray-700">Cash flow</h3>
                         <button onclick="Dashboard.showCashFlowTrendModal()"
                                 class="w-5 h-5 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors flex-shrink-0"
-                                title="Show cash-flow trend">
+                                aria-label="Show cash-flow trend" title="Show cash-flow trend">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 17l6-6 4 4 7-7M14 8h7v7"/>
                             </svg>
@@ -7603,6 +7677,8 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                         value: hasIncomeData ? balancePercent : 'N/A',
                         // Balance can be negative — clamp the ring at 0 but keep the real number.
                         pct: hasIncomeData ? Math.max(0, parseFloat(balancePercent)) : 0,
+                        // Don't rely on grey color alone — flag a negative balance with a text cue.
+                        status: hasIncomeData && balance < 0 ? '<span class="text-[11px] text-gray-600 font-semibold">▼ shortfall</span>' : '',
                         amount: hasIncomeData ? `₹${Utils.formatIndianNumber(Math.round(balance))}` : 'No income data',
                         c1: hasIncomeData && balance >= 0 ? '#22c55e' : '#9ca3af',
                         c2: hasIncomeData && balance >= 0 ? '#16a34a' : '#6b7280',

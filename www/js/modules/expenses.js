@@ -1347,12 +1347,19 @@ const Expenses = {
         }
         
         if (filteredExpenses.length === 0 && totalRecurring === 0) {
-            list.innerHTML = `
-                <p class="text-gray-500 text-center py-8">
-                    ${window.DB.expenses.length === 0 
-                        ? 'No expenses yet. Add your first one!' 
-                        : 'No expenses found for the selected filters.'}
-                </p>
+            list.innerHTML = window.DB.expenses.length === 0
+                ? `
+                <div class="text-center py-12">
+                    <div class="text-6xl mb-4">🧾</div>
+                    <p class="text-gray-500 text-sm mb-4">No expenses yet</p>
+                    <button onclick="openExpenseModal()"
+                            class="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all transform hover:scale-105 font-semibold">
+                        + Add your first expense
+                    </button>
+                </div>
+            `
+                : `
+                <p class="text-gray-500 text-center py-8">No expenses found for the selected filters.</p>
             `;
             return;
         }
@@ -1610,25 +1617,33 @@ const Expenses = {
                         ${dayExpenses.map((expense, expIndex) => {
                             const isAutoRecurring = this.isAutoRecurringExpense(expense);
                             const isLast = expIndex === dayExpenses.length - 1;
+                            // If the budget (tracking) month differs from the expense date's
+                            // month, surface a small cue so the divergence isn't invisible.
+                            const expDateObj = new Date(expense.date);
+                            const bm = this.getExpenseBudgetMonth(expense);
+                            const trackedBadge = (bm.month !== (expDateObj.getMonth() + 1) || bm.year !== expDateObj.getFullYear())
+                                ? `<span class="text-[11px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">tracked in ${new Date(bm.year, bm.month - 1, 1).toLocaleDateString('en-US', { month: 'short' })}</span>`
+                                : '';
                             return `
                             <div class="p-3 bg-white hover:bg-purple-50 transition-all ${!isLast ? 'border-b border-purple-100' : ''}">
                                 <!-- Top Row: Title with Category + Actions -->
                                 <div class="flex justify-between items-start mb-1">
                                     <div onclick="Expenses.showExpenseDetails(${expense.id})" class="flex-1 flex items-center gap-2 flex-wrap cursor-pointer">
                                         ${expense.paymentMethod ? this.getPaymentMethodIcon(expense.paymentMethod) : ''}
-                                        <h4 class="font-semibold text-purple-800 text-sm">${Utils.escapeHtml(this.truncateName(expense.title || expense.description, 22))}</h4>
+                                        <h4 class="font-semibold text-purple-800 text-sm" title="${Utils.escapeHtml(expense.title || expense.description || '')}">${Utils.escapeHtml(this.truncateName(expense.title || expense.description, 22))}</h4>
                                         <span class="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded flex items-center gap-1">
                                             ${(expense.isRecurring || expense.category === 'emi') ? '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>' : ''}
                                             <span>${Utils.escapeHtml(this.formatCategoryDisplay(expense.category))}</span>
                                         </span>
+                                        ${trackedBadge}
                                     </div>
                                     <div class="flex gap-1">
-                                        <button onclick="openExpenseModal(${expense.id})" class="text-green-600 hover:text-green-800 p-0.5" title="Edit">
+                                        <button onclick="openExpenseModal(${expense.id})" class="text-green-600 hover:text-green-800 p-2" title="Edit" aria-label="Edit expense">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                             </svg>
                                         </button>
-                                        <button onclick="Expenses.deleteWithConfirm(${expense.id})" class="text-red-500 hover:text-red-700 p-0.5" title="Delete">
+                                        <button onclick="Expenses.deleteWithConfirm(${expense.id})" class="text-red-500 hover:text-red-700 p-2" title="Delete" aria-label="Delete expense">
                                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                                 <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                             </svg>

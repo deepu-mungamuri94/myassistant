@@ -36,7 +36,7 @@ const Loans = {
                 <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                     <div class="sticky top-0 bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-4 flex justify-between items-center rounded-t-2xl">
                         <h2 class="text-xl font-bold text-white">Loan Details</h2>
-                        <button onclick="Loans.closeDetailsModal()" class="text-white hover:text-gray-200 p-1">
+                        <button onclick="Loans.closeDetailsModal()" class="text-white hover:text-gray-200 p-1" aria-label="Close loan details">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
@@ -429,7 +429,7 @@ const Loans = {
         let borrowedSummary = '';
         
         if (loans.length === 0) {
-            borrowedContent = '<p class="text-gray-500 text-center py-8">No loans yet. Add your first one above!</p>';
+            borrowedContent = '<p class="text-gray-500 text-center py-8">No loans yet. Tap the + button to add your first one.</p>';
         } else {
             // Separate active and closed loans and calculate totals
             const activeLoans = [];
@@ -504,7 +504,7 @@ const Loans = {
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <p class="text-xs opacity-90">Interest Paid So Far</p>
+                            <p class="text-xs opacity-90">Interest Paid So Far <span class="opacity-70">(scheduled)</span></p>
                             <p class="text-sm font-bold text-yellow-200">₹${Utils.formatIndianNumber(Math.round(totalInterestPaidSoFar))}</p>
                         </div>
                         ${latestClosureDate ? `
@@ -748,9 +748,13 @@ const Loans = {
                             </div>
                             
                             <!-- Progress Bar in Collapsed View -->
+                            <!-- "scheduled" not "paid": progress is derived from the
+                                 calendar (EMIs due by today), not confirmed payments.
+                                 Labelling it honestly avoids implying we tracked actual
+                                 debits for a loan that may be prepaid/missed/foreclosed. -->
                             <div class="mb-1">
                                 <div class="flex justify-between text-xs text-gray-600 mb-1">
-                                    <span><span class="font-semibold">${remaining.emisPaid}/${loan.tenure}</span> EMIs paid</span>
+                                    <span><span class="font-semibold">${remaining.emisPaid}/${loan.tenure}</span> EMIs scheduled</span>
                                     <span class="font-semibold">${Math.round(progress)}%</span>
                                 </div>
                                 <div class="w-full bg-gray-200 rounded-full h-1.5">
@@ -884,14 +888,15 @@ const Loans = {
                             <!-- Progress Bar -->
                             <div class="mb-2">
                                 <div class="flex justify-between text-xs text-gray-600 mb-1">
-                                    <span><span class="font-semibold">${remaining.emisPaid}/${loan.tenure}</span> EMIs paid</span>
+                                    <span><span class="font-semibold">${remaining.emisPaid}/${loan.tenure}</span> EMIs scheduled</span>
                                     <span class="font-semibold">${Math.round(progress)}%</span>
                                 </div>
                                 <div class="w-full bg-gray-200 rounded-full h-2">
                                     <div class="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
                                 </div>
+                                <p class="text-[10px] text-gray-400 mt-1">Based on the EMI schedule (months elapsed) — not confirmed payments. Prepaid or foreclosed? Edit the loan to adjust.</p>
                             </div>
-                            
+
                             <!-- EMI Date Info -->
                             <div class="text-xs text-gray-600">
                                 📅 EMI on <strong>${emiDayOrdinal}</strong> of every month

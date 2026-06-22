@@ -339,9 +339,9 @@ const Plans = {
         // Type chip in the row sub-line so the user can scan need-vs-want
         // without expanding. Kept tiny so it doesn't overpower the title.
         const typeChip = plan.type === 'need'
-            ? `<span class="inline-block ml-1 text-[9px] px-1 py-0.5 rounded font-semibold bg-blue-100 text-blue-700 align-middle">NEED</span>`
+            ? `<span class="inline-block ml-1 text-[11px] px-1 py-0.5 rounded font-semibold bg-blue-100 text-blue-700 align-middle">NEED</span>`
             : plan.type === 'want'
-                ? `<span class="inline-block ml-1 text-[9px] px-1 py-0.5 rounded font-semibold bg-pink-100 text-pink-700 align-middle">WANT</span>`
+                ? `<span class="inline-block ml-1 text-[11px] px-1 py-0.5 rounded font-semibold bg-pink-100 text-pink-700 align-middle">WANT</span>`
                 : '';
 
         // Show originalAmount alongside the planned amount for completed plans

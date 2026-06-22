@@ -258,34 +258,17 @@ const Navigation = {
             }
             
             // Check biometric availability and show toggle if available
-            console.log('⚙️ Opening settings, checking biometric...');
             const biometricToggle = document.getElementById('biometric-settings-toggle');
             const biometricCheckbox = document.getElementById('biometric-enabled-checkbox');
-            
-            console.log('Biometric toggle element:', biometricToggle);
-            console.log('Biometric checkbox element:', biometricCheckbox);
-            console.log('Security module available:', !!window.Security);
-            
+
             if (biometricToggle && biometricCheckbox && window.Security) {
-                console.log('🔍 Calling isBiometricAvailable...');
                 const isAvailable = await window.Security.isBiometricAvailable();
-                console.log('📊 Biometric available result:', isAvailable);
-                
                 if (isAvailable) {
-                    console.log('✅ Biometric available! Showing toggle');
                     biometricToggle.classList.remove('hidden');
                     biometricCheckbox.checked = window.DB.security.biometricEnabled || false;
-                    console.log('Current biometric enabled state:', window.DB.security.biometricEnabled);
                 } else {
-                    console.log('❌ Biometric not available, hiding toggle');
                     biometricToggle.classList.add('hidden');
                 }
-            } else {
-                console.warn('⚠️ Missing elements or Security module:', {
-                    toggle: !!biometricToggle,
-                    checkbox: !!biometricCheckbox,
-                    security: !!window.Security
-                });
             }
             
             // Populate cloud backup section
@@ -500,15 +483,13 @@ const Navigation = {
         const chatGptModelInput = document.getElementById('chatgpt-model');
         const perplexityModelInput = document.getElementById('perplexity-model');
         
-        // Validate: Require both Groq and Gemini API keys
+        // AI keys are optional — the core app works without them. Save whatever
+        // the user provides (including none / clearing a key); we no longer hard-
+        // block on a specific combination. The AI Advisor and card-benefits
+        // features each prompt for the key they need when actually used.
         const geminiKey = geminiKeyInput ? geminiKeyInput.value.trim() : '';
         const groqKey = groqKeyInput ? groqKeyInput.value.trim() : '';
-        
-        if (!geminiKey || !groqKey) {
-            window.Utils.showError('⚠️ Both Gemini and Groq API keys are required!\n\n• Groq: Fast chat responses\n• Gemini: Card benefits & web search');
-            return;
-        }
-        
+
         // Save API keys
         if (geminiKeyInput) window.DB.settings.geminiApiKey = geminiKey;
         if (groqKeyInput) window.DB.groqApiKey = groqKey;
@@ -546,7 +527,7 @@ const Navigation = {
         const priorityOrder = window.DB.settings.priorityOrder || ['groq', 'gemini', 'chatgpt', 'perplexity'];
         const providerNames = {
             'gemini': 'Google Gemini',
-            'groq': 'Groq (Mixtral)',
+            'groq': 'Groq (Llama 3.3)',
             'chatgpt': 'OpenAI ChatGPT',
             'perplexity': 'Perplexity AI'
         };

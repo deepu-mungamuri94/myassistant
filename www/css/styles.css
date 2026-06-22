@@ -489,8 +489,17 @@ details > summary .details-arrow {
     font-weight: 600;
     color: #374151;
     margin-top: 0.4rem;
+    line-height: 1.2;
 }
-.meter-status { font-size: 0.72rem; }
+/* Status sits on its own line under the label so a longer chip (e.g. "est.",
+   "▼ shortfall", "⚠ 30%") never pushes the label into two lines and throws the
+   3-column dial row out of vertical alignment. */
+.meter-status {
+    text-align: center;
+    font-size: 0.66rem;
+    line-height: 1.2;
+    margin-top: 1px;
+}
 
 /*
  * Respect reduced-motion: skip the ring sweep and the number/ring entrance.
