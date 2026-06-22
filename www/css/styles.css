@@ -501,6 +501,48 @@ details > summary .details-arrow {
     margin-top: 1px;
 }
 
+/* ============================================================
+   FINANCIAL-HEALTH TILE RINGS
+   Small white progress rings on the coloured Net-Worth / Emergency-Fund
+   hero tiles. White arc (currentColor) over a translucent track, fill
+   driven by --fh-pct and animated on load via the shared --pct property.
+   ============================================================ */
+.fh-ring {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    color: #ffffff;
+    /* fallback (no @property / reduced motion): static fill at the target */
+    background: conic-gradient(currentColor calc(var(--fh-pct) * 1%), rgba(255, 255, 255, 0.28) 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 5px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 5px));
+    animation: fh-ring-fill 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes fh-ring-fill {
+    from { --fh-pct: 0; }
+    to   { --fh-pct: var(--fh-pct-target, 0); }
+}
+@property --fh-pct {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+}
+.fh-ring-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fh-ring { animation: none; }
+}
+
 /*
  * Respect reduced-motion: skip the ring sweep and the number/ring entrance.
  * The static --pct fallback already renders the correct fill, and the JS

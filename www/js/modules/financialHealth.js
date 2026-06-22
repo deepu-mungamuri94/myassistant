@@ -369,43 +369,105 @@ const FinancialHealth = {
             ? `<span class="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-semibold" title="Market risk: ${riskPct.toFixed(0)}% of net worth in equities">${riskPct.toFixed(0)}% equity</span>`
             : '';
 
+        // ---- Net-worth ring: share of the balance sheet that is assets ----
+        // assets / (assets + debts). 100% = debt-free; lower = more leveraged.
+        // Guarded so a zero balance sheet shows an empty (not NaN) ring.
+        const assets = nw.assets.totalAssets;
+        const debts = nw.liabilities.totalLiabilities;
+        const gross = assets + debts;
+        const nwPct = gross > 0 ? Math.round((assets / gross) * 100) : 0;
+        const fmtShort = (n) => this._fmtCompactInr(n);
+
+        // ---- EF ring: progress toward the target months (capped at 100) ----
+        const efHasData = ef.monthlyEssentials > 0;
+        const efPct = efHasData ? Math.min(100, Math.round((ef.months / ef.target) * 100)) : 0;
+        const efToGo = Math.max(0, (ef.target * ef.monthlyEssentials) - ef.liquid);
+
+        // Quick-stat strip under the tiles — at-a-glance balance-sheet vitals.
+        const riskStat = showRisk
+            ? `<div class="text-xs font-bold text-amber-600">${riskPct.toFixed(0)}%</div>`
+            : `<div class="text-xs font-bold text-gray-400">—</div>`;
+
         return `
         <div class="dash-card-hero">
             <div class="flex items-center justify-between mb-3">
                 <h3 class="text-sm font-bold text-gray-800">Financial Health</h3>
+                <span class="text-[10px] text-gray-400 font-medium">tap a tile for details</span>
             </div>
             <div class="grid grid-cols-2 gap-3 max-w-full">
+                <!-- Net Worth -->
                 <div onclick="FinancialHealth.showNetWorthBreakdown()"
-                     class="bg-gradient-to-br from-${nwColor}-500 to-${nwColor}-600 rounded-lg p-3 text-white shadow-lg flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                    <div class="flex items-center justify-between mb-1">
+                     class="bg-gradient-to-br from-${nwColor}-500 to-${nwColor}-600 rounded-xl p-3 text-white shadow-lg cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
+                    <div class="flex items-center justify-between mb-2">
                         <div class="text-xs font-medium opacity-90">Net Worth</div>
                         ${riskBadge}
                     </div>
-                    <div class="flex-1 flex items-center justify-center py-1">
-                        <div class="text-2xl font-bold leading-tight">${nwSign}₹${Utils.formatIndianNumber(Math.abs(Math.round(nw.total)))}</div>
-                    </div>
-                    <div class="flex items-center justify-between text-[11px] opacity-90">
-                        <span>assets − debts</span>
-                        <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold">›</div>
+                    <div class="flex items-center gap-2.5">
+                        <div class="fh-ring" style="--fh-pct-target:${nwPct}; --fh-pct:${nwPct};">
+                            <div class="fh-ring-label">
+                                <span class="text-[11px] font-bold">${nwPct}%</span>
+                                <span class="text-[7px] opacity-80 -mt-0.5">assets</span>
+                            </div>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-lg font-bold leading-tight truncate">${nwSign}₹${fmtShort(Math.abs(nw.total))}</div>
+                            <div class="text-[10px] opacity-90 leading-tight mt-0.5">▲ ${fmtShort(assets)} · ▼ ${fmtShort(debts)}</div>
+                        </div>
                     </div>
                 </div>
+                <!-- Emergency Fund -->
                 <div onclick="FinancialHealth.showEmergencyFundBreakdown()"
-                     class="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg p-3 text-white shadow-lg flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
-                    <div class="flex items-center justify-between mb-1">
+                     class="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl p-3 text-white shadow-lg cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
+                    <div class="flex items-center justify-between mb-2">
                         <div class="text-xs font-medium opacity-90">Emergency Fund</div>
-                        <span class="text-[11px] ${efBadge.cls} px-1.5 py-0.5 rounded font-semibold">${efBadge.label}</span>
+                        <span class="text-[10px] ${efBadge.cls} px-1.5 py-0.5 rounded-full font-semibold">${efBadge.label}</span>
                     </div>
-                    <div class="flex-1 flex items-center justify-center py-1">
-                        <div class="text-2xl font-bold leading-tight">${efMonthsDisplay}</div>
+                    <div class="flex items-center gap-2.5">
+                        <div class="fh-ring" style="--fh-pct-target:${efPct}; --fh-pct:${efPct};">
+                            <div class="fh-ring-label">
+                                <span class="text-[11px] font-bold leading-none">${efHasData ? ef.months.toFixed(1) : '—'}</span>
+                                <span class="text-[7px] opacity-80 -mt-0.5">/${ef.target} mo</span>
+                            </div>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            ${efHasData
+                                ? `<div class="text-base font-bold leading-tight truncate">₹${fmtShort(ef.liquid)}</div>
+                                   <div class="text-[10px] opacity-90 leading-tight mt-0.5">${efToGo > 0 ? '₹' + fmtShort(efToGo) + ' to target' : 'target met ✓'}</div>`
+                                : `<div class="text-[11px] font-semibold opacity-95 leading-tight">${efSubLabel}</div>`
+                            }
+                        </div>
                     </div>
-                    <div class="flex items-center justify-between text-[11px] opacity-90">
-                        <span>${efSubLabel}</span>
-                        <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold">›</div>
-                    </div>
+                </div>
+            </div>
+            <!-- Quick-stat strip: balance-sheet vitals at a glance -->
+            <div class="grid grid-cols-3 gap-2 mt-3">
+                <div class="bg-gray-50 rounded-lg py-2 text-center">
+                    <div class="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Assets</div>
+                    <div class="text-xs font-bold text-emerald-600">₹${fmtShort(assets)}</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg py-2 text-center">
+                    <div class="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Debt</div>
+                    <div class="text-xs font-bold ${debts > 0 ? 'text-rose-600' : 'text-gray-400'}">₹${fmtShort(debts)}</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg py-2 text-center" title="Share of net worth in market-volatile equities">
+                    <div class="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">At risk</div>
+                    ${riskStat}
                 </div>
             </div>
         </div>
         `;
+    },
+
+    /**
+     * Compact INR for tight tile space: 1.2L, 8.45L, 1.05Cr, 9,500.
+     * Keeps the hero tiles readable when amounts run into lakhs/crores.
+     */
+    _fmtCompactInr(n) {
+        const v = Math.abs(Math.round(n));
+        if (v >= 10000000) return (v / 10000000).toFixed(2).replace(/\.?0+$/, '') + 'Cr';
+        if (v >= 100000)  return (v / 100000).toFixed(2).replace(/\.?0+$/, '') + 'L';
+        if (v >= 1000)    return Utils.formatIndianNumber(v);
+        return String(v);
     },
 
     /**
