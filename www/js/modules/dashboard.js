@@ -37,6 +37,90 @@ const Dashboard = {
         }
         return window.DB.aiExpenseInsights;
     },
+
+    // ===================================================================
+    // Shared chart styling — keeps Income/Expense, Investments and Card-bill
+    // charts visually consistent (gradient fills, soft slate grid, glowing
+    // hover points, polished dark tooltips). All use the vendored Chart.js v4;
+    // no new dependencies.
+    // ===================================================================
+
+    /** Format a rupee value for axis ticks (₹1.2L / ₹8k / ₹500). */
+    _chartFmtY(value) {
+        if (value >= 100000) return '₹' + (value / 100000).toFixed(1).replace(/\.0$/, '') + 'L';
+        if (value >= 1000)   return '₹' + (value / 1000).toFixed(0) + 'k';
+        return '₹' + value;
+    },
+
+    /**
+     * A top→bottom gradient for an area/bar fill. Returns the flat colour until
+     * Chart.js has measured the plot area (first paint), then the gradient.
+     */
+    _chartGradient(context, c0, c1) {
+        const { ctx, chartArea } = context.chart;
+        if (!chartArea) return c0;
+        const g = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+        g.addColorStop(0, c0);
+        g.addColorStop(1, c1);
+        return g;
+    },
+
+    /** Shared modern tooltip (dark, rounded, point-style swatches, ₹ formatting). */
+    _chartTooltip() {
+        return {
+            backgroundColor: 'rgba(15, 23, 42, 0.92)',
+            titleColor: '#ffffff',
+            bodyColor: '#e2e8f0',
+            titleFont: { size: 12, weight: '600' },
+            bodyFont: { size: 12 },
+            padding: 10,
+            cornerRadius: 10,
+            usePointStyle: true,
+            boxPadding: 4,
+            callbacks: {
+                label: (c) => ' ' + (c.dataset.label || '') + ': ₹' + Math.round(c.parsed.y).toLocaleString('en-IN'),
+            },
+        };
+    },
+
+    /** Shared x/y scale config: hidden x grid, faint y grid, slate ticks, no borders. */
+    _chartScales(opts = {}) {
+        const ticks = { font: { size: 10 }, color: '#94a3b8' };
+        return {
+            x: {
+                stacked: !!opts.stacked,
+                grid: { display: false },
+                ticks,
+                border: { display: false },
+            },
+            y: {
+                stacked: !!opts.stacked,
+                beginAtZero: opts.beginAtZero !== false,
+                grid: { color: 'rgba(148, 163, 184, 0.12)', drawTicks: false },
+                border: { display: false },
+                ticks: { ...ticks, maxTicksLimit: 5, callback: (v) => this._chartFmtY(v) },
+            },
+        };
+    },
+
+    /**
+     * Shared entrance animation for line/bar charts — a smooth ease-out that
+     * grows bars up from the baseline and draws lines in. Skipped when the user
+     * prefers reduced motion. Use as `animation: this._chartAnimation()`.
+     */
+    _chartAnimation() {
+        if (this._prefersReducedMotion()) return { duration: 0 };
+        return { duration: 800, easing: 'easeOutQuart' };
+    },
+
+    /** Shared bottom legend (point-style, slate). */
+    _chartLegend(display = true) {
+        return {
+            display,
+            position: 'bottom',
+            labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 7, padding: 12, font: { size: 10 }, color: '#64748b' },
+        };
+    },
     
     // Default category mappings for Needs vs Wants
     defaultNeedsCategories: [
@@ -266,12 +350,14 @@ const Dashboard = {
             
             <!-- Income vs Expenses Chart -->
             <div class="dash-card-secondary">
-                <div class="flex justify-between items-center mb-3 max-w-full">
+                <div class="flex justify-between items-center mb-1 max-w-full">
                     <h3 class="text-sm font-semibold">Income vs Expenses</h3>
                     <button onclick="Dashboard.openMonthRangeModal()" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50 transition-all whitespace-nowrap">
                         <span id="month-range-label">${this.getMonthRangeLabel()}</span> ▼
                     </button>
                 </div>
+                <!-- Trend summary (income/expense totals + avg savings) — filled by renderIncomeExpenseChart -->
+                <div id="ie-trend-summary" class="mb-2"></div>
                 <div style="height: 400px; max-width: 100%;">
                     <canvas id="income-expense-chart"></canvas>
                 </div>
@@ -567,7 +653,7 @@ const Dashboard = {
                             </svg>
                         </div>
                         <div>
-                            <span class="text-xs font-medium text-green-700">Month Settlement</span>
+                            <span class="text-xs font-medium text-green-700">Outflow Overview</span>
                         </div>
                     </div>
                     <button onclick="Dashboard.showSettlementModal(${year}, ${month})" 
@@ -1271,53 +1357,40 @@ const Dashboard = {
                 return monthBills.reduce((sum, b) => sum + (parseFloat(b.paidAmount) || parseFloat(b.amount) || 0), 0);
             });
             
+            // Monthly bills are discrete amounts → rounded gradient BARS read
+            // more honestly than a connected line.
             datasets.push({
                 label: 'Total Bills',
                 data: totalDataPoints,
-                borderColor: 'rgba(99, 102, 241, 1)',
-                backgroundColor: 'rgba(99, 102, 241, 0.15)',
-                borderWidth: 2.5,
-                fill: true,
-                tension: 0.3,
-                pointRadius: 5,
-                pointHoverRadius: 7,
-                pointBackgroundColor: 'rgba(99, 102, 241, 1)',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2
+                backgroundColor: (c) => this._chartGradient(c, 'rgba(139,92,246,0.95)', 'rgba(139,92,246,0.45)'),
+                hoverBackgroundColor: '#7c3aed',
+                borderRadius: 8,
+                borderSkipped: false,
+                maxBarThickness: 38,
             });
         } else {
-            // Individual view: Separate lines per card
-            // Group bills by card
+            // By-card view: STACKED bars — each month's bar splits into per-card
+            // segments (total height = total bill). Far cleaner than N overlapping
+            // lines and shows composition at a glance.
             const cardBillsMap = {};
             creditCards.forEach(card => {
                 const cardIdStr = String(card.id);
                 cardBillsMap[cardIdStr] = {
                     name: card.name,
                     bills: paidBills.filter(b => String(b.cardId) === cardIdStr)
-                        .sort((a, b) => new Date(a.paidAt || a.paidDate) - new Date(b.paidAt || b.paidDate))
                 };
             });
-            
-            // Card colors
-            const cardColors = [
-                { border: 'rgba(99, 102, 241, 1)', bg: 'rgba(99, 102, 241, 0.1)' },   // Indigo
-                { border: 'rgba(236, 72, 153, 1)', bg: 'rgba(236, 72, 153, 0.1)' },   // Pink
-                { border: 'rgba(34, 197, 94, 1)', bg: 'rgba(34, 197, 94, 0.1)' },     // Green
-                { border: 'rgba(249, 115, 22, 1)', bg: 'rgba(249, 115, 22, 0.1)' },   // Orange
-                { border: 'rgba(14, 165, 233, 1)', bg: 'rgba(14, 165, 233, 0.1)' },   // Sky
-                { border: 'rgba(168, 85, 247, 1)', bg: 'rgba(168, 85, 247, 0.1)' },   // Purple
-            ];
-            
+
+            // Solid card colours (stacked segments — no per-bar gradient).
+            const cardColors = ['#6366f1', '#ec4899', '#22c55e', '#f97316', '#0ea5e9', '#a855f7'];
+
+            const activeCards = Object.keys(cardBillsMap).filter(id => cardBillsMap[id].bills.length > 0);
             let colorIndex = 0;
-            
-            Object.keys(cardBillsMap).forEach(cardId => {
+            activeCards.forEach((cardId, idx) => {
                 const cardData = cardBillsMap[cardId];
-                if (cardData.bills.length === 0) return;
-                
                 const color = cardColors[colorIndex % cardColors.length];
                 colorIndex++;
-                
-                // Create data points for each month
+
                 const dataPoints = allMonths.map(monthKey => {
                     const [year, month] = monthKey.split('-');
                     const monthBills = cardData.bills.filter(b => {
@@ -1325,23 +1398,19 @@ const Dashboard = {
                         const d = new Date(paidDateValue);
                         return d.getFullYear() === parseInt(year) && (d.getMonth() + 1) === parseInt(month);
                     });
-                    // Sum all payments in that month
                     return monthBills.reduce((sum, b) => sum + (parseFloat(b.paidAmount) || parseFloat(b.amount) || 0), 0);
                 });
-                
+
                 datasets.push({
                     label: cardData.name,
                     data: dataPoints,
-                    borderColor: color.border,
-                    backgroundColor: color.bg,
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.3,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    pointBackgroundColor: color.border,
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 1.5
+                    backgroundColor: color,
+                    hoverBackgroundColor: color,
+                    stack: 'bills',
+                    // Round only the top-most segment for a clean stacked-bar cap.
+                    borderRadius: idx === activeCards.length - 1 ? { topLeft: 6, topRight: 6 } : 0,
+                    borderSkipped: false,
+                    maxBarThickness: 38,
                 });
             });
         }
@@ -1349,7 +1418,7 @@ const Dashboard = {
         if (datasets.length === 0) return;
         
         this.creditCardBillsChartInstance = new Chart(ctx, {
-            type: 'line',
+            type: 'bar',
             data: {
                 labels: labels,
                 datasets: datasets
@@ -1357,48 +1426,15 @@ const Dashboard = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
+                interaction: { mode: 'index', intersect: false },
+                animation: this._chartAnimation(),
                 plugins: {
-                    legend: {
-                        display: this.creditCardChartView !== 'total',
-                        position: 'bottom',
-                        labels: {
-                            boxWidth: 12,
-                            padding: 10,
-                            font: { size: 10 }
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `${context.dataset.label}: ₹${Utils.formatIndianNumber(context.raw)}`;
-                            }
-                        }
-                    }
+                    legend: this._chartLegend(this.creditCardChartView !== 'total'),
+                    datalabels: { display: false },
+                    tooltip: this._chartTooltip(),
                 },
-                scales: {
-                    x: {
-                        grid: { display: false },
-                        ticks: { font: { size: 10 } }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: 'rgba(0,0,0,0.05)' },
-                        ticks: {
-                            font: { size: 10 },
-                            stepSize: 5000,
-                            callback: function(value) {
-                                if (value >= 1000) {
-                                    return '₹' + (value/1000) + 'k';
-                                }
-                                return '₹' + value;
-                            }
-                        }
-                    }
-                }
+                // By-card view stacks per-card segments; total view is a single bar.
+                scales: this._chartScales({ stacked: this.creditCardChartView !== 'total' }),
             }
         });
     },
@@ -2928,81 +2964,43 @@ const Dashboard = {
         const isTotal = this.investmentsChartView === 'total';
         
         if (isTotal) {
-            // Total view: Only show total line with filled area
+            // Total view: single line with a soft gradient area fill.
             datasets = [{
                 label: 'Total',
                 data: data.map(d => d.total),
-                borderColor: 'rgba(16, 185, 129, 1)',
-                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                borderColor: '#6366f1',
                 borderWidth: 3,
+                tension: 0.4,
                 fill: true,
-                tension: 0.3,
-                pointRadius: 5,
-                pointHoverRadius: 7,
-                pointBackgroundColor: 'rgba(16, 185, 129, 1)',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2
+                backgroundColor: (c) => this._chartGradient(c, 'rgba(99,102,241,0.30)', 'rgba(99,102,241,0)'),
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                pointHoverBackgroundColor: '#6366f1',
+                pointHoverBorderColor: '#fff',
+                pointHoverBorderWidth: 2,
             }];
         } else {
-            // Category view: Show individual categories. MF gets its own
-            // line so a SHARES vs Mutual Fund split is visible at a glance.
+            // By-type view: clean multi-coloured smooth lines (no fill so they
+            // don't muddy each other). MF is split from Shares so the equity vs
+            // mutual-fund mix is visible at a glance.
+            const line = (label, values, color) => ({
+                label,
+                data: values,
+                borderColor: color,
+                borderWidth: 2.5,
+                tension: 0.4,
+                fill: false,
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: color,
+                pointHoverBorderColor: '#fff',
+                pointHoverBorderWidth: 2,
+            });
             datasets = [
-                {
-                    label: 'Shares',
-                    data: data.map(d => d.shares),
-                    borderColor: 'rgba(99, 102, 241, 1)',
-                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.3,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    pointBackgroundColor: 'rgba(99, 102, 241, 1)',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 1.5
-                },
-                {
-                    label: 'Mutual Funds',
-                    data: data.map(d => d.mf || 0),
-                    borderColor: 'rgba(79, 70, 229, 1)',
-                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.3,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    pointBackgroundColor: 'rgba(79, 70, 229, 1)',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 1.5
-                },
-                {
-                    label: 'Gold',
-                    data: data.map(d => d.gold),
-                    borderColor: 'rgba(251, 191, 36, 1)',
-                    backgroundColor: 'rgba(251, 191, 36, 0.1)',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.3,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    pointBackgroundColor: 'rgba(251, 191, 36, 1)',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 1.5
-                },
-                {
-                    label: 'EPF/FD',
-                    data: data.map(d => d.epfFd),
-                    borderColor: 'rgba(236, 72, 153, 1)',
-                    backgroundColor: 'rgba(236, 72, 153, 0.1)',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.3,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    pointBackgroundColor: 'rgba(236, 72, 153, 1)',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 1.5
-                }
+                line('Shares', data.map(d => d.shares), '#6366f1'),
+                line('Mutual Funds', data.map(d => d.mf || 0), '#8b5cf6'),
+                line('Gold', data.map(d => d.gold), '#f59e0b'),
+                line('EPF/FD', data.map(d => d.epfFd), '#ec4899'),
             ];
         }
         
@@ -3015,60 +3013,16 @@ const Dashboard = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
+                interaction: { mode: 'index', intersect: false },
+                animation: this._chartAnimation(),
                 plugins: {
-                    legend: {
-                        display: !isTotal,
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            pointStyle: 'circle',
-                            padding: 12,
-                            font: { size: 11 }
-                        }
-                    },
-                    datalabels: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                        titleFont: { size: 12, weight: 'bold' },
-                        bodyFont: { size: 11 },
-                        padding: 12,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: function(context) {
-                                const label = context.dataset.label || '';
-                                const value = context.parsed.y;
-                                return label + ': ₹' + value.toLocaleString('en-IN');
-                            }
-                        }
-                    }
+                    legend: this._chartLegend(!isTotal),
+                    datalabels: { display: false },
+                    tooltip: this._chartTooltip(),
                 },
-                scales: {
-                    x: {
-                        grid: { display: false },
-                        ticks: { font: { size: 11 } }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: 'rgba(0, 0, 0, 0.05)' },
-                        ticks: {
-                            font: { size: 11 },
-                            callback: function(value) {
-                                if (value >= 100000) {
-                                    return '₹' + (value / 100000).toFixed(1) + 'L';
-                                } else if (value >= 1000) {
-                                    return '₹' + (value / 1000).toFixed(0) + 'k';
-                                }
-                                return '₹' + value;
-                            }
-                        }
-                    }
-                }
+                // Totals grow over time — let the y-axis frame the trend rather
+                // than forcing zero, so movement is visible. By-type starts at 0.
+                scales: this._chartScales({ beginAtZero: !isTotal }),
             }
         });
     },
@@ -3114,117 +3068,91 @@ const Dashboard = {
                     {
                         label: 'Income',
                         data: incomeData.map(d => d.income),
-                        borderColor: 'rgba(34, 197, 94, 1)',
-                        borderWidth: 2,
-                        fill: false,
-                        tension: 0.4,
-                        pointRadius: 4,
+                        borderColor: '#10b981',
+                        borderWidth: 2.5,
+                        tension: 0.45,
+                        fill: true,
+                        backgroundColor: (c) => this._chartGradient(c, 'rgba(16,185,129,0.28)', 'rgba(16,185,129,0)'),
+                        pointRadius: 0,
                         pointHoverRadius: 6,
-                        pointBackgroundColor: 'rgba(34, 197, 94, 1)',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 1.5,
-                        pointHoverBackgroundColor: 'rgba(34, 197, 94, 1)',
+                        pointHoverBackgroundColor: '#10b981',
                         pointHoverBorderColor: '#fff',
-                        pointHoverBorderWidth: 2
+                        pointHoverBorderWidth: 2,
                     },
                     {
                         label: 'Expenses',
                         data: expensesData.map(d => d.withLoans),
-                        borderColor: 'rgba(239, 68, 68, 1)',
-                        borderWidth: 2,
-                        fill: false,
-                        tension: 0.4,
-                        pointRadius: 4,
+                        borderColor: '#f43f5e',
+                        borderWidth: 2.5,
+                        tension: 0.45,
+                        fill: true,
+                        backgroundColor: (c) => this._chartGradient(c, 'rgba(244,63,94,0.22)', 'rgba(244,63,94,0)'),
+                        pointRadius: 0,
                         pointHoverRadius: 6,
-                        pointBackgroundColor: 'rgba(239, 68, 68, 1)',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 1.5,
-                        pointHoverBackgroundColor: 'rgba(239, 68, 68, 1)',
+                        pointHoverBackgroundColor: '#f43f5e',
                         pointHoverBorderColor: '#fff',
-                        pointHoverBorderWidth: 2
+                        pointHoverBorderWidth: 2,
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
+                interaction: { mode: 'index', intersect: false },
+                animation: this._chartAnimation(),
                 plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            usePointStyle: true,
-                            pointStyle: 'circle',
-                            padding: 15,
-                            font: {
-                                size: 12,
-                                weight: 'normal'
-                            }
-                        }
-                    },
-                    datalabels: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        titleFont: {
-                            size: 13,
-                            weight: 'normal'
-                        },
-                        bodyFont: {
-                            size: 12,
-                            weight: 'normal'
-                        },
-                        padding: 12,
-                        cornerRadius: 8,
-                        displayColors: true,
-                        callbacks: {
-                            label: function(context) {
-                                const label = context.dataset.label || '';
-                                const value = context.parsed.y;
-                                // Use Indian number format
-                                const formatted = value.toLocaleString('en-IN');
-                                return label + ': ₹' + formatted;
-                            }
-                        }
-                    }
+                    // Legend is intentionally off — the #ie-trend-summary strip above the
+                    // chart already labels Income (emerald) / Expenses (rose) with totals,
+                    // so a legend just duplicates it and steals plot height from the lines.
+                    legend: { display: false },
+                    datalabels: { display: false },
+                    tooltip: this._chartTooltip(),
                 },
-                scales: {
-                    x: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            font: {
-                                size: 11
-                            }
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return '₹' + (value >= 100000 ? (value/100000).toFixed(1) + 'L' : (value >= 1000 ? (value/1000).toFixed(0) + 'k' : value));
-                            },
-                            stepSize: 50000,
-                            font: {
-                                size: 11
-                            }
-                        },
-                        grid: {
-                            display: true,
-                            color: 'rgba(0, 0, 0, 0.1)',
-                            drawBorder: false
-                        }
-                    }
-                }
+                scales: this._chartScales(),
             }
         });
+
+        // Trend summary above the chart: period totals + average monthly savings.
+        this._renderIncomeExpenseTrend(incomeData, expensesData);
     },
-    
+
+    /**
+     * Fill the #ie-trend-summary strip with period income/expense totals and
+     * the average monthly surplus, so the chart leads with the headline numbers.
+     */
+    _renderIncomeExpenseTrend(incomeData, expensesData) {
+        const el = document.getElementById('ie-trend-summary');
+        if (!el) return;
+        const totalIncome = incomeData.reduce((s, d) => s + (d.income || 0), 0);
+        const totalExpense = expensesData.reduce((s, d) => s + (d.withLoans || 0), 0);
+        const months = Math.max(1, incomeData.length);
+        const avgSavings = Math.round((totalIncome - totalExpense) / months);
+        const fmt = (n) => '₹' + this._fmtCompact(n);
+        const savedPositive = avgSavings >= 0;
+        const savingsChip = totalIncome > 0
+            ? `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${savedPositive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}">
+                   ${savedPositive ? 'Saved' : 'Overspent'} ${fmt(Math.abs(avgSavings))}/mo avg
+               </span>`
+            : '';
+        el.innerHTML = `
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-3 text-[11px] text-gray-500">
+                    <span>Income <b class="text-emerald-600">${fmt(totalIncome)}</b></span>
+                    <span>Expenses <b class="text-rose-600">${fmt(totalExpense)}</b></span>
+                </div>
+                ${savingsChip}
+            </div>`;
+    },
+
+    /** Compact rupee for chart summaries (8.4L / 1.05Cr / 9,500). */
+    _fmtCompact(n) {
+        const v = Math.abs(Math.round(n));
+        if (v >= 10000000) return (v / 10000000).toFixed(2).replace(/\.?0+$/, '') + 'Cr';
+        if (v >= 100000)  return (v / 100000).toFixed(2).replace(/\.?0+$/, '') + 'L';
+        if (v >= 1000)    return Utils.formatIndianNumber(v);
+        return String(v);
+    },
+
     /**
      * Render loans progress chart
      */
@@ -3404,19 +3332,9 @@ const Dashboard = {
             }
         }
         
-        // Color palette for categories
-        const colors = [
-            'rgba(147, 51, 234, 0.85)', // Purple
-            'rgba(239, 68, 68, 0.85)',  // Red
-            'rgba(34, 197, 94, 0.85)',  // Green
-            'rgba(59, 130, 246, 0.85)', // Blue
-            'rgba(251, 146, 60, 0.85)', // Orange
-            'rgba(236, 72, 153, 0.85)', // Pink
-            'rgba(14, 165, 233, 0.85)', // Cyan
-            'rgba(168, 85, 247, 0.85)', // Violet
-            'rgba(234, 179, 8, 0.85)',  // Yellow
-            'rgba(132, 204, 22, 0.85)'  // Lime
-        ];
+        // Modern category palette — same vibrant tones used across the other
+        // dashboard charts (solid hex; the doughnut adds white borders + hover).
+        const colors = this._categoryColors();
         
         // If no visible categories, still show the legend so users can re-enable categories
         if (data.length === 0) {
@@ -3429,8 +3347,10 @@ const Dashboard = {
             return;
         }
         
+        const grandTotal = data.reduce((s, d) => s + d.amount, 0);
+
         this.categoryChartInstance = new Chart(ctx, {
-            type: 'pie',
+            type: 'doughnut',
             data: {
                 labels: data.map(d => d.category),
                 datasets: [{
@@ -3438,51 +3358,84 @@ const Dashboard = {
                     data: data.map(d => d.amount),
                     backgroundColor: data.map((_, i) => colors[i % colors.length]),
                     borderColor: '#ffffff',
-                    borderWidth: 3
+                    borderWidth: 2,
+                    borderRadius: 4,
+                    hoverOffset: 6,
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: {
-                    animateRotate: true,
-                    animateScale: true
-                },
+                cutout: '66%',
+                animation: this._prefersReducedMotion()
+                    ? { duration: 0 }
+                    : { animateRotate: true, animateScale: true, duration: 800, easing: 'easeOutQuart' },
                 plugins: {
-                    legend: {
-                        display: false  // Using custom HTML legend instead
-                    },
-                    datalabels: {
-                        formatter: function(value, context) {
-                            const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                            const percentage = ((value / total) * 100).toFixed(1);
-                            return percentage > 5 ? percentage + '%' : ''; // Only show if > 5%
-                        },
-                        font: {
-                            size: 11,
-                            weight: 'bold'
-                        },
-                        color: '#ffffff'
-                    },
+                    legend: { display: false },  // custom HTML legend (clickable to toggle)
+                    datalabels: { display: false },  // center total + legend carry the numbers
                     tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.92)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#e2e8f0',
+                        padding: 10,
+                        cornerRadius: 10,
+                        usePointStyle: true,
+                        boxPadding: 4,
                         callbacks: {
                             label: function(context) {
-                                const label = context.label || '';
                                 const value = context.parsed;
-                                // Use Indian number format
-                                const formatted = value.toLocaleString('en-IN');
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = ((value / total) * 100).toFixed(1);
-                                return label + ': ₹' + formatted + ' (' + percentage + '%)';
+                                const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+                                return ' ' + (context.label || '') + ': ₹' + value.toLocaleString('en-IN') + ' (' + pct + '%)';
                             }
                         }
                     }
                 }
-            }
+            },
+            // Center label: total monthly spend in the doughnut hole.
+            plugins: [this._doughnutCenterPlugin(this._fmtCompact(grandTotal), 'TOTAL / mo')],
         });
-        
-        // Generate HTML legend with gray percentages (shows all categories including excluded)
+
+        // Generate HTML legend with amounts + percentages (shows all categories
+        // including excluded, click to toggle).
         this.generateCategoryLegend(data, colors);
+    },
+
+    /** Modern category palette — shared vibrant tones (solid hex). */
+    _categoryColors() {
+        return ['#8b5cf6', '#f43f5e', '#10b981', '#3b82f6', '#f59e0b',
+                '#ec4899', '#06b6d4', '#a855f7', '#eab308', '#84cc16'];
+    },
+
+    /** True if the user has asked the OS to reduce motion. */
+    _prefersReducedMotion() {
+        return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    },
+
+    /**
+     * Chart.js plugin that paints a big value + small caption in a doughnut's
+     * hole. Returns a fresh plugin object per chart (so the text is captured).
+     */
+    _doughnutCenterPlugin(valueText, caption) {
+        return {
+            id: 'doughnutCenter',
+            afterDraw(chart) {
+                const { ctx, chartArea } = chart;
+                if (!chartArea) return;
+                const cx = (chartArea.left + chartArea.right) / 2;
+                const cy = (chartArea.top + chartArea.bottom) / 2;
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#0f172a';
+                ctx.font = '700 16px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                ctx.fillText('₹' + valueText, cx, cy - 2);
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '600 8px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                ctx.fillText(caption, cx, cy + 13);
+                ctx.restore();
+            }
+        };
     },
     
     /**
@@ -3539,15 +3492,18 @@ const Dashboard = {
                 ? 'rgba(156, 163, 175, 0.5)' // Gray for excluded categories
                 : categoryColorMap[item.category];
             
+            const dim = isExcluded ? 'text-decoration: line-through; opacity: 0.5;' : '';
+            const amt = this._fmtCompact(item.amount);
             html += `
-                <div onclick="Dashboard.toggleCategoryExclusion('${item.category.replace(/'/g, "\\'")}')" 
-                     style="display: flex; align-items: center; gap: 6px; font-size: 10px; cursor: pointer; user-select: none; padding: 2px 4px; border-radius: 4px; transition: background-color 0.2s;"
+                <div onclick="Dashboard.toggleCategoryExclusion('${item.category.replace(/'/g, "\\'")}')"
+                     style="display: flex; align-items: center; gap: 6px; font-size: 10px; cursor: pointer; user-select: none; padding: 3px 4px; border-radius: 5px; transition: background-color 0.2s;"
                      onmouseover="this.style.backgroundColor='rgba(0,0,0,0.05)'"
                      onmouseout="this.style.backgroundColor='transparent'"
                      title="Click to ${isExcluded ? 'include' : 'exclude'} from chart">
-                    <div style="width: 10px; height: 10px; border-radius: 50%; background-color: ${color}; flex-shrink: 0;"></div>
-                    <span style="color: #374151; font-weight: 500; ${isExcluded ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${item.category}</span>
-                    <span style="color: #9ca3af; font-weight: normal; ${isExcluded ? 'text-decoration: line-through; opacity: 0.5;' : ''}">(${percentage}%)</span>
+                    <div style="width: 9px; height: 9px; border-radius: 3px; background-color: ${color}; flex-shrink: 0;"></div>
+                    <span style="color: #334155; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; ${dim}">${item.category}</span>
+                    <span style="color: #0f172a; font-weight: 700; ${dim}">₹${amt}</span>
+                    <span style="color: #94a3b8; font-weight: 500; width: 30px; text-align: right; ${dim}">${percentage}%</span>
                 </div>
             `;
         });
@@ -7936,6 +7892,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                 responsive: true,
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
+                animation: this._chartAnimation(),
                 plugins: {
                     legend: {
                         position: 'bottom',
@@ -8313,9 +8270,19 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
         return `
             <div id="settlement-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) Dashboard.closeSettlementModal()">
                 <div id="settlement-modal-content" class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                    <div class="sticky top-0 bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 flex justify-between items-center rounded-t-2xl z-10">
-                        <h2 class="text-xl font-bold text-white">Settlement Calculations</h2>
-                        <button onclick="Dashboard.closeSettlementModal()" class="text-white hover:text-gray-200 p-1">
+                    <div class="sticky top-0 bg-gradient-to-r from-green-600 to-emerald-600 px-5 py-3.5 flex justify-between items-center rounded-t-2xl z-10">
+                        <div class="flex items-center gap-2.5">
+                            <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-white/20">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-bold text-white leading-tight">Outflow Overview</h2>
+                                <p class="text-[11px] text-green-50/90 leading-tight">${monthName}</p>
+                            </div>
+                        </div>
+                        <button onclick="Dashboard.closeSettlementModal()" class="text-white/90 hover:text-white p-1">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
@@ -8323,46 +8290,50 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                     </div>
                     
                     <div class="p-4 space-y-3">
-                        <!-- Summary Section: Income and Balance -->
-                        <div class="grid grid-cols-2 gap-3 mb-4">
-                            <!-- Income Summary -->
-                            <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-3">
-                                <!-- First line: Income label on left, Month filter on right -->
-                                <div class="flex items-center justify-between mb-2">
-                                    <p class="text-xs text-green-600 font-medium">Income</p>
-                                    <div class="relative">
-                                        <input type="month" id="settlement-income-month-selector" 
-                                               value="${settlementData.incomeMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`}"
-                                               onchange="Dashboard.updateSettlementIncomeMonth(${year}, ${month}, this.value)"
-                                               class="absolute opacity-0 pointer-events-none">
-                                        <button id="settlement-income-month-button" 
-                                                onclick="document.getElementById('settlement-income-month-selector').showPicker()"
-                                                class="px-2 py-1 border border-green-300 rounded text-[10px] font-medium text-green-700 hover:bg-green-50 transition-all whitespace-nowrap">
-                                            ${this.getFormattedMonth(settlementData.incomeMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`)} ▼
-                                        </button>
-                                    </div>
+                        <!-- Hero: Income · live outflow composition · Final Balance -->
+                        <div class="rounded-2xl border border-gray-100 bg-gradient-to-br from-slate-50 to-white shadow-sm p-3.5 mb-3">
+                            <!-- Income + month selector -->
+                            <div class="flex items-start justify-between mb-3">
+                                <div>
+                                    <p class="text-[11px] font-medium text-gray-500">Income</p>
+                                    <p class="text-2xl font-extrabold text-gray-900 leading-tight tracking-tight">₹${Utils.formatIndianNumber(income)}</p>
+                                    ${isEstimatedIncome
+                                        ? `<p class="text-[9px] text-amber-500 font-medium">~ Estimated from payslip</p>`
+                                        : income > 0
+                                            ? `<p class="text-[9px] text-green-600 font-medium">✓ Actual salary</p>`
+                                            : `<p class="text-[9px] text-gray-400">No income set</p>`}
                                 </div>
-                                <!-- Second line: Amount -->
-                                <p class="text-xl font-bold text-green-900 mb-1">₹${Utils.formatIndianNumber(income)}</p>
-                                <!-- Below: Info text -->
-                                ${isEstimatedIncome ? `
-                                    <p class="text-[9px] text-green-500">~ Estimated from payslip</p>
-                                ` : income > 0 ? `
-                                    <p class="text-[9px] text-green-500">✓ Actual salary</p>
-                                ` : ''}
-                            </div>
-                            
-                            <!-- Final Balance Summary -->
-                            <div class="bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-lg p-3">
-                                <!-- First line: Final Balance label -->
-                                <div class="mb-2">
-                                    <p class="text-xs text-blue-600 font-medium">Final Balance</p>
+                                <div class="relative">
+                                    <input type="month" id="settlement-income-month-selector"
+                                           value="${settlementData.incomeMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`}"
+                                           onchange="Dashboard.updateSettlementIncomeMonth(${year}, ${month}, this.value)"
+                                           class="absolute opacity-0 pointer-events-none">
+                                    <button id="settlement-income-month-button"
+                                            onclick="document.getElementById('settlement-income-month-selector').showPicker()"
+                                            class="px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-[11px] font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-all whitespace-nowrap">
+                                        ${this.getFormattedMonth(settlementData.incomeMonth || `${defaultIncomeYear}-${String(defaultIncomeMonth).padStart(2, '0')}`)} ▼
+                                    </button>
                                 </div>
-                                <!-- Second line: Amount -->
-                                <p id="settlement-balance" class="text-xl font-bold text-blue-900 mb-1">₹${Utils.formatIndianNumber(balance)}</p>
-                                <!-- Below: Info text -->
-                                <p class="text-[10px] text-blue-500">Income - Deductions</p>
                             </div>
+
+                            <!-- Total outflows + live composition bar -->
+                            <div class="flex items-center justify-between mb-1.5">
+                                <p class="text-[11px] font-medium text-gray-500">Total Outflows</p>
+                                <p id="settlement-outflows-total" class="text-sm font-bold text-rose-600">₹${Utils.formatIndianNumber(totalDeductions)}</p>
+                            </div>
+                            <div id="settlement-composition-bar">${this._compositionBarHtml(ctx)}</div>
+
+                            <!-- Final balance -->
+                            <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                                <div class="flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 10l2-5h14l2 5M3 10v9a1 1 0 001 1h16a1 1 0 001-1v-9"/>
+                                    </svg>
+                                    <p class="text-[11px] font-medium text-gray-500">Final Balance</p>
+                                </div>
+                                <p id="settlement-balance" class="text-xl font-extrabold ${balance >= 0 ? 'text-emerald-700' : 'text-rose-600'}">₹${Utils.formatIndianNumber(balance)}</p>
+                            </div>
+                            <p class="text-[9px] text-gray-400 text-right mt-0.5">Income − Outflows</p>
                         </div>
                         
                         <!-- Credit Card Bills (Collapsible) -->
@@ -8370,7 +8341,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                             <button onclick="Dashboard.toggleSettlementSection('cards', ${year}, ${month})" 
                                     class="w-full flex items-center justify-between p-2.5 hover:bg-gray-100 transition-colors">
                                 <div class="flex items-center gap-2">
-                                    <span class="text-sm">💳</span>
+                                    <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-100 text-sm">💳</span>
                                     <div class="text-left">
                                         <p class="text-xs font-semibold text-gray-700">Credit Card Bills</p>
                                         <p class="text-[10px] text-gray-500">${cardData.length} card(s)</p>
@@ -8474,7 +8445,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                             <button onclick="Dashboard.toggleSettlementSection('recurring', ${year}, ${month})" 
                                     class="w-full flex items-center justify-between p-2.5 hover:bg-gray-100 transition-colors">
                                 <div class="flex items-center gap-2">
-                                    <span class="text-sm">🔄</span>
+                                    <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100 text-sm">🔄</span>
                                     <div class="text-left">
                                         <p class="text-xs font-semibold text-gray-700">Recurring</p>
                                         <p class="text-[10px] text-gray-500">${recurringItems.length} item${recurringItems.length === 1 ? '' : 's'}</p>
@@ -8530,7 +8501,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                             <button onclick="Dashboard.toggleSettlementSection('loans', ${year}, ${month})"
                                     class="w-full flex items-center justify-between p-2.5 hover:bg-gray-100 transition-colors">
                                 <div class="flex items-center gap-2">
-                                    <span class="text-sm">🏦</span>
+                                    <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-rose-100 text-sm">🏦</span>
                                     <div class="text-left">
                                         <p class="text-xs font-semibold text-gray-700">Loan EMIs</p>
                                         <p class="text-[10px] text-gray-500">${loanEmiItems.length} EMI${loanEmiItems.length === 1 ? '' : 's'}</p>
@@ -8588,7 +8559,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                             <button onclick="Dashboard.toggleSettlementSection('sips', ${year}, ${month})"
                                     class="w-full flex items-center justify-between p-2.5 hover:bg-gray-100 transition-colors">
                                 <div class="flex items-center gap-2">
-                                    <span class="text-sm">📈</span>
+                                    <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-violet-100 text-sm">📈</span>
                                     <div class="text-left">
                                         <p class="text-xs font-semibold text-gray-700">SIPs (Planned)</p>
                                         <p class="text-[10px] text-gray-500">${sipItems.length} active SIP(s)</p>
@@ -8629,7 +8600,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                             <button onclick="Dashboard.toggleSettlementSection('custom', ${year}, ${month})" 
                                     class="w-full flex items-center justify-between p-2.5 hover:bg-gray-100 transition-colors">
                                 <div class="flex items-center gap-2">
-                                    <span class="text-sm">➕</span>
+                                    <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-cyan-100 text-sm">➕</span>
                                     <div class="text-left">
                                         <p class="text-xs font-semibold text-gray-700">Custom Items</p>
                                         <p class="text-[10px] text-gray-500">${(settlementData.customItems || []).length} item(s)</p>
@@ -8667,53 +8638,49 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                                 </button>
                             </div>
                         </div>
-                        
-                        <!-- Summary (Collapsible) -->
-                        <div class="bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-lg overflow-hidden">
-                            <button onclick="Dashboard.toggleSettlementSection('summary', ${year}, ${month})" 
-                                    class="w-full flex items-center justify-between p-2.5 hover:bg-red-100 transition-colors">
-                                <div class="flex items-center gap-2">
-                                    <span class="text-sm">📊</span>
-                                    <div class="text-left">
-                                        <p class="text-xs font-semibold text-red-600">Total Deductions</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <span id="settlement-total-deductions" class="text-xs font-bold text-red-600">₹${Utils.formatIndianNumber(totalDeductions)}</span>
-                                    <svg id="summary-arrow" class="w-4 h-4 text-red-500 transform transition-transform ${settlementData.expandedSections?.summary ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                    </svg>
-                                </div>
-                            </button>
-                            <div id="summary-content" class="${settlementData.expandedSections?.summary ? '' : 'hidden'} px-3 pb-3 pt-3 space-y-1 border-t border-red-200">
-                                <div class="space-y-1">
-                                    <div class="flex justify-between text-xs">
-                                        <span class="text-red-600">Credit Card Bills:</span>
-                                        <span id="settlement-summary-cards" class="font-semibold text-red-700">₹${Utils.formatIndianNumber(cardsTotal)}</span>
-                                    </div>
-                                    <div class="flex justify-between text-xs">
-                                        <span class="text-red-600">Recurring Payments:</span>
-                                        <span id="settlement-summary-recurring" class="font-semibold text-red-700">₹${Utils.formatIndianNumber(recurringTotal)}</span>
-                                    </div>
-                                    <div class="flex justify-between text-xs">
-                                        <span class="text-red-600">Loan EMIs:</span>
-                                        <span id="settlement-summary-loans" class="font-semibold text-red-700">₹${Utils.formatIndianNumber(loansTotal)}</span>
-                                    </div>
-                                    <div class="flex justify-between text-xs">
-                                        <span class="text-red-600">SIPs (Planned):</span>
-                                        <span id="settlement-summary-sips" class="font-semibold text-red-700">₹${Utils.formatIndianNumber(sipsTotal)}</span>
-                                    </div>
-                                    <div class="flex justify-between text-xs">
-                                        <span class="text-red-600">Custom Items:</span>
-                                        <span id="settlement-summary-custom" class="font-semibold text-red-700">₹${Utils.formatIndianNumber(customItemsTotal)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
         `;
+    },
+
+    /**
+     * Live "where the money goes" bar for the Outflow Overview hero. Renders a
+     * single rounded stacked bar (one segment per outflow category, sized by its
+     * share of total outflows) plus a compact wrapping legend. Re-rendered in
+     * place by _refreshSettlementTotals whenever a toggle changes the totals.
+     */
+    _compositionBarHtml(ctx) {
+        const { cardsTotal, recurringTotal, loansTotal, sipsTotal, customItemsTotal, totalDeductions } = ctx;
+        const parts = [
+            { label: 'Cards',     value: cardsTotal,       color: '#6366f1' },
+            { label: 'Recurring', value: recurringTotal,   color: '#f59e0b' },
+            { label: 'Loans',     value: loansTotal,       color: '#f43f5e' },
+            { label: 'SIPs',      value: sipsTotal,        color: '#8b5cf6' },
+            { label: 'Custom',    value: customItemsTotal, color: '#06b6d4' },
+        ].filter(p => p.value > 0);
+
+        if (totalDeductions <= 0 || parts.length === 0) {
+            return `<div class="h-2.5 rounded-full bg-gray-100"></div>
+                    <p class="text-[9px] text-gray-400 mt-1">No outflows selected yet</p>`;
+        }
+
+        const segments = parts.map(p => {
+            const pct = (p.value / totalDeductions) * 100;
+            return `<div style="width:${pct}%;background:${p.color}" title="${p.label}: ₹${Utils.formatIndianNumber(p.value)} (${pct.toFixed(0)}%)"></div>`;
+        }).join('');
+
+        const legend = parts.map(p => {
+            const pct = (p.value / totalDeductions) * 100;
+            return `<span class="inline-flex items-center gap-1 text-[9px] text-gray-500">
+                        <span class="w-2 h-2 rounded-sm" style="background:${p.color}"></span>
+                        ${p.label} ${pct.toFixed(0)}%
+                    </span>`;
+        }).join('');
+
+        return `
+            <div class="flex h-2.5 rounded-full overflow-hidden bg-gray-100 gap-px">${segments}</div>
+            <div class="flex flex-wrap gap-x-2.5 gap-y-1 mt-1.5">${legend}</div>`;
     },
 
     _loansHealthBadgeHtml(ctx) {
@@ -8797,22 +8764,29 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
         // Section header totals + grand total + balance + summary breakdown
         const ok =
             setText('settlement-balance', fmt(ctx.balance)) &
+            setText('settlement-outflows-total', fmt(ctx.totalDeductions)) &
             setText('settlement-cards-total', fmt(ctx.cardsTotal)) &
             setText('settlement-recurring-total', fmt(ctx.recurringTotal)) &
             setText('settlement-loans-total', fmt(ctx.loansTotal)) &
             setText('settlement-sips-total', fmt(ctx.sipsTotal)) &
-            setText('settlement-custom-total', fmt(ctx.customItemsTotal)) &
-            setText('settlement-total-deductions', fmt(ctx.totalDeductions)) &
-            setText('settlement-summary-cards', fmt(ctx.cardsTotal)) &
-            setText('settlement-summary-recurring', fmt(ctx.recurringTotal)) &
-            setText('settlement-summary-loans', fmt(ctx.loansTotal)) &
-            setText('settlement-summary-sips', fmt(ctx.sipsTotal)) &
-            setText('settlement-summary-custom', fmt(ctx.customItemsTotal));
+            setText('settlement-custom-total', fmt(ctx.customItemsTotal));
 
         if (!ok) {
             // DOM not in expected shape (older markup) — safe full re-render.
             this.showSettlementModal(year, month);
             return;
+        }
+
+        // Live outflow-composition bar — rebuild from the same helper the full
+        // render uses so segment widths track the new totals.
+        const compBar = document.getElementById('settlement-composition-bar');
+        if (compBar) compBar.innerHTML = this._compositionBarHtml(ctx);
+
+        // Keep the final-balance colour in sync when it crosses zero.
+        const balanceEl = document.getElementById('settlement-balance');
+        if (balanceEl) {
+            balanceEl.classList.toggle('text-emerald-700', ctx.balance >= 0);
+            balanceEl.classList.toggle('text-rose-600', ctx.balance < 0);
         }
 
         // Health badges/boxes (loans + sips) — rebuild their container markup
