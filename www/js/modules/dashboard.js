@@ -754,7 +754,10 @@ const Dashboard = {
      */
     renderCreditCardBillsSection(forceOpen = true) {
         const paidBills = (window.DB.cardBills || []).filter(b => b.isPaid && b.paidAt);
-        if (paidBills.length === 0) return '';
+        // Also show the section when there's only current outstanding (unpaid)
+        // and no paid history yet — the chart now plots an Outstanding bar.
+        const hasUnpaid = (window.DB.cardBills || []).some(b => !b.isPaid && (parseFloat(b.amount) || 0) > 0);
+        if (paidBills.length === 0 && !hasUnpaid) return '';
 
         const isTotal = this.creditCardChartView === 'total';
         // CC Bills is one of the most-checked sections, so we open it by
@@ -1283,20 +1286,62 @@ const Dashboard = {
     },
     
     /**
+     * Current-month "amount owed" for a single credit card, mirroring the
+     * Outflow Overview's per-card Bill / Outstanding choice so the chart's
+     * current-month bar matches what the settlement actually counts.
+     *
+     *   billAmount        = sum of this card's unpaid bills
+     *   outstandingAmount = card.outstanding (running balance)
+     *   selection         = settlementData[thisMonth].cardSelections[id]
+     *                       ('bill' | 'outstanding'), defaulting to 'bill' when
+     *                       a bill exists, else 'outstanding' — same rule the
+     *                       settlement modal uses to seed the radios.
+     */
+    _ccCurrentAmountForCard(cardId, unpaidBills) {
+        const billAmount = unpaidBills
+            .filter(b => String(b.cardId) === String(cardId))
+            .reduce((sum, b) => sum + (parseFloat(b.amount) || 0), 0);
+        const card = (window.DB.cards || []).find(c => String(c.id) === String(cardId));
+        const outstandingAmount = parseFloat(card?.outstanding) || 0;
+
+        const now = new Date();
+        const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const sel = window.DB.settlementData?.[monthKey]?.cardSelections?.[cardId];
+        const selection = sel || (billAmount > 0 ? 'bill' : 'outstanding');
+
+        const amount = selection === 'outstanding' ? outstandingAmount : billAmount;
+        return { amount, selection };
+    },
+
+    /**
      * Render Credit Card Bills Chart
      */
     renderCreditCardBillsChart() {
         const canvas = document.getElementById('credit-card-bills-chart');
         if (!canvas) return;
-        
+
         const ctx = canvas.getContext('2d');
         
         // Get all paid bills (check both paidAt and paidDate for backward compatibility)
         let paidBills = (window.DB.cardBills || []).filter(b => b.isPaid && (b.paidAt || b.paidDate));
-        if (paidBills.length === 0) return;
-        
+
         // Get credit cards (non-placeholder)
         const creditCards = (window.DB.cards || []).filter(c => c.cardType === 'credit' && !c.isPlaceholder);
+
+        // Current-month "owed now" per card. The chart buckets PAID bills by their
+        // paid date, so the current month (bill generated but not paid) is otherwise
+        // blank. We surface what's owed now as a distinct series — and the amount
+        // matches the Outflow Overview's per-card Bill / Outstanding choice, so the
+        // two views never disagree. (Paid vs current-owed are disjoint, so nothing
+        // is double-counted.)
+        const unpaidBills = (window.DB.cardBills || []).filter(b => !b.isPaid);
+        const currentOwed = {};   // cardId -> { amount, selection }
+        creditCards.forEach(card => {
+            currentOwed[String(card.id)] = this._ccCurrentAmountForCard(card.id, unpaidBills);
+        });
+        const unpaidTotal = Object.values(currentOwed).reduce((sum, c) => sum + (c.amount || 0), 0);
+
+        if (paidBills.length === 0 && unpaidTotal === 0) return;
         
         // Determine month range
         let rangeMonths = [];
@@ -1335,14 +1380,21 @@ const Dashboard = {
         
         // Use only the months in the range that have data OR all range months for a complete view
         const allMonths = rangeMonths;
-        
+
         // Format labels (MMM YY)
         const labels = allMonths.map(d => {
             const [year, month] = d.split('-');
             const date = new Date(year, month - 1);
             return date.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
         });
-        
+
+        // Show the current month's outstanding (unpaid) total as its own series,
+        // but only when the current month is actually inside the visible range.
+        const now = new Date();
+        const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const currentMonthIndex = allMonths.indexOf(currentMonthKey);
+        const showOutstanding = unpaidTotal > 0 && currentMonthIndex !== -1;
+
         let datasets = [];
         
         if (this.creditCardChartView === 'total') {
@@ -1367,29 +1419,60 @@ const Dashboard = {
                 borderRadius: 8,
                 borderSkipped: false,
                 maxBarThickness: 38,
+                stack: 'bills',
             });
+
+            // Total view rolls every card's current "owed now" amount (per the
+            // Outflow Overview Bill/Outstanding choice) into one amber cap on the
+            // current-month column. "Owed now" is the honest umbrella label since
+            // the mix can be bills, outstanding balances, or both.
+            if (showOutstanding) {
+                datasets.push({
+                    label: 'Owed now',
+                    data: allMonths.map((_, i) => i === currentMonthIndex ? unpaidTotal : 0),
+                    backgroundColor: '#f59e0b',
+                    hoverBackgroundColor: '#d97706',
+                    stack: 'bills',
+                    borderRadius: { topLeft: 6, topRight: 6 },
+                    borderSkipped: false,
+                    maxBarThickness: 38,
+                });
+            }
         } else {
             // By-card view: STACKED bars — each month's bar splits into per-card
             // segments (total height = total bill). Far cleaner than N overlapping
             // lines and shows composition at a glance.
+            //
+            // Each card's CURRENT-month unpaid bill is drawn as a separate segment
+            // in that card's OWN colour but faded + outlined, so you can see which
+            // specific card is still due vs which is already paid — instead of
+            // collapsing every unpaid card into one generic bar.
             const cardBillsMap = {};
             creditCards.forEach(card => {
                 const cardIdStr = String(card.id);
                 cardBillsMap[cardIdStr] = {
                     name: card.name,
-                    bills: paidBills.filter(b => String(b.cardId) === cardIdStr)
+                    bills: paidBills.filter(b => String(b.cardId) === cardIdStr),
+                    // Current "owed now" honours the Outflow Overview Bill/Outstanding choice.
+                    unpaid: currentOwed[cardIdStr]?.amount || 0,
                 };
             });
 
             // Solid card colours (stacked segments — no per-bar gradient).
             const cardColors = ['#6366f1', '#ec4899', '#22c55e', '#f97316', '#0ea5e9', '#a855f7'];
 
-            const activeCards = Object.keys(cardBillsMap).filter(id => cardBillsMap[id].bills.length > 0);
-            let colorIndex = 0;
+            // Include a card if it has paid history OR a current unpaid balance.
+            const activeCards = Object.keys(cardBillsMap)
+                .filter(id => cardBillsMap[id].bills.length > 0 || cardBillsMap[id].unpaid > 0);
+
+            // Build paid segments first, faded-unpaid segments after, so the unpaid
+            // caps stack on top of the paid portion in the current-month column.
+            const paidDatasets = [];
+            const unpaidDatasets = [];
+
             activeCards.forEach((cardId, idx) => {
                 const cardData = cardBillsMap[cardId];
-                const color = cardColors[colorIndex % cardColors.length];
-                colorIndex++;
+                const color = cardColors[idx % cardColors.length];
 
                 const dataPoints = allMonths.map(monthKey => {
                     const [year, month] = monthKey.split('-');
@@ -1401,21 +1484,51 @@ const Dashboard = {
                     return monthBills.reduce((sum, b) => sum + (parseFloat(b.paidAmount) || parseFloat(b.amount) || 0), 0);
                 });
 
-                datasets.push({
+                paidDatasets.push({
                     label: cardData.name,
                     data: dataPoints,
                     backgroundColor: color,
                     hoverBackgroundColor: color,
                     stack: 'bills',
-                    // Round only the top-most segment for a clean stacked-bar cap.
-                    borderRadius: idx === activeCards.length - 1 ? { topLeft: 6, topRight: 6 } : 0,
+                    borderRadius: 0,
                     borderSkipped: false,
                     maxBarThickness: 38,
                 });
+
+                if (showOutstanding && cardData.unpaid > 0) {
+                    const sel = currentOwed[cardId]?.selection === 'outstanding' ? 'outstanding' : 'unpaid bill';
+                    unpaidDatasets.push({
+                        label: `${cardData.name} (${sel})`,
+                        data: allMonths.map((_, i) => i === currentMonthIndex ? cardData.unpaid : 0),
+                        // Same hue, faded fill + solid outline so it reads as the
+                        // same card but "not settled yet" (8-digit hex = +alpha).
+                        backgroundColor: color + '59',
+                        hoverBackgroundColor: color + '8c',
+                        borderColor: color,
+                        borderWidth: { top: 2, left: 2, right: 2, bottom: 0 },
+                        stack: 'bills',
+                        borderRadius: { topLeft: 6, topRight: 6 },
+                        borderSkipped: false,
+                        maxBarThickness: 38,
+                    });
+                }
             });
+
+            // Round the top of the last paid segment so non-current (fully-paid)
+            // columns get a clean rounded cap; current-month columns are capped by
+            // their faded unpaid segment instead.
+            if (paidDatasets.length) {
+                paidDatasets[paidDatasets.length - 1].borderRadius = { topLeft: 6, topRight: 6 };
+            }
+
+            datasets.push(...paidDatasets, ...unpaidDatasets);
         }
-        
+
         if (datasets.length === 0) return;
+
+        // When an Outstanding series is present the Total view must stack so the
+        // amber cap sits in the current-month column rather than as a side bar.
+        const stackedScale = this.creditCardChartView !== 'total' || showOutstanding;
         
         this.creditCardBillsChartInstance = new Chart(ctx, {
             type: 'bar',
@@ -1429,12 +1542,14 @@ const Dashboard = {
                 interaction: { mode: 'index', intersect: false },
                 animation: this._chartAnimation(),
                 plugins: {
-                    legend: this._chartLegend(this.creditCardChartView !== 'total'),
+                    // Show the legend whenever there's more than one series to
+                    // distinguish (per-card segments, or the Outstanding cap).
+                    legend: this._chartLegend(this.creditCardChartView !== 'total' || showOutstanding),
                     datalabels: { display: false },
                     tooltip: this._chartTooltip(),
                 },
-                // By-card view stacks per-card segments; total view is a single bar.
-                scales: this._chartScales({ stacked: this.creditCardChartView !== 'total' }),
+                // Stack when showing per-card segments or the Outstanding cap.
+                scales: this._chartScales({ stacked: stackedScale }),
             }
         });
     },
