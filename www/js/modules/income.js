@@ -790,31 +790,44 @@ const Income = {
         container.innerHTML = `
             <div class="space-y-4">
                 <!-- Summary Card -->
-                <div class="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl p-5 shadow-lg">
-                    <!-- First Line: CTC and Income Credit -->
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <p class="text-xs opacity-90">Annual CTC</p>
-                            <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(ctc)}</p>
+                <div class="relative overflow-hidden rounded-2xl p-5 shadow-lg text-white bg-gradient-to-br from-emerald-600 via-green-600 to-teal-600">
+                    <!-- glossy top sheen + soft glow -->
+                    <div class="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/15 to-transparent pointer-events-none"></div>
+                    <div class="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-white/10 blur-xl pointer-events-none"></div>
+                    <div class="relative">
+                        <!-- Headline: CTC (left) + estimated net credit (right) -->
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2M9 12h12l-3-3m0 6l3-3"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] uppercase tracking-wider text-white/80 font-semibold">Annual CTC</p>
+                                    <p class="text-2xl font-extrabold leading-tight tracking-tight">₹${Utils.formatIndianNumber(ctc)}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[10px] uppercase tracking-wider text-white/80 font-semibold">Net Credit ${currentYear}</p>
+                                <p class="text-xl font-bold leading-tight">₹${Utils.formatIndianNumber(Math.round(aggregated.totalNetPay))}</p>
+                                <p class="text-[9px] text-white/70">estimated</p>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-xs opacity-90">Income Credit (${currentYear}) · est.</p>
-                            <p class="text-2xl font-bold">₹${Utils.formatIndianNumber(Math.round(aggregated.totalNetPay))}</p>
-                        </div>
-                    </div>
-                    <!-- Second Line: Tax, ESPP, EPF -->
-                    <div class="grid grid-cols-3 gap-3 text-xs">
-                        <div>
-                            <p class="opacity-75">Total Tax</p>
-                            <p class="font-semibold">₹${Utils.formatIndianNumber(aggregated.totalTax)}</p>
-                        </div>
-                        <div>
-                            <p class="opacity-75">ESPP</p>
-                            <p class="font-semibold">₹${Utils.formatIndianNumber(aggregated.totalESPP)}</p>
-                        </div>
-                        <div>
-                            <p class="opacity-75">EPF</p>
-                            <p class="font-semibold">₹${Utils.formatIndianNumber(totalEPF)}</p>
+                        <!-- Divider stat row: Tax · ESPP · EPF -->
+                        <div class="grid grid-cols-3 gap-2 pt-3 border-t border-white/20">
+                            <div class="text-center">
+                                <p class="text-[10px] text-white/70 mb-0.5">Total Tax</p>
+                                <p class="text-sm font-bold tabular-nums">₹${Utils.formatIndianNumber(aggregated.totalTax)}</p>
+                            </div>
+                            <div class="text-center border-x border-white/15">
+                                <p class="text-[10px] text-white/70 mb-0.5">ESPP</p>
+                                <p class="text-sm font-bold tabular-nums">₹${Utils.formatIndianNumber(aggregated.totalESPP)}</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-[10px] text-white/70 mb-0.5">EPF</p>
+                                <p class="text-sm font-bold tabular-nums">₹${Utils.formatIndianNumber(totalEPF)}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -924,12 +937,19 @@ const Income = {
     setPaySchedule(value) {
         window.DB.settings.paySchedule = value;
         window.Storage.save();
-        // Update hint text dynamically
+        // Update the hint text immediately (cheap, no flicker)…
         const hint = document.getElementById('pay-schedule-hint');
         if (hint) {
-            hint.textContent = value === 'last_week' 
-                ? 'Dec salary → Jan expenses' 
+            hint.textContent = value === 'last_week'
+                ? 'Dec salary → Jan expenses'
                 : 'Jan salary → Jan expenses';
+        }
+        // …and re-render the salary tab so the segmented toggle's active
+        // highlight moves to the selected option (buttons, unlike radios,
+        // don't track checked state on their own).
+        const salaryContent = document.getElementById('income-content-salary');
+        if (salaryContent) {
+            salaryContent.innerHTML = this.renderSalaryTab();
         }
     },
     
@@ -941,31 +961,34 @@ const Income = {
         const paySchedule = this.getPaySchedule();
         const isCalendar = this.salaryYearView === 'calendar';
         
-        // Pay schedule section (always shown)
+        // Pay schedule section (always shown) — modern card with a segmented
+        // toggle matching the year-view switch below.
+        const isFirstWeek = paySchedule !== 'last_week';
         const payScheduleSection = `
             <!-- Pay Schedule Setting -->
-            <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div class="flex items-center justify-between">
-                    <span class="font-semibold text-blue-800 text-sm">Pay Schedule</span>
-                    <span id="pay-schedule-hint" class="text-xs text-blue-600">
+            <div class="mb-4 p-3 rounded-xl border border-gray-100 bg-gradient-to-br from-slate-50 to-white shadow-sm">
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-100 flex-shrink-0">
+                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                        </span>
+                        <span class="font-semibold text-gray-700 text-sm">Pay Schedule</span>
+                    </div>
+                    <span id="pay-schedule-hint" class="text-[11px] text-gray-500 text-right">
                         ${paySchedule === 'last_week' ? 'Dec salary → Jan expenses' : 'Jan salary → Jan expenses'}
                     </span>
                 </div>
-                <div class="flex gap-4 mt-2">
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="pay-schedule" value="first_week" 
-                               ${paySchedule === 'first_week' ? 'checked' : ''} 
-                               onchange="Income.setPaySchedule('first_week')"
-                               class="w-4 h-4 text-blue-600">
-                        <span class="text-xs text-gray-700">1st week</span>
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="pay-schedule" value="last_week" 
-                               ${paySchedule === 'last_week' ? 'checked' : ''} 
-                               onchange="Income.setPaySchedule('last_week')"
-                               class="w-4 h-4 text-blue-600">
-                        <span class="text-xs text-gray-700">Last week</span>
-                    </label>
+                <div class="flex bg-gray-100 rounded-lg p-0.5">
+                    <button type="button" onclick="Income.setPaySchedule('first_week')"
+                        class="flex-1 px-3 py-1.5 text-xs rounded-md transition-all ${isFirstWeek ? 'bg-white shadow-sm text-blue-600 font-semibold' : 'text-gray-500 hover:text-gray-700'}">
+                        1st week
+                    </button>
+                    <button type="button" onclick="Income.setPaySchedule('last_week')"
+                        class="flex-1 px-3 py-1.5 text-xs rounded-md transition-all ${!isFirstWeek ? 'bg-white shadow-sm text-blue-600 font-semibold' : 'text-gray-500 hover:text-gray-700'}">
+                        Last week
+                    </button>
                 </div>
             </div>
         `;
