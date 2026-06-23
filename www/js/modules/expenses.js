@@ -1601,16 +1601,16 @@ const Expenses = {
             
             return `
                 <details class="expense-date-group mb-0" open>
-                    <summary class="cursor-pointer bg-purple-50 hover:bg-purple-100 border border-purple-200 p-3 transition-all list-none">
+                    <summary class="cursor-pointer bg-gradient-to-r from-purple-100 to-fuchsia-100 hover:from-purple-200 hover:to-fuchsia-200 border border-purple-200 p-3 transition-all list-none">
                         <div class="flex justify-between items-center">
                             <div class="flex items-center gap-2">
                                 <svg class="w-4 h-4 transition-transform details-arrow text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                 </svg>
                                 <span class="font-bold text-sm text-purple-900">${formattedDate}</span>
-                                <span class="text-xs text-purple-600">(${dayExpenses.length})</span>
+                                <span class="text-[10px] font-semibold text-purple-700 bg-white/70 px-1.5 py-0.5 rounded-full">${dayExpenses.length}</span>
                             </div>
-                            <span class="font-bold text-sm text-purple-900">₹${Utils.formatIndianNumber(dayTotal)}</span>
+                            <span class="font-bold text-sm text-purple-900 tabular-nums">₹${Utils.formatIndianNumber(dayTotal)}</span>
                         </div>
                     </summary>
                     <div class="border-l border-r border-b border-purple-200">
@@ -1659,7 +1659,7 @@ const Expenses = {
                                         ${this.getFullDetailsLink(expense)}
                                     </div>
                                     <div class="text-right ml-4">
-                                        <p class="text-base font-semibold text-purple-700">₹${parseFloat(expense.amount).toLocaleString()}</p>
+                                        <p class="text-base font-bold text-purple-700 tabular-nums">₹${Utils.formatIndianNumber(parseFloat(expense.amount))}</p>
                                     </div>
                                 </div>
                             </div>

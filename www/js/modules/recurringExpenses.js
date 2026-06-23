@@ -865,21 +865,43 @@ const RecurringExpenses = {
         
         let html = '';
         
-        // Monthly Estimation Banner - Dashboard Style (Distinct warm colors)
+        // Monthly Estimation Banner — glossy twin tiles (current vs next month),
+        // with a delta chip so the month-over-month change reads at a glance.
+        const monthDelta = nextMonthTotal - currentMonthTotal;
+        const deltaChip = (currentMonthTotal > 0 || nextMonthTotal > 0)
+            ? `<span class="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${monthDelta > 0 ? 'bg-white/25' : monthDelta < 0 ? 'bg-white/25' : 'bg-white/15'} text-white">
+                   ${monthDelta > 0 ? '▲' : monthDelta < 0 ? '▼' : '='} ₹${Utils.formatIndianNumber(Math.abs(monthDelta))}
+               </span>`
+            : '';
+        const activeMonthlyCount = activeExpenses.length;
         html += `
-            <div class="grid grid-cols-2 gap-3 mb-4">
-                <div class="bg-gradient-to-br from-orange-600 to-amber-600 rounded-xl p-4 text-white shadow-lg">
-                    <p class="text-xs opacity-90 mb-1 leading-tight">This Month</p>
-                    <p class="text-2xl font-bold mb-0.5">₹${Utils.formatIndianNumber(currentMonthTotal)}</p>
-                    <p class="text-[10px] opacity-80">${currentMonthName} • Expected recurring</p>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div class="relative overflow-hidden rounded-2xl p-4 text-white shadow-lg bg-gradient-to-br from-orange-500 via-orange-600 to-amber-600">
+                    <div class="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/15 to-transparent pointer-events-none"></div>
+                    <div class="relative">
+                        <div class="flex items-center gap-1.5 mb-1.5">
+                            <span class="flex items-center justify-center w-6 h-6 rounded-lg bg-white/20 flex-shrink-0">
+                                <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            </span>
+                            <p class="text-[11px] font-semibold text-white/90 leading-tight">This Month</p>
+                        </div>
+                        <p class="text-2xl font-extrabold mb-0.5 tracking-tight">₹${Utils.formatIndianNumber(currentMonthTotal)}</p>
+                        <p class="text-[10px] text-white/80">${currentMonthName} • ${activeMonthlyCount} active item${activeMonthlyCount !== 1 ? 's' : ''}</p>
+                    </div>
                 </div>
-                <div class="bg-gradient-to-br from-amber-700 to-yellow-700 rounded-xl p-4 text-white shadow-lg">
-                    <p class="text-xs opacity-90 mb-1 leading-tight">Next Month</p>
-                    <p class="text-2xl font-bold mb-0.5">₹${Utils.formatIndianNumber(nextMonthTotal)}</p>
-                    <p class="text-[10px] opacity-80">${nextMonthName} • Expected recurring</p>
+                <div class="relative overflow-hidden rounded-2xl p-4 text-white shadow-lg bg-gradient-to-br from-amber-600 via-amber-700 to-yellow-700">
+                    <div class="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/15 to-transparent pointer-events-none"></div>
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <p class="text-[11px] font-semibold text-white/90 leading-tight">Next Month</p>
+                            ${deltaChip}
+                        </div>
+                        <p class="text-2xl font-extrabold mb-0.5 tracking-tight">₹${Utils.formatIndianNumber(nextMonthTotal)}</p>
+                        <p class="text-[10px] text-white/80">${nextMonthName} • Expected recurring</p>
+                    </div>
                 </div>
             </div>
-            ${suspendedExpenses.length > 0 ? `<p class="text-[11px] text-gray-500 -mt-2 mb-4">⏸ ${suspendedExpenses.length} suspended item${suspendedExpenses.length !== 1 ? 's' : ''} not included in the above estimates</p>` : ''}
+            ${suspendedExpenses.length > 0 ? `<p class="text-[11px] text-gray-500 mb-4">⏸ ${suspendedExpenses.length} suspended item${suspendedExpenses.length !== 1 ? 's' : ''} not included in the above estimates</p>` : ''}
         `;
         
         // Tab container (Active | Suspended) - like Loans
@@ -957,17 +979,18 @@ const RecurringExpenses = {
                 const groupTotal = groupExpenses.reduce((sum, r) => sum + parseFloat(r.amount), 0);
                 
                 html += `
-                    <details class="recurring-day-group mb-4 last:mb-0 rounded-lg overflow-hidden border border-orange-200 shadow-sm" open>
-                        <summary class="cursor-pointer bg-orange-200 hover:bg-orange-300 border-b border-orange-300 p-3 transition-all list-none font-semibold">
+                    <details class="recurring-day-group mb-4 last:mb-0 rounded-xl overflow-hidden border border-orange-200 shadow-sm" open>
+                        <summary class="cursor-pointer bg-gradient-to-r from-orange-200 to-amber-200 hover:from-orange-300 hover:to-amber-300 border-b border-orange-300 p-3 transition-all list-none font-semibold">
                             <div class="flex justify-between items-center">
                                 <div class="flex items-center gap-2">
                                     <svg class="w-4 h-4 transition-transform details-arrow text-orange-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                     </svg>
-                                    <span class="font-bold text-sm text-orange-900">${day}${this.getOrdinalSuffix(day)} of Month</span>
-                                    <span class="text-xs text-orange-700 font-medium">(${groupExpenses.length})</span>
+                                    <span class="flex items-center justify-center min-w-[1.75rem] h-7 px-1.5 rounded-lg bg-white/70 text-orange-800 font-bold text-xs">${day}${this.getOrdinalSuffix(day)}</span>
+                                    <span class="font-bold text-sm text-orange-900">of Month</span>
+                                    <span class="text-[10px] font-semibold text-orange-700 bg-white/70 px-1.5 py-0.5 rounded-full">${groupExpenses.length}</span>
                                 </div>
-                                <span class="font-bold text-sm text-orange-900">₹${Utils.formatIndianNumber(groupTotal)}</span>
+                                <span class="font-bold text-sm text-orange-900 tabular-nums">₹${Utils.formatIndianNumber(groupTotal)}</span>
                             </div>
                         </summary>
                         <div class="bg-white border-l border-r border-b border-orange-200">
