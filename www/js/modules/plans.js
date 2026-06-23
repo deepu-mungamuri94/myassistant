@@ -193,6 +193,73 @@ const Plans = {
     /**
      * Render the plans view
      */
+    /**
+     * Glossy summary hero above the tabs: total goals, a completion progress
+     * bar, and the pending vs completed rupee amounts. Reflects ALL plans (not
+     * the active tab) so it reads as an at-a-glance goals dashboard. Rendered
+     * into #plans-summary by render(); no-op if the container isn't present.
+     */
+    _renderSummaryHero(pendingCount, completedCount) {
+        const el = document.getElementById('plans-summary');
+        if (!el) return;
+
+        const allPlans = window.DB.plans || [];
+        const totalCount = pendingCount + completedCount;
+        const pendingAmt = this.getByStatus('pending').reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+        const completedAmt = this.getByStatus('completed').reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+        const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+        const fmt = (n) => '₹' + Utils.formatIndianNumber(n);
+
+        if (totalCount === 0) { el.innerHTML = ''; return; }
+
+        el.innerHTML = `
+            <div class="relative overflow-hidden rounded-2xl p-4 shadow-lg text-white bg-gradient-to-br from-orange-500 via-rose-500 to-pink-600">
+                <div class="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/15 to-transparent pointer-events-none"></div>
+                <div class="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-white/10 blur-xl pointer-events-none"></div>
+                <div class="relative">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-[10px] uppercase tracking-wider text-white/80 font-semibold">Plans &amp; Goals</p>
+                                <p class="text-2xl font-extrabold leading-tight tracking-tight">${totalCount} <span class="text-sm font-semibold text-white/80">total</span></p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] uppercase tracking-wider text-white/80 font-semibold">Completed</p>
+                            <p class="text-xl font-extrabold leading-tight">${pct}%</p>
+                        </div>
+                    </div>
+                    <!-- Progress bar -->
+                    <div class="h-2.5 rounded-full bg-white/25 overflow-hidden mb-2.5">
+                        <div class="h-full rounded-full bg-white transition-all duration-500" style="width: ${pct}%"></div>
+                    </div>
+                    <!-- Pending vs completed amounts -->
+                    <div class="grid grid-cols-2 gap-2 pt-2.5 border-t border-white/20">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-amber-200 flex-shrink-0"></span>
+                            <div>
+                                <p class="text-[10px] text-white/75">Pending (${pendingCount})</p>
+                                <p class="text-sm font-bold tabular-nums">${fmt(pendingAmt)}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 justify-end text-right">
+                            <div>
+                                <p class="text-[10px] text-white/75">Completed (${completedCount})</p>
+                                <p class="text-sm font-bold tabular-nums">${fmt(completedAmt)}</p>
+                            </div>
+                            <span class="w-2 h-2 rounded-full bg-emerald-200 flex-shrink-0"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
     render() {
         const container = document.getElementById('plans-list');
         if (!container) return;
@@ -208,27 +275,44 @@ const Plans = {
         if (pendingTab) pendingTab.querySelector('.tab-count').textContent = pendingCount;
         if (completedTab) completedTab.querySelector('.tab-count').textContent = completedCount;
 
-        // Apply active styling
+        // Apply active styling — segmented pill: the active tab gets a coloured
+        // gradient pill, the inactive one stays a ghost button. Tab-count chip
+        // contrast follows (light-on-dark when active, subtle grey when not).
         if (pendingTab && completedTab) {
+            const activeCls = (grad) => `flex-1 px-4 py-2.5 text-sm font-bold rounded-lg bg-gradient-to-r ${grad} text-white shadow-sm transition-all flex items-center justify-center gap-1.5`;
+            const ghostCls = 'flex-1 px-4 py-2.5 text-sm font-bold rounded-lg text-gray-500 hover:text-gray-700 transition-all flex items-center justify-center gap-1.5';
+            const setChip = (tab, active) => {
+                const chip = tab.querySelector('.tab-count');
+                if (chip) chip.className = `tab-count px-2 py-0.5 rounded-full text-xs ${active ? 'bg-black/10' : 'bg-gray-200 text-gray-600'}`;
+            };
             if (this.currentTab === 'pending') {
-                pendingTab.className = 'flex-1 px-4 py-3 text-sm font-bold border-b-2 border-orange-500 text-orange-600 bg-orange-50';
-                completedTab.className = 'flex-1 px-4 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+                pendingTab.className = activeCls('from-orange-500 to-amber-500');
+                completedTab.className = ghostCls;
+                setChip(pendingTab, true); setChip(completedTab, false);
             } else {
-                pendingTab.className = 'flex-1 px-4 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
-                completedTab.className = 'flex-1 px-4 py-3 text-sm font-bold border-b-2 border-green-500 text-green-600 bg-green-50';
+                pendingTab.className = ghostCls;
+                completedTab.className = activeCls('from-green-500 to-emerald-500');
+                setChip(pendingTab, false); setChip(completedTab, true);
             }
         }
+
+        // Summary hero — glossy progress card. Always reflects the FULL picture
+        // (pending + completed across both tabs), not just the active tab, so
+        // it reads as a goals dashboard rather than a per-tab total.
+        this._renderSummaryHero(pendingCount, completedCount);
 
         if (plans.length === 0) {
             const emptyMsg = this.currentTab === 'pending'
                 ? 'No pending plans. Tap + to add one!'
                 : 'No completed plans yet.';
             container.innerHTML = `
-                <div class="text-center py-10 text-gray-500">
-                    <svg class="w-16 h-16 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                    </svg>
-                    <p class="text-sm">${emptyMsg}</p>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 text-center py-12 px-6">
+                    <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-orange-100 to-rose-100 flex items-center justify-center">
+                        <svg class="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                        </svg>
+                    </div>
+                    <p class="text-sm text-gray-500">${emptyMsg}</p>
                 </div>
             `;
             return;
@@ -265,11 +349,12 @@ const Plans = {
             : this.sortMode === 'desc' ? ' ↓'
             : '';
 
+        const headerTint = isPending ? 'from-orange-50 to-amber-50' : 'from-green-50 to-emerald-50';
         const tableHTML = `
             <!-- Plans Table -->
-            <div class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+            <div class="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-100">
                 <!-- Table Header — adds Priority as a sortable column. Click to cycle none → ↑ → ↓ → none. -->
-                <div class="grid grid-cols-[1fr_64px_auto_40px] gap-3 items-center px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                <div class="grid grid-cols-[1fr_64px_auto_40px] gap-3 items-center px-4 py-3 bg-gradient-to-r ${headerTint} border-b border-gray-100">
                     <span class="text-[11px] font-bold text-gray-600 uppercase tracking-wider">Item Name</span>
                     <button onclick="Plans.cyclePrioritySort()"
                             class="text-[11px] font-bold uppercase tracking-wider text-center transition-colors ${this.sortMode === 'none' ? 'text-gray-600 hover:text-gray-900' : 'text-orange-700'}"

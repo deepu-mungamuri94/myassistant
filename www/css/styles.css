@@ -749,3 +749,112 @@ details > summary .details-arrow {
 .ai-content-compact ul li::before,
 .ai-content-compact ol li::before { left: 0.4rem; top: 0.3rem; }
 
+/* ============================================================
+   SPLASH + LOGIN (PIN) — graphical, animated entrance
+   A drifting aurora gradient backdrop, floating blurred orbs, a
+   logo that breathes inside a glowing halo ring, and a soft
+   entrance for the unlock card. All decorative layers are
+   pointer-events:none so they never block taps, and every
+   animation is disabled under prefers-reduced-motion.
+   ============================================================ */
+
+/* Aurora backdrop: a large multi-stop gradient that slowly drifts. */
+.aurora-bg {
+    background: linear-gradient(135deg, #4f46e5 0%, #6d28d9 28%, #7c3aed 52%, #4338ca 76%, #6366f1 100%);
+    background-size: 300% 300%;
+    animation: aurora-drift 18s ease infinite;
+}
+@keyframes aurora-drift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Floating blurred colour orbs layered over the aurora for depth. */
+.auth-orb {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(34px);
+    opacity: 0.55;
+    pointer-events: none;
+    will-change: transform;
+}
+.auth-orb-1 { width: 220px; height: 220px; background: #a78bfa; top: -60px; left: -50px; animation: orb-float-1 12s ease-in-out infinite; }
+.auth-orb-2 { width: 260px; height: 260px; background: #38bdf8; bottom: -80px; right: -70px; animation: orb-float-2 15s ease-in-out infinite; }
+.auth-orb-3 { width: 160px; height: 160px; background: #f472b6; top: 38%; right: -40px; animation: orb-float-1 17s ease-in-out infinite; }
+@keyframes orb-float-1 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50%      { transform: translate(24px, 30px) scale(1.12); }
+}
+@keyframes orb-float-2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50%      { transform: translate(-28px, -22px) scale(1.08); }
+}
+
+/* Logo halo: a soft pulsing ring of light behind the mark. */
+.logo-halo {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.logo-halo::before {
+    content: "";
+    position: absolute;
+    inset: -18px;
+    border-radius: 9999px;
+    background: radial-gradient(circle, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 68%);
+    animation: halo-pulse 3s ease-in-out infinite;
+    pointer-events: none;
+}
+@keyframes halo-pulse {
+    0%, 100% { transform: scale(0.92); opacity: 0.55; }
+    50%      { transform: scale(1.08); opacity: 0.9; }
+}
+
+/* The logo gently breathes (replaces the old hard animate-pulse). */
+.logo-breathe { animation: logo-breathe 3.5s ease-in-out infinite; }
+@keyframes logo-breathe {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.05); }
+}
+
+/* Entrance for the splash text + the unlock card. */
+.auth-rise { animation: auth-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes auth-rise {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Three bouncing dots used under the splash title. */
+.splash-dots { display: inline-flex; gap: 6px; }
+.splash-dots > span {
+    width: 7px; height: 7px; border-radius: 9999px;
+    background: rgba(255,255,255,0.85);
+    animation: splash-bounce 1.2s ease-in-out infinite;
+}
+.splash-dots > span:nth-child(2) { animation-delay: 0.15s; }
+.splash-dots > span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes splash-bounce {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+    40%           { transform: translateY(-7px); opacity: 1; }
+}
+
+/* Glassy unlock card sitting above the aurora. */
+.auth-card {
+    background: rgba(255, 255, 255, 0.10);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+            backdrop-filter: blur(16px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .aurora-bg,
+    .auth-orb,
+    .logo-halo::before,
+    .logo-breathe,
+    .auth-rise,
+    .splash-dots > span { animation: none; }
+}
+

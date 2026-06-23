@@ -65,9 +65,14 @@
 <body class="flex flex-col items-center overflow-x-hidden" style="background-color: #F5FEFD; max-width: 100vw;">
     
     <!-- SPLASH SCREEN -->
-    <div id="splash-screen" class="fixed inset-0 z-[1000] flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600">
-        <div class="text-center">
-            <svg class="w-32 h-32 mx-auto mb-4 animate-pulse" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <div id="splash-screen" class="aurora-bg fixed inset-0 z-[1000] flex items-center justify-center overflow-hidden">
+        <!-- floating blurred orbs for depth -->
+        <div class="auth-orb auth-orb-1"></div>
+        <div class="auth-orb auth-orb-2"></div>
+        <div class="auth-orb auth-orb-3"></div>
+        <div class="relative text-center auth-rise">
+            <div class="logo-halo mx-auto mb-5">
+            <svg class="w-32 h-32 logo-breathe" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                     <linearGradient id="splashGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                         <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.95" />
@@ -137,15 +142,21 @@
                     <circle cx="3" cy="17" r="0.5" fill="#4f46e5"/>
                 </g>
             </svg>
-            <h1 class="text-3xl font-bold text-white mb-2">My Assistant</h1>
-            <p class="text-white/80 text-sm">Loading your personal assistant...</p>
+            </div>
+            <h1 class="text-3xl font-extrabold text-white mb-1 tracking-tight">My Assistant</h1>
+            <p class="text-white/75 text-sm mb-5">Your personal finance companion</p>
+            <div class="splash-dots justify-center">
+                <span></span><span></span><span></span>
+            </div>
         </div>
     </div>
-    
+
     <!-- GLOBAL LOADING OVERLAY -->
-    <div id="loading-overlay" class="hidden fixed inset-0 z-[999] bg-gray-900/40 backdrop-blur-sm flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 flex flex-col items-center">
-            <div class="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+    <div id="loading-overlay" class="hidden fixed inset-0 z-[999] bg-slate-900/50 backdrop-blur-md flex items-center justify-center">
+        <div class="bg-white/95 rounded-2xl shadow-2xl p-7 flex flex-col items-center" style="box-shadow: 0 20px 50px -12px rgba(79,70,229,0.35);">
+            <div class="logo-halo mb-4">
+                <div class="w-14 h-14 border-4 border-indigo-100 border-t-indigo-600 border-r-purple-500 rounded-full animate-spin"></div>
+            </div>
             <p id="loading-text" class="text-gray-700 font-semibold">Processing...</p>
         </div>
     </div>
@@ -687,15 +698,18 @@
                     </svg>
                 </button>
 
-                <!-- Tabs: Pending / Completed -->
-                <div class="flex bg-white rounded-xl shadow-sm border border-gray-200 mb-4 overflow-hidden">
+                <!-- Summary hero (progress + pending/completed totals) — filled by Plans.render() -->
+                <div id="plans-summary" class="mb-4"></div>
+
+                <!-- Tabs: Pending / Completed (segmented pill) -->
+                <div class="flex bg-white rounded-xl shadow-sm border border-gray-200 mb-4 p-1 gap-1">
                     <button id="plans-tab-pending" onclick="Plans.switchTab('pending')"
-                            class="flex-1 px-4 py-3 text-sm font-bold border-b-2 border-orange-500 text-orange-600 bg-orange-50">
-                        ⏳ Pending <span class="tab-count ml-1 px-2 py-0.5 bg-orange-200 text-orange-800 rounded-full text-xs">0</span>
+                            class="flex-1 px-4 py-2.5 text-sm font-bold rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-sm transition-all flex items-center justify-center gap-1.5">
+                        ⏳ Pending <span class="tab-count px-2 py-0.5 bg-black/10 rounded-full text-xs">0</span>
                     </button>
                     <button id="plans-tab-completed" onclick="Plans.switchTab('completed')"
-                            class="flex-1 px-4 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-                        ✅ Completed <span class="tab-count ml-1 px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full text-xs">0</span>
+                            class="flex-1 px-4 py-2.5 text-sm font-bold rounded-lg text-gray-500 hover:text-gray-700 transition-all flex items-center justify-center gap-1.5">
+                        ✅ Completed <span class="tab-count px-2 py-0.5 bg-black/10 rounded-full text-xs">0</span>
                     </button>
                 </div>
 
@@ -3508,47 +3522,53 @@
         </div>
     </div>
     
-    <!-- SECURITY UNLOCK MODAL - Simple PIN Screen -->
-    <div id="security-unlock-modal" class="hidden fixed inset-0 bg-slate-900 z-[10000] flex items-center justify-center p-6">
-        <div class="w-full max-w-xs">
-            <!-- Lock Icon -->
-            <div class="text-center mb-8">
-                <div class="w-16 h-16 mx-auto bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                    <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                    </svg>
+    <!-- SECURITY UNLOCK MODAL - PIN Screen -->
+    <div id="security-unlock-modal" class="aurora-bg hidden fixed inset-0 z-[10000] flex items-center justify-center p-6 overflow-hidden">
+        <!-- floating blurred orbs for depth -->
+        <div class="auth-orb auth-orb-1"></div>
+        <div class="auth-orb auth-orb-2"></div>
+        <div class="auth-orb auth-orb-3"></div>
+        <div class="relative w-full max-w-xs auth-card rounded-3xl p-6 auth-rise">
+            <!-- Lock Icon with halo -->
+            <div class="text-center mb-7">
+                <div class="logo-halo mx-auto mb-4">
+                    <div class="w-16 h-16 bg-white/15 border border-white/20 rounded-2xl flex items-center justify-center logo-breathe">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                    </div>
                 </div>
-                <h2 id="security-unlock-title" class="text-xl font-semibold text-white mb-1">My Assistant</h2>
-                <p class="text-slate-400 text-sm">Enter PIN to unlock</p>
+                <h2 id="security-unlock-title" class="text-2xl font-extrabold text-white mb-1 tracking-tight">My Assistant</h2>
+                <p class="text-white/70 text-sm">Enter PIN to unlock</p>
             </div>
-            
+
             <!-- Error Message -->
             <div id="security-unlock-error" class="hidden mb-4">
-                <div class="bg-red-500/20 border border-red-500/40 rounded-lg p-2">
-                    <p class="text-red-300 text-center text-sm"></p>
+                <div class="bg-red-500/25 border border-red-400/40 rounded-lg p-2">
+                    <p class="text-red-100 text-center text-sm"></p>
                 </div>
             </div>
-            
+
             <!-- PIN Input -->
             <div class="mb-6">
                 <input type="password" id="security-unlock-pin" inputmode="numeric" maxlength="4"
-                       class="w-full px-4 py-4 bg-slate-800 border border-slate-700 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 text-center text-2xl tracking-[0.5em] font-bold text-white placeholder-slate-600"
+                       class="w-full px-4 py-4 bg-white/10 border border-white/25 rounded-xl focus:outline-none focus:border-white/60 focus:ring-2 focus:ring-white/30 text-center text-2xl tracking-[0.5em] font-bold text-white placeholder-white/40"
                        placeholder="••••"
                        oninput="handleUnlockPinInput()"
                        autocomplete="off">
             </div>
-            
+
             <!-- Biometric Button (shown inline if available) -->
             <div id="biometric-unlock-section" class="hidden">
                 <div class="relative flex items-center justify-center mb-4">
                     <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t border-slate-700"></div>
+                        <div class="w-full border-t border-white/20"></div>
                     </div>
-                    <span class="relative bg-slate-900 px-3 text-slate-500 text-xs">or</span>
+                    <span class="relative auth-card px-3 text-white/60 text-xs rounded-full">or</span>
                 </div>
                 <button id="biometric-unlock-btn" onclick="unlockWithBiometric()"
-                        class="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-white font-medium transition-colors flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        class="w-full py-3 bg-white/10 hover:bg-white/20 border border-white/25 rounded-xl text-white font-medium transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
                     </svg>
                     Use Fingerprint
@@ -3560,7 +3580,7 @@
                  decrypted without it, so the only safe option is restore-from-
                  backup or a fresh start. showForgotPin() explains this. -->
             <div class="text-center mt-6">
-                <button onclick="showForgotPin()" class="text-slate-400 hover:text-slate-200 text-sm underline underline-offset-2 transition-colors">
+                <button onclick="showForgotPin()" class="text-white/60 hover:text-white text-sm underline underline-offset-2 transition-colors">
                     Forgot PIN?
                 </button>
             </div>
