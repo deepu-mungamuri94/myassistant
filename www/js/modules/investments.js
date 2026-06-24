@@ -3912,6 +3912,7 @@ Respond ONLY with valid JSON (no markdown, no explanation):
             Utils.setProgressStep('stocks', 'done', 'none');
         } else {
             Utils.setProgressStep('stocks', 'active', `0/${activeShares.length}`);
+            Utils.setProgressStepBar('stocks', 0, activeShares.length);
             for (let i = 0; i < activeShares.length; i++) {
                 const share = activeShares[i];
                 try {
@@ -3923,6 +3924,7 @@ Respond ONLY with valid JSON (no markdown, no explanation):
                     stockFail.push(share.name);
                 }
                 Utils.setProgressStep('stocks', 'active', `${i + 1}/${activeShares.length}`);
+                Utils.setProgressStepBar('stocks', i + 1, activeShares.length);
             }
             if (stockFail.length === 0) {
                 Utils.setProgressStep('stocks', 'done', `${stockOk} updated`);

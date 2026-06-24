@@ -632,16 +632,47 @@ const Utils = {
 
         stepList.classList.remove('hidden');
         stepList.innerHTML = steps.map(s => `
-            <li id="progress-step-${s.id}" class="flex items-center gap-3 text-sm transition-opacity duration-200 opacity-50">
-                <span class="progress-step-icon flex-shrink-0 w-5 h-5 flex items-center justify-center">
-                    <span class="w-2.5 h-2.5 rounded-full border-2 border-gray-300"></span>
-                </span>
-                <span class="progress-step-label text-gray-500 flex-1">${s.label}</span>
-                <span class="progress-step-detail text-xs text-gray-400 tabular-nums"></span>
+            <li id="progress-step-${s.id}" class="text-sm transition-opacity duration-200 opacity-50">
+                <div class="flex items-center gap-3">
+                    <span class="progress-step-icon flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                        <span class="w-2.5 h-2.5 rounded-full border-2 border-gray-300"></span>
+                    </span>
+                    <span class="progress-step-label text-gray-500 flex-1">${s.label}</span>
+                    <span class="progress-step-detail text-xs text-gray-400 tabular-nums"></span>
+                </div>
+                <!-- Determinate progress bar — collapsed (max-h-0) until a caller
+                     activates it via setProgressStepBar(); animates fill width. -->
+                <div class="progress-step-barwrap overflow-hidden max-h-0 transition-all duration-300 ml-8 mr-1">
+                    <div class="mt-1.5 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                        <div class="progress-step-bar h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 progress-shimmer" style="width:0%; transition: width 0.35s cubic-bezier(0.22,1,0.36,1);"></div>
+                    </div>
+                </div>
             </li>
         `).join('');
 
         modal.classList.remove('hidden');
+    },
+
+    /**
+     * Drive a step's animated progress bar. Reveals the bar on first call,
+     * then animates its fill to current/total. Pass current >= total to fill
+     * it completely. The numeric "x/total" still rides in the detail slot via
+     * setProgressStep so the bar and the count stay in sync.
+     */
+    setProgressStepBar(id, current, total) {
+        const li = document.getElementById(`progress-step-${id}`);
+        if (!li) return;
+        const wrap = li.querySelector('.progress-step-barwrap');
+        const bar = li.querySelector('.progress-step-bar');
+        if (!wrap || !bar) return;
+        // Reveal (a generous max-h is fine; the inner content is short).
+        wrap.classList.remove('max-h-0');
+        wrap.classList.add('max-h-10');
+        const pct = total > 0 ? Math.min(100, Math.max(0, Math.round((current / total) * 100))) : 0;
+        bar.style.width = pct + '%';
+        // Drop the indeterminate shimmer once fully done so it reads as settled.
+        if (pct >= 100) bar.classList.remove('progress-shimmer');
+        else bar.classList.add('progress-shimmer');
     },
 
     /**
