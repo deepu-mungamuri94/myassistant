@@ -8167,8 +8167,7 @@ Technical: ${error.stack ? error.stack.split('\n')[0] : 'No stack trace'}
             // entered (possibly nothing) and let the user in either way; they can
             // add keys later from Settings → AI Provider.
             window.DB.settings.geminiApiKey = geminiKey;
-            window.DB.groqApiKey = groqKey;
-            window.DB.settings.groqApiKey = groqKey;
+            window.DB.groqApiKey = groqKey; // Groq's key lives at the DB root (see database.js)
             window.DB.settings.chatGptApiKey = chatgptKey;
             window.DB.settings.perplexityApiKey = perplexityKey;
             window.Storage.save();

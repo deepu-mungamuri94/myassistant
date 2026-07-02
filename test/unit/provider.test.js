@@ -164,6 +164,17 @@ describe('AIProvider', () => {
       await expect(AIProvider.call('test prompt')).rejects.toThrow('No AI provider configured');
     });
 
+    it('should use the groq-first default order when priorityOrder is not persisted', async () => {
+      // Fallback in provider.js must match the DB.settings default in database.js
+      // (groq first). Otherwise a fresh install with no saved priorityOrder would
+      // silently prefer a different provider than the schema advertises.
+      delete window.DB.settings.priorityOrder;
+      const result = await AIProvider.call('test prompt');
+      expect(result).toBe('groq response');
+      expect(window.GroqAI.call).toHaveBeenCalledTimes(1);
+      expect(window.GeminiAI.call).not.toHaveBeenCalled();
+    });
+
     it('should pass context to provider', async () => {
       const context = { mode: 'general' };
       await AIProvider.call('test prompt', context);

@@ -888,12 +888,11 @@ const Navigation = {
                 settings: {
                     aiProvider: 'gemini',
                     geminiApiKey: '',
-                    groqApiKey: '',
                     chatGptApiKey: '',
                     perplexityApiKey: '',
                     priorityOrder: ['groq', 'gemini', 'chatgpt', 'perplexity']
                 },
-                groqApiKey: '',
+                groqApiKey: '', // Groq's key lives at the DB root (see database.js)
                 security: {
                     pinHash: null,
                     biometricEnabled: false,

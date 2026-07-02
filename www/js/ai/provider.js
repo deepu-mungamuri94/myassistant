@@ -479,8 +479,10 @@ Style (formatted for a mobile screen):
             throw new Error('No AI provider configured. Please add API keys in Settings.');
         }
         
-        // Get user-defined priority order, filter to only include configured providers
-        const priorityOrder = window.DB.settings.priorityOrder || ['gemini', 'groq', 'chatgpt', 'perplexity'];
+        // Get user-defined priority order, filter to only include configured providers.
+        // Fallback must match the DB.settings default (database.js) so behavior is
+        // identical whether or not priorityOrder has been persisted yet.
+        const priorityOrder = window.DB.settings.priorityOrder || ['groq', 'gemini', 'chatgpt', 'perplexity'];
         const providerOrder = priorityOrder.filter(p => availableProviders.includes(p));
         
         // Limit to 3 attempts

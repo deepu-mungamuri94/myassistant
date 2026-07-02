@@ -42,7 +42,6 @@ const DB = {
     settings: {
         aiProvider: 'gemini',
         geminiApiKey: '',
-        groqApiKey: '',
         chatGptApiKey: '',
         perplexityApiKey: '',
         // Model IDs for each provider (can be updated by user)
@@ -57,7 +56,11 @@ const DB = {
         // Financial health limits (configurable by user)
         maxLoanToIncomePercent: 40 // Maximum recommended loan EMI as % of income (default: 40%)
     },
-    // Backward compatibility: Store groqApiKey at root level
+    // Groq's API key lives at the DB root (not under settings, where the other
+    // providers' keys live). This is the single canonical location — all reads
+    // (groq.js, provider.js) and writes (settings UI, onboarding) use it. The
+    // asymmetry is intentional/legacy; do not add a settings.groqApiKey copy
+    // (a duplicate that nothing reads only invites split-brain bugs).
     groqApiKey: '',
     security: {
         pinHash: null, // PIN digest (v2: PBKDF2-SHA256 hex; legacy v1: SHA-256 hex)
