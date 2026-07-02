@@ -11,7 +11,7 @@ const Perplexity = {
      */
     async call(prompt, context = null) {
         const apiKey = window.DB.settings.perplexityApiKey;
-        const model = window.DB.settings.perplexityModel || 'llama-3.1-sonar-large-128k-online';
+        const model = window.DB.settings.perplexityModel || 'sonar-pro';
         
         if (!apiKey) {
             throw new Error('Please configure your Perplexity API key in Settings');
@@ -30,7 +30,7 @@ const Perplexity = {
             userMessage = `User Query: ${prompt}\n\nProvide helpful insights based on the context data provided in the system message.`;
         }
         
-        const response = await fetch(this.API_ENDPOINT, {
+        const response = await window.AIProvider.fetchWithTimeout(this.API_ENDPOINT, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -53,15 +53,20 @@ const Perplexity = {
                 return_images: false
             })
         });
-        
+
         if (!response.ok) {
-            const error = await response.json();
+            const error = await response.json().catch(() => ({}));
             const errorMsg = error.error?.message || 'API request failed';
             throw new Error(`Perplexity (${model}): ${errorMsg}`);
         }
-        
+
         const data = await response.json();
-        return data.choices[0].message.content;
+        // Guard against malformed responses instead of throwing a raw TypeError.
+        const content = data?.choices?.[0]?.message?.content;
+        if (typeof content !== 'string' || content.trim() === '') {
+            throw new Error(`Perplexity (${model}): empty or malformed response`);
+        }
+        return content;
     }
 };
 

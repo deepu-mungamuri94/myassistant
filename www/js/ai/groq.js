@@ -60,7 +60,7 @@ const GroqAI = {
             
             console.log('🚀 Calling Groq API with Llama 3.3 70B...');
             
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            const response = await window.AIProvider.fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -92,11 +92,12 @@ const GroqAI = {
             const data = await response.json();
             console.log('✅ Groq API response received');
             
-            if (!data.choices || data.choices.length === 0) {
-                throw new Error('No response from Groq API');
+            const content = data?.choices?.[0]?.message?.content;
+            if (typeof content !== 'string' || content.trim() === '') {
+                throw new Error(`Groq (${model}): empty or malformed response`);
             }
-            
-            return data.choices[0].message.content;
+
+            return content;
             
         } catch (error) {
             console.error('❌ Groq API call failed:', error);

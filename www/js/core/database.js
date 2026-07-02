@@ -46,10 +46,10 @@ const DB = {
         chatGptApiKey: '',
         perplexityApiKey: '',
         // Model IDs for each provider (can be updated by user)
-        geminiModel: 'gemini-2.0-flash-lite',
+        geminiModel: 'gemini-2.5-flash-lite',
         groqModel: 'llama-3.3-70b-versatile',
         chatGptModel: 'gpt-4o-mini',
-        perplexityModel: 'llama-3.1-sonar-large-128k-online',
+        perplexityModel: 'sonar-pro',
         // Priority order for AI fallback (Groq is FIXED at #1 for chat, rest is configurable)
         priorityOrder: ['groq', 'gemini', 'chatgpt', 'perplexity'],
         // Pay schedule: 'first_week' or 'last_week' - determines which month's income to compare expenses against

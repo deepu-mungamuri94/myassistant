@@ -9,7 +9,7 @@ const GeminiAI = {
      */
     async call(prompt, context = null) {
         const apiKey = window.DB.settings.geminiApiKey;
-        const model = window.DB.settings.geminiModel || 'gemini-2.0-flash-lite';
+        const model = window.DB.settings.geminiModel || 'gemini-2.5-flash-lite';
         
         if (!apiKey) {
             throw new Error('Please configure your Gemini API key in Settings');
@@ -49,22 +49,37 @@ const GeminiAI = {
         // a custom header triggers a CORS preflight that fails ("Failed to fetch").
         // In a native app the URL isn't shared with browser history/referrers, so
         // the query-param approach is safe here.
-        const response = await fetch(API_ENDPOINT, {
+        const response = await window.AIProvider.fetchWithTimeout(API_ENDPOINT, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(payload)
         });
-        
+
         if (!response.ok) {
-            const error = await response.json();
+            const error = await response.json().catch(() => ({}));
             const errorMsg = error.error?.message || 'AI request failed';
             throw new Error(`Gemini (${model}): ${errorMsg}`);
         }
-        
+
         const data = await response.json();
-        return data.candidates[0].content.parts[0].text;
+        // Guard against malformed / safety-blocked responses (no candidates,
+        // or a candidate with no text part) instead of throwing a raw TypeError.
+        // Join across ALL parts: with google_search grounding the answer can be
+        // split over multiple parts (or parts[0] can be a non-text grounding
+        // part), so reading only parts[0].text would wrongly look empty.
+        const parts = data?.candidates?.[0]?.content?.parts;
+        const text = Array.isArray(parts)
+            ? parts.map(p => (typeof p?.text === 'string' ? p.text : '')).join('')
+            : undefined;
+        if (typeof text !== 'string' || text.trim() === '') {
+            const blockReason = data?.promptFeedback?.blockReason
+                || data?.candidates?.[0]?.finishReason
+                || 'no content returned';
+            throw new Error(`Gemini (${model}): empty or blocked response (${blockReason})`);
+        }
+        return text;
     },
     
     /**

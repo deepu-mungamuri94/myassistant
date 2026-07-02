@@ -190,6 +190,22 @@ describe('AIProvider', () => {
       await AIProvider.call('test prompt');
       expect(window.Utils.showSuccess).toHaveBeenCalledWith(expect.stringContaining('GROQ'));
     });
+
+    it('should fall back to next provider on timeout error', async () => {
+      window.GeminiAI.call.mockRejectedValueOnce(new Error('Request timed out after 30s'));
+      const result = await AIProvider.call('test prompt');
+      expect(result).toBe('groq response');
+      expect(window.GeminiAI.call).toHaveBeenCalledTimes(1);
+      expect(window.GroqAI.call).toHaveBeenCalledTimes(1);
+    });
+
+    it('should fall back to next provider on a network error (Failed to fetch)', async () => {
+      window.GeminiAI.call.mockRejectedValueOnce(new Error('Failed to fetch'));
+      const result = await AIProvider.call('test prompt');
+      expect(result).toBe('groq response');
+      expect(window.GeminiAI.call).toHaveBeenCalledTimes(1);
+      expect(window.GroqAI.call).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('isRateLimitError', () => {
@@ -250,6 +266,119 @@ describe('AIProvider', () => {
     it('should handle case insensitivity', () => {
       expect(AIProvider.isRateLimitError(new Error('RATE LIMIT EXCEEDED'))).toBe(true);
       expect(AIProvider.isRateLimitError(new Error('Quota EXCEEDED'))).toBe(true);
+    });
+  });
+
+  describe('isTimeoutError', () => {
+    it('should detect "timed out" messages', () => {
+      expect(AIProvider.isTimeoutError(new Error('Request timed out after 30s'))).toBe(true);
+    });
+
+    it('should detect "timeout" messages', () => {
+      expect(AIProvider.isTimeoutError(new Error('Network timeout'))).toBe(true);
+    });
+
+    it('should detect "aborted" messages', () => {
+      expect(AIProvider.isTimeoutError(new Error('The operation was aborted'))).toBe(true);
+    });
+
+    it('should return false for non-timeout errors', () => {
+      expect(AIProvider.isTimeoutError(new Error('Invalid API key'))).toBe(false);
+      expect(AIProvider.isTimeoutError(new Error('429 rate limit'))).toBe(false);
+    });
+
+    it('should NOT flag an unrelated message that merely contains "abort"', () => {
+      // Guard against the over-broad bare 'abort' substring: a provider message
+      // like "aborting transaction" must not be misread as a network timeout.
+      expect(AIProvider.isTimeoutError(new Error('server aborting transaction: rollback'))).toBe(false);
+    });
+  });
+
+  describe('isNetworkError', () => {
+    it('should detect "Failed to fetch" (WebView dropped connection)', () => {
+      expect(AIProvider.isNetworkError(new Error('Failed to fetch'))).toBe(true);
+    });
+
+    it('should detect "Network request failed"', () => {
+      expect(AIProvider.isNetworkError(new Error('Network request failed'))).toBe(true);
+    });
+
+    it('should detect DOMException NetworkError', () => {
+      expect(AIProvider.isNetworkError(new Error('NetworkError when attempting to fetch resource'))).toBe(true);
+    });
+
+    it('should return false for non-network errors', () => {
+      expect(AIProvider.isNetworkError(new Error('Invalid API key'))).toBe(false);
+    });
+  });
+
+  describe('isRetriableError', () => {
+    it('should be true for rate limit errors', () => {
+      expect(AIProvider.isRetriableError(new Error('429 Too Many Requests'))).toBe(true);
+    });
+
+    it('should be true for timeout errors', () => {
+      expect(AIProvider.isRetriableError(new Error('Request timed out after 30s'))).toBe(true);
+    });
+
+    it('should be true for network errors', () => {
+      expect(AIProvider.isRetriableError(new Error('Failed to fetch'))).toBe(true);
+    });
+
+    it('should be false for auth/other errors', () => {
+      expect(AIProvider.isRetriableError(new Error('Invalid API key'))).toBe(false);
+    });
+  });
+
+  describe('retriableReason', () => {
+    it('labels rate limits, timeouts, and network failures distinctly', () => {
+      expect(AIProvider.retriableReason(new Error('429 Too Many Requests'))).toBe('rate limit');
+      expect(AIProvider.retriableReason(new Error('Request timed out after 30s'))).toBe('timeout');
+      expect(AIProvider.retriableReason(new Error('Failed to fetch'))).toBe('network error');
+    });
+  });
+
+  describe('fetchWithTimeout', () => {
+    let originalFetch;
+
+    beforeEach(() => {
+      originalFetch = global.fetch;
+    });
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+      vi.useRealTimers();
+    });
+
+    it('resolves with the response when fetch succeeds in time', async () => {
+      const fakeResponse = { ok: true };
+      global.fetch = vi.fn(async () => fakeResponse);
+      const res = await AIProvider.fetchWithTimeout('https://example.com', {}, 1000);
+      expect(res).toBe(fakeResponse);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('passes an AbortSignal to fetch', async () => {
+      global.fetch = vi.fn(async (url, opts) => {
+        expect(opts.signal).toBeDefined();
+        return { ok: true };
+      });
+      await AIProvider.fetchWithTimeout('https://example.com', { method: 'POST' }, 1000);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('throws a readable "timed out" error when the request aborts', async () => {
+      // Simulate fetch rejecting with an AbortError when the signal fires.
+      global.fetch = vi.fn((url, opts) => new Promise((resolve, reject) => {
+        opts.signal.addEventListener('abort', () => {
+          const err = new Error('The user aborted a request.');
+          err.name = 'AbortError';
+          reject(err);
+        });
+      }));
+      await expect(
+        AIProvider.fetchWithTimeout('https://example.com', {}, 10)
+      ).rejects.toThrow(/timed out/i);
     });
   });
 

@@ -375,10 +375,10 @@ const Navigation = {
             if (perplexityKeyInput) perplexityKeyInput.value = window.DB.settings.perplexityApiKey || '';
             
             // Set models (with defaults)
-            if (geminiModelInput) geminiModelInput.value = window.DB.settings.geminiModel || 'gemini-2.0-flash-lite';
+            if (geminiModelInput) geminiModelInput.value = window.DB.settings.geminiModel || 'gemini-2.5-flash-lite';
             if (groqModelInput) groqModelInput.value = window.DB.settings.groqModel || 'llama-3.3-70b-versatile';
             if (chatGptModelInput) chatGptModelInput.value = window.DB.settings.chatGptModel || 'gpt-4o-mini';
-            if (perplexityModelInput) perplexityModelInput.value = window.DB.settings.perplexityModel || 'llama-3.1-sonar-large-128k-online';
+            if (perplexityModelInput) perplexityModelInput.value = window.DB.settings.perplexityModel || 'sonar-pro';
             
             // Load priority order
             this.renderPriorityOrder();
@@ -498,7 +498,7 @@ const Navigation = {
         
         // Save models (with defaults if empty)
         if (geminiModelInput) {
-            window.DB.settings.geminiModel = geminiModelInput.value.trim() || 'gemini-2.0-flash-lite';
+            window.DB.settings.geminiModel = geminiModelInput.value.trim() || 'gemini-2.5-flash-lite';
         }
         if (groqModelInput) {
             window.DB.settings.groqModel = groqModelInput.value.trim() || 'llama-3.3-70b-versatile';
@@ -507,7 +507,7 @@ const Navigation = {
             window.DB.settings.chatGptModel = chatGptModelInput.value.trim() || 'gpt-4o-mini';
         }
         if (perplexityModelInput) {
-            window.DB.settings.perplexityModel = perplexityModelInput.value.trim() || 'llama-3.1-sonar-large-128k-online';
+            window.DB.settings.perplexityModel = perplexityModelInput.value.trim() || 'sonar-pro';
         }
         
         if (window.Storage.save()) {

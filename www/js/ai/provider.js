@@ -348,6 +348,38 @@ Style (formatted for a mobile screen):
     },
 
     /**
+     * Default per-request network timeout (ms). Provider fetches abort after
+     * this so a stalled network can't hang the UI forever (the insights modal
+     * would otherwise spin indefinitely on "~10 seconds…").
+     */
+    REQUEST_TIMEOUT_MS: 30000,
+
+    /**
+     * fetch() wrapper that aborts after `timeoutMs`. Normalizes an aborted
+     * request into a clear "timed out" Error so callers get a readable message
+     * and the fallback chain can treat it as retriable (see isTimeoutError).
+     * Degrades gracefully to plain fetch where AbortController is unavailable.
+     */
+    async fetchWithTimeout(url, options = {}, timeoutMs = this.REQUEST_TIMEOUT_MS) {
+        if (typeof AbortController === 'undefined') {
+            return fetch(url, options);
+        }
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            return await fetch(url, { ...options, signal: controller.signal });
+        } catch (err) {
+            const msg = (err && (err.message || err.name)) || '';
+            if ((err && err.name === 'AbortError') || /abort/i.test(msg)) {
+                throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s`);
+            }
+            throw err;
+        } finally {
+            clearTimeout(timer);
+        }
+    },
+
+    /**
      * Call a specific provider
      */
     async callProvider(provider, prompt, context) {
@@ -387,6 +419,53 @@ Style (formatted for a mobile screen):
             errorMsg.includes('context_length_exceeded') ||
             errorMsg.includes('too many tokens')
         );
+    },
+
+    /**
+     * Check if an error is a network timeout/abort. Timeouts are retriable
+     * against another provider (a hung endpoint should hand off), so callers
+     * fall back on these the same way they do on rate limits.
+     * ('aborted' already matches every AbortError message fetchWithTimeout can
+     * produce; a bare 'abort' would also flag unrelated messages, so it's out.)
+     */
+    isTimeoutError(error) {
+        const errorMsg = (error.message || error.toString() || '').toLowerCase();
+        return (
+            errorMsg.includes('timed out') ||
+            errorMsg.includes('timeout') ||
+            errorMsg.includes('aborted')
+        );
+    },
+
+    /**
+     * Check if an error is a transient network failure (dead/dropped
+     * connection). In the Android WebView a failed fetch surfaces as
+     * "Failed to fetch" / "Network request failed" / DOMException "NetworkError"
+     * with no timeout token, so it needs its own check to be retriable —
+     * otherwise the most common real-world failure would skip the fallback chain.
+     */
+    isNetworkError(error) {
+        const errorMsg = (error.message || error.toString() || '').toLowerCase();
+        return (
+            errorMsg.includes('failed to fetch') ||
+            errorMsg.includes('network request failed') ||
+            errorMsg.includes('networkerror')
+        );
+    },
+
+    /**
+     * Errors that warrant trying the next provider rather than failing hard:
+     * rate/capacity limits, network timeouts, and transient network failures.
+     */
+    isRetriableError(error) {
+        return this.isRateLimitError(error) || this.isTimeoutError(error) || this.isNetworkError(error);
+    },
+
+    /** Human-readable reason for a retriable failure, for logs/toasts. */
+    retriableReason(error) {
+        if (this.isRateLimitError(error)) return 'rate limit';
+        if (this.isTimeoutError(error)) return 'timeout';
+        return 'network error';
     },
 
     /**
@@ -445,26 +524,27 @@ Style (formatted for a mobile screen):
             } catch (error) {
                 console.error(`❌ ${currentProvider.toUpperCase()} failed:`, error.message);
                 lastError = error;
-                
-                // Check if it's a rate limit error
-                if (this.isRateLimitError(error)) {
-                    console.warn(`⚠️ Rate limit detected for ${currentProvider.toUpperCase()}`);
-                    
+
+                // Rate limits, timeouts, and network failures are retriable against the next provider
+                if (this.isRetriableError(error)) {
+                    const reason = this.retriableReason(error);
+                    console.warn(`⚠️ ${reason} detected for ${currentProvider.toUpperCase()}`);
+
                     // If not the last attempt, try next provider
                     if (i < maxAttempts - 1) {
                         const nextProvider = providerOrder[i + 1];
                         console.log(`🔀 Falling back to ${nextProvider.toUpperCase()} (Priority #${i + 2})...`);
-                        
+
                         if (window.Utils && !this.suppressInfoMessages) {
-                            window.Utils.showInfo(`⚠️ ${currentProvider} rate limit - trying ${nextProvider}...`);
+                            window.Utils.showInfo(`⚠️ ${currentProvider} ${reason} - trying ${nextProvider}...`);
                         }
-                        
+
                         // Continue to next iteration
                         continue;
                     }
                 } else {
-                    // Non-rate-limit error, don't retry
-                    console.error(`💥 Non-rate-limit error, stopping retries`);
+                    // Non-retriable error (auth, bad request, etc.), don't retry
+                    console.error(`💥 Non-retriable error, stopping retries`);
                     throw error;
                 }
             }
@@ -517,19 +597,20 @@ Style (formatted for a mobile screen):
             } catch (error) {
                 console.error(`❌ Web Search with ${provider.toUpperCase()} failed:`, error.message);
                 lastError = error;
-                
-                // If rate limit and not last attempt, try next provider
-                if (this.isRateLimitError(error) && i < searchOrder.length - 1) {
+
+                // If retriable (rate limit / timeout / network) and not last attempt, try next provider
+                if (this.isRetriableError(error) && i < searchOrder.length - 1) {
                     const nextProvider = searchOrder[i + 1];
+                    const reason = this.retriableReason(error);
                     console.log(`🔀 Falling back to ${nextProvider.toUpperCase()}...`);
-                    
+
                     if (window.Utils && !this.suppressInfoMessages) {
-                        window.Utils.showInfo(`⚠️ ${provider} rate limit - trying ${nextProvider}...`);
+                        window.Utils.showInfo(`⚠️ ${provider} ${reason} - trying ${nextProvider}...`);
                     }
                     continue;
                 }
-                
-                // Non-rate-limit error or last attempt
+
+                // Non-retriable error or last attempt
                 throw error;
             }
         }
