@@ -6,8 +6,12 @@
   "scripts": {
     "sync": "npx cap sync",
     "open:android": "npx cap open android",
+    "prebuild": "npm test",
     "build": "npx cap copy && npx cap sync",
-    "watch": "npx chokidar-cli \"www/**/*\" -c \"npm run build\""
+    "watch": "npx chokidar-cli \"www/**/*\" -c \"npm run build\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "keywords": [
     "personal-assistant",
@@ -31,9 +35,11 @@
     "@capacitor/status-bar": "^7.0.3"
   },
   "devDependencies": {
-    "chokidar-cli": "^3.0.0",
     "autoprefixer": "^10.4.22",
+    "chokidar-cli": "^3.0.0",
+    "jsdom": "^25.0.1",
     "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.1"
+    "tailwindcss": "^3.4.1",
+    "vitest": "^2.1.8"
   }
 }

@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# Pre-commit hook: runs tests before allowing commit
+# Ensures no broken code is committed
+
+set -e
+
+echo "Running tests..."
+
+# Check if npm is available
+if ! command -v npm &> /dev/null; then
+    echo "ERROR: npm not found. Cannot run tests."
+    exit 1
+fi
+
+# Check if vitest is installed (fail closed)
+if [ ! -x node_modules/.bin/vitest ]; then
+    echo "ERROR: vitest not installed — run npm install"
+    exit 1
+fi
+
+# Run tests using npm test (which runs vitest)
+if npm test; then
+    echo "✓ All tests passed!"
+    exit 0
+else
+    echo "✗ Tests failed. Fix the issues before committing."
+    exit 1
+fi
