@@ -213,7 +213,7 @@ const Plans = {
         if (totalCount === 0) { el.innerHTML = ''; return; }
 
         el.innerHTML = `
-            <div class="relative overflow-hidden rounded-2xl p-4 shadow-lg text-white bg-gradient-to-br from-orange-500 via-rose-500 to-pink-600">
+            <div class="relative overflow-hidden rounded-2xl p-4 shadow-lg text-white bg-gradient-to-br from-orange-500 via-orange-600 to-amber-600">
                 <div class="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/15 to-transparent pointer-events-none"></div>
                 <div class="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-white/10 blur-xl pointer-events-none"></div>
                 <div class="relative">
@@ -307,7 +307,7 @@ const Plans = {
                 : 'No completed plans yet.';
             container.innerHTML = `
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 text-center py-12 px-6">
-                    <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-orange-100 to-rose-100 flex items-center justify-center">
+                    <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center">
                         <svg class="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                         </svg>

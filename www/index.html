@@ -384,8 +384,8 @@
                 </button>
 
                 <!-- Plans -->
-                <button onclick="Navigation.navigateTo('plans')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-orange-500 hover:to-rose-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
-                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-orange-400 to-rose-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
+                <button onclick="Navigation.navigateTo('plans')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-orange-500 hover:to-amber-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-orange-400 to-amber-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
                         <svg class="w-3.5 h-3.5 text-white group-hover:text-orange-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
                         </svg>
@@ -692,7 +692,7 @@
         <div id="plans-view" class="hidden">
             <div class="px-3 pt-2 pb-24">
                 <!-- Floating + Button (Top Right) -->
-                <button onclick="Plans.openModal()" class="fixed right-4 bottom-20 bg-gradient-to-r from-orange-600 to-rose-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Plan" aria-label="Add Plan">
+                <button onclick="Plans.openModal()" class="fixed right-4 bottom-20 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Plan" aria-label="Add Plan">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                     </svg>
@@ -1855,7 +1855,7 @@
     <!-- Plan Modal (Add/Edit) -->
     <div id="plan-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) Plans.closeModal()">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <h2 id="plan-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-orange-600 to-rose-600 bg-clip-text text-transparent">Add New Plan</h2>
+            <h2 id="plan-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Add New Plan</h2>
 
             <input type="hidden" id="plan-modal-id">
 
@@ -1910,7 +1910,7 @@
 
             <div class="flex gap-2">
                 <button onclick="Plans.closeModal()" class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all font-semibold">Cancel</button>
-                <button onclick="Plans.saveFromModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-orange-600 to-rose-600 text-white rounded-lg hover:shadow-lg transition-all font-semibold">Save</button>
+                <button onclick="Plans.saveFromModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:shadow-lg transition-all font-semibold">Save</button>
             </div>
         </div>
     </div>
