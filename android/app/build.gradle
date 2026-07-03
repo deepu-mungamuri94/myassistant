@@ -1,5 +1,17 @@
 apply plugin: 'com.android.application'
 
+// Load release signing config from android/keystore.properties if present.
+// That file (and the keystore itself) is gitignored — it holds the upload-key
+// passwords and must never be committed. When it's absent (fresh clone, CI
+// without secrets, debug-only work) we simply skip release signing so the
+// project still configures and debug-builds cleanly.
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+def hasReleaseSigning = keystorePropertiesFile.exists()
+if (hasReleaseSigning) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace "com.personal.myassistant"
     compileSdk rootProject.ext.compileSdkVersion
@@ -16,8 +28,28 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                // storeFile path is relative to the android/ root project (same
+                // base as keystore.properties above), so e.g.
+                // storeFile=app/myassistant-upload.keystore resolves to
+                // android/app/myassistant-upload.keystore.
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            // Use the release signing config only when keystore.properties is
+            // present; otherwise the release build stays debug-signed (not
+            // publishable, but keeps local/CI builds working).
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

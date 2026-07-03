@@ -16,6 +16,13 @@ android/.idea/
 android/*.iml
 android/.DS_Store
 
+# Android release signing — NEVER commit the keystore or its passwords.
+# Losing the keystore means you can never update the published app; back it
+# up securely OUTSIDE this repo (password manager / encrypted storage).
+android/keystore.properties
+*.keystore
+*.jks
+
 # iOS build files (if added later)
 ios/App/Pods/
 ios/App/build/
