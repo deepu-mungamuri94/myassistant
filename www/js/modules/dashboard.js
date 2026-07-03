@@ -4801,9 +4801,19 @@ const Dashboard = {
      */
     formatAIInsights(text) {
         if (!text) return '';
-        
+
+        // SECURITY: AI output is untrusted. Escape it BEFORE applying the
+        // markdown->HTML transforms below, so hostile markup (e.g. <script>,
+        // <img onerror>) is neutralized. The transforms only wrap escaped
+        // capture groups in trusted static markup, so they cannot reintroduce
+        // injection. (This is a legacy fallback — the primary path uses the
+        // DOMPurify-backed AIRenderer.toHtml.)
+        const escaped = window.Utils
+            ? window.Utils.escapeHtml(text)
+            : String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
         // Convert markdown-style formatting to HTML
-        return text
+        return escaped
             // Bold text
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             // Bullet points

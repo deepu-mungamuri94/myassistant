@@ -3979,6 +3979,9 @@
     <script src="js/utils/crypto.js"></script>
     <!-- Markdown renderer for AI responses -->
     <script src="vendor/marked.min.js"></script>
+    <!-- DOMPurify sanitizes marked's HTML output before it reaches innerHTML.
+         Must load AFTER marked and BEFORE aiRenderer (aiRenderer.toHtml calls DOMPurify.sanitize). -->
+    <script src="vendor/purify.min.js"></script>
     <script src="js/utils/aiRenderer.js"></script>
     <script src="js/core/storage.js"></script>
     <script src="js/core/dataLifecycle.js"></script>

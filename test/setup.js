@@ -24,6 +24,13 @@ Object.defineProperty(globalThis, 'crypto', {
 // Mark that Capacitor is not available (we're running in Node)
 window.Capacitor = undefined;
 
+// Expose the vendored DOMPurify as a global, mirroring the <script> tag in
+// index.html. Required as CommonJS here; with the jsdom `window` already in
+// scope it self-initializes, so the returned object exposes .sanitize directly.
+// This lets aiRenderer's sanitization run for real in tests instead of hitting
+// the escape-only fallback.
+window.DOMPurify = require('../www/vendor/purify.min.js');
+
 // Initialize a minimal window.DB object so modules can read from it
 window.DB = {
   income: {},

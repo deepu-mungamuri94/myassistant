@@ -29,6 +29,7 @@ fetch() {
 # --- CDN-only libraries (pinned versions) ---
 fetch "https://cdn.tailwindcss.com"                                                          "tailwindcss.js"
 fetch "https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"                              "marked.min.js"
+fetch "https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"                       "purify.min.js"
 fetch "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"                     "chart.umd.min.js"
 fetch "https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js" "chartjs-plugin-datalabels.min.js"
 
