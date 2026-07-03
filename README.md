@@ -119,6 +119,11 @@ Whenever you change anything under `www/`, re-run `npx cap sync android` before
 rebuilding. If you edited `index.html`'s vendored `<script>` references or bumped
 a pinned version, re-run `download-vendors.sh` first.
 
+> **Publishing to Google Play?** A debug build can't be published. See
+> [docs/RELEASE.md](docs/RELEASE.md) for creating the upload keystore, wiring
+> `keystore.properties`, building a signed `.aab`, and — critically — backing up
+> the key (lose it and you can never update the published app).
+
 ### Verifying a build (smoke test)
 
 After installing, a 30-second sanity pass:
