@@ -473,8 +473,20 @@ Style (formatted for a mobile screen):
      * Uses user-defined priority order from settings
      */
     async call(prompt, context = null) {
+        // CONSENT GATE (single choke point): the first time any AI feature runs,
+        // ensure the user has agreed to send a financial summary to the selected
+        // third-party provider. If they decline, abort cleanly — no provider is
+        // ever contacted. This must stay at the very top so no data-bearing AI
+        // path (current or future) can bypass it.
+        if (window.AIConsent && typeof window.AIConsent.ensure === 'function') {
+            const consented = await window.AIConsent.ensure();
+            if (!consented) {
+                throw new Error('AI data-sharing consent required. Enable it in AI Settings to use the assistant.');
+            }
+        }
+
         const availableProviders = this.getAvailableProviders();
-        
+
         if (availableProviders.length === 0) {
             throw new Error('No AI provider configured. Please add API keys in Settings.');
         }
@@ -566,6 +578,18 @@ Style (formatted for a mobile screen):
      * @returns {Promise<string>} - AI response
      */
     async callWithWebSearch(prompt, context = null) {
+        // CONSENT GATE: callWithWebSearch is the SECOND data-bearing AI entry
+        // point (card-benefit lookups send the card NAME to Gemini/Perplexity),
+        // so it must gate on consent exactly like call() above — otherwise this
+        // path bypasses the disclosure. Kept before the provider loop so a
+        // decline throws once, cleanly, without interacting with retry/fallback.
+        if (window.AIConsent && typeof window.AIConsent.ensure === 'function') {
+            const consented = await window.AIConsent.ensure();
+            if (!consented) {
+                throw new Error('AI data-sharing consent required. Enable it in AI Settings to use the assistant.');
+            }
+        }
+
         const webSearchProviders = this.getWebSearchProviders();
         
         if (webSearchProviders.length === 0) {

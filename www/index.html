@@ -858,7 +858,27 @@
                         <!-- Will be populated dynamically -->
                     </div>
                 </div>
-                
+
+                <!-- Data-sharing consent -->
+                <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex-1">
+                            <p class="text-sm font-semibold text-gray-700">Share data with AI</p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Allow sending a financial summary over HTTPS to your selected AI provider.
+                                Full card numbers, CVV, credit limits, outstanding balances, and stored
+                                credentials/passwords are never sent.
+                            </p>
+                            <p id="ai-consent-status" class="text-xs mt-1 font-medium"></p>
+                        </div>
+                        <button type="button" id="ai-consent-toggle" role="switch" aria-checked="false"
+                            onclick="Navigation.toggleAIConsent()"
+                            class="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors bg-gray-300">
+                            <span id="ai-consent-knob" class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform translate-x-0.5"></span>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Google Gemini Settings -->
                 <details class="ai-provider-group border border-gray-300 rounded-lg overflow-hidden">
                     <summary class="cursor-pointer bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 p-3 flex items-center justify-between transition-colors">
@@ -3989,7 +4009,13 @@
     <script src="js/core/security.js"></script>
     <script src="js/core/loading.js"></script>
     <script src="js/core/stockapi.js"></script>
-    
+
+    <!-- AI data-sharing consent gate. Depends on DB, Storage, and Utils (all
+         loaded above) and drives the shared #custom-confirm-modal. AIProvider.call
+         calls window.AIConsent.ensure() at runtime, so this must load before the
+         AI modules below. -->
+    <script src="js/modules/aiConsent.js"></script>
+
     <!-- AI modules -->
     <!-- provider.js defines window.AIProvider (fetchWithTimeout, getSystemInstruction,
          formatContextText) which the individual provider files below depend on, so it

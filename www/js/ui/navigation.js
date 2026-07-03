@@ -382,7 +382,10 @@ const Navigation = {
             
             // Load priority order
             this.renderPriorityOrder();
-            
+
+            // Reflect current AI data-sharing consent state on the toggle
+            this.renderAIConsent();
+
             modal.classList.remove('hidden');
         }
     },
@@ -515,7 +518,49 @@ const Navigation = {
             this.closeAISettings();
         }
     },
-    
+
+    /**
+     * Reflect the current AI data-sharing consent state on the Settings toggle.
+     */
+    renderAIConsent() {
+        const toggle = document.getElementById('ai-consent-toggle');
+        const knob = document.getElementById('ai-consent-knob');
+        const status = document.getElementById('ai-consent-status');
+        if (!toggle) return;
+
+        const granted = !!(window.AIConsent && window.AIConsent.hasConsent());
+
+        toggle.setAttribute('aria-checked', granted ? 'true' : 'false');
+        toggle.classList.toggle('bg-green-500', granted);
+        toggle.classList.toggle('bg-gray-300', !granted);
+        if (knob) {
+            knob.classList.toggle('translate-x-5', granted);
+            knob.classList.toggle('translate-x-0.5', !granted);
+        }
+        if (status) {
+            status.textContent = granted ? 'Enabled' : 'Not enabled';
+            status.classList.toggle('text-green-600', granted);
+            status.classList.toggle('text-gray-500', !granted);
+        }
+    },
+
+    /**
+     * Toggle AI data-sharing consent from Settings. Turning it on grants consent
+     * (the row already discloses what is shared); turning it off revokes it, so
+     * the next AI use re-shows the full disclosure.
+     */
+    toggleAIConsent() {
+        if (!window.AIConsent) return;
+        if (window.AIConsent.hasConsent()) {
+            window.AIConsent.revoke();
+            if (window.Utils) window.Utils.showInfo('AI data sharing turned off. You\'ll be asked again next time you use AI.');
+        } else {
+            window.AIConsent.grant();
+            if (window.Utils) window.Utils.showSuccess('✅ AI data sharing enabled.');
+        }
+        this.renderAIConsent();
+    },
+
     /**
      * Render priority order list
      * Groq is LOCKED at #1 (mandatory for chat), rest is configurable
