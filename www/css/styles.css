@@ -375,6 +375,34 @@ details > summary .details-arrow {
 }
 
 /* ============================================================
+   CHART SKELETON (progressive chart hydration)
+   Charts hydrate one-per-frame after the KPI cards paint (see
+   Dashboard._scheduleChartHydration). While a chart's frame is
+   pending, a neutral shimmer fills its already-sized canvas box so
+   the user sees a loading affordance, not a blank white rectangle.
+   The overlay is absolutely positioned inside the reserved-height
+   box, so it introduces ZERO layout shift and is removed the moment
+   its chart mounts (Dashboard._clearChartSkeleton).
+   ============================================================ */
+.dash-chart-skeleton {
+    position: absolute;
+    inset: 0;
+    border-radius: 0.5rem;
+    background: linear-gradient(90deg, #eef2fb 0%, #f6f8ff 50%, #eef2fb 100%);
+    background-size: 200% 100%;
+    animation: dash-skel-shimmer 1.2s ease-in-out infinite;
+    pointer-events: none;
+}
+@keyframes dash-skel-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+/* Respect the app-wide reduced-motion contract: hold a steady tint. */
+@media (prefers-reduced-motion: reduce) {
+    .dash-chart-skeleton { animation: none; background: #eef2fb; }
+}
+
+/* ============================================================
    CIRCULAR METER GAUGES (KPI tiles)
    Tiles whose headline is a percentage render as a "meter-reading"
    dial: a conic-gradient ring fills clockwise to the value, the
