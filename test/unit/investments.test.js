@@ -632,4 +632,219 @@ describe('Investments Module', () => {
       expect(isValid).toBe(true);
     });
   });
+
+  // ---------------------------------------------------------------------
+  // Payment method → credit-card outstanding sync
+  // ---------------------------------------------------------------------
+  describe('payment method → card outstanding', () => {
+    const CC = (id) => ({ type: 'credit_card', id, name: 'Test Card', last4: '1234' });
+
+    beforeEach(() => {
+      // Give the module a fresh set of cards + stub showSuccess/render so the
+      // flow methods can run headless (they call DOM-driven success/render).
+      window.DB.cards = [
+        { id: 'c1', cardType: 'credit', outstanding: 0 },
+        { id: 'c2', cardType: 'credit', outstanding: 0 }
+      ];
+      vi.spyOn(Investments, 'showSuccess').mockImplementation(() => {});
+      vi.spyOn(Investments, 'render').mockImplementation(() => {});
+      vi.spyOn(Investments, 'updateSharePrice').mockImplementation(() => {});
+    });
+
+    const card = (id) => window.DB.cards.find(c => c.id === id);
+
+    describe('_investmentChargeAmount', () => {
+      it('computes qty × price for INR shares', () => {
+        expect(Investments._investmentChargeAmount({ type: 'SHARES', quantity: 10, price: 150, currency: 'INR' })).toBe(1500);
+      });
+
+      it('converts USD shares to INR at the stored rate', () => {
+        window.DB.exchangeRate = { rate: 80 };
+        // 2 × 100 USD = 200 USD × 80 = 16000 INR
+        expect(Investments._investmentChargeAmount({ type: 'SHARES', quantity: 2, price: 100, currency: 'USD' })).toBe(16000);
+      });
+
+      it('treats MF and GOLD as INR qty × price', () => {
+        expect(Investments._investmentChargeAmount({ type: 'MF', quantity: 3, price: 50.5 })).toBe(151.5);
+        expect(Investments._investmentChargeAmount({ type: 'GOLD', quantity: 2, price: 7500 })).toBe(15000);
+      });
+
+      it('uses flat amount for FD and EPF', () => {
+        expect(Investments._investmentChargeAmount({ type: 'FD', amount: 50000 })).toBe(50000);
+        expect(Investments._investmentChargeAmount({ type: 'EPF', amount: 1200 })).toBe(1200);
+      });
+
+      it('returns 0 for missing / non-positive / null input', () => {
+        expect(Investments._investmentChargeAmount(null)).toBe(0);
+        expect(Investments._investmentChargeAmount({ type: 'SHARES', quantity: 0, price: 100 })).toBe(0);
+        expect(Investments._investmentChargeAmount({ type: 'FD', amount: -5 })).toBe(0);
+      });
+
+      it('rounds to paise', () => {
+        expect(Investments._investmentChargeAmount({ type: 'MF', quantity: 3, price: 10.333 })).toBe(31);
+      });
+    });
+
+    describe('_applyCardCharge', () => {
+      it('adds to a credit card outstanding and returns the amount', () => {
+        const applied = Investments._applyCardCharge(CC('c1'), 500);
+        expect(applied).toBe(500);
+        expect(card('c1').outstanding).toBe(500);
+      });
+
+      it('does nothing for cash / UPI / debit', () => {
+        expect(Investments._applyCardCharge({ type: 'cash' }, 500)).toBe(0);
+        expect(Investments._applyCardCharge({ type: 'debit_card', id: 'c1' }, 500)).toBe(0);
+        expect(card('c1').outstanding).toBe(0);
+      });
+
+      it('does nothing when the card no longer exists', () => {
+        expect(Investments._applyCardCharge(CC('missing'), 500)).toBe(0);
+      });
+
+      it('ignores non-positive charges', () => {
+        expect(Investments._applyCardCharge(CC('c1'), 0)).toBe(0);
+        expect(Investments._applyCardCharge(CC('c1'), -10)).toBe(0);
+        expect(card('c1').outstanding).toBe(0);
+      });
+    });
+
+    describe('_reverseCardCharge', () => {
+      it('subtracts from outstanding', () => {
+        card('c1').outstanding = 1000;
+        Investments._reverseCardCharge(CC('c1'), 400);
+        expect(card('c1').outstanding).toBe(600);
+      });
+
+      it('clamps at 0, never negative', () => {
+        card('c1').outstanding = 100;
+        Investments._reverseCardCharge(CC('c1'), 500);
+        expect(card('c1').outstanding).toBe(0);
+      });
+
+      it('is a no-op for non-credit-card methods', () => {
+        card('c1').outstanding = 100;
+        Investments._reverseCardCharge({ type: 'upi', id: 'c1' }, 50);
+        expect(card('c1').outstanding).toBe(100);
+      });
+    });
+
+    describe('_syncCardOnEdit', () => {
+      it('same card: keeps snapshot, does not re-charge', () => {
+        card('c1').outstanding = 1500;
+        const result = Investments._syncCardOnEdit(CC('c1'), 1500, CC('c1'), { type: 'SHARES', quantity: 99, price: 99 });
+        expect(result).toBe(1500);
+        expect(card('c1').outstanding).toBe(1500); // untouched despite drifted freshData
+      });
+
+      it('card swap: moves the historical amount to the new card', () => {
+        card('c1').outstanding = 1500;
+        const result = Investments._syncCardOnEdit(CC('c1'), 1500, CC('c2'), { type: 'SHARES', quantity: 1, price: 1 });
+        expect(card('c1').outstanding).toBe(0);
+        expect(card('c2').outstanding).toBe(1500);
+        expect(result).toBe(1500);
+      });
+
+      it('remove method: reverses and returns undefined', () => {
+        card('c1').outstanding = 1500;
+        const result = Investments._syncCardOnEdit(CC('c1'), 1500, null, {});
+        expect(card('c1').outstanding).toBe(0);
+        expect(result).toBeUndefined();
+      });
+
+      it('add method fresh: charges the fresh cost', () => {
+        const result = Investments._syncCardOnEdit(null, 0, CC('c2'), { type: 'FD', amount: 2000 });
+        expect(card('c2').outstanding).toBe(2000);
+        expect(result).toBe(2000);
+      });
+    });
+
+    describe('deleteInvestment reverses the charge (snapshot-based)', () => {
+      it('reverses a monthly entry charge', () => {
+        card('c1').outstanding = 1500;
+        window.DB.monthlyInvestments = [{ id: 1, type: 'SHARES', paymentMethod: CC('c1'), paymentCharge: 1500 }];
+        Investments.deleteInvestment(1, true);
+        expect(card('c1').outstanding).toBe(0);
+        expect(window.DB.monthlyInvestments).toHaveLength(0);
+      });
+
+      it('reverses a portfolio entry charge', () => {
+        card('c2').outstanding = 800;
+        window.DB.portfolioInvestments = [{ id: 5, type: 'GOLD', name: 'Gold', paymentMethod: CC('c2'), paymentCharge: 800 }];
+        Investments.deleteInvestment(5, false);
+        expect(card('c2').outstanding).toBe(0);
+      });
+
+      it('uses the stored snapshot, immune to market drift', () => {
+        // Charge was 1000 at purchase; entry price has since drifted up.
+        card('c1').outstanding = 1000;
+        window.DB.monthlyInvestments = [{ id: 2, type: 'SHARES', quantity: 10, price: 9999, currency: 'INR', paymentMethod: CC('c1'), paymentCharge: 1000 }];
+        Investments.deleteInvestment(2, true);
+        expect(card('c1').outstanding).toBe(0); // reversed exactly 1000, not 99990
+      });
+
+      it('does nothing to cards for a non-card-paid entry', () => {
+        card('c1').outstanding = 500;
+        window.DB.monthlyInvestments = [{ id: 3, type: 'GOLD', paymentMethod: { type: 'cash' } }];
+        Investments.deleteInvestment(3, true);
+        expect(card('c1').outstanding).toBe(500);
+      });
+    });
+
+    describe('syncToPortfolio strips payment fields from the aggregate', () => {
+      it('does not copy paymentMethod/paymentCharge into a new portfolio row', () => {
+        window.DB.portfolioInvestments = [];
+        Investments.syncToPortfolio(
+          { type: 'GOLD', name: 'Gold', goal: 'LONG_TERM', quantity: 1, price: 7000, paymentMethod: CC('c1'), paymentCharge: 7000 },
+          'Gold_GOLD_LONG_TERM'
+        );
+        const agg = window.DB.portfolioInvestments[0];
+        expect(agg.paymentMethod).toBeUndefined();
+        expect(agg.paymentCharge).toBeUndefined();
+      });
+    });
+
+    describe('overrideExisting reverses old charge then applies new', () => {
+      it('moves the charge from old card to new card', () => {
+        card('c1').outstanding = 1000;
+        const existing = { id: 1, type: 'FD', name: 'FD', goal: 'LONG_TERM', amount: 1000, paymentMethod: CC('c1'), paymentCharge: 1000 };
+        window.DB.portfolioInvestments = [existing];
+        Investments.overrideExisting(existing, { type: 'FD', name: 'FD', goal: 'LONG_TERM', amount: 2000, paymentMethod: CC('c2') });
+        expect(card('c1').outstanding).toBe(0);
+        expect(card('c2').outstanding).toBe(2000);
+        expect(existing.paymentCharge).toBe(2000);
+      });
+
+      it('clears payment fields when the replacement has no method', () => {
+        card('c1').outstanding = 1000;
+        const existing = { id: 1, type: 'FD', name: 'FD', goal: 'LONG_TERM', amount: 1000, paymentMethod: CC('c1'), paymentCharge: 1000 };
+        window.DB.portfolioInvestments = [existing];
+        Investments.overrideExisting(existing, { type: 'FD', name: 'FD', goal: 'LONG_TERM', amount: 2000 });
+        expect(card('c1').outstanding).toBe(0);
+        expect(existing.paymentMethod).toBeUndefined();
+        expect(existing.paymentCharge).toBeUndefined();
+      });
+    });
+
+    describe('addToExisting accumulates only for the same card', () => {
+      it('accumulates the snapshot when the same card is reused', () => {
+        card('c1').outstanding = 1000;
+        const existing = { id: 1, type: 'GOLD', name: 'Gold', goal: 'LONG_TERM', quantity: 1, price: 1000, paymentMethod: CC('c1'), paymentCharge: 1000 };
+        Investments.addToExisting(existing, { type: 'GOLD', name: 'Gold', goal: 'LONG_TERM', quantity: 1, price: 500, paymentMethod: CC('c1') });
+        expect(card('c1').outstanding).toBe(1500);
+        expect(existing.paymentCharge).toBe(1500);
+      });
+
+      it('does not corrupt balances when a different card is used', () => {
+        card('c1').outstanding = 1000;
+        const existing = { id: 1, type: 'GOLD', name: 'Gold', goal: 'LONG_TERM', quantity: 1, price: 1000, paymentMethod: CC('c1'), paymentCharge: 1000 };
+        Investments.addToExisting(existing, { type: 'GOLD', name: 'Gold', goal: 'LONG_TERM', quantity: 1, price: 500, paymentMethod: CC('c2') });
+        // c1 keeps its real charge; c2 gets the new buy; snapshot tracks only c2.
+        expect(card('c1').outstanding).toBe(1000);
+        expect(card('c2').outstanding).toBe(500);
+        expect(existing.paymentCharge).toBe(500);
+        expect(existing.paymentMethod.id).toBe('c2');
+      });
+    });
+  });
 });

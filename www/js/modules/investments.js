@@ -141,6 +141,115 @@ const Investments = {
         return typeof gr === 'number' ? gr : 9000;
     },
 
+    // ---------------------------------------------------------------------
+    // Payment method → credit-card outstanding sync
+    //
+    // Mirrors how expenses bump a card's `outstanding` when paid by credit
+    // card, but investments live in two stores (monthlyInvestments = the real
+    // per-purchase transaction, portfolioInvestments = the aggregate rollup).
+    // To avoid double-charging, the card is charged EXACTLY ONCE — tied to the
+    // entry that represents the user's actual purchase — and the rupee amount
+    // charged is snapshotted on that entry as `paymentCharge`. Reversals
+    // (edit / delete) use the snapshot, so a later market-price move on a
+    // SHARES/MF holding can never silently shift a card balance. Only
+    // `credit_card` is charged; debit/cash/UPI are recorded but never touch an
+    // outstanding (same rule as expenses).
+    // ---------------------------------------------------------------------
+
+    /**
+     * INR cost of a purchase, for charging a card. SHARES may be priced in USD
+     * (cards track INR) so convert at the stored rate; MF/GOLD are INR by
+     * definition; FD/EPF use their flat amount. Rounds to paise. 0 if unpriced.
+     */
+    _investmentChargeAmount(data) {
+        if (!data) return 0;
+        const qty = parseFloat(data.quantity) || 0;
+        const price = parseFloat(data.price) || 0;
+        const amount = parseFloat(data.amount) || 0;
+        let inr;
+        switch (data.type) {
+            case 'SHARES':
+                inr = qty * price;
+                if (data.currency === 'USD') inr *= this.getExchangeRate();
+                break;
+            case 'MF':
+            case 'GOLD':
+                inr = qty * price;
+                break;
+            case 'FD':
+            case 'EPF':
+                inr = amount;
+                break;
+            default:
+                inr = amount || (qty * price);
+        }
+        if (!(inr > 0)) return 0;
+        return Math.round((inr + Number.EPSILON) * 100) / 100;
+    },
+
+    /**
+     * Resolve a live credit card from a paymentMethod, or null. Debit / cash /
+     * UPI intentionally return null — they are recorded but never charged.
+     */
+    _findCreditCard(paymentMethod) {
+        if (!paymentMethod || paymentMethod.type !== 'credit_card' || !paymentMethod.id) return null;
+        return (window.DB.cards || []).find(c => String(c.id) === String(paymentMethod.id)) || null;
+    },
+
+    /**
+     * Add a charge to a credit card's outstanding. Returns the INR actually
+     * charged (0 if not a credit card, card missing, or non-positive) so the
+     * caller can snapshot it as `paymentCharge`. Does NOT save — the caller
+     * batches Storage.save() (matches the expense flow).
+     */
+    _applyCardCharge(paymentMethod, chargeInr) {
+        const card = this._findCreditCard(paymentMethod);
+        if (!card) return 0;
+        const amt = parseFloat(chargeInr) || 0;
+        if (amt <= 0) return 0;
+        card.outstanding = (parseFloat(card.outstanding) || 0) + amt;
+        return amt;
+    },
+
+    /**
+     * Reverse a previously-applied charge from a credit card's outstanding
+     * using the stored snapshot (drift-proof). Clamped at 0. Does NOT save.
+     */
+    _reverseCardCharge(paymentMethod, chargeInr) {
+        const card = this._findCreditCard(paymentMethod);
+        if (!card) return;
+        const amt = parseFloat(chargeInr) || 0;
+        if (amt <= 0) return;
+        card.outstanding = Math.max(0, (parseFloat(card.outstanding) || 0) - amt);
+    },
+
+    /**
+     * Reconcile a card charge when an investment's payment method is edited.
+     * Same card → leave the outstanding alone and keep the original snapshot
+     * (so refreshed market prices in the edit form never silently move a
+     * balance). Card change → move the historical rupee amount to the new card.
+     * Clear → just reverse. Returns the paymentCharge to persist (undefined to
+     * remove the field entirely).
+     */
+    _syncCardOnEdit(prevMethod, prevCharge, newMethod, freshData) {
+        const prevId = (prevMethod && prevMethod.type === 'credit_card') ? String(prevMethod.id) : null;
+        const newId = (newMethod && newMethod.type === 'credit_card') ? String(newMethod.id) : null;
+        const prevAmt = parseFloat(prevCharge) || 0;
+
+        // Same credit card: don't re-charge; preserve the historical snapshot.
+        if (prevId && newId && prevId === newId) {
+            return prevAmt > 0 ? prevAmt : undefined;
+        }
+        // Reverse whatever sat on the old card.
+        if (prevId && prevAmt > 0) this._reverseCardCharge(prevMethod, prevAmt);
+        // Nothing owed on the new side.
+        if (!newId) return undefined;
+        // Move the historical amount if we had one; else charge the fresh cost.
+        const toCharge = prevAmt > 0 ? prevAmt : this._investmentChargeAmount(freshData);
+        const applied = this._applyCardCharge(newMethod, toCharge);
+        return applied > 0 ? applied : undefined;
+    },
+
     /**
      * Compute freshness for any rate stored as {updatedAt: ISO string} or as a
      * legacy primitive (in which case it's "Not fetched"). Returns the same
@@ -557,6 +666,11 @@ const Investments = {
 
         line4 = (inv.type === 'EPF' ? '' : (inv.description ? `<p class="text-gray-600 text-xs mt-1">${inv.description}</p>` : ''));
 
+        // Payment method badge (if this holding was paid via a saved method).
+        if (inv.paymentMethod && inv.paymentMethod.type && typeof window.getPaymentMethodDisplayText === 'function') {
+            line3 += `<span class="text-gray-500 text-xs">${window.getPaymentMethodDisplayText(inv.paymentMethod, true, 'small')}</span>`;
+        }
+
         // Edit available for every type now. FDs especially benefit since
         // users may need to flip the emergency-fund flag on existing entries.
         const editButton = `
@@ -835,6 +949,11 @@ const Investments = {
         }
 
         const line4 = (inv.type === 'EPF' ? '' : (inv.description ? `<p class="text-gray-600 text-xs mt-1">${inv.description}</p>` : ''));
+
+        // Payment method badge (if this entry was paid via a saved method).
+        if (inv.paymentMethod && inv.paymentMethod.type && typeof window.getPaymentMethodDisplayText === 'function') {
+            line3 += `<span class="text-gray-500 text-xs">${window.getPaymentMethodDisplayText(inv.paymentMethod, true, 'small')}</span>`;
+        }
 
         // Edit ONLY the date + budget month of a monthly entry (not name /
         // qty / price — those stay fixed). Monthly entries are independent of
@@ -1589,6 +1708,30 @@ const Investments = {
                           class="${descClass}"></textarea>
             </div>
         `;
+
+        // Payment method (optional) — reuses the shared payment-method modal.
+        // Excluded for EPF (employer-deducted, never card-paid). Picking a
+        // credit card adds this investment's cost to that card's outstanding,
+        // exactly like an expense paid by credit card.
+        if (type !== 'EPF') {
+            html += `
+                <div class="mb-3">
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Payment Method (optional)</label>
+                    <button type="button" id="investment-payment-method-btn" onclick="openInvestmentPaymentMethodModal()"
+                            class="w-full p-2 border border-gray-300 rounded-lg text-left flex items-center justify-between hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                        <span class="text-gray-500">Select payment method</span>
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                    <input type="hidden" id="investment-payment-method-type" />
+                    <input type="hidden" id="investment-payment-method-id" />
+                    <input type="hidden" id="investment-payment-method-name" />
+                    <input type="hidden" id="investment-payment-method-last4" />
+                    <p class="text-[11px] text-gray-500 mt-1">Paid by a credit card? It'll be added to that card's outstanding.</p>
+                </div>
+            `;
+        }
 
         // Calculated amount display (for SHARES, MF, and GOLD — all units×price types)
         if (type === 'SHARES' || type === 'MF' || type === 'GOLD') {
@@ -2541,6 +2684,18 @@ const Investments = {
             investmentData.endDate = endDate;
         }
 
+        // Optional payment method (picker is absent for EPF → inputs are null).
+        // Only credit-card picks later affect a card's outstanding.
+        const pmType = document.getElementById('investment-payment-method-type')?.value;
+        if (pmType) {
+            investmentData.paymentMethod = {
+                type: pmType,
+                id: document.getElementById('investment-payment-method-id')?.value || null,
+                name: document.getElementById('investment-payment-method-name')?.value || null,
+                last4: document.getElementById('investment-payment-method-last4')?.value || null
+            };
+        }
+
         // Check if editing
         const isEditing = document.getElementById('investment-editing').value === 'true';
         const editId = document.getElementById('investment-id').value;
@@ -2557,11 +2712,21 @@ const Investments = {
                 investmentData.date = date;
                 investmentData.incomeMonth = incomeMonth;
                 investmentData.incomeYear = incomeYear;
+
+                // Charge the card ONCE here — the monthly entry is the real
+                // transaction record; syncToPortfolio strips payment fields so
+                // the aggregate rollup can't double-charge or double-reverse.
+                const charge = this._applyCardCharge(
+                    investmentData.paymentMethod,
+                    this._investmentChargeAmount(investmentData)
+                );
+                if (charge > 0) investmentData.paymentCharge = charge;
+
                 this.addToMonthlyInvestments(investmentData);
-                
+
                 // Also sync to portfolio
                 this.syncToPortfolio(investmentData, userDataKey);
-                
+
                 // Show success and close modal
                 this.showSuccess();
             } else {
@@ -2581,13 +2746,16 @@ const Investments = {
             // Update monthly investment (no portfolio sync - they're independent)
             const index = window.DB.monthlyInvestments.findIndex(inv => parseInt(inv.id) === id);
             if (index !== -1) {
-                window.DB.monthlyInvestments[index] = {
-                    ...window.DB.monthlyInvestments[index],
+                const prev = window.DB.monthlyInvestments[index];
+                const merged = {
+                    ...prev,
                     ...data,
-                    date: date || window.DB.monthlyInvestments[index].date,
-                    incomeMonth: incomeMonth || window.DB.monthlyInvestments[index].incomeMonth,
-                    incomeYear: incomeYear || window.DB.monthlyInvestments[index].incomeYear
+                    date: date || prev.date,
+                    incomeMonth: incomeMonth || prev.incomeMonth,
+                    incomeYear: incomeYear || prev.incomeYear
                 };
+                this._applyPaymentEdit(prev, data, merged);
+                window.DB.monthlyInvestments[index] = merged;
                 window.Storage.save();
                 this.showSuccess();
             }
@@ -2595,11 +2763,14 @@ const Investments = {
             // Update portfolio investment
             const index = window.DB.portfolioInvestments.findIndex(inv => parseInt(inv.id) === id);
             if (index !== -1) {
-                window.DB.portfolioInvestments[index] = {
-                    ...window.DB.portfolioInvestments[index],
+                const prev = window.DB.portfolioInvestments[index];
+                const merged = {
+                    ...prev,
                     ...data
                 };
-                
+                this._applyPaymentEdit(prev, data, merged);
+                window.DB.portfolioInvestments[index] = merged;
+
                 // Persist latest unit price for SHARES and MF (shared store)
                 if (data.type === 'SHARES' || data.type === 'MF') {
                     this.updateSharePrice(data.name, data.price, data.currency || 'INR', data.schemeCode || null, data.ticker || null);
@@ -2609,6 +2780,28 @@ const Investments = {
                 this.showSuccess();
             }
         }
+    },
+
+    /**
+     * Reconcile the card charge for an edited investment, mutating `merged`
+     * in place. `prev` = stored entry (source of the historical snapshot),
+     * `data` = the freshly-entered form values (source of the new method).
+     * Explicitly clears payment fields when the user removed the method
+     * (object spread can't delete keys).
+     */
+    _applyPaymentEdit(prev, data, merged) {
+        // Charge basis for a FRESH card add on edit is the STORED entry (`prev`),
+        // never the form values. Portfolio SHARES/MF edit forms are pre-filled
+        // with LIVE market price, so charging from the form would move a card
+        // balance by market drift. `prev` holds the recorded book value (and,
+        // for monthly entries, the drift-free historical purchase price).
+        const newCharge = this._syncCardOnEdit(prev.paymentMethod, prev.paymentCharge, data.paymentMethod, prev);
+        if (newCharge > 0) {
+            merged.paymentCharge = newCharge;
+        } else {
+            delete merged.paymentCharge;
+        }
+        if (!data.paymentMethod) delete merged.paymentMethod;
     },
     
     /**
@@ -2668,6 +2861,11 @@ const Investments = {
             const newId = portfolioInvestments.length > 0 ? Math.max(...portfolioInvestments.map(inv => inv.id)) + 1 : 1;
             const portfolioData = { ...data };
             delete portfolioData.date; // Remove date field for portfolio
+            // The card was already charged against the monthly (transaction)
+            // entry — the portfolio aggregate must NOT carry payment fields, or
+            // editing/deleting it would double-charge or double-reverse a card.
+            delete portfolioData.paymentMethod;
+            delete portfolioData.paymentCharge;
             portfolioInvestments.push({
                 id: newId,
                 ...portfolioData
@@ -2677,7 +2875,7 @@ const Investments = {
                 this.updateSharePrice(data.name, data.price, data.currency || 'INR', data.schemeCode || null, data.ticker || null);
             }
         }
-        
+
         window.DB.portfolioInvestments = portfolioInvestments;
         window.Storage.save();
     },
@@ -2700,8 +2898,11 @@ const Investments = {
             this.pendingInvestmentData = data;
             this.showAddOrOverrideModal(existing, data);
         } else {
-            // Add new
+            // Add new — portfolio-only entry IS the transaction, so it carries
+            // the card charge (unlike the aggregate produced by syncToPortfolio).
             const newId = portfolioInvestments.length > 0 ? Math.max(...portfolioInvestments.map(inv => inv.id)) + 1 : 1;
+            const charge = this._applyCardCharge(data.paymentMethod, this._investmentChargeAmount(data));
+            if (charge > 0) data.paymentCharge = charge;
             portfolioInvestments.push({
                 id: newId,
                 ...data
@@ -2893,6 +3094,27 @@ const Investments = {
             this.updateSharePrice(newData.name, newData.price, newData.currency || 'INR', newData.schemeCode || null, newData.ticker || null);
         }
 
+        // "Add to existing" is a fresh purchase merged into the aggregate. If
+        // paid by credit card, bump that card now (always correct at charge
+        // time). The aggregate can only carry ONE (method, charge) snapshot for
+        // the delete-time reversal, so:
+        //   - same card as the stored snapshot → accumulate (delete reverses
+        //     the combined total from that one card — correct);
+        //   - different card → track only this buy's charge against the new
+        //     card. The earlier card keeps its real charge (we must NOT reverse
+        //     a legitimately-charged different card), so its auto-reversal is a
+        //     known limitation, but no balance is ever corrupted/over-reversed.
+        const charge = this._applyCardCharge(newData.paymentMethod, this._investmentChargeAmount(newData));
+        if (charge > 0) {
+            const prevId = (existing.paymentMethod && existing.paymentMethod.type === 'credit_card')
+                ? String(existing.paymentMethod.id) : null;
+            const newId = String(newData.paymentMethod.id);
+            existing.paymentCharge = (prevId && prevId === newId)
+                ? (parseFloat(existing.paymentCharge) || 0) + charge
+                : charge;
+            existing.paymentMethod = newData.paymentMethod;
+        }
+
         window.Storage.save();
 
         this.showSuccess();
@@ -2932,10 +3154,30 @@ const Investments = {
      * Override existing investment
      */
     overrideExisting(existing, newData) {
+        // Override replaces the holding wholesale: reverse any charge the old
+        // aggregate carried, then charge the replacement if it's card-paid.
+        // Capture the prior charge BEFORE Object.assign clobbers the fields.
+        const prevMethod = existing.paymentMethod;
+        const prevCharge = existing.paymentCharge;
+
         Object.assign(existing, newData);
+        // Object.assign only copies keys present on newData; explicitly clear
+        // stale payment fields when the replacement has none.
+        if (!newData.paymentMethod) {
+            delete existing.paymentMethod;
+            delete existing.paymentCharge;
+        }
 
         if (newData.type === 'SHARES' || newData.type === 'MF') {
             this.updateSharePrice(newData.name, newData.price, newData.currency || 'INR', newData.schemeCode || null, newData.ticker || null);
+        }
+
+        this._reverseCardCharge(prevMethod, prevCharge);
+        const charge = this._applyCardCharge(newData.paymentMethod, this._investmentChargeAmount(newData));
+        if (charge > 0) {
+            existing.paymentCharge = charge;
+        } else {
+            delete existing.paymentCharge;
         }
 
         window.Storage.save();
@@ -3125,6 +3367,19 @@ const Investments = {
         // Restore emergency-fund flag (defaults to false for legacy investments).
         const efCheckbox = document.getElementById('investment-is-emergency-fund');
         if (efCheckbox) efCheckbox.checked = !!investment.isEmergencyFund;
+
+        // Restore the saved payment method (picker/inputs absent for EPF).
+        const pmTypeInput = document.getElementById('investment-payment-method-type');
+        if (pmTypeInput && investment.paymentMethod) {
+            const pm = investment.paymentMethod;
+            pmTypeInput.value = pm.type || '';
+            document.getElementById('investment-payment-method-id').value = pm.id || '';
+            document.getElementById('investment-payment-method-name').value = pm.name || '';
+            document.getElementById('investment-payment-method-last4').value = pm.last4 || '';
+            if (typeof window.updateInvestmentPaymentMethodDisplay === 'function') {
+                window.updateInvestmentPaymentMethodDisplay(pm);
+            }
+        }
 
         if (investment.isMonthly) {
             document.getElementById('investment-track-monthly').checked = true;
@@ -3351,11 +3606,17 @@ const Investments = {
         const parsedId = parseInt(id);
         
         if (isMonthly) {
+            const investment = window.DB.monthlyInvestments.find(inv => parseInt(inv.id) === parsedId);
+            // Reverse any credit-card charge this entry carried (snapshot-based,
+            // so it's exact regardless of later market moves).
+            if (investment) this._reverseCardCharge(investment.paymentMethod, investment.paymentCharge);
             window.DB.monthlyInvestments = window.DB.monthlyInvestments.filter(inv => parseInt(inv.id) !== parsedId);
             } else {
             const investment = window.DB.portfolioInvestments.find(inv => parseInt(inv.id) === parsedId);
+            // Reverse any credit-card charge carried by this aggregate entry.
+            if (investment) this._reverseCardCharge(investment.paymentMethod, investment.paymentCharge);
             window.DB.portfolioInvestments = window.DB.portfolioInvestments.filter(inv => parseInt(inv.id) !== parsedId);
-            
+
             // SHARES and MF both write to the sharePrices store keyed by name,
             // so when the last entry with a given name is deleted, mark it
             // inactive so it stops surfacing in the price-update modal.
