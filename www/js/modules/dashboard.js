@@ -24,7 +24,21 @@ const Dashboard = {
     investmentsChartView: 'total',
     // First line cards month view: 'current' or 'next'
     firstLineMonthView: 'current',
-    
+    // Monotonic render token — bumped at the top of every render() so a stale,
+    // still-in-flight staggered chart hydration aborts instead of drawing into
+    // canvases the newer render is about to replace.
+    _renderGeneration: 0,
+    // Generation currently being bulk-hydrated on load, or -1 when idle. Entry
+    // animations are suppressed while this equals _renderGeneration so five
+    // 800ms animations don't run concurrently and contend for the GPU on
+    // low-RAM WebViews. Stamping it with the generation (rather than a bare
+    // boolean) makes it race-free: a stale pump aborting can't clear a newer
+    // pump's suppression, and a welcome-render superseding an in-flight pump
+    // can't leave it stuck (the stamp simply stops matching the new generation).
+    // User-initiated single re-renders (view toggles, month switches) don't
+    // bump the generation and run outside this window, so they still animate.
+    _bulkHydratingGen: -1,
+
     // Loading state for AI insights
     aiInsightsLoading: false,
     
@@ -109,8 +123,18 @@ const Dashboard = {
      * prefers reduced motion. Use as `animation: this._chartAnimation()`.
      */
     _chartAnimation() {
-        if (this._prefersReducedMotion()) return { duration: 0 };
+        // No entry animation while bulk-hydrating on load: staggering only the
+        // create() calls still leaves all five 800ms animations running
+        // concurrently (each its own rAF repaint loop), which is the GPU/CPU
+        // contention that janks low-RAM WebViews. Charts snap in during bulk
+        // load; the animation is reserved for user-initiated single re-renders.
+        if (this._prefersReducedMotion() || this._isBulkHydrating()) return { duration: 0 };
         return { duration: 800, easing: 'easeOutQuart' };
+    },
+
+    /** True while the current render generation is still bulk-hydrating charts. */
+    _isBulkHydrating() {
+        return this._bulkHydratingGen === this._renderGeneration;
     },
 
     /** Shared bottom legend (point-style, slate). */
@@ -305,6 +329,12 @@ const Dashboard = {
         // Destroy all existing chart instances first
         this.destroyAllCharts();
 
+        // Claim a fresh render generation. Any staggered chart-hydration frames
+        // still queued from a previous render() now see a stale token and abort,
+        // so a rapid re-render (e.g. Cash-flow month switch) can't draw a chart
+        // into a canvas this pass is about to recreate.
+        const gen = ++this._renderGeneration;
+
         // Brand-new user with zero data → friendly welcome instead of a grid
         // of zeros that reads as a broken screen.
         if (this._isFirstRun()) {
@@ -412,10 +442,17 @@ const Dashboard = {
             document.body.insertAdjacentHTML('beforeend', modalHtml);
         }
         
-        // Initialize charts after a short delay to ensure DOM is ready
-        setTimeout(() => {
-            this.initializeCharts();
-        }, 100);
+        // Charts are the expensive part of the dashboard: instantiating all five
+        // Chart.js canvases in one synchronous burst (the old single
+        // setTimeout(initializeCharts, 100)) blocked the main thread long enough
+        // to feel janky on low-RAM Android WebViews, and ran every entry
+        // animation at once. Instead we drop a lightweight shimmer into each
+        // (already height-reserved) chart box, then hydrate the charts
+        // one-per-frame so the KPI cards above are already interactive while the
+        // charts fill in. The generation token aborts the chain if a newer
+        // render() supersedes us.
+        this._injectChartSkeletons();
+        this._scheduleChartHydration(gen);
 
         // Animate the meter numbers on first paint, and keep animating on every
         // partial re-render (month switches replace section markup via
@@ -1241,33 +1278,189 @@ const Dashboard = {
     /**
      * Initialize charts
      */
+    /**
+     * The ordered list of chart-hydration steps, as {label, run} pairs. This is
+     * the SINGLE source of truth shared by the synchronous initializeCharts()
+     * fallback and the frame-staggered _scheduleChartHydration() path, so the
+     * two can never drift apart.
+     *
+     * Loans + Credit Card Bills live inside <details>; rendering Chart.js into a
+     * collapsed (0×0) parent produces a blank canvas, so they route through the
+     * *IfNeeded flag-guards (this._loansChartRendered / this._ccBillsChartRendered).
+     * Those guards are the single source of truth for "already rendered", which
+     * also stops the <details ontoggle> handler and this eager pass from
+     * double-creating a chart into the same canvas. Each step only runs its
+     * chart if that section is currently open.
+     */
+    _chartInitSteps() {
+        return [
+            { label: 'income/expense chart', canvas: 'income-expense-chart', run: () => this.renderIncomeExpenseChart() },
+            { label: 'category chart', canvas: 'category-chart', run: () => this.renderCategoryChart() },
+            { label: 'loans chart', canvas: 'loans-chart', run: () => {
+                const el = document.getElementById('loans-section');
+                if (el && el.open) this.renderLoansChartIfNeeded();
+            } },
+            { label: 'credit card bills chart', canvas: 'credit-card-bills-chart', run: () => {
+                const el = document.getElementById('credit-card-bills-section');
+                if (el && el.open) this.renderCreditCardBillsChartIfNeeded();
+            } },
+            { label: 'investments trend chart', canvas: 'investments-trend-chart', run: () => this.renderInvestmentsTrendChart() },
+        ];
+    },
+
+    /**
+     * Run one chart step in its OWN try/catch (matching the historical safe()
+     * isolation) so a throw in one chart — empty data, missing canvas, transient
+     * DOM state — can't abort the rest of the chain. Also clears that section's
+     * skeleton shimmer once the chart is mounted (or failed, so we don't leave a
+     * spinner forever). Returns nothing.
+     */
+    _runChartStep(step) {
+        try {
+            // Skip if a live chart already owns this canvas. During the staggered
+            // pump a user can tap a chart's view toggle (switchCreditCardChartView /
+            // switchInvestmentsChartView) before the pump reaches that step; the
+            // toggle does its own outerHTML swap + renderXChart(), so re-running
+            // the step here would re-init on top of a live chart ('Canvas is
+            // already in use') or needlessly tear it down and rebuild. Chart.getChart
+            // is the single source of truth for "already mounted", independent of
+            // the _loansChartRendered/_ccBillsChartRendered flags.
+            if (step.canvas && typeof Chart !== 'undefined' && typeof Chart.getChart === 'function') {
+                const el = document.getElementById(step.canvas);
+                if (el && Chart.getChart(el)) return;
+            }
+            step.run();
+        } catch (err) {
+            console.error(`Error initializing ${step.label}:`, err);
+        } finally {
+            // Drop this chart's shimmer whether it drew, was skipped, or failed,
+            // so we never leave a placeholder stuck over a card.
+            if (step.canvas) this._clearChartSkeleton(step.canvas);
+        }
+    },
+
+    /**
+     * Synchronous chart init — kept as a fallback (and for direct/test callers).
+     * Prefer _scheduleChartHydration() from render() for the non-blocking path.
+     */
     initializeCharts() {
         // Check if Chart.js is loaded
         if (typeof Chart === 'undefined') {
             console.error('Chart.js is not loaded');
             return;
         }
+        const prev = this._bulkHydratingGen;
+        this._bulkHydratingGen = this._renderGeneration;
+        try {
+            this._chartInitSteps().forEach((step) => this._runChartStep(step));
+        } finally {
+            this._bulkHydratingGen = prev;
+        }
+        this._clearChartSkeletons();
+    },
 
-        // Each chart in its OWN try/catch — previously these were wrapped in a
-        // single block, so a throw in any earlier chart silently aborted the
-        // chain. The Investments chart is rendered last, so a hiccup elsewhere
-        // (empty data, missing canvas, transient DOM state) made it disappear
-        // until the user changed the timeframe (which calls render directly).
-        const safe = (label, fn) => {
-            try { fn(); } catch (err) { console.error(`Error initializing ${label}:`, err); }
+    /**
+     * Progressive, non-blocking chart hydration: render one chart per animation
+     * frame instead of all five in a single blocking task. Between frames the
+     * browser can paint and handle input, so the (already-visible) KPI cards
+     * stay responsive on low-RAM devices while the charts fill in top-to-bottom.
+     *
+     * `gen` is the render generation captured when this pass began; if a newer
+     * render() has since bumped this._renderGeneration we abort, because the
+     * canvases we were about to draw into have been (or are about to be)
+     * replaced. Uses requestAnimationFrame when available, falling back to
+     * setTimeout (jsdom / older WebViews).
+     *
+     * @param {number} gen - render generation token from the initiating render()
+     */
+    _scheduleChartHydration(gen) {
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js is not loaded');
+            return;
+        }
+
+        const steps = this._chartInitSteps();
+        const nextFrame = (typeof requestAnimationFrame === 'function')
+            ? (fn) => requestAnimationFrame(fn)
+            : (fn) => setTimeout(fn, 16);
+
+        // Suppress entry animations for the whole bulk-load sequence (see
+        // _chartAnimation / _isBulkHydrating) so five 800ms animations don't
+        // overlap and contend. Stamped with THIS generation so it self-expires
+        // the moment a newer render() bumps _renderGeneration — no explicit
+        // clear needed on the abort path, which keeps it race-free.
+        this._bulkHydratingGen = gen;
+
+        let i = 0;
+        const pump = () => {
+            // A newer render superseded us — stop touching stale canvases. Its
+            // own hydration owns _bulkHydratingGen now, so we don't clear it.
+            if (gen !== this._renderGeneration) return;
+            if (i >= steps.length) {
+                this._bulkHydratingGen = -1; // done: re-enable animations
+                this._clearChartSkeletons();
+                return;
+            }
+            this._runChartStep(steps[i]);
+            i += 1;
+            nextFrame(pump);
         };
 
-        safe('income/expense chart', () => this.renderIncomeExpenseChart());
-        safe('category chart', () => this.renderCategoryChart());
-        // Loans + Credit Card Bills are inside <details>. Rendering Chart.js
-        // into a hidden parent gives a 0×0 canvas, so we lazy-render on first
-        // open via renderLoansChartIfNeeded / renderCreditCardBillsChartIfNeeded.
-        // CC Bills now defaults to open, so we render it eagerly here.
-        const loansEl = document.getElementById('loans-section');
-        if (loansEl && loansEl.open) safe('loans chart', () => this.renderLoansChart());
-        const ccEl = document.getElementById('credit-card-bills-section');
-        if (ccEl && ccEl.open) safe('credit card bills chart', () => this.renderCreditCardBillsChart());
-        safe('investments trend chart', () => this.renderInvestmentsTrendChart());
+        // Kick off on the next frame so the initial HTML paints first.
+        nextFrame(pump);
+    },
+
+    /**
+     * Insert a shimmer overlay into each chart card's (fixed-height) canvas box
+     * so the user sees a "loading" affordance while charts hydrate one-per-frame,
+     * rather than blank white boxes. The overlay is absolutely positioned inside
+     * the existing sized container, so it adds ZERO layout shift — the card's
+     * height is already reserved by its inline style. Each overlay carries the
+     * canvas id so it can be cleared the moment that specific chart mounts.
+     *
+     * Called from render() right after the container innerHTML is set. Skips any
+     * canvas that isn't present (e.g. collapsed <details>, or a section that
+     * returned '' for empty data) and any that already has a live chart.
+     */
+    _injectChartSkeletons() {
+        this._chartInitSteps().forEach((step) => {
+            if (!step.canvas) return;
+            const canvas = document.getElementById(step.canvas);
+            if (!canvas || !canvas.parentElement) return;
+            const box = canvas.parentElement;
+            // Don't double-inject.
+            if (box.querySelector('.dash-chart-skeleton')) return;
+            // The box needs a positioning context so the absolute overlay pins to
+            // it. The chart boxes carry an inline height but no position, so this
+            // is a no-op visually (adds `position:relative` to a block element).
+            if (box.style && !box.style.position) {
+                box.style.position = 'relative';
+            }
+            const skel = document.createElement('div');
+            skel.className = 'dash-chart-skeleton';
+            skel.dataset.for = step.canvas;
+            skel.setAttribute('aria-hidden', 'true');
+            box.appendChild(skel);
+        });
+    },
+
+    /**
+     * Remove the shimmer overlay for a single chart (by its canvas id) once that
+     * chart has mounted. Safe to call when no skeleton exists.
+     */
+    _clearChartSkeleton(canvasId) {
+        document.querySelectorAll(`#dashboard-content .dash-chart-skeleton[data-for="${canvasId}"]`)
+            .forEach((el) => el.remove());
+    },
+
+    /**
+     * Remove any lingering chart-skeleton shimmer overlays. Charts draw straight
+     * onto their <canvas>, so once all charts are mounted we drop any leftover
+     * placeholders. Safe to call repeatedly.
+     */
+    _clearChartSkeletons() {
+        document.querySelectorAll('#dashboard-content .dash-chart-skeleton')
+            .forEach((el) => el.remove());
     },
 
     /**
@@ -1321,7 +1514,22 @@ const Dashboard = {
         if (!canvas) return;
 
         const ctx = canvas.getContext('2d');
-        
+
+        // Destroy any existing instance before creating a new one, matching the
+        // four sibling renderers (income/expense, category, loans, investments).
+        // This is the last renderer that relied on its callers to destroy first;
+        // owning it here makes the method self-healing — so a stray re-entry
+        // (e.g. a view toggle racing the staggered load) can never hit Chart.js's
+        // 'Canvas is already in use' error.
+        if (this.creditCardBillsChartInstance) {
+            try {
+                this.creditCardBillsChartInstance.destroy();
+                this.creditCardBillsChartInstance = null;
+            } catch (e) {
+                console.error('Error destroying existing credit card bills chart:', e);
+            }
+        }
+
         // Get all paid bills (check both paidAt and paidDate for backward compatibility)
         let paidBills = (window.DB.cardBills || []).filter(b => b.isPaid && (b.paidAt || b.paidDate));
 
@@ -3482,7 +3690,7 @@ const Dashboard = {
                 responsive: true,
                 maintainAspectRatio: false,
                 cutout: '66%',
-                animation: this._prefersReducedMotion()
+                animation: (this._prefersReducedMotion() || this._isBulkHydrating())
                     ? { duration: 0 }
                     : { animateRotate: true, animateScale: true, duration: 800, easing: 'easeOutQuart' },
                 plugins: {
