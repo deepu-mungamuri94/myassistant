@@ -39,35 +39,18 @@ const Utils = {
     },
 
     /**
-     * Format number with Indian style commas (lakhs, crores) with decimals
-     * Complete rewrite for reliability
+     * Group a string of integer digits with Indian-style commas
+     * (rightmost 3 digits, then groups of 2 → X,XX,XX,XXX).
+     * Input must be digits only; leading zeros are collapsed to a single '0'.
+     * @param {string} digits - e.g. "1650000"
+     * @returns {string} - e.g. "16,50,000"
      */
-    formatIndianNumber(num) {
-        // Handle null/undefined/NaN
-        if (num === null || num === undefined || num === '') return '0';
-        
-        // Convert to number
-        const number = typeof num === 'string' ? parseFloat(num) : Number(num);
-        
-        // Check if valid number
-        if (isNaN(number)) return '0';
-        
-        // Handle negative numbers
-        const isNegative = number < 0;
-        const absNumber = Math.abs(number);
-        
-        // Split into integer and decimal parts
-        let [integerPart, decimalPart] = absNumber.toFixed(2).split('.');
-        
-        // Remove leading zeros but keep at least one digit
-        integerPart = integerPart.replace(/^0+/, '') || '0';
-        
-        // Format integer part with Indian grouping
-        // Indian format: X,XX,XX,XXX (rightmost 3 digits, then groups of 2)
+    groupIndianInteger(digits) {
+        // Strip anything non-numeric defensively, then trim leading zeros
+        let integerPart = String(digits).replace(/\D/g, '').replace(/^0+/, '') || '0';
+
         let result = '';
         let count = 0;
-        
-        // Process from right to left
         for (let i = integerPart.length - 1; i >= 0; i--) {
             if (count === 3 || (count > 3 && (count - 3) % 2 === 0)) {
                 result = ',' + result;
@@ -75,14 +58,140 @@ const Utils = {
             result = integerPart[i] + result;
             count++;
         }
-        
+        return result;
+    },
+
+    /**
+     * Format number with Indian style commas (lakhs, crores) with decimals.
+     * DISPLAY formatter: rounds/pads to 2 decimals and drops a trailing ".00".
+     * NOTE: This is for read-only display only. Do NOT use it as a live input
+     * mask (it rounds and eats in-progress decimals) — use
+     * formatIndianCurrencyInput / applyCurrencyMask for editable fields.
+     */
+    formatIndianNumber(num) {
+        // Handle null/undefined/NaN
+        if (num === null || num === undefined || num === '') return '0';
+
+        // Convert to number
+        const number = typeof num === 'string' ? parseFloat(num) : Number(num);
+
+        // Check if valid number
+        if (isNaN(number)) return '0';
+
+        // Handle negative numbers
+        const isNegative = number < 0;
+        const absNumber = Math.abs(number);
+
+        // Split into integer and decimal parts
+        let [integerPart, decimalPart] = absNumber.toFixed(2).split('.');
+
+        // Format integer part with Indian grouping
+        let result = this.groupIndianInteger(integerPart);
+
         // Add decimal part if not .00
         if (decimalPart && decimalPart !== '00') {
             result += '.' + decimalPart;
         }
-        
+
         // Add negative sign back if needed
         return isNegative ? '-' + result : result;
+    },
+
+    /**
+     * Live-safe currency input mask (pure string → string).
+     *
+     * Unlike formatIndianNumber (a display formatter), this is designed to run
+     * on EVERY keystroke of an editable field without corrupting in-progress
+     * input. It:
+     *   - keeps only digits and a single decimal point,
+     *   - groups the integer part with Indian commas,
+     *   - PRESERVES a bare trailing "." and up to 2 in-progress decimal digits,
+     *   - TRUNCATES (never rounds) extra decimals,
+     *   - never pads ".5" → ".50".
+     *
+     * Examples: "16564."→"16,564."  "16564.5"→"16,564.5"  "16564.579"→"16,564.57"
+     *
+     * @param {string} raw - current raw input value (may contain commas/junk)
+     * @returns {string} - masked value suitable to write back into the input
+     */
+    formatIndianCurrencyInput(raw) {
+        if (raw === null || raw === undefined) return '';
+
+        // Keep only digits and dots.
+        let cleaned = String(raw).replace(/[^\d.]/g, '');
+        if (cleaned === '') return '';
+
+        // Collapse to a single decimal point: keep the first '.', drop the rest.
+        const firstDot = cleaned.indexOf('.');
+        let intDigits;
+        let hasDot = false;
+        let decDigits = '';
+        if (firstDot === -1) {
+            intDigits = cleaned;
+        } else {
+            hasDot = true;
+            intDigits = cleaned.slice(0, firstDot);
+            // Everything after the first dot, with any further dots removed,
+            // truncated to 2 decimals (no rounding).
+            decDigits = cleaned.slice(firstDot + 1).replace(/\./g, '').slice(0, 2);
+        }
+
+        // If the user typed just "." give them "0." rather than a lone dot.
+        const groupedInt = this.groupIndianInteger(intDigits === '' ? '0' : intDigits);
+
+        if (!hasDot) return groupedInt;
+        return groupedInt + '.' + decDigits;
+    },
+
+    /**
+     * Apply the live currency mask to an <input> element, preserving the
+     * caret position so the user can keep typing / edit mid-string.
+     *
+     * Wire this to oninput, e.g. oninput="Utils.applyCurrencyMask(this)".
+     * @param {HTMLInputElement} input
+     */
+    applyCurrencyMask(input) {
+        if (!input) return;
+        const before = input.value;
+        const selEnd = (input.selectionStart != null) ? input.selectionStart : before.length;
+        const left = before.slice(0, selEnd);
+
+        const after = this.formatIndianCurrencyInput(before);
+        if (after === before) return; // nothing changed → leave caret alone
+
+        input.value = after;
+
+        // Restore an equivalent caret position. Commas are cosmetic, so we
+        // anchor on the number of DIGITS left of the caret, plus whether the
+        // caret sat after the decimal point. Anchoring on digits (not raw
+        // "digit-or-dot" chars) keeps the caret correct even when the mask
+        // synthesizes a leading "0." (user typed ".") or collapses extra dots —
+        // cases where a naive char count drifts by one.
+        const digitsLeft = (left.match(/\d/g) || []).length;
+        const dotLeft = left.indexOf('.') !== -1;
+
+        let caret = 0;
+        if (digitsLeft > 0) {
+            let d = 0;
+            caret = after.length;
+            for (let i = 0; i < after.length; i++) {
+                if (after[i] >= '0' && after[i] <= '9') {
+                    d++;
+                    if (d === digitsLeft) { caret = i + 1; break; }
+                }
+            }
+        }
+        // If the caret was in the decimal zone, move it just past the (single)
+        // decimal point in the masked result.
+        if (dotLeft) {
+            const dotIdx = after.indexOf('.', caret);
+            if (dotIdx !== -1) caret = dotIdx + 1;
+        }
+        try {
+            input.setSelectionRange(caret, caret);
+        } catch (e) {
+            // Some input types don't support selection APIs — ignore.
+        }
     },
 
     /**

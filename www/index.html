@@ -4060,13 +4060,13 @@
     
     <!-- Form Handlers -->
     <script>
-        // Format input as Indian currency (reuses Utils.formatIndianNumber)
+        // Live currency input mask. Delegates to Utils.applyCurrencyMask, which
+        // groups the integer part with Indian commas while preserving an
+        // in-progress decimal (e.g. "16564." / "16564.5" / "16564.57") and the
+        // caret position. Must NOT use the display formatter (Utils.formatIndianNumber),
+        // which rounds and eats the decimal point mid-typing.
         function formatIndianCurrency(input) {
-            let value = input.value.replace(/,/g, ''); // Remove existing commas
-            if (!value || isNaN(value)) {
-                return;
-            }
-            input.value = Utils.formatIndianNumber(value);
+            Utils.applyCurrencyMask(input);
         }
         
         // Form handler functions that call the module methods
