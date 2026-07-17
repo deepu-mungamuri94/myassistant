@@ -25,6 +25,7 @@ describe('Expenses Module', () => {
       showSuccess: vi.fn(),
       showInfo: vi.fn(),
       formatCurrency: vi.fn(n => `₹${n}`),
+      formatCompactNumber: vi.fn(n => String(n)),
       formatDate: vi.fn(d => d),
       formatLocalDate: vi.fn(d => {
         const date = new Date(d);
@@ -34,6 +35,12 @@ describe('Expenses Module', () => {
     document.getElementById = vi.fn(() => null);
     document.querySelector = vi.fn(() => null);
     document.querySelectorAll = vi.fn(() => []);
+
+    // getFilteredExpenses() now branches on bodyView (calendar = actual date, list =
+    // budget month). The module default is 'calendar'; pin a known 'list' baseline so
+    // these suites exercise the historical budget-month semantics they were written for.
+    // Tests that need calendar behavior opt in explicitly.
+    Expenses.bodyView = 'list';
   });
 
   describe('add()', () => {
@@ -844,6 +851,241 @@ describe('Expenses Module', () => {
       const all = Expenses.getAll();
 
       expect(all).toEqual([]);
+    });
+  });
+
+  describe('isExpenseInRange()', () => {
+    it('should return true when no range is provided (all-time)', () => {
+      const e = { date: '2024-05-20' };
+      expect(Expenses.isExpenseInRange(e, null, null)).toBe(true);
+      expect(Expenses.isExpenseInRange(e, '2024-01-01', null)).toBe(true);
+      expect(Expenses.isExpenseInRange(e, null, '2024-12-31')).toBe(true);
+    });
+
+    it('should use actual expense date for day-based ranges (<= 7 days)', () => {
+      // 3-day range → day-based semantics
+      expect(Expenses.isExpenseInRange({ date: '2024-03-10' }, '2024-03-08', '2024-03-11')).toBe(true);
+      expect(Expenses.isExpenseInRange({ date: '2024-03-12' }, '2024-03-08', '2024-03-11')).toBe(false);
+    });
+
+    it('should be inclusive on both day-based boundaries', () => {
+      expect(Expenses.isExpenseInRange({ date: '2024-03-08' }, '2024-03-08', '2024-03-11')).toBe(true);
+      expect(Expenses.isExpenseInRange({ date: '2024-03-11' }, '2024-03-08', '2024-03-11')).toBe(true);
+    });
+
+    it('should ignore budgetMonth for day-based ranges', () => {
+      // A remapped expense in a short window is judged by its ACTUAL date, not budget month
+      const e = { date: '2024-03-10', budgetMonth: 6, budgetYear: 2024 };
+      expect(Expenses.isExpenseInRange(e, '2024-03-08', '2024-03-11')).toBe(true);
+    });
+
+    it('should honor budgetMonth for month-based ranges', () => {
+      // Paid in Jan but tracked in Feb → appears in a full-February range
+      const e = { date: '2024-01-15', budgetMonth: 2, budgetYear: 2024 };
+      expect(Expenses.isExpenseInRange(e, '2024-02-01', '2024-02-29')).toBe(true);
+      // And NOT in the January range, because its budget month is February
+      expect(Expenses.isExpenseInRange(e, '2024-01-01', '2024-01-31')).toBe(false);
+    });
+
+    it('should fall back to actual date when no budgetMonth on month-based ranges', () => {
+      const e = { date: '2024-02-15' };
+      expect(Expenses.isExpenseInRange(e, '2024-02-01', '2024-02-29')).toBe(true);
+      expect(Expenses.isExpenseInRange(e, '2024-03-01', '2024-03-31')).toBe(false);
+    });
+
+    it('should match getFilteredExpenses date behavior (day-based)', () => {
+      Expenses.add('In', 100, 'Food', '2024-04-10');
+      Expenses.add('Out', 200, 'Food', '2024-04-20');
+      Expenses.startDate = '2024-04-08';
+      Expenses.endDate = '2024-04-11';
+      Expenses.searchTerm = '';
+
+      const filtered = Expenses.getFilteredExpenses();
+      const manual = window.DB.expenses.filter(e => Expenses.isExpenseInRange(e, '2024-04-08', '2024-04-11'));
+
+      expect(filtered.map(e => e.title).sort()).toEqual(manual.map(e => e.title).sort());
+    });
+  });
+
+  describe('isExpenseInActualDateRange() — calendar uses actual date, ignores budgetMonth', () => {
+    it('should judge by actual date even for a wide (month) range', () => {
+      // Paid Jul 28, tracked in Aug. A calendar answers "when did I spend?" → belongs to July.
+      const e = { date: '2026-07-28', budgetMonth: 8, budgetYear: 2026 };
+      expect(Expenses.isExpenseInActualDateRange(e, '2026-07-01', '2026-07-31')).toBe(true);
+      expect(Expenses.isExpenseInActualDateRange(e, '2026-08-01', '2026-08-31')).toBe(false);
+    });
+
+    it('should be inclusive on both boundaries', () => {
+      expect(Expenses.isExpenseInActualDateRange({ date: '2026-07-01' }, '2026-07-01', '2026-07-31')).toBe(true);
+      expect(Expenses.isExpenseInActualDateRange({ date: '2026-07-31' }, '2026-07-01', '2026-07-31')).toBe(true);
+    });
+
+    it('should return true for an unbounded range', () => {
+      expect(Expenses.isExpenseInActualDateRange({ date: '2026-07-15' }, null, null)).toBe(true);
+    });
+  });
+
+  describe('calendar view sources summary + grid from the SAME actual-date set (bug #2)', () => {
+    beforeEach(() => {
+      Expenses.bodyView = 'calendar';
+      Expenses.searchTerm = '';
+    });
+    afterEach(() => { Expenses.bodyView = 'list'; });
+
+    it('a July-dated, August-tracked expense counts in July (not August) in calendar view', () => {
+      const e = Expenses.add('Advance', 500, 'Food', '2026-07-28');
+      e.budgetMonth = 8; e.budgetYear = 2026;
+      Expenses.add('Groceries', 300, 'Food', '2026-07-05');
+
+      // Browse July → both the remapped and the normal expense are in the filtered set.
+      Expenses.startDate = '2026-07-01';
+      Expenses.endDate = '2026-07-31';
+      const july = Expenses.getFilteredExpenses();
+      expect(july.map(x => x.title).sort()).toEqual(['Advance', 'Groceries']);
+
+      // Browse August → the July-dated expense is NOT present (calendar = actual date),
+      // so the grid and the summary agree there's nothing to show.
+      Expenses.startDate = '2026-08-01';
+      Expenses.endDate = '2026-08-31';
+      expect(Expenses.getFilteredExpenses()).toHaveLength(0);
+    });
+
+    it('list view still honors budgetMonth (August), diverging intentionally from calendar', () => {
+      const e = Expenses.add('Advance', 500, 'Food', '2026-07-28');
+      e.budgetMonth = 8; e.budgetYear = 2026;
+
+      Expenses.bodyView = 'list';
+      Expenses.startDate = '2026-08-01';
+      Expenses.endDate = '2026-08-31';
+      // List uses budget-month remapping → the expense DOES appear in August.
+      expect(Expenses.getFilteredExpenses().map(x => x.title)).toEqual(['Advance']);
+    });
+
+    it('renders a compact day-total (₹2.2k) in the calendar cell that day', () => {
+      // Use the REAL compact formatter for this render assertion.
+      window.Utils.formatCompactNumber = (n) => {
+        const v = Number(n);
+        return v >= 1000 ? (v / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(Math.round(v));
+      };
+      // Two expenses on Jul 20, 2025 → 2000 + 200 = 2200 → "2.2k". Historical month so
+      // render() doesn't reach the recurring-pending subsystem (orthogonal to this test).
+      Expenses.add('A', 2000, 'Food', '2025-07-20');
+      Expenses.add('B', 200, 'Food', '2025-07-20');
+
+      let captured = '';
+      const node = {
+        set innerHTML(v) { captured = v; }, get innerHTML() { return captured; },
+        textContent: '', className: '', value: '',
+        classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+        setAttribute() {}, getAttribute() { return null; },
+        querySelector() { return null; }, querySelectorAll() { return []; }
+      };
+      document.getElementById = vi.fn((id) => id === 'expenses-list' ? node : {
+        textContent: '', className: '', value: '', style: {},
+        classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+        setAttribute() {}, getAttribute() { return null; }
+      });
+
+      Expenses.bodyView = 'calendar';
+      Expenses.calYear = 2025;
+      Expenses.calMonth = 7;
+      Expenses.render();
+
+      expect(captured).toContain('₹2.2k');
+    });
+  });
+
+  describe('formatDateRangeLabel()', () => {
+    it('should return "All time" when range is unset', () => {
+      Expenses.startDate = null;
+      Expenses.endDate = null;
+      expect(Expenses.formatDateRangeLabel()).toBe('All time');
+    });
+
+    it('should format a range as "start - end"', () => {
+      Expenses.startDate = '2026-07-01';
+      Expenses.endDate = '2026-07-31';
+      const label = Expenses.formatDateRangeLabel();
+      expect(label).toContain('Jul 1, 2026');
+      expect(label).toContain('Jul 31, 2026');
+      expect(label).toContain(' - ');
+    });
+  });
+
+  describe('view-toggle state helpers', () => {
+    beforeEach(() => {
+      Expenses.bodyView = 'list';
+      Expenses.eventsAllTime = false;
+    });
+
+    it('showCalendar / showList should flip bodyView', () => {
+      Expenses.showCalendar();
+      expect(Expenses.bodyView).toBe('calendar');
+      Expenses.showList();
+      expect(Expenses.bodyView).toBe('list');
+    });
+
+    it('toggleEventsAllTime should flip the all-time escape', () => {
+      expect(Expenses.eventsAllTime).toBe(false);
+      Expenses.toggleEventsAllTime();
+      expect(Expenses.eventsAllTime).toBe(true);
+      Expenses.toggleEventsAllTime();
+      expect(Expenses.eventsAllTime).toBe(false);
+    });
+
+    it('showCurrentMonthCalendar should reset to today\'s month and calendar view', () => {
+      Expenses.bodyView = 'list';
+      Expenses.calYear = 2020;
+      Expenses.calMonth = 1;
+      Expenses.showCurrentMonthCalendar();
+      const now = new Date();
+      expect(Expenses.bodyView).toBe('calendar');
+      expect(Expenses.calYear).toBe(now.getFullYear());
+      expect(Expenses.calMonth).toBe(now.getMonth() + 1);
+    });
+  });
+
+  describe('_syncRangeToCalendarMonth() — calendar drives the summary range', () => {
+    it('should scope startDate/endDate to the browsed calendar month (1st → last day)', () => {
+      Expenses.calYear = 2026;
+      Expenses.calMonth = 2; // February 2026 (28 days)
+      Expenses._syncRangeToCalendarMonth();
+      expect(Expenses.startDate).toBe('2026-02-01');
+      expect(Expenses.endDate).toBe('2026-02-28');
+    });
+
+    it('should handle a 31-day month', () => {
+      Expenses.calYear = 2026;
+      Expenses.calMonth = 7; // July 2026
+      Expenses._syncRangeToCalendarMonth();
+      expect(Expenses.startDate).toBe('2026-07-01');
+      expect(Expenses.endDate).toBe('2026-07-31');
+    });
+
+    it('paging months (calNextMonth) re-scopes the range so the summary re-totals', () => {
+      // render() bails without an #expenses-list node, so give it a minimal fake DOM.
+      // This proves the real wiring: nav handler → render() → _syncRangeToCalendarMonth().
+      // We browse HISTORICAL months (2025) so shouldShowRecurringExpenses() is false and
+      // render() never reaches the recurring-pending subsystem (orthogonal to range sync).
+      const fakeEl = () => ({
+        innerHTML: '', textContent: '', className: '', title: '', value: '',
+        classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+        setAttribute() {}, getAttribute() { return null; },
+        querySelector() { return null; }, querySelectorAll() { return []; }
+      });
+      document.getElementById = vi.fn(() => fakeEl());
+
+      Expenses.bodyView = 'calendar';
+      Expenses.calYear = 2025;
+      Expenses.calMonth = 11; // November 2025 (historical)
+      Expenses.render();
+      expect(Expenses.startDate).toBe('2025-11-01');
+      expect(Expenses.endDate).toBe('2025-11-30');
+      // Advance to December via the real nav handler (calls render → sync).
+      Expenses.calNextMonth();
+      expect(Expenses.calMonth).toBe(12);
+      expect(Expenses.startDate).toBe('2025-12-01');
+      expect(Expenses.endDate).toBe('2025-12-31');
     });
   });
 });

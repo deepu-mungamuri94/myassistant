@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expenses — Redesign Options (v3: summary + bottom command bar)</title>
+    <script src="../../www/vendor/tailwindcss.js"></script>
+    <style>
+        .mock-frame { width: 430px; height: 940px; border: 0; transform: scale(0.9); transform-origin: top center; }
+        .mock-wrap { height: 860px; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="max-w-[1300px] mx-auto px-6 py-8">
+        <header class="mb-6">
+            <h1 class="text-3xl font-extrabold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent inline-block">
+                Expenses — Redesign (round 3)
+            </h1>
+            <p class="text-gray-600 mt-2 max-w-4xl">
+                Two changes from your latest feedback: (1) the <strong>summary card is back</strong> at the top, and
+                (2) <strong>search + filter now live in a bottom command bar</strong> — in the thumb zone, "handy" as you said.
+                Both reuse the exact <strong>List / Calendar bodies + filter bottom-sheet</strong> you already approved (from option C).
+                They differ only in the <strong>summary shape</strong> and <strong>where the green + Add sits</strong>.
+                <span class="text-gray-500">Today = Fri, 17 Jul 2026.</span>
+            </p>
+            <div class="mt-3 flex flex-wrap gap-2 text-sm">
+                <a href="05-command-bar.html" target="_blank" class="px-3 py-1 rounded-full bg-purple-600 text-white hover:bg-purple-700">Open D — full width ↗</a>
+                <a href="06-twin-summary-dock.html" target="_blank" class="px-3 py-1 rounded-full bg-purple-600 text-white hover:bg-purple-700">Open E — twin tiles ↗</a>
+                <span class="mx-1 text-gray-300">|</span>
+                <a href="04-search-hero-list.html" target="_blank" class="px-3 py-1 rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300">round-2 C (top controls) ↗</a>
+                <a href="02-compact-bar.html" target="_blank" class="px-3 py-1 rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300">A ↗</a>
+                <a href="03-header-actions.html" target="_blank" class="px-3 py-1 rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300">B ↗</a>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl">
+
+            <section class="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col ring-2 ring-purple-300">
+                <div class="p-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                    <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-lg bg-white/25 flex items-center justify-center font-bold">D</span>
+                        <h2 class="font-bold text-lg">Full-width summary + command bar</h2>
+                        <span class="ml-auto text-[10px] font-bold bg-white/25 px-2 py-0.5 rounded-full">MY PICK</span>
+                    </div>
+                    <p class="text-white/90 text-xs mt-1.5 leading-snug">
+                        One big glossy summary card up top (₹ total, txn count, ▲ vs-last-month chip, ◀▶ month steppers).
+                        Bottom bar = <code>🔍 Search · ▦ Filter</code>; the green <strong>+ Add floats above</strong> the bar's right edge.
+                    </p>
+                </div>
+                <div class="mock-wrap overflow-hidden bg-gray-100">
+                    <iframe src="05-command-bar.html" class="mock-frame" title="Full-width summary + command bar"></iframe>
+                </div>
+                <div class="p-3 text-xs text-gray-500 border-t border-gray-100">
+                    <span class="text-green-600 font-semibold">Best for:</span> one clear headline number + the most body space. Add button stays where it is today.
+                </div>
+            </section>
+
+            <section class="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
+                <div class="p-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                    <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-lg bg-white/25 flex items-center justify-center font-bold">E</span>
+                        <h2 class="font-bold text-lg">Twin tiles + docked Add</h2>
+                    </div>
+                    <p class="text-white/90 text-xs mt-1.5 leading-snug">
+                        Two summary tiles side by side (This Month · vs June) — richer at-a-glance comparison.
+                        Bottom bar docks all three: <code>🔍 Search · ▦ Filter · ➕</code>, with the + raised FAB-style inside the bar.
+                    </p>
+                </div>
+                <div class="mock-wrap overflow-hidden bg-gray-100">
+                    <iframe src="06-twin-summary-dock.html" class="mock-frame" title="Twin tiles + docked Add"></iframe>
+                </div>
+                <div class="p-3 text-xs text-gray-500 border-t border-gray-100">
+                    <span class="text-green-600 font-semibold">Best for:</span> seeing this-vs-last month at a glance; one tidy bottom bar holding every action.
+                </div>
+            </section>
+
+        </div>
+
+        <div class="mt-8 bg-white rounded-2xl shadow p-5 max-w-4xl">
+            <h3 class="font-bold text-gray-800 mb-2">Both D & E share (unchanged from what you approved)</h3>
+            <ul class="text-sm text-gray-600 space-y-1 list-disc pl-5">
+                <li><strong>Summary card kept</strong> at the top — your explicit ask. (D = one wide card, E = two tiles.)</li>
+                <li><strong>Search + Filter docked at the bottom</strong>, thumb-reachable. Tapping <strong>Search</strong> raises the input above where the keyboard sits (so it's never covered).</li>
+                <li><strong>List | Calendar</strong> toggle only — the body you approved is the hero. Same day-grouped cards & calendar grid.</li>
+                <li>The modernized <strong>filter bottom-sheet</strong> holds presets (Today / 7 days / Month / Year / All Time), custom range, and <strong>🎉 Group by Events</strong> — Events lives inside the filter, not a tab.</li>
+                <li>Recurring-this-month shown inline with a 🔁 badge + a one-tap <strong>+ Add</strong> pending card; category avatars; ₹ Indian grouping; purple→pink tokens; <code>aria-pressed</code> controls.</li>
+            </ul>
+        </div>
+
+        <div class="mt-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 max-w-4xl text-sm text-amber-900">
+            <strong>One UX note (why Search is a button, not a live field, in the bottom bar):</strong>
+            a text input pinned to the very bottom gets hidden by the on-screen keyboard the moment you tap it.
+            So the bar shows a <em>Search pill</em>; tapping it slides a real input up above the keyboard, with a Cancel to dismiss.
+            Filter is a modal, so it's fine at the bottom regardless.
+        </div>
+
+        <footer class="mt-8 text-center text-sm text-gray-400">
+            Static prototypes · sample data · production computes live. Pick D or E (or mix), and I'll implement on the real expenses module.
+        </footer>
+    </div>
+</body>
+</html>

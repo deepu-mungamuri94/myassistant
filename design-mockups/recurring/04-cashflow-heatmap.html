@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recurring Payments — Cashflow Calendar + Insights</title>
+    <script src="../../www/vendor/tailwindcss.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .glossy-overlay {
+            background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 50%);
+        }
+        .heatmap-cell {
+            position: relative;
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .heatmap-cell:active {
+            transform: scale(0.95);
+        }
+        .heatmap-0 { background: transparent; color: #9ca3af; }
+        .heatmap-1 { background: rgba(251, 146, 60, 0.15); color: #ea580c; }
+        .heatmap-2 { background: rgba(251, 146, 60, 0.35); color: #ea580c; }
+        .heatmap-3 { background: rgba(251, 146, 60, 0.55); color: white; }
+        .heatmap-4 { background: rgba(251, 146, 60, 0.75); color: white; }
+        .heatmap-5 { background: rgba(234, 88, 12, 0.95); color: white; }
+        .heatmap-today {
+            box-shadow: 0 0 0 2px #f97316;
+        }
+        .category-bar {
+            height: 2rem;
+            border-radius: 0.375rem;
+            display: flex;
+            align-items: center;
+            padding: 0 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white;
+            transition: transform 0.2s;
+        }
+        .category-bar:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-6 flex items-center justify-center min-h-screen">
+    <div class="text-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">Recurring Payments</h1>
+        <p class="text-sm text-gray-600">Concept 04: Cashflow Calendar + Insights (analytical)</p>
+        <p class="text-xs text-gray-500 mt-1">Data-forward heatmap with smart insights</p>
+    </div>
+
+    <!-- Phone Frame -->
+    <div class="bg-gray-900 p-2 rounded-[3rem] shadow-2xl" style="width: 390px;">
+        <div class="bg-white rounded-[2.5rem] overflow-hidden" style="min-height: 800px;">
+
+            <!-- Status Bar -->
+            <div class="bg-gradient-to-r from-orange-600 to-amber-600 px-6 pt-12 pb-4">
+                <div class="flex items-center justify-between text-white text-xs mb-4">
+                    <span>9:41</span>
+                    <div class="flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M17.778 8.222c-4.296-4.296-11.26-4.296-15.556 0A1 1 0 01.808 6.808c5.076-5.077 13.308-5.077 18.384 0a1 1 0 01-1.414 1.414zM14.95 11.05a7 7 0 00-9.9 0 1 1 0 01-1.414-1.414 9 9 0 0112.728 0 1 1 0 01-1.414 1.414zM12.12 13.88a3 3 0 00-4.242 0 1 1 0 01-1.415-1.415 5 5 0 017.072 0 1 1 0 01-1.415 1.415zM9 16a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M7 4a.5.5 0 01.5-.5h5a.5.5 0 01.5.5v.5h1.5A1.5 1.5 0 0116 6v8a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 014 14V6a1.5 1.5 0 011.5-1.5H7V4z"/><rect x="6" y="6" width="8" height="7" rx="1" fill="#22c55e"/></svg>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <button aria-label="Back" class="p-2 -ml-2 hover:bg-white/10 rounded-lg transition">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <h2 class="text-xl font-bold text-white">Recurring Payments</h2>
+                    <button aria-label="More options" class="p-2 -mr-2 hover:bg-white/10 rounded-lg transition">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="px-4 pb-24" style="background: linear-gradient(180deg, #f97316 0%, #f59e0b 80px, white 80px);">
+
+                <!-- Twin Hero Tiles -->
+                <div class="grid grid-cols-2 gap-3 -mt-6 mb-4">
+                    <!-- This Month -->
+                    <div class="relative bg-gradient-to-br from-orange-500 via-orange-600 to-amber-600 rounded-2xl shadow-lg p-4 overflow-hidden">
+                        <div class="absolute inset-0 glossy-overlay"></div>
+                        <div class="relative">
+                            <div class="text-white/90 text-xs font-medium mb-1">This Month</div>
+                            <div class="text-white text-2xl font-bold tabular-nums mb-1">₹55,042</div>
+                            <div class="text-white/80 text-[10px] font-medium">Jul 2026</div>
+                        </div>
+                    </div>
+
+                    <!-- Next Month -->
+                    <div class="relative bg-gradient-to-br from-amber-600 via-amber-700 to-yellow-700 rounded-2xl shadow-lg p-4 overflow-hidden">
+                        <div class="absolute inset-0 glossy-overlay"></div>
+                        <div class="relative">
+                            <div class="text-white/90 text-xs font-medium mb-1">Next Month</div>
+                            <div class="text-white text-2xl font-bold tabular-nums mb-1">₹58,042</div>
+                            <div class="flex items-center gap-1">
+                                <span class="inline-flex items-center gap-0.5 bg-red-500/90 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                                    <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                                    ₹3,000
+                                </span>
+                                <span class="text-white/70 text-[10px]">+5.5%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Heatmap Calendar Card -->
+                <div class="bg-white rounded-2xl shadow-lg p-4 mb-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-base font-bold text-gray-800">July 2026 Cashflow</h3>
+                        <div class="flex items-center gap-2 text-[10px] text-gray-500">
+                            <span>Less</span>
+                            <div class="flex gap-0.5">
+                                <div class="w-3 h-3 rounded-sm" style="background: rgba(251, 146, 60, 0.15);"></div>
+                                <div class="w-3 h-3 rounded-sm" style="background: rgba(251, 146, 60, 0.35);"></div>
+                                <div class="w-3 h-3 rounded-sm" style="background: rgba(251, 146, 60, 0.55);"></div>
+                                <div class="w-3 h-3 rounded-sm" style="background: rgba(251, 146, 60, 0.75);"></div>
+                                <div class="w-3 h-3 rounded-sm" style="background: rgba(234, 88, 12, 0.95);"></div>
+                            </div>
+                            <span>More</span>
+                        </div>
+                    </div>
+
+                    <!-- Calendar Grid -->
+                    <div class="space-y-2">
+                        <!-- Day Headers -->
+                        <div class="grid grid-cols-7 gap-1 mb-1">
+                            <div class="text-[10px] font-semibold text-gray-500 text-center">S</div>
+                            <div class="text-[10px] font-semibold text-gray-500 text-center">M</div>
+                            <div class="text-[10px] font-semibold text-gray-500 text-center">T</div>
+                            <div class="text-[10px] font-semibold text-gray-500 text-center">W</div>
+                            <div class="text-[10px] font-semibold text-gray-500 text-center">T</div>
+                            <div class="text-[10px] font-semibold text-gray-500 text-center">F</div>
+                            <div class="text-[10px] font-semibold text-gray-500 text-center">S</div>
+                        </div>
+
+                        <!-- Week 1 (starts Wed, Jul 1) -->
+                        <div class="grid grid-cols-7 gap-1">
+                            <div class="heatmap-cell heatmap-0"></div>
+                            <div class="heatmap-cell heatmap-0"></div>
+                            <div class="heatmap-cell heatmap-0"></div>
+                            <button class="heatmap-cell heatmap-5" aria-label="July 1, ₹28,000">
+                                <div class="flex flex-col items-center leading-none">
+                                    <div class="text-xs font-bold">1</div>
+                                    <div class="text-[9px] opacity-90">28K</div>
+                                </div>
+                            </button>
+                            <div class="heatmap-cell heatmap-0">2</div>
+                            <button class="heatmap-cell heatmap-3" aria-label="July 3, ₹5,000">
+                                <div class="flex flex-col items-center leading-none">
+                                    <div class="text-xs font-bold">3</div>
+                                    <div class="text-[9px] opacity-90">5K</div>
+                                </div>
+                            </button>
+                            <div class="heatmap-cell heatmap-0">4</div>
+                        </div>
+
+                        <!-- Week 2 -->
+                        <div class="grid grid-cols-7 gap-1">
+                            <button class="heatmap-cell heatmap-1" aria-label="July 5, ₹768">5</button>
+                            <div class="heatmap-cell heatmap-0">6</div>
+                            <button class="heatmap-cell heatmap-4" aria-label="July 7, ₹15,000">
+                                <div class="flex flex-col items-center leading-none">
+                                    <div class="text-xs font-bold">7</div>
+                                    <div class="text-[9px] opacity-90">15K</div>
+                                </div>
+                            </button>
+                            <div class="heatmap-cell heatmap-0">8</div>
+                            <div class="heatmap-cell heatmap-0">9</div>
+                            <button class="heatmap-cell heatmap-2" aria-label="July 10, ₹2,000">10</button>
+                            <div class="heatmap-cell heatmap-0">11</div>
+                        </div>
+
+                        <!-- Week 3 -->
+                        <div class="grid grid-cols-7 gap-1">
+                            <button class="heatmap-cell heatmap-1" aria-label="July 12, ₹75">12</button>
+                            <div class="heatmap-cell heatmap-0">13</div>
+                            <div class="heatmap-cell heatmap-0">14</div>
+                            <div class="heatmap-cell heatmap-0">15</div>
+                            <div class="heatmap-cell heatmap-0">16</div>
+                            <button class="heatmap-cell heatmap-0 heatmap-today" aria-label="July 17, Today">
+                                <div class="flex flex-col items-center leading-none">
+                                    <div class="text-xs font-bold">17</div>
+                                    <div class="text-[8px] text-orange-600 font-bold">Today</div>
+                                </div>
+                            </button>
+                            <button class="heatmap-cell heatmap-2" aria-label="July 18, ₹3,200">
+                                <div class="flex flex-col items-center leading-none">
+                                    <div class="text-xs font-bold">18</div>
+                                    <div class="text-[9px] opacity-90">3.2K</div>
+                                </div>
+                            </button>
+                        </div>
+
+                        <!-- Week 4 -->
+                        <div class="grid grid-cols-7 gap-1">
+                            <div class="heatmap-cell heatmap-0">19</div>
+                            <div class="heatmap-cell heatmap-0">20</div>
+                            <div class="heatmap-cell heatmap-0">21</div>
+                            <div class="heatmap-cell heatmap-0">22</div>
+                            <div class="heatmap-cell heatmap-0">23</div>
+                            <div class="heatmap-cell heatmap-0">24</div>
+                            <button class="heatmap-cell heatmap-1" aria-label="July 25, ₹999">25</button>
+                        </div>
+
+                        <!-- Week 5 -->
+                        <div class="grid grid-cols-7 gap-1">
+                            <div class="heatmap-cell heatmap-0">26</div>
+                            <div class="heatmap-cell heatmap-0">27</div>
+                            <div class="heatmap-cell heatmap-0">28</div>
+                            <div class="heatmap-cell heatmap-0">29</div>
+                            <div class="heatmap-cell heatmap-0">30</div>
+                            <div class="heatmap-cell heatmap-0">31</div>
+                            <div class="heatmap-cell heatmap-0"></div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-center gap-1">
+                        <span class="inline-flex items-center gap-1 text-xs text-gray-500">
+                            <svg class="w-3.5 h-3.5 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+                            <span>Tap any day for details</span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Heaviest Days Insight -->
+                <div class="bg-white rounded-2xl shadow-lg p-4 mb-4">
+                    <h3 class="text-sm font-bold text-gray-800 mb-3">💰 Heaviest Days This Month</h3>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between p-2 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 bg-gradient-to-br from-orange-500 to-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold">1</div>
+                                <div>
+                                    <div class="text-xs font-semibold text-gray-800">1st — Rent</div>
+                                    <div class="text-[10px] text-gray-500">Housing</div>
+                                </div>
+                            </div>
+                            <div class="text-sm font-bold text-orange-600 tabular-nums">₹28,000</div>
+                        </div>
+
+                        <div class="flex items-center justify-between p-2 bg-gradient-to-r from-orange-50/60 to-amber-50/60 rounded-lg">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 bg-gradient-to-br from-orange-400 to-amber-400 rounded-full flex items-center justify-center text-white text-xs font-bold">2</div>
+                                <div>
+                                    <div class="text-xs font-semibold text-gray-800">7th — School Fees</div>
+                                    <div class="text-[10px] text-gray-500">Education</div>
+                                </div>
+                            </div>
+                            <div class="text-sm font-bold text-orange-600 tabular-nums">₹15,000</div>
+                        </div>
+
+                        <div class="flex items-center justify-between p-2 bg-gradient-to-r from-orange-50/40 to-amber-50/40 rounded-lg">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 bg-gradient-to-br from-orange-300 to-amber-300 rounded-full flex items-center justify-center text-white text-xs font-bold">3</div>
+                                <div>
+                                    <div class="text-xs font-semibold text-gray-800">3rd — Mutual Fund SIP</div>
+                                    <div class="text-[10px] text-gray-500">Investment</div>
+                                </div>
+                            </div>
+                            <div class="text-sm font-bold text-orange-600 tabular-nums">₹5,000</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- By Category Breakdown -->
+                <div class="bg-white rounded-2xl shadow-lg p-4 mb-4">
+                    <h3 class="text-sm font-bold text-gray-800 mb-3">📊 Spending by Category</h3>
+                    <div class="space-y-2">
+                        <div>
+                            <div class="category-bar bg-gradient-to-r from-amber-500 to-amber-600" style="width: 51%;">
+                                <span>Housing</span>
+                                <span class="ml-auto tabular-nums">₹28,000 · 51%</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="category-bar bg-gradient-to-r from-indigo-500 to-indigo-600" style="width: 27%;">
+                                <span>Education</span>
+                                <span class="ml-auto tabular-nums">₹15,000 · 27%</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="category-bar bg-gradient-to-r from-emerald-500 to-emerald-600" style="width: 9%;">
+                                <span>Investment</span>
+                                <span class="ml-auto tabular-nums">₹5,000 · 9%</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="category-bar bg-gradient-to-r from-sky-500 to-sky-600" style="width: 8%;">
+                                <span>Utilities</span>
+                                <span class="ml-auto tabular-nums">₹4,199 · 8%</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <div class="category-bar bg-gradient-to-r from-lime-500 to-lime-600 text-[10px]" style="width: 100%; height: 1.5rem;">
+                                    <span>Health</span>
+                                </div>
+                                <div class="text-[10px] text-gray-500 text-center mt-0.5 tabular-nums">₹2,000 · 4%</div>
+                            </div>
+                            <div>
+                                <div class="category-bar bg-gradient-to-r from-rose-500 to-rose-600 text-[10px]" style="width: 100%; height: 1.5rem;">
+                                    <span>Fun</span>
+                                </div>
+                                <div class="text-[10px] text-gray-500 text-center mt-0.5 tabular-nums">₹768 · 1%</div>
+                            </div>
+                            <div>
+                                <div class="category-bar bg-gradient-to-r from-violet-500 to-violet-600 text-[10px]" style="width: 100%; height: 1.5rem;">
+                                    <span>Subs</span>
+                                </div>
+                                <div class="text-[10px] text-gray-500 text-center mt-0.5 tabular-nums">₹75 · 0%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upcoming Next 7 Days -->
+                <div class="bg-white rounded-2xl shadow-lg p-4 mb-4">
+                    <h3 class="text-sm font-bold text-gray-800 mb-3">🔜 Upcoming (Next 7 Days)</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-start gap-3">
+                            <div class="flex flex-col items-center flex-shrink-0 w-12">
+                                <div class="text-xs font-bold text-gray-800">Fri</div>
+                                <div class="text-2xl font-bold text-orange-600">18</div>
+                                <div class="text-[10px] text-gray-500">Jul</div>
+                            </div>
+                            <div class="flex-1 bg-gradient-to-r from-sky-50 to-sky-100 rounded-lg p-3">
+                                <div class="flex items-start justify-between mb-1">
+                                    <div class="font-semibold text-sm text-gray-800">Electricity Bill</div>
+                                    <div class="text-sm font-bold text-gray-800 tabular-nums">₹3,200</div>
+                                </div>
+                                <div class="flex items-center gap-2 text-xs text-gray-600">
+                                    <span class="px-1.5 py-0.5 bg-sky-200 text-sky-800 rounded text-[10px] font-medium">Utilities</span>
+                                    <span>UPI · GPay</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-center text-xs text-gray-400 py-2">No other payments in next 7 days</div>
+                    </div>
+                </div>
+
+                <!-- Suspended Notice -->
+                <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span class="text-xs text-gray-600">
+                        <span class="font-semibold">1 suspended</span> payment (Magazine) not counted in totals
+                    </span>
+                </div>
+
+            </div>
+
+            <!-- Floating Action Button -->
+            <button aria-label="Add new recurring payment" class="fixed bottom-20 right-8 w-14 h-14 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-full shadow-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-transform">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+            </button>
+
+        </div>
+    </div>
+
+</body>
+</html>

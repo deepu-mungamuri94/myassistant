@@ -1730,8 +1730,8 @@ const Investments = {
         // Build suggestions HTML
         const suggestionsHTML = filteredNames.map(name => `
             <div class="px-3 py-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                 onclick="Investments.selectNameSuggestion('${name.replace(/'/g, "\\'")}')">
-                <span class="text-sm text-gray-700">${name}</span>
+                 onclick="Investments.selectNameSuggestion('${Utils.escapeJsAttr(name)}')">
+                <span class="text-sm text-gray-700">${Utils.escapeHtml(name)}</span>
             </div>
         `).join('');
 
@@ -1815,8 +1815,8 @@ const Investments = {
             }
             box.innerHTML = results.map(r => `
                 <div class="px-3 py-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                     onclick="Investments.selectMutualFund(${r.schemeCode}, '${String(r.schemeName).replace(/'/g, "\\'")}')">
-                    <div class="text-sm text-gray-700 leading-snug">${r.schemeName}</div>
+                     onclick="Investments.selectMutualFund(${r.schemeCode}, '${Utils.escapeJsAttr(r.schemeName)}')">
+                    <div class="text-sm text-gray-700 leading-snug">${Utils.escapeHtml(r.schemeName)}</div>
                     <div class="text-[10px] text-gray-400">Scheme ${r.schemeCode}</div>
                 </div>
             `).join('');
@@ -1989,7 +1989,9 @@ const Investments = {
      */
     _renderShareSuggestions(box, localNames, remote, loading) {
         if (!box) return;
-        const esc = (s) => String(s).replace(/'/g, "\\'");
+        // Two-layer escape (JS-string + HTML-attribute) for onclick args; names/symbols
+        // come from user input and a remote market API, so both are untrusted.
+        const esc = (s) => Utils.escapeJsAttr(s);
         let html = '';
 
         if (localNames.length) {
@@ -1997,7 +1999,7 @@ const Investments = {
                 <div class="px-3 py-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100"
                      onclick="Investments.selectShareName('${esc(name)}')">
                     <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-700">${name}</span>
+                        <span class="text-sm text-gray-700">${Utils.escapeHtml(name)}</span>
                         <span class="text-[9px] text-gray-400 font-semibold uppercase">saved</span>
                     </div>
                 </div>
@@ -2009,9 +2011,9 @@ const Investments = {
         } else if (remote.length) {
             html += remote.map(r => `
                 <div class="px-3 py-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                     onclick="Investments.selectShare('${esc(r.symbol)}', '${esc(r.name)}', '${r.currency}', '${esc(r.exchange)}')">
-                    <div class="text-sm text-gray-700 leading-snug">${r.name}</div>
-                    <div class="text-[10px] text-gray-400">${r.symbol}${r.exchange ? ' · ' + r.exchange : ''}</div>
+                     onclick="Investments.selectShare('${esc(r.symbol)}', '${esc(r.name)}', '${esc(r.currency)}', '${esc(r.exchange)}')">
+                    <div class="text-sm text-gray-700 leading-snug">${Utils.escapeHtml(r.name)}</div>
+                    <div class="text-[10px] text-gray-400">${Utils.escapeHtml(r.symbol)}${r.exchange ? ' · ' + Utils.escapeHtml(r.exchange) : ''}</div>
                 </div>
             `).join('');
         } else if (!localNames.length) {

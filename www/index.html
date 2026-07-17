@@ -5569,14 +5569,26 @@ Technical: ${error.stack ? error.stack.split('\n')[0] : 'No stack trace'}
             Expenses.viewMode = 'expenses';
             Expenses.startDate = startDate;
             Expenses.endDate = endDate;
-            Expenses.currentPage = 1;
+            // Picking a concrete date preset re-scopes the Events view to that range
+            // (clears any lingering in-view "All time" escape).
+            Expenses.eventsAllTime = false;
+
+            // View follows the filter: the default "Current Month" lands on the Calendar
+            // (which scopes its own range to the browsed month); every other preset —
+            // Today / Last 7 Days / This Year / All Time — shows the List timeline.
+            if (type === 'month') {
+                closeDateFilterModal();
+                Expenses.showCurrentMonthCalendar();
+                return;
+            }
+            Expenses.bodyView = 'list';
             Expenses.render();
-            
+
             const filterLabel = document.getElementById('date-filter-label');
             const filterLabelInfo = document.getElementById('date-filter-label-info');
             if (filterLabel) filterLabel.textContent = label;
             if (filterLabelInfo) filterLabelInfo.textContent = label;
-            
+
             closeDateFilterModal();
         }
         
@@ -6394,14 +6406,16 @@ Technical: ${error.stack ? error.stack.split('\n')[0] : 'No stack trace'}
             Expenses.viewMode = 'expenses';
             Expenses.startDate = startDate;
             Expenses.endDate = endDate;
-            Expenses.currentPage = 1;
+            // A custom range is an arbitrary span → always the List timeline.
+            Expenses.bodyView = 'list';
+            Expenses.eventsAllTime = false;
             Expenses.render();
-            
+
             const filterLabel = document.getElementById('date-filter-label');
             const filterLabelInfo = document.getElementById('date-filter-label-info');
             if (filterLabel) filterLabel.textContent = 'Custom Range';
             if (filterLabelInfo) filterLabelInfo.textContent = 'Custom Range';
-            
+
             closeDateFilterModal();
         }
         

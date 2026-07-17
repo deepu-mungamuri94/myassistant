@@ -2160,13 +2160,13 @@ const Dashboard = {
             
             return `
                 <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                    <span class="text-sm text-gray-700 flex-1">${cat}</span>
+                    <span class="text-sm text-gray-700 flex-1">${Utils.escapeHtml(cat)}</span>
                     <div class="flex gap-1">
-                        <button onclick="Dashboard.setCategoryType('${cat.replace(/'/g, "\\'")}', 'needs', this)" 
+                        <button onclick="Dashboard.setCategoryType('${Utils.escapeJsAttr(cat)}', 'needs', this)"
                                 class="px-2 py-1 text-xs rounded-lg transition-all ${currentType === 'needs' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-amber-100'}">
                             Needs
                         </button>
-                        <button onclick="Dashboard.setCategoryType('${cat.replace(/'/g, "\\'")}', 'wants', this)" 
+                        <button onclick="Dashboard.setCategoryType('${Utils.escapeJsAttr(cat)}', 'wants', this)"
                                 class="px-2 py-1 text-xs rounded-lg transition-all ${currentType === 'wants' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-pink-100'}">
                             Wants
                         </button>
@@ -2484,7 +2484,7 @@ const Dashboard = {
                     
                     return `
                         <div class="border-b border-gray-100 last:border-0">
-                            <div class="flex justify-between items-center py-2 cursor-pointer hover:bg-gray-50 transition-colors" onclick="Dashboard.toggleBudgetBreakdownGroup('${Utils.escapeHtml(group.name).replace(/'/g, "\\'")}')">
+                            <div class="flex justify-between items-center py-2 cursor-pointer hover:bg-gray-50 transition-colors" onclick="Dashboard.toggleBudgetBreakdownGroup('${Utils.escapeJsAttr(group.name)}')">
                                 <div class="flex-1 min-w-0 flex items-center gap-2">
                                     <span class="text-xs text-${color}-500 font-semibold transform transition-transform ${isExpanded ? 'rotate-90' : ''}">${isExpanded ? '▼' : '▶'}</span>
                                     <div>
@@ -2700,7 +2700,7 @@ const Dashboard = {
                     
                     return `
                         <div class="border-b border-gray-100 last:border-0">
-                            <div class="flex justify-between items-center py-2 cursor-pointer hover:bg-gray-50 transition-colors" onclick="Dashboard.toggleMonthlyBreakdownGroup('${Utils.escapeHtml(group.name).replace(/'/g, "\\'")}')">
+                            <div class="flex justify-between items-center py-2 cursor-pointer hover:bg-gray-50 transition-colors" onclick="Dashboard.toggleMonthlyBreakdownGroup('${Utils.escapeJsAttr(group.name)}')">
                                 <div class="flex-1 min-w-0 flex items-center gap-2">
                                     <span class="text-xs text-${color}-500 font-semibold transform transition-transform ${isExpanded ? 'rotate-90' : ''}">${isExpanded ? '▼' : '▶'}</span>
                                     <div>
@@ -3818,7 +3818,7 @@ const Dashboard = {
             const dim = isExcluded ? 'text-decoration: line-through; opacity: 0.5;' : '';
             const amt = this._fmtCompact(item.amount);
             html += `
-                <div onclick="Dashboard.toggleCategoryExclusion('${item.category.replace(/'/g, "\\'")}')"
+                <div onclick="Dashboard.toggleCategoryExclusion('${Utils.escapeJsAttr(item.category)}')"
                      style="display: flex; align-items: center; gap: 6px; font-size: 10px; cursor: pointer; user-select: none; padding: 3px 4px; border-radius: 5px; transition: background-color 0.2s;"
                      onmouseover="this.style.backgroundColor='rgba(0,0,0,0.05)'"
                      onmouseout="this.style.backgroundColor='transparent'"
@@ -8914,7 +8914,7 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                                     return `
                                         <label class="flex items-center gap-2 p-1.5 bg-gray-50 rounded cursor-pointer hover:bg-gray-100" onclick="event.stopPropagation()">
                                             <input type="checkbox" ${isEnabled ? 'checked' : ''}
-                                                   onchange="event.stopPropagation(); Dashboard.toggleSipItem(${year}, ${month}, '${Utils.escapeHtml(sip.name).replace(/'/g, "\\'")}')"
+                                                   onchange="event.stopPropagation(); Dashboard.toggleSipItem(${year}, ${month}, '${Utils.escapeJsAttr(sip.name)}')"
                                                    class="w-3.5 h-3.5 text-indigo-600 border-gray-300 rounded">
                                             <div class="flex-1 min-w-0">
                                                 <p class="text-[10px] font-medium text-gray-700 truncate">${Utils.escapeHtml(sip.name)}</p>

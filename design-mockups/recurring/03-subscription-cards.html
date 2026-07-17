@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recurring Payments – Subscription Cards</title>
+    <script src="../../www/vendor/tailwindcss.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .gradient-text {
+            background: linear-gradient(to right, #ea580c, #d97706);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-6">
+
+    <!-- Concept Description -->
+    <div class="mb-6 text-center max-w-md">
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">Subscription Cards</h1>
+        <p class="text-sm text-gray-600">
+            Premium card gallery treating each recurring payment like a subscription tile,
+            with visual hierarchy, inline donut chart, and app-store polish.
+        </p>
+    </div>
+
+    <!-- Phone Frame -->
+    <div class="bg-gray-900 rounded-[3rem] p-2 shadow-2xl">
+        <div class="bg-white rounded-[2.5rem] w-[390px] min-h-[844px] overflow-hidden relative">
+
+            <!-- Notch -->
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-7 bg-gray-900 rounded-b-3xl z-50"></div>
+
+            <!-- Status Bar -->
+            <div class="h-12 flex items-end justify-between px-8 pb-1 text-xs text-gray-800">
+                <span>9:41</span>
+                <div class="flex gap-1 items-center">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
+                    </svg>
+                    <span>100%</span>
+                </div>
+            </div>
+
+            <!-- Header -->
+            <div class="px-6 pt-2 pb-4">
+                <h2 class="text-3xl font-bold gradient-text">Recurring Payments</h2>
+            </div>
+
+            <!-- Scrollable Content -->
+            <div class="px-6 pb-24 overflow-y-auto" style="max-height: calc(844px - 160px);">
+
+                <!-- Hero Summary Card -->
+                <div class="relative bg-gradient-to-r from-orange-600 to-amber-600 rounded-2xl shadow-lg p-6 mb-6 overflow-hidden">
+                    <!-- Glossy overlay -->
+                    <div class="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent pointer-events-none"></div>
+
+                    <div class="relative z-10">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-orange-100 text-sm font-medium mb-1">Monthly Recurring</p>
+                                <p class="text-white text-4xl font-bold tabular-nums">₹40,042</p>
+                                <p class="text-orange-100 text-xs mt-1">8 active payments</p>
+                            </div>
+                            <!-- Donut Chart -->
+                            <svg class="w-24 h-24" viewBox="0 0 100 100">
+                                <!-- Housing: 28000/39042 = 71.7% = 258.1° -->
+                                <circle cx="50" cy="50" r="35" fill="none" stroke="#f59e0b" stroke-width="14"
+                                        stroke-dasharray="158 220" transform="rotate(-90 50 50)"/>
+                                <!-- Investment: 5000/39042 = 12.8% = 46.1° -->
+                                <circle cx="50" cy="50" r="35" fill="none" stroke="#10b981" stroke-width="14"
+                                        stroke-dasharray="28.2 220" stroke-dashoffset="-158" transform="rotate(-90 50 50)"/>
+                                <!-- Utilities: 4199/39042 = 10.8% = 38.9° -->
+                                <circle cx="50" cy="50" r="35" fill="none" stroke="#0ea5e9" stroke-width="14"
+                                        stroke-dasharray="23.8 220" stroke-dashoffset="-186.2" transform="rotate(-90 50 50)"/>
+                                <!-- Health: 2000/39042 = 5.1% = 18.4° -->
+                                <circle cx="50" cy="50" r="35" fill="none" stroke="#84cc16" stroke-width="14"
+                                        stroke-dasharray="11.3 220" stroke-dashoffset="-210" transform="rotate(-90 50 50)"/>
+                                <!-- Entertainment: 768/39042 = 2.0% = 7.1° -->
+                                <circle cx="50" cy="50" r="35" fill="none" stroke="#f43f5e" stroke-width="14"
+                                        stroke-dasharray="4.3 220" stroke-dashoffset="-221.3" transform="rotate(-90 50 50)"/>
+                                <!-- Subscriptions: 75/39042 = 0.2% = 0.7° (too small, skip visual) -->
+                                <circle cx="50" cy="50" r="20" fill="white"/>
+                            </svg>
+                        </div>
+
+                        <!-- Legend -->
+                        <div class="grid grid-cols-2 gap-2 text-xs text-white">
+                            <div class="flex items-center gap-1.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-amber-400"></div>
+                                <span>Housing 70%</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
+                                <span>Investment 13%</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-sky-400"></div>
+                                <span>Utilities 11%</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-lime-400"></div>
+                                <span>Health 5%</span>
+                            </div>
+                        </div>
+
+                        <!-- Next charge hint -->
+                        <div class="mt-4 pt-4 border-t border-white/20">
+                            <p class="text-orange-100 text-xs">
+                                <span class="font-medium">Next:</span> Electricity in 1 day
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filter/Sort Row -->
+                <div class="flex gap-2 mb-5 overflow-x-auto pb-2">
+                    <button class="px-4 py-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-medium shadow-md whitespace-nowrap">
+                        All
+                    </button>
+                    <button class="px-4 py-2 rounded-full bg-white border border-gray-200 text-gray-700 text-xs font-medium whitespace-nowrap">
+                        By date
+                    </button>
+                    <button class="px-4 py-2 rounded-full bg-white border border-gray-200 text-gray-700 text-xs font-medium whitespace-nowrap">
+                        By amount
+                    </button>
+                    <button class="px-4 py-2 rounded-full bg-white border border-gray-200 text-gray-700 text-xs font-medium whitespace-nowrap">
+                        By category
+                    </button>
+                </div>
+
+                <!-- Search Field -->
+                <div class="mb-5">
+                    <div class="relative">
+                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <input type="text" placeholder="Search payments..."
+                               class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"/>
+                    </div>
+                </div>
+
+                <!-- Subscription Cards Grid (2 columns, sorted by amount descending) -->
+                <div class="grid grid-cols-2 gap-3 mb-6">
+
+                    <!-- Rent (Housing, 28000) -->
+                    <div class="col-span-2 relative bg-white rounded-2xl shadow-lg p-4 border-t-4 border-amber-500">
+                        <div class="flex items-start gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-2xl flex-shrink-0">
+                                🏠
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-900 text-sm truncate">Rent</h3>
+                                <span class="inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-medium mt-1">
+                                    Housing
+                                </span>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <p class="text-2xl font-bold text-gray-900 tabular-nums">₹28,000</p>
+                            <p class="text-xs text-gray-500 mt-1">monthly · 1st</p>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded">GPay</span>
+                                <span class="text-xs font-medium text-orange-600">Next month</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- LIC Premium (Insurance, 12500 yearly) -->
+                    <div class="relative bg-white rounded-2xl shadow-lg p-4 border-l-4 border-red-500">
+                        <div class="flex items-start gap-2 mb-2">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center text-xl flex-shrink-0">
+                                🛡️
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-900 text-xs truncate">LIC Premium</h3>
+                                <span class="inline-block px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-medium mt-0.5">
+                                    Insurance
+                                </span>
+                            </div>
+                        </div>
+                        <p class="text-xl font-bold text-gray-900 tabular-nums">₹12,500</p>
+                        <p class="text-[11px] text-gray-500 mt-1">yearly · Mar 15</p>
+                        <div class="mt-2">
+                            <span class="text-[10px] text-gray-600 bg-gray-50 px-1.5 py-0.5 rounded">💳 Card</span>
+                        </div>
+                    </div>
+
+                    <!-- School Fees (Education, 15000 custom) -->
+                    <div class="relative bg-white rounded-2xl shadow-lg p-4 border-l-4 border-indigo-500">
+                        <div class="flex items-start gap-2 mb-2">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-xl flex-shrink-0">
+                                🎓
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-900 text-xs truncate">School Fees</h3>
+                                <span class="inline-block px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-medium mt-0.5">
+                                    Education
+                                </span>
+                            </div>
+                        </div>
+                        <p class="text-xl font-bold text-gray-900 tabular-nums">₹15,000</p>
+                        <p class="text-[11px] text-gray-500 mt-1">quarterly · 7th</p>
+                        <div class="mt-2">
+                            <span class="text-[10px] text-gray-600 bg-gray-50 px-1.5 py-0.5 rounded">GPay</span>
+                        </div>
+                    </div>
+
+                    <!-- Car Insurance (Insurance, 18000 yearly) -->
+                    <div class="col-span-2 relative bg-white rounded-2xl shadow-lg p-4 border-l-4 border-red-500">
+                        <div class="flex items-start gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center text-2xl flex-shrink-0">
+                                🚗
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-900 text-sm truncate">Car Insurance</h3>
+                                <span class="inline-block px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-medium mt-1">
+                                    Insurance
+                                </span>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <p class="text-2xl font-bold text-gray-900 tabular-nums">₹18,000</p>
+                            <p class="text-xs text-gray-500 mt-1">yearly · Aug 22</p>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded">💳 Card</span>
+                                <span class="text-xs text-gray-500">Aug 22</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mutual Fund SIP -->
+                    <div class="relative bg-white rounded-2xl shadow-lg p-4 border-l-4 border-emerald-500">
+                        <div class="flex items-start gap-2 mb-2">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-xl flex-shrink-0">
+                                📈
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-900 text-xs truncate">MF SIP</h3>
+                                <span class="inline-block px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-medium mt-0.5">
+                                    Investment
+                                </span>
+                            </div>
+                        </div>
+                        <p class="text-xl font-bold text-gray-900 tabular-nums">₹5,000</p>
+                        <p class="text-[11px] text-gray-500 mt-1">monthly · 3rd</p>
+                        <div class="mt-2">
+                            <span class="text-[10px] text-gray-600 bg-gray-50 px-1.5 py-0.5 rounded">GPay</span>
+                        </div>
+                    </div>
+
+                    <!-- Electricity Bill (next due in 1 day) -->
+                    <div class="relative bg-white rounded-2xl shadow-lg p-4 border-l-4 border-sky-500 ring-2 ring-orange-400">
+                        <div class="flex items-start gap-2 mb-2">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center text-xl flex-shrink-0">
+                                ⚡
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-900 text-xs truncate">Electricity</h3>
+                                <span class="inline-block px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 text-[10px] font-medium mt-0.5">
+                                    Utilities
+                                </span>
+                            </div>
+                        </div>
+                        <p class="text-xl font-bold text-gray-900 tabular-nums">₹3,200</p>
+                        <p class="text-[11px] text-gray-500 mt-1">monthly · 18th</p>
+                        <div class="mt-2 flex items-center justify-between">
+                            <span class="text-[10px] text-gray-600 bg-gray-50 px-1.5 py-0.5 rounded">GPay</span>
+                            <span class="text-[10px] font-semibold text-orange-600">in 1 day</span>
+                        </div>
+                    </div>
+
+                    <!-- Gym Membership -->
+                    <div class="relative bg-white rounded-2xl shadow-lg p-4 border-l-4 border-lime-500">
+                        <div class="flex items-start gap-2 mb-2">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-lime-400 to-lime-600 flex items-center justify-center text-xl flex-shrink-0">
+                                💪
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-900 text-xs truncate">Gym</h3>
+                                <span class="inline-block px-1.5 py-0.5 rounded-full bg-lime-100 text-lime-700 text-[10px] font-medium mt-0.5">
+                                    Health
+                                </span>
+                            </div>
+                        </div>
+                        <p class="text-xl font-bold text-gray-900 tabular-nums">₹2,000</p>
+                        <p class="text-[11px] text-gray-500 mt-1">monthly · 10th</p>
+                        <div class="mt-2">
+                            <span class="text-[10px] text-gray-600 bg-gray-50 px-1.5 py-0.5 rounded">💳 Debit</span>
+                        </div>
+                    </div>
+
+                    <!-- Broadband -->
+                    <div class="relative bg-white rounded-2xl shadow-lg p-4 border-l-4 border-sky-500">
+                        <div class="flex items-start gap-2 mb-2">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center text-xl flex-shrink-0">
+                                🌐
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-900 text-xs truncate">Broadband</h3>
+                                <span class="inline-block px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 text-[10px] font-medium mt-0.5">
+                                    Utilities
+                                </span>
+                            </div>
+                        </div>
+                        <p class="text-xl font-bold text-gray-900 tabular-nums">₹999</p>
+                        <p class="text-[11px] text-gray-500 mt-1">monthly · 25th</p>
+                        <div class="mt-2">
+                            <span class="text-[10px] text-gray-600 bg-gray-50 px-1.5 py-0.5 rounded">💳 Axis ••8890</span>
+                        </div>
+                    </div>
+
+                    <!-- Netflix -->
+                    <div class="relative bg-white rounded-2xl shadow-lg p-4 border-l-4 border-rose-500">
+                        <div class="flex items-start gap-2 mb-2">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center text-xl flex-shrink-0">
+                                🎬
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-900 text-xs truncate">Netflix</h3>
+                                <span class="inline-block px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-medium mt-0.5">
+                                    Entertainment
+                                </span>
+                            </div>
+                        </div>
+                        <p class="text-xl font-bold text-gray-900 tabular-nums">₹649</p>
+                        <p class="text-[11px] text-gray-500 mt-1">monthly · 5th</p>
+                        <div class="mt-2">
+                            <span class="text-[10px] text-gray-600 bg-gray-50 px-1.5 py-0.5 rounded">💳 HDFC ••4521</span>
+                        </div>
+                    </div>
+
+                    <!-- Spotify -->
+                    <div class="relative bg-white rounded-2xl shadow-lg p-4 border-l-4 border-rose-500">
+                        <div class="flex items-start gap-2 mb-2">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center text-xl flex-shrink-0">
+                                🎵
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-900 text-xs truncate">Spotify</h3>
+                                <span class="inline-block px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-medium mt-0.5">
+                                    Entertainment
+                                </span>
+                            </div>
+                        </div>
+                        <p class="text-xl font-bold text-gray-900 tabular-nums">₹119</p>
+                        <p class="text-[11px] text-gray-500 mt-1">monthly · 5th</p>
+                        <div class="mt-2">
+                            <span class="text-[10px] text-gray-600 bg-gray-50 px-1.5 py-0.5 rounded">PhonePe</span>
+                        </div>
+                    </div>
+
+                    <!-- iCloud+ -->
+                    <div class="relative bg-white rounded-2xl shadow-lg p-4 border-l-4 border-violet-500">
+                        <div class="flex items-start gap-2 mb-2">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center text-xl flex-shrink-0">
+                                ☁️
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-900 text-xs truncate">iCloud+</h3>
+                                <span class="inline-block px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 text-[10px] font-medium mt-0.5">
+                                    Subscriptions
+                                </span>
+                            </div>
+                        </div>
+                        <p class="text-xl font-bold text-gray-900 tabular-nums">₹75</p>
+                        <p class="text-[11px] text-gray-500 mt-1">monthly · 12th</p>
+                        <div class="mt-2">
+                            <span class="text-[10px] text-gray-600 bg-gray-50 px-1.5 py-0.5 rounded">💳 HDFC ••4521</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Suspended Section -->
+                <div class="mb-6">
+                    <button class="w-full flex items-center justify-between px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 mb-3"
+                            aria-label="Expand suspended payments">
+                        <span class="text-sm font-semibold text-gray-700">Suspended (1)</span>
+                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+
+                    <!-- Magazine (Suspended) -->
+                    <div class="relative bg-white rounded-2xl shadow-lg p-4 border-l-4 border-gray-300 opacity-60">
+                        <div class="flex items-start gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-2xl flex-shrink-0">
+                                📰
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-900 text-sm truncate">Magazine</h3>
+                                <span class="inline-block px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 text-xs font-medium mt-1">
+                                    Subscriptions
+                                </span>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <p class="text-2xl font-bold text-gray-900 tabular-nums">₹399</p>
+                            <p class="text-xs text-gray-500 mt-1">suspended until 01 Sep 2026</p>
+                            <div class="mt-3">
+                                <button class="w-full px-4 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white text-sm font-medium">
+                                    Resume
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Floating Action Button -->
+            <button class="absolute bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg flex items-center justify-center"
+                    aria-label="Add recurring payment">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+            </button>
+
+        </div>
+    </div>
+
+</body>
+</html>

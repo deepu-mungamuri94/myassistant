@@ -130,7 +130,7 @@ const Credentials = {
                 <!-- Tag Group -->
                 <details class="credential-tag-group bg-white rounded-lg border border-gray-200 overflow-hidden" open>
                     <!-- Tag Header -->
-                    <summary class="cursor-pointer px-4 py-2.5 bg-gradient-to-r from-blue-200 to-cyan-200 hover:from-blue-300 hover:to-cyan-300 transition-colors flex justify-between items-center" onclick="Credentials.toggleTag('${Utils.escapeHtml(tag).replace(/'/g, "\\'")}')">
+                    <summary class="cursor-pointer px-4 py-2.5 bg-gradient-to-r from-blue-200 to-cyan-200 hover:from-blue-300 hover:to-cyan-300 transition-colors flex justify-between items-center" onclick="Credentials.toggleTag('${Utils.escapeJsAttr(tag)}')">
                         <div class="flex items-center gap-2">
                             <svg class="credential-chevron w-4 h-4 transition-transform duration-200 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>

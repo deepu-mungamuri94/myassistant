@@ -2,13 +2,15 @@
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
-  "teammateMode": "in-process",
   "permissions": {
     "allow": [
       "Bash(npm run test)",
       "Bash(git diff)",
       "Read",
-      "Write"
+      "Write",
+      "Bash(rg -n 'it\\\\\\([^,]+,\\\\s*\\\\\\(\\\\\\)\\\\s*=>\\\\s*\\\\{\\\\s*\\\\}\\\\s*\\\\\\)' test/)",
+      "Bash(npx vitest *)",
+      "Bash(node --check /Users/dmungamuri/AndroidStudioProjects/myassistant/www/js/modules/plans.js)"
     ],
     "deny": [
       "Bash(rm -rf *)",
@@ -26,11 +28,12 @@
           {
             "type": "command",
             "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | grep -qE '/www/|capacitor\\.config\\.json' && cd /Users/dmungamuri/AndroidStudioProjects/myassistant && npx cap sync android 2>&1 | tail -1 || true",
-            "statusMessage": "Syncing Android (cap sync)…",
-            "timeout": 120
+            "timeout": 120,
+            "statusMessage": "Syncing Android (cap sync)…"
           }
         ]
       }
     ]
-  }
+  },
+  "teammateMode": "in-process"
 }

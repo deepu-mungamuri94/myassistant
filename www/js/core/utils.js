@@ -18,6 +18,40 @@ const Utils = {
     },
 
     /**
+     * Escape a string for safe interpolation into a SINGLE-quoted JS string that
+     * itself sits inside a DOUBLE-quoted HTML attribute — i.e. the extremely
+     * common `onclick="Module.fn('${value}')"` pattern where value is user text.
+     *
+     * Two escaping layers are required and the ORDER matters:
+     *   1. JS-string-escape the raw value (backslash, single-quote, newlines) so it
+     *      cannot break out of the '...' JS string literal.
+     *   2. HTML-escape the result so it cannot break out of the "..." HTML attribute.
+     * The browser reverses both layers at click time, so the handler receives the
+     * ORIGINAL raw string — which also makes the value safe to use as a state key.
+     *
+     * WARNING: `escapeHtml(x).replace(/'/g, "\\'")` does NOT work and is an XSS
+     * foot-gun — escapeHtml has already turned every ' into &#39;, so the .replace
+     * matches nothing and the entity decodes back to a live quote at execution
+     * time, letting an attacker break out of the JS string. Always use this helper
+     * for the onclick-string pattern.
+     */
+    escapeJsAttr(text) {
+        if (text === null || text === undefined) return '';
+        const jsEscaped = String(text)
+            .replace(/\\/g, '\\\\')   // backslash first, so we don't double-escape below
+            .replace(/'/g, "\\'")      // single quote → JS-escaped
+            .replace(/\r/g, '\\r')
+            .replace(/\n/g, '\\n');
+        // HTML-escape the JS-escaped value so it survives the double-quoted attribute.
+        return jsEscaped
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    },
+
+    /**
      * Hash password using SHA-256
      */
     async hashPassword(password) {
@@ -94,6 +128,42 @@ const Utils = {
         }
 
         // Add negative sign back if needed
+        return isNegative ? '-' + result : result;
+    },
+
+    /**
+     * Compact currency-style number for tight spaces (e.g. calendar day cells).
+     * Indian scale: thousands→k, lakhs→L, crores→Cr. Up to one decimal, with a
+     * trailing ".0" dropped. Returns a BARE string (no ₹) — callers add the symbol.
+     *   850→"850"  2200→"2.2k"  5000→"5k"  125000→"1.3L"  12500000→"1.3Cr"
+     * This is a display-only glanceable formatter; use formatIndianNumber where the
+     * exact amount matters (detail panels, totals).
+     */
+    formatCompactNumber(num) {
+        if (num === null || num === undefined || num === '') return '0';
+        const number = typeof num === 'string' ? parseFloat(num) : Number(num);
+        if (isNaN(number)) return '0';
+
+        const isNegative = number < 0;
+        const abs = Math.abs(number);
+
+        // One decimal place, but drop a trailing ".0" (5.0k → 5k).
+        const unit = (value, suffix) => {
+            let s = value.toFixed(1);
+            if (s.endsWith('.0')) s = s.slice(0, -2);
+            return s + suffix;
+        };
+
+        let result;
+        if (abs < 1000) {
+            result = String(Math.round(abs));
+        } else if (abs < 100000) {
+            result = unit(abs / 1000, 'k');          // thousands
+        } else if (abs < 10000000) {
+            result = unit(abs / 100000, 'L');         // lakhs
+        } else {
+            result = unit(abs / 10000000, 'Cr');      // crores
+        }
         return isNegative ? '-' + result : result;
     },
 

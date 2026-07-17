@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar Grid - Recurring Payments Mockup</title>
+    <script src="../../www/vendor/tailwindcss.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .notch {
+            width: 120px;
+            height: 24px;
+            background: #111827;
+            border-radius: 0 0 16px 16px;
+            margin: 0 auto;
+        }
+        .calendar-day {
+            aspect-ratio: 1;
+            position: relative;
+        }
+        .payment-dots {
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 2px;
+        }
+        .payment-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+        }
+        .today-ring {
+            box-shadow: 0 0 0 2px #f97316;
+        }
+        .selected-day {
+            background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%);
+            color: white;
+        }
+        .glossy-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.15), transparent);
+            border-radius: 1rem 1rem 0 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen py-8 px-4">
+
+    <!-- Mockup Title -->
+    <div class="text-center mb-6 max-w-md mx-auto">
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">Calendar Grid - Month View</h1>
+        <p class="text-gray-600 text-sm">A traditional calendar grid where days with payments show colored dots by category. Select a day to see its payments below.</p>
+    </div>
+
+    <!-- Phone Frame -->
+    <div class="max-w-[390px] mx-auto bg-gray-900 rounded-[3rem] p-2 shadow-2xl">
+        <div class="notch"></div>
+
+        <!-- Screen Content -->
+        <div class="bg-white rounded-[2.5rem] overflow-hidden min-h-[800px] relative">
+
+            <!-- Status Bar -->
+            <div class="flex items-center justify-between px-6 pt-3 pb-2 text-xs text-gray-600">
+                <span>9:41</span>
+                <span class="font-semibold text-gray-800">Recurring Payments</span>
+                <div class="flex gap-1">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"></path></svg>
+                </div>
+            </div>
+
+            <!-- Month Summary Card -->
+            <div class="mx-4 mt-2 mb-4 relative rounded-2xl shadow-lg overflow-hidden bg-gradient-to-r from-orange-600 to-amber-600 p-4">
+                <div class="glossy-overlay"></div>
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex-1">
+                            <div class="text-white/80 text-xs font-medium mb-1">This Month (Jul)</div>
+                            <div class="text-white text-2xl font-bold tabular-nums">₹55,042</div>
+                        </div>
+                        <div class="w-px h-12 bg-white/20"></div>
+                        <div class="flex-1 text-right">
+                            <div class="text-white/80 text-xs font-medium mb-1">Next Month (Aug)</div>
+                            <div class="text-white text-2xl font-bold tabular-nums">₹58,042</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 text-white/70 text-xs">
+                        <span>⏸ 1 suspended</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Month Navigation -->
+            <div class="flex items-center justify-between px-4 mb-4">
+                <button class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center" onclick="prevMonth()" aria-label="Previous month">
+                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </button>
+                <div class="flex items-center gap-3">
+                    <h2 class="text-xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent" id="currentMonth">July 2026</h2>
+                    <button class="px-3 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-semibold hover:bg-orange-200" onclick="goToToday()">Today</button>
+                </div>
+                <button class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center" onclick="nextMonth()" aria-label="Next month">
+                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Calendar Grid -->
+            <div class="px-4 mb-4">
+                <div class="bg-orange-50/50 rounded-2xl p-3">
+                    <!-- Weekday Headers -->
+                    <div class="grid grid-cols-7 gap-1 mb-2">
+                        <div class="text-center text-xs font-semibold text-gray-500">S</div>
+                        <div class="text-center text-xs font-semibold text-gray-500">M</div>
+                        <div class="text-center text-xs font-semibold text-gray-500">T</div>
+                        <div class="text-center text-xs font-semibold text-gray-500">W</div>
+                        <div class="text-center text-xs font-semibold text-gray-500">T</div>
+                        <div class="text-center text-xs font-semibold text-gray-500">F</div>
+                        <div class="text-center text-xs font-semibold text-gray-500">S</div>
+                    </div>
+
+                    <!-- Calendar Days (July 2026 starts on Wednesday) -->
+                    <div class="grid grid-cols-7 gap-1" id="calendarGrid">
+                        <!-- Empty cells for days before month start -->
+                        <div class="calendar-day"></div>
+                        <div class="calendar-day"></div>
+                        <div class="calendar-day"></div>
+
+                        <!-- Day 1 (Wed) - Rent -->
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(1)">
+                            1
+                            <div class="payment-dots">
+                                <div class="payment-dot bg-amber-500"></div>
+                            </div>
+                        </button>
+
+                        <!-- Day 2 (Thu) -->
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(2)">2</button>
+
+                        <!-- Day 3 (Fri) - SIP -->
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(3)">
+                            3
+                            <div class="payment-dots">
+                                <div class="payment-dot bg-emerald-500"></div>
+                            </div>
+                        </button>
+
+                        <!-- Day 4 (Sat) -->
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(4)">4</button>
+
+                        <!-- Day 5 (Sun) - Netflix + Spotify -->
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(5)">
+                            5
+                            <div class="payment-dots">
+                                <div class="payment-dot bg-pink-500"></div>
+                                <div class="payment-dot bg-rose-500"></div>
+                            </div>
+                        </button>
+
+                        <!-- Days 6 -->
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(6)">6</button>
+
+                        <!-- Day 7 (Tue) - School Fees -->
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(7)">
+                            7
+                            <div class="payment-dots">
+                                <div class="payment-dot bg-indigo-500"></div>
+                            </div>
+                        </button>
+
+                        <!-- Days 8-9 -->
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(8)">8</button>
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(9)">9</button>
+
+                        <!-- Day 10 (Thu) - Gym -->
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(10)">
+                            10
+                            <div class="payment-dots">
+                                <div class="payment-dot bg-lime-500"></div>
+                            </div>
+                        </button>
+
+                        <!-- Day 11 -->
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(11)">11</button>
+
+                        <!-- Day 12 (Sat) - iCloud -->
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(12)">
+                            12
+                            <div class="payment-dots">
+                                <div class="payment-dot bg-violet-500"></div>
+                            </div>
+                        </button>
+
+                        <!-- Days 13-16 -->
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(13)">13</button>
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(14)">14</button>
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(15)">15</button>
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(16)">16</button>
+
+                        <!-- Day 17 (Fri) - TODAY - Electricity -->
+                        <button class="calendar-day rounded-lg selected-day today-ring flex items-center justify-center text-sm font-bold transition-colors" onclick="selectDay(17)">
+                            17
+                            <div class="payment-dots">
+                                <div class="payment-dot bg-white"></div>
+                            </div>
+                        </button>
+
+                        <!-- Days 18-19 -->
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(18)">18</button>
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(19)">19</button>
+
+                        <!-- Day 20 (Mon) - Magazine (suspended, show grayed) -->
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-400 transition-colors relative" onclick="selectDay(20)">
+                            20
+                            <div class="absolute top-1 right-1">
+                                <span class="text-[8px]">⏸</span>
+                            </div>
+                        </button>
+
+                        <!-- Days 21-24 -->
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(21)">21</button>
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(22)">22</button>
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(23)">23</button>
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(24)">24</button>
+
+                        <!-- Day 25 (Fri) - Broadband -->
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(25)">
+                            25
+                            <div class="payment-dots">
+                                <div class="payment-dot bg-sky-500"></div>
+                            </div>
+                        </button>
+
+                        <!-- Days 26-31 -->
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(26)">26</button>
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(27)">27</button>
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(28)">28</button>
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(29)">29</button>
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(30)">30</button>
+                        <button class="calendar-day rounded-lg hover:bg-orange-100 flex items-center justify-center text-sm font-medium text-gray-700 transition-colors" onclick="selectDay(31)">31</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selected Day Detail Panel -->
+            <div class="px-4 pb-20" id="dayDetail">
+                <div class="mb-2 flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-gray-700">Today • Friday, 17 July</h3>
+                    <div class="text-xs font-bold text-orange-600 tabular-nums">₹3,200</div>
+                </div>
+
+                <!-- Payment Item -->
+                <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+                    <div class="p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center flex-shrink-0">
+                            <svg class="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-semibold text-gray-800 text-sm mb-1">Electricity Bill</div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs bg-sky-200 text-sky-800 px-2 py-0.5 rounded">Utilities</span>
+                                <span class="text-xs text-gray-500 flex items-center gap-1">
+                                    <span class="inline-flex items-center justify-center w-4 h-4 rounded bg-emerald-500 text-white text-[8px] font-bold">G</span>
+                                    GPay
+                                </span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold text-gray-900 tabular-nums">₹3,200</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3 text-center text-xs text-gray-400">
+                    Select another day to see its payments
+                </div>
+            </div>
+
+            <!-- Floating Action Button -->
+            <button class="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center group" aria-label="Add new recurring payment">
+                <svg class="w-6 h-6 text-white group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
+                </svg>
+            </button>
+
+        </div>
+    </div>
+
+    <script>
+        // Payment data by day
+        const paymentsByDay = {
+            1: [{name: 'Rent', category: 'Housing', amount: '₹28,000', color: 'amber', icon: '🏠', method: 'GPay'}],
+            3: [{name: 'Mutual Fund SIP', category: 'Investment', amount: '₹5,000', color: 'emerald', icon: '📈', method: 'GPay'}],
+            5: [
+                {name: 'Netflix', category: 'Entertainment', amount: '₹649', color: 'pink', icon: '🎬', method: 'HDFC ••4521'},
+                {name: 'Spotify', category: 'Entertainment', amount: '₹119', color: 'rose', icon: '🎵', method: 'PhonePe'}
+            ],
+            7: [{name: 'School Fees', category: 'Education', amount: '₹15,000', color: 'indigo', icon: '📚', method: 'GPay'}],
+            10: [{name: 'Gym Membership', category: 'Health', amount: '₹2,000', color: 'lime', icon: '💪', method: 'Debit Card'}],
+            12: [{name: 'iCloud+', category: 'Subscriptions', amount: '₹75', color: 'violet', icon: '☁️', method: 'HDFC ••4521'}],
+            17: [{name: 'Electricity Bill', category: 'Utilities', amount: '₹3,200', color: 'sky', icon: '⚡', method: 'GPay'}],
+            20: [{name: 'Magazine', category: 'Subscriptions', amount: '₹399', color: 'violet', icon: '📰', method: 'Suspended', suspended: true}],
+            25: [{name: 'Broadband', category: 'Utilities', amount: '₹999', color: 'sky', icon: '🌐', method: 'Axis ••8890'}]
+        };
+
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+        function selectDay(day) {
+            // Remove selected styling from all days
+            document.querySelectorAll('.calendar-day').forEach(btn => {
+                if (!btn.classList.contains('today-ring')) {
+                    btn.classList.remove('selected-day', 'text-white');
+                    btn.classList.add('text-gray-700');
+                }
+            });
+
+            // Add selected styling to clicked day (if not today)
+            if (day !== 17) {
+                const dayButtons = document.querySelectorAll('.calendar-day');
+                const targetButton = Array.from(dayButtons).find(btn => btn.textContent.trim().startsWith(day.toString()));
+                if (targetButton) {
+                    targetButton.classList.add('selected-day');
+                    targetButton.classList.remove('text-gray-700');
+                }
+            }
+
+            // Update detail panel
+            const payments = paymentsByDay[day] || [];
+            const dayOfWeek = new Date(2026, 6, day).getDay();
+            const dayName = dayNames[dayOfWeek];
+
+            let totalAmount = 0;
+            payments.forEach(p => {
+                if (!p.suspended) {
+                    const amount = parseInt(p.amount.replace(/[₹,]/g, ''));
+                    totalAmount += amount;
+                }
+            });
+
+            const formattedTotal = totalAmount > 0 ? `₹${totalAmount.toLocaleString('en-IN')}` : '₹0';
+
+            let html = `
+                <div class="mb-2 flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-gray-700">${day === 17 ? 'Today • ' : ''}${dayName}, ${day} July</h3>
+                    ${payments.length > 0 ? `<div class="text-xs font-bold text-orange-600 tabular-nums">${formattedTotal}</div>` : ''}
+                </div>
+            `;
+
+            if (payments.length === 0) {
+                html += `
+                    <div class="bg-gray-50 rounded-xl p-8 text-center">
+                        <div class="text-4xl mb-2">📅</div>
+                        <div class="text-sm text-gray-500">No payments due this day</div>
+                    </div>
+                `;
+            } else {
+                payments.forEach(payment => {
+                    const colorMap = {
+                        'amber': 'bg-amber-100 text-amber-600',
+                        'emerald': 'bg-emerald-100 text-emerald-600',
+                        'pink': 'bg-pink-100 text-pink-600',
+                        'rose': 'bg-rose-100 text-rose-600',
+                        'indigo': 'bg-indigo-100 text-indigo-600',
+                        'lime': 'bg-lime-100 text-lime-600',
+                        'violet': 'bg-violet-100 text-violet-600',
+                        'sky': 'bg-sky-100 text-sky-600'
+                    };
+                    const categoryColorMap = {
+                        'Housing': 'bg-amber-200 text-amber-800',
+                        'Investment': 'bg-emerald-200 text-emerald-800',
+                        'Entertainment': 'bg-pink-200 text-pink-800',
+                        'Education': 'bg-indigo-200 text-indigo-800',
+                        'Health': 'bg-lime-200 text-lime-800',
+                        'Subscriptions': 'bg-violet-200 text-violet-800',
+                        'Utilities': 'bg-sky-200 text-sky-800'
+                    };
+
+                    const iconClass = colorMap[payment.color] || 'bg-gray-100 text-gray-600';
+                    const categoryChipClass = categoryColorMap[payment.category] || 'bg-gray-200 text-gray-800';
+
+                    let methodDisplay = payment.method;
+                    if (payment.method === 'GPay') {
+                        methodDisplay = '<span class="inline-flex items-center justify-center w-4 h-4 rounded bg-emerald-500 text-white text-[8px] font-bold">G</span> GPay';
+                    } else if (payment.method === 'PhonePe') {
+                        methodDisplay = '<span class="inline-flex items-center justify-center w-4 h-4 rounded bg-purple-500 text-white text-[8px] font-bold">P</span> PhonePe';
+                    } else if (payment.method.includes('••')) {
+                        methodDisplay = '💳 ' + payment.method;
+                    }
+
+                    html += `
+                        <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-2 ${payment.suspended ? 'opacity-50' : ''}">
+                            <div class="p-4 flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full ${iconClass} flex items-center justify-center flex-shrink-0 text-xl">
+                                    ${payment.icon}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-semibold text-gray-800 text-sm mb-1 flex items-center gap-2">
+                                        ${payment.name}
+                                        ${payment.suspended ? '<span class="text-xs text-gray-400">⏸</span>' : ''}
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs ${categoryChipClass} px-2 py-0.5 rounded">${payment.category}</span>
+                                        ${!payment.suspended ? `<span class="text-xs text-gray-500 flex items-center gap-1">${methodDisplay}</span>` : ''}
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-bold text-gray-900 tabular-nums text-sm">${payment.amount}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            if (payments.length > 0) {
+                html += `
+                    <div class="mt-3 text-center text-xs text-gray-400">
+                        Select another day to see its payments
+                    </div>
+                `;
+            }
+
+            document.getElementById('dayDetail').innerHTML = html;
+        }
+
+        function goToToday() {
+            selectDay(17);
+        }
+
+        function prevMonth() {
+            // Static mockup - could implement month switching
+        }
+
+        function nextMonth() {
+            // Static mockup - could implement month switching
+        }
+
+        // Initialize with today selected
+        selectDay(17);
+    </script>
+
+</body>
+</html>

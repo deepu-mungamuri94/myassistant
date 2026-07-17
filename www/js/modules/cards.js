@@ -1052,7 +1052,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                             View Terms
                         </button>
                         ${card.benefits ? `
-                        <button onclick="Cards.fetchAndStoreBenefits('${card.id}', '${Utils.escapeHtml(card.name).replace(/'/g, "\\'")}').then(() => Cards.render())" class="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
+                        <button onclick="Cards.fetchAndStoreBenefits('${card.id}', '${Utils.escapeJsAttr(card.name)}').then(() => Cards.render())" class="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
                             Reload Benefits
                         </button>
                         ` : ''}
@@ -1060,7 +1060,7 @@ DO NOT TRUNCATE or skip any category - list ALL offers, cashback rates, and rewa
                 </div>
                 ` : card.benefits ? `
                 <div class="mt-3 pt-3 border-t border-slate-300 flex justify-end">
-                    <button onclick="Cards.fetchAndStoreBenefits('${card.id}', '${Utils.escapeHtml(card.name).replace(/'/g, "\\'")}').then(() => Cards.render())" class="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
+                    <button onclick="Cards.fetchAndStoreBenefits('${card.id}', '${Utils.escapeJsAttr(card.name)}').then(() => Cards.render())" class="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
                         Reload Benefits
                     </button>
                 </div>

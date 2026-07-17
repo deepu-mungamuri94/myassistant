@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recurring Payments — Redesign Options</title>
+    <script src="../../www/vendor/tailwindcss.js"></script>
+    <style>
+        /* Scale each phone mockup down so 4 fit comfortably in a row */
+        .mock-frame {
+            width: 430px;
+            height: 900px;
+            border: 0;
+            transform: scale(0.86);
+            transform-origin: top center;
+        }
+        .mock-wrap { height: 780px; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="max-w-[1800px] mx-auto px-6 py-8">
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-3xl font-extrabold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent inline-block">
+                Recurring Payments — Redesign Options
+            </h1>
+            <p class="text-gray-600 mt-2 max-w-3xl">
+                Four directions for replacing the current Active/Suspended tabbed list. All four use the app's real
+                design tokens (orange→amber, <code class="text-xs bg-gray-200 px-1 rounded">rounded-2xl</code>, glossy hero tiles, ₹ Indian grouping)
+                and the <strong>same sample dataset</strong> so they're directly comparable.
+                <span class="text-gray-500">Today = Fri, 17 Jul 2026.</span>
+            </p>
+            <div class="mt-4 flex flex-wrap gap-2 text-sm">
+                <span class="px-3 py-1 rounded-full bg-white shadow-sm border border-gray-200">📅 Tell me your pick: <strong>Option 1–4</strong></span>
+                <a href="01-calendar-grid.html" target="_blank" class="px-3 py-1 rounded-full bg-orange-100 text-orange-800 hover:bg-orange-200 transition-colors">Open 1 ↗</a>
+                <a href="02-upcoming-timeline.html" target="_blank" class="px-3 py-1 rounded-full bg-orange-100 text-orange-800 hover:bg-orange-200 transition-colors">Open 2 ↗</a>
+                <a href="03-subscription-cards.html" target="_blank" class="px-3 py-1 rounded-full bg-orange-100 text-orange-800 hover:bg-orange-200 transition-colors">Open 3 ↗</a>
+                <a href="04-cashflow-heatmap.html" target="_blank" class="px-3 py-1 rounded-full bg-orange-100 text-orange-800 hover:bg-orange-200 transition-colors">Open 4 ↗</a>
+            </div>
+        </header>
+
+        <!-- Gallery -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+
+            <!-- Option 1 -->
+            <section class="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
+                <div class="p-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white">
+                    <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-lg bg-white/25 flex items-center justify-center font-bold">1</span>
+                        <h2 class="font-bold text-lg">Calendar Grid</h2>
+                    </div>
+                    <p class="text-white/90 text-xs mt-1.5 leading-snug">
+                        A real month calendar is the hero. Days with payments show category dots; tap a day to see its bills.
+                    </p>
+                </div>
+                <div class="mock-wrap overflow-hidden bg-gray-100">
+                    <iframe src="01-calendar-grid.html" class="mock-frame" title="Calendar Grid mockup"></iframe>
+                </div>
+                <div class="p-3 text-xs text-gray-500 border-t border-gray-100">
+                    <span class="text-green-600 font-semibold">Best for:</span> familiar mental model, seeing payment density across the month.
+                </div>
+            </section>
+
+            <!-- Option 2 -->
+            <section class="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
+                <div class="p-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white">
+                    <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-lg bg-white/25 flex items-center justify-center font-bold">2</span>
+                        <h2 class="font-bold text-lg">Upcoming Timeline</h2>
+                    </div>
+                    <p class="text-white/90 text-xs mt-1.5 leading-snug">
+                        A chronological agenda: "Due Tomorrow", "This Month", "Next Month" with countdowns + a paid-progress bar.
+                    </p>
+                </div>
+                <div class="mock-wrap overflow-hidden bg-gray-100">
+                    <iframe src="02-upcoming-timeline.html" class="mock-frame" title="Upcoming Timeline mockup"></iframe>
+                </div>
+                <div class="p-3 text-xs text-gray-500 border-t border-gray-100">
+                    <span class="text-green-600 font-semibold">Best for:</span> answering "what's next?" — action-oriented, least tapping.
+                </div>
+            </section>
+
+            <!-- Option 3 -->
+            <section class="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
+                <div class="p-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white">
+                    <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-lg bg-white/25 flex items-center justify-center font-bold">3</span>
+                        <h2 class="font-bold text-lg">Subscription Cards</h2>
+                    </div>
+                    <p class="text-white/90 text-xs mt-1.5 leading-snug">
+                        Rocket-Money / Bobby style. Donut breakdown + a rich 2-col card gallery, one tile per payment.
+                    </p>
+                </div>
+                <div class="mock-wrap overflow-hidden bg-gray-100">
+                    <iframe src="03-subscription-cards.html" class="mock-frame" title="Subscription Cards mockup"></iframe>
+                </div>
+                <div class="p-3 text-xs text-gray-500 border-t border-gray-100">
+                    <span class="text-green-600 font-semibold">Best for:</span> most visual / premium feel, category insight at a glance.
+                </div>
+            </section>
+
+            <!-- Option 4 -->
+            <section class="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
+                <div class="p-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white">
+                    <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-lg bg-white/25 flex items-center justify-center font-bold">4</span>
+                        <h2 class="font-bold text-lg">Cashflow Heatmap</h2>
+                    </div>
+                    <p class="text-white/90 text-xs mt-1.5 leading-snug">
+                        Analytical. A heatmap calendar shaded by daily outflow + "heaviest days" and category bars.
+                    </p>
+                </div>
+                <div class="mock-wrap overflow-hidden bg-gray-100">
+                    <iframe src="04-cashflow-heatmap.html" class="mock-frame" title="Cashflow Heatmap mockup"></iframe>
+                </div>
+                <div class="p-3 text-xs text-gray-500 border-t border-gray-100">
+                    <span class="text-green-600 font-semibold">Best for:</span> the "money-brain" — spotting spend spikes and patterns.
+                </div>
+            </section>
+
+        </div>
+
+        <footer class="mt-10 text-center text-sm text-gray-400">
+            Static prototypes · sample data · production will compute live via <code class="bg-gray-200 px-1 rounded">RecurringExpenses.getMonthlyTotal()</code>
+        </footer>
+    </div>
+</body>
+</html>

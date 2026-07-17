@@ -10,9 +10,16 @@ const Expenses = {
     searchTerm: '',
     expandedMonths: new Set(), // Track which months are expanded
     includeLoansInTotal: false, // Toggle for including loans in total
-    currentRecurringTab: 'upcoming', // Track current recurring expenses tab
-    viewMode: 'expenses', // 'expenses' or 'events'
-    
+    viewMode: 'expenses', // 'expenses' or 'events' (external contract: set by index.html + events.js)
+    // View toggle within the expenses view: 'list' | 'calendar' (default: calendar)
+    bodyView: 'calendar',
+    // Calendar view state (month browser, mirrors RecurringExpenses)
+    calYear: null,
+    calMonth: null,
+    calSelectedDay: null,
+    // Events view: when true, the Events breakdown ignores the date filter (all-time escape)
+    eventsAllTime: false,
+
     /**
      * Initialize with current month dates
      */
@@ -25,7 +32,28 @@ const Expenses = {
         this.startDate = `${year}-${month}-01`; // First day of current month
         this.endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`; // Last day of current month
     },
-    
+
+    /**
+     * Helper: resolve category info (icon + gradient color) for an expense category.
+     * Expense rows are inconsistent: user-picked categories store the display NAME
+     * ('Food & Dining'), while auto-added EMI/recurring rows store lowercase IDs
+     * ('emi'). Try name first, then id, then the shared fallback — so an EMI row
+     * still gets 💳 instead of the generic 📦.
+     */
+    _getCategoryInfo(categoryName) {
+        const EC = window.ExpenseCategories;
+        if (!EC) return { id: 'other', name: categoryName || 'Other', icon: '📦', color: 'from-gray-400 to-gray-600' };
+        return EC.getByName(categoryName) || EC.getById(categoryName) || EC.getCategoryOrDefault(categoryName);
+    },
+
+    /**
+     * Helper: emoji-on-gradient avatar for a category (mirrors RecurringExpenses).
+     */
+    _categoryAvatar(categoryName) {
+        const cat = this._getCategoryInfo(categoryName);
+        return `<div class="w-10 h-10 rounded-full bg-gradient-to-br ${cat.color} flex items-center justify-center flex-shrink-0 text-xl">${cat.icon}</div>`;
+    },
+
     /**
      * Add a new expense
      */
@@ -284,45 +312,18 @@ const Expenses = {
      */
     getFilteredExpenses() {
         let filtered = window.DB.expenses;
-        
-        // Apply date filter
+
+        // Apply date filter. Calendar view answers "when did I actually spend?", so it
+        // filters by ACTUAL date (a July-28 purchase tracked in August stays on July 28,
+        // matching the grid). List view keeps budget-month remapping (see isExpenseInRange),
+        // consistent with the dashboard and month-grouping.
         if (this.startDate && this.endDate) {
-            const start = new Date(this.startDate);
-            const end = new Date(this.endDate);
-            const startMonth = start.getMonth() + 1;
-            const startYear = start.getFullYear();
-            const endMonth = end.getMonth() + 1;
-            const endYear = end.getFullYear();
-            
-            // Check if this is a day-based filter (same day or within 7 days)
-            const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-            const isDayBasedFilter = daysDiff <= 7; // Today or Last 7 Days
-            
-            filtered = filtered.filter(e => {
-                if (isDayBasedFilter) {
-                    // For day-based filters, use actual expense date
-                    const expenseDate = new Date(e.date);
-                    expenseDate.setHours(0, 0, 0, 0);
-                    const startDate = new Date(start);
-                    startDate.setHours(0, 0, 0, 0);
-                    const endDate = new Date(end);
-                    endDate.setHours(23, 59, 59, 999);
-                    
-                    return expenseDate >= startDate && expenseDate <= endDate;
-                } else {
-                    // For month/year-based filters, use budget month
-                    const { month, year } = this.getExpenseBudgetMonth(e);
-                    
-                    // Check if budget month falls within the date range
-                    const budgetDate = new Date(year, month - 1, 15); // Use middle of month for comparison
-                    const startOfRange = new Date(startYear, startMonth - 1, 1);
-                    const endOfRange = new Date(endYear, endMonth, 0); // Last day of end month
-                    
-                    return budgetDate >= startOfRange && budgetDate <= endOfRange;
-                }
-            });
+            const inRange = this.bodyView === 'calendar'
+                ? (e) => this.isExpenseInActualDateRange(e, this.startDate, this.endDate)
+                : (e) => this.isExpenseInRange(e, this.startDate, this.endDate);
+            filtered = filtered.filter(inRange);
         }
-        
+
         // Apply search filter
         if (this.searchTerm) {
             const term = this.searchTerm.toLowerCase();
@@ -351,6 +352,51 @@ const Expenses = {
             month: expenseDate.getMonth() + 1,
             year: expenseDate.getFullYear()
         };
+    },
+
+    /**
+     * Single source of truth for "is this expense inside [startDate, endDate]?".
+     * Mirrors the app's dual semantics: day-based ranges (≤7 days: Today / This Week)
+     * use the actual expense date; month/year ranges honor budgetMonth remapping so a
+     * "paid in May, track in June" expense lands in its budget month. Shared by
+     * getFilteredExpenses (List/Calendar) and the Events view so every view filters
+     * identically. Dates are 'YYYY-MM-DD' strings.
+     */
+    isExpenseInRange(expense, startDate, endDate) {
+        if (!startDate || !endDate) return true;
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+        const isDayBasedFilter = daysDiff <= 7; // Today or Last 7 Days
+
+        if (isDayBasedFilter) {
+            // Day-based ranges compare the actual expense date.
+            return this.isExpenseInActualDateRange(expense, startDate, endDate);
+        }
+
+        // Month/year-based: compare the budget month (mid-month) against whole-month bounds
+        const { month, year } = this.getExpenseBudgetMonth(expense);
+        const budgetDate = new Date(year, month - 1, 15);
+        const startOfRange = new Date(start.getFullYear(), start.getMonth(), 1);
+        const endOfRange = new Date(end.getFullYear(), end.getMonth() + 1, 0); // last day of end month
+        return budgetDate >= startOfRange && budgetDate <= endOfRange;
+    },
+
+    /**
+     * "Is this expense's ACTUAL date inside [startDate, endDate]?" — midnight-to-midnight
+     * inclusive, ignoring budgetMonth remapping. The Calendar view uses this (a calendar
+     * answers "when did I actually spend?", so a July-28 purchase tracked in August still
+     * belongs on July 28) and so does the ≤7-day branch of isExpenseInRange.
+     */
+    isExpenseInActualDateRange(expense, startDate, endDate) {
+        if (!startDate || !endDate) return true;
+        const expenseDate = new Date(expense.date);
+        expenseDate.setHours(0, 0, 0, 0);
+        const startBound = new Date(startDate);
+        startBound.setHours(0, 0, 0, 0);
+        const endBound = new Date(endDate);
+        endBound.setHours(23, 59, 59, 999);
+        return expenseDate >= startBound && expenseDate <= endBound;
     },
     
     /**
@@ -461,9 +507,11 @@ const Expenses = {
     getFullDetailsLink(expense) {
         if (!this.isAutoRecurringExpense(expense)) return '';
         
-        // Escape for JavaScript context (replace single quotes with escaped quotes)
-        const escapeJs = (str) => str.replace(/'/g, "\\'").replace(/"/g, '\\"');
-        
+        // Escape for the onclick JS-string-in-HTML-attribute context (both JS and
+        // HTML layers). The bank-name-derived title is user-controlled, so a plain
+        // JS-quote escape without HTML-escaping is an attribute-breakout XSS.
+        const escapeJs = (str) => Utils.escapeJsAttr(str);
+
         // Loan EMI - navigate to loans page
         if (this.isLoanEMIExpense(expense)) {
             // Check if the loan still exists
@@ -1043,49 +1091,70 @@ const Expenses = {
         // Update date range
         const dateRangeEl = document.getElementById('expenses-date-range');
         if (dateRangeEl && this.startDate && this.endDate) {
-            const startDate = new Date(this.startDate);
-            const endDate = new Date(this.endDate);
-            const options = { month: 'short', day: 'numeric', year: 'numeric' };
-            dateRangeEl.textContent = `${startDate.toLocaleDateString('en-US', options)} - ${endDate.toLocaleDateString('en-US', options)}`;
+            dateRangeEl.textContent = this.formatDateRangeLabel();
         }
     },
-    
+
+    /**
+     * Human-readable "Jul 1, 2026 - Jul 31, 2026" label for the active range.
+     * Shared by the expenses and events summaries so they read identically.
+     */
+    formatDateRangeLabel() {
+        if (!this.startDate || !this.endDate) return 'All time';
+        const options = { month: 'short', day: 'numeric', year: 'numeric' };
+        const startDate = new Date(this.startDate);
+        const endDate = new Date(this.endDate);
+        return `${startDate.toLocaleDateString('en-US', options)} - ${endDate.toLocaleDateString('en-US', options)}`;
+    },
+
     /**
      * Update summary section for Events view
      */
     updateEventsSummary() {
         if (!window.Events) return;
-        
-        const events = window.Events.getEventSummary(this.searchTerm);
-        
+
+        // Match the same range the events list is rendering (all-time when toggled)
+        const evStart = this.eventsAllTime ? null : this.startDate;
+        const evEnd = this.eventsAllTime ? null : this.endDate;
+        const events = window.Events.getEventSummary(this.searchTerm, evStart, evEnd);
+
         // Calculate totals across all events
         let totalAmount = 0;
         let totalExpenseCount = 0;
-        
+
         events.forEach(event => {
             totalAmount += event.total;
             totalExpenseCount += event.expenseCount;
         });
-        
+
         // Update total amount
         const totalEl = document.getElementById('expenses-total-amount');
         if (totalEl) totalEl.textContent = Utils.formatCurrency(totalAmount);
-        
+
         // Hide entire loans section for events view
         const loansContainer = document.getElementById('loans-toggle-container');
         if (loansContainer) loansContainer.classList.add('hidden');
-        
+
         // Hide loan info
         const loanInfoEl = document.getElementById('expenses-loan-info');
         if (loanInfoEl) loanInfoEl.classList.add('hidden');
-        
+
         // Update transaction count
         const countEl = document.getElementById('expenses-transaction-info');
         if (countEl) countEl.textContent = `${events.length} event${events.length !== 1 ? 's' : ''} • ${totalExpenseCount} expense${totalExpenseCount !== 1 ? 's' : ''}`;
-        
-        // Update date range to show "All Events"
+
+        // Reflect the actual scope of what's shown (range vs. all-time)
         const dateRangeEl = document.getElementById('expenses-date-range');
-        if (dateRangeEl) dateRangeEl.textContent = 'All Events';
+        if (dateRangeEl) dateRangeEl.textContent = this.eventsAllTime ? 'All events (all time)' : this.formatDateRangeLabel();
+    },
+
+    /**
+     * Toggle the Events view between "obey the date filter" and "all time".
+     * Wired from the range note the Events view renders.
+     */
+    toggleEventsAllTime() {
+        this.eventsAllTime = !this.eventsAllTime;
+        this.render();
     },
     
     /**
@@ -1269,13 +1338,27 @@ const Expenses = {
      */
     render() {
         const list = document.getElementById('expenses-list');
-        
+
         if (!list) return;
-        
+
+        // Ensure the active range exists before ANY view reads it (events branch
+        // returns early, so this must run first).
+        if (!this.startDate || !this.endDate) {
+            this.initializeFilters();
+            const startInput0 = document.getElementById('expense-start-date');
+            const endInput0 = document.getElementById('expense-end-date');
+            if (startInput0) startInput0.value = this.startDate;
+            if (endInput0) endInput0.value = this.endDate;
+        }
+
         // Check if in events view mode
         if (this.viewMode === 'events') {
             if (window.Events) {
-                window.Events.renderInExpensesList(list, this.searchTerm);
+                // Events obey the same date filter as the list, unless the user taps
+                // "All time". Pass null/null to mean unbounded (all-time).
+                const evStart = this.eventsAllTime ? null : this.startDate;
+                const evEnd = this.eventsAllTime ? null : this.endDate;
+                window.Events.renderInExpensesList(list, this.searchTerm, evStart, evEnd);
                 this.updateEventsSummary();
             }
             return;
@@ -1315,40 +1398,37 @@ const Expenses = {
         if (totalAdded > 0) {
             Utils.showSuccess(`Auto-added ${totalAdded} recurring expense(s)`);
         }
-        
-        // Initialize filters if not set
-        if (!this.startDate || !this.endDate) {
-            this.initializeFilters();
-            // Update date inputs
-            const startInput = document.getElementById('expense-start-date');
-            const endInput = document.getElementById('expense-end-date');
-            if (startInput) startInput.value = this.startDate;
-            if (endInput) endInput.value = this.endDate;
+        // (Filter init already ran at the top of render, before the events branch.)
+
+        // Initialize calendar browser state (mirrors RecurringExpenses)
+        const calNow = new Date();
+        if (this.calYear === null || this.calMonth === null) {
+            this.calYear = calNow.getFullYear();
+            this.calMonth = calNow.getMonth() + 1;
+            this.calSelectedDay = calNow.getDate();
         }
-        
+
+        // In Calendar view the active range IS the browsed month, so the summary card
+        // (total / count / date label) tracks month navigation. Must run BEFORE
+        // getFilteredExpenses/updateSummary so every downstream read sees that range.
+        if (this.bodyView === 'calendar') {
+            this._syncRangeToCalendarMonth();
+        }
+
         const filteredExpenses = this.getFilteredExpenses();
-        
+
         // Update summary section
         this.updateSummary(filteredExpenses);
-        
-        // Check if we should show recurring expenses (only for current period filters)
+
+        // Recurring due this period (only for current-period filters). We surface just
+        // the not-yet-added ("pending") ones as add-cards; already-added recurring show
+        // inline in the timeline with a 🔁 badge (see renderGroupedByDate).
         const shouldShowRecurring = this.shouldShowRecurringExpenses();
-        
-        // Get recurring expenses (upcoming and completed) - only for current period filters
-        let upcomingRecurring = [];
-        let completedRecurring = [];
-        let totalRecurring = 0;
-        
-        if (shouldShowRecurring) {
-            const recurringData = this.getRecurringExpenses();
-            upcomingRecurring = recurringData.upcoming;
-            completedRecurring = recurringData.completed;
-            totalRecurring = upcomingRecurring.length + completedRecurring.length;
-        }
-        
-        if (filteredExpenses.length === 0 && totalRecurring === 0) {
-            list.innerHTML = window.DB.expenses.length === 0
-                ? `
+        const pendingRecurring = shouldShowRecurring ? this._getPendingRecurring() : [];
+
+        // First-run onboarding: nothing at all to show yet
+        if (window.DB.expenses.length === 0 && pendingRecurring.length === 0) {
+            list.innerHTML = `
                 <div class="text-center py-12">
                     <div class="text-6xl mb-4">🧾</div>
                     <p class="text-gray-500 text-sm mb-4">No expenses yet</p>
@@ -1357,159 +1437,185 @@ const Expenses = {
                         + Add your first expense
                     </button>
                 </div>
-            `
-                : `
-                <p class="text-gray-500 text-center py-8">No expenses found for the selected filters.</p>
             `;
+            this.updateControlsState();
             return;
         }
-        
-        // Use all filtered expenses (no pagination)
-        const paginatedExpenses = filteredExpenses;
-        
-        // Calculate total
-        const total = this.getTotalAmount(filteredExpenses);
-        const recurringTotal = [...upcomingRecurring, ...completedRecurring].reduce((sum, e) => sum + e.amount, 0);
-        
-        // Clear list
-        list.innerHTML = '';
-        
-        // Calculate totals for each tab
-        const upcomingTotal = upcomingRecurring.reduce((sum, e) => sum + e.amount, 0);
-        const completedTotal = completedRecurring.reduce((sum, e) => sum + e.amount, 0);
-        
-        // Render recurring expenses section (if any)
-        if (totalRecurring > 0) {
-            list.innerHTML += `
-                <details class="mb-3 bg-white rounded-xl border border-orange-300 overflow-hidden">
-                    <summary class="cursor-pointer px-4 py-3 hover:bg-orange-50 transition-colors flex justify-between items-center">
-                        <div class="flex items-center gap-2">
-                            <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                            </svg>
-                            <span class="font-semibold text-orange-900 text-sm">Recurring expenses / Loans (${totalRecurring})</span>
-                        </div>
-                        <span class="font-bold text-orange-800 text-sm">${Utils.formatCurrency(recurringTotal)}</span>
+
+        // Segmented view toggle (List | Calendar) always sits above the body
+        let html = this._renderViewToggle();
+
+        if (this.bodyView === 'calendar') {
+            html += this._renderCalendarView(filteredExpenses);
+        } else {
+            html += this._renderListView(filteredExpenses, pendingRecurring);
+        }
+
+        list.innerHTML = html;
+
+        // Enable/disable filter and toggle buttons based on expenses existence
+        this.updateControlsState();
+    },
+
+    /**
+     * Segmented List | Calendar toggle (mirrors the approved Recurring pattern).
+     */
+    _renderViewToggle() {
+        const isList = this.bodyView !== 'calendar';
+        const isCal = this.bodyView === 'calendar';
+        return `
+            <div class="mb-3">
+                <div class="flex bg-gray-100 rounded-xl p-1 gap-1">
+                    <button onclick="Expenses.showList()" aria-pressed="${isList}" class="flex-1 px-4 py-2 text-sm font-bold rounded-lg ${isList ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'} transition-all flex items-center justify-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                        List
+                    </button>
+                    <button onclick="Expenses.showCalendar()" aria-pressed="${isCal}" class="flex-1 px-4 py-2 text-sm font-bold rounded-lg ${isCal ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'} transition-all flex items-center justify-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        Calendar
+                    </button>
+                </div>
+            </div>
+        `;
+    },
+
+    /**
+     * Switch to List view
+     */
+    showList() {
+        this.bodyView = 'list';
+        this.render();
+    },
+
+    /**
+     * Switch to Calendar view (keeps the currently-browsed month).
+     */
+    showCalendar() {
+        this.bodyView = 'calendar';
+        this.render();
+    },
+
+    /**
+     * Jump to the Calendar view scoped to the CURRENT month. This is the app's default
+     * "Current Month" surface — the summary and grid both track today's month. Unlike
+     * showCalendar(), it resets the browsed month to today (so it doesn't strand the
+     * user on a previously-paged month).
+     */
+    showCurrentMonthCalendar() {
+        const t = new Date();
+        this.calYear = t.getFullYear();
+        this.calMonth = t.getMonth() + 1;
+        this.calSelectedDay = t.getDate();
+        this.bodyView = 'calendar';
+        this.render();
+    },
+
+    /**
+     * Build the "due this period, not yet added" recurring list — the only recurring
+     * rows we surface as add-cards. Already-added recurring live inline in the timeline.
+     * Honors dismissals so a deleted auto-row doesn't reappear as pending.
+     */
+    _getPendingRecurring() {
+        const { upcoming } = this.getRecurringExpenses();
+        return upcoming.filter(exp => {
+            // Skip if the user dismissed this occurrence
+            if (this.isDismissed(exp.title, exp.date, exp.amount, exp.recurringId || null)) return false;
+            // Skip if an equivalent expense already exists (by recurringId within the
+            // month, else title/date/amount) — mirrors the old existsInExpenses check.
+            const exists = window.DB.expenses.find(e => {
+                if (exp.recurringId && e.recurringId && String(e.recurringId) === String(exp.recurringId)) {
+                    const a = new Date(exp.date), b = new Date(e.date);
+                    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+                }
+                return e.title === exp.title && e.date === exp.date && Math.abs(e.amount - exp.amount) < 0.01;
+            });
+            return !exists;
+        });
+    },
+
+    /**
+     * Render a single "pending recurring" add-card. Custom recurring (has recurringId)
+     * gets a one-tap + Add; card/loan EMIs (no recurringId) auto-add on their due date,
+     * so they show a "🔁 auto" tag instead of a button that couldn't work.
+     */
+    _renderPendingRecurringCard(exp) {
+        const cat = this._getCategoryInfo(exp.category);
+        // Show upcoming payment number if description carries an "n/total" pattern
+        let displayDescription = exp.description || '';
+        if (exp.recurringId && window.DB.recurringExpenses) {
+            const recurring = window.DB.recurringExpenses.find(r => String(r.id) === String(exp.recurringId));
+            if (recurring && recurring.addedToExpenses) {
+                const nextPaymentNumber = recurring.addedToExpenses.length + 1;
+                displayDescription = displayDescription.replace(/(\d+)\/(\d+)/, (m, cur, tot) => `${nextPaymentNumber}/${tot}`);
+            }
+        }
+        const action = exp.recurringId
+            ? `<button onclick="Expenses.addRecurringExpenseById('${Utils.escapeHtml(String(exp.recurringId))}', '${exp.date}'); event.stopPropagation();"
+                    class="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-semibold rounded-lg hover:shadow-md transition-all flex items-center gap-1 flex-shrink-0"
+                    aria-label="Add ${Utils.escapeHtml(exp.title)} to expenses">
+                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+                    Add
+                </button>`
+            : `<span class="px-2 py-1 bg-amber-100 text-amber-700 text-[11px] font-medium rounded-lg flex-shrink-0" title="Auto-added on its due date">🔁 auto</span>`;
+        return `
+            <div class="flex items-center gap-3 p-3 bg-white rounded-xl border border-dashed border-purple-300">
+                ${this._categoryAvatar(exp.category)}
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-gray-800 truncate">${Utils.escapeHtml(exp.title)}</p>
+                    <p class="text-xs text-gray-500 truncate">${displayDescription ? Utils.escapeHtml(displayDescription) + ' • ' : ''}Due ${Utils.formatDate(exp.date)}</p>
+                </div>
+                <div class="text-right flex items-center gap-2">
+                    <span class="text-sm font-bold text-purple-700 tabular-nums">₹${Utils.formatIndianNumber(parseFloat(exp.amount))}</span>
+                    ${action}
+                </div>
+            </div>
+        `;
+    },
+
+    /**
+     * Render the List body: optional "due this month" pending recurring cards, then the
+     * date-grouped timeline (recurring rows carry an inline 🔁 badge). Month-grouped when
+     * the range spans months, else grouped by day.
+     */
+    _renderListView(filteredExpenses, pendingRecurring) {
+        let html = '';
+
+        // Pending recurring ("due this month") — collapsible so it never dominates
+        if (pendingRecurring.length > 0) {
+            const pendingTotal = pendingRecurring.reduce((s, e) => s + e.amount, 0);
+            html += `
+                <details class="mb-3" open>
+                    <summary class="cursor-pointer flex items-center justify-between px-1 py-1.5 list-none">
+                        <span class="flex items-center gap-2 text-sm font-semibold text-purple-800">
+                            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            Due this month (${pendingRecurring.length})
+                        </span>
+                        <span class="text-sm font-bold text-purple-700 tabular-nums">₹${Utils.formatIndianNumber(pendingTotal)}</span>
                     </summary>
-                    <div class="px-4 pb-3">
-                        <!-- Tabs for Upcoming and Completed -->
-                        <div class="border-b border-orange-200 mb-3">
-                            <div class="flex justify-evenly">
-                                ${upcomingRecurring.length > 0 ? `
-                                    <button onclick="Expenses.switchRecurringTab('upcoming')" 
-                                            id="recurring-tab-upcoming"
-                                            class="flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-blue-500 text-blue-600">
-                                        <div class="flex flex-col items-center">
-                                            <span>🕐 Upcoming (${upcomingRecurring.length})</span>
-                                            <span class="text-xs font-bold mt-0.5">${Utils.formatCurrency(upcomingTotal)}</span>
-                                        </div>
-                                    </button>
-                                ` : ''}
-                                ${completedRecurring.length > 0 ? `
-                                    <button onclick="Expenses.switchRecurringTab('completed')" 
-                                            id="recurring-tab-completed"
-                                            class="flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-                                        <div class="flex flex-col items-center">
-                                            <span>✓ Completed (${completedRecurring.length})</span>
-                                            <span class="text-xs font-bold mt-0.5">${Utils.formatCurrency(completedTotal)}</span>
-                                        </div>
-                                    </button>
-                                ` : ''}
-                            </div>
-                        </div>
-                        
-                        <!-- Tab Content: Upcoming -->
-                        ${upcomingRecurring.length > 0 ? `
-                            <div id="recurring-content-upcoming" class="space-y-1.5">
-                                ${upcomingRecurring.map(exp => {
-                                    // Check if this expense is already in expenses list
-                                    // Check by recurringId first (handles amount/name changes), then by title/date/amount
-                                    const existsInExpenses = window.DB.expenses.find(e => {
-                                        // Check by recurringId if available (handles edited amounts and renamed expenses)
-                                        if (exp.recurringId && e.recurringId && String(e.recurringId) === String(exp.recurringId)) {
-                                            // Check if it's in the same month
-                                            const expDate = new Date(exp.date);
-                                            const eDate = new Date(e.date);
-                                            return expDate.getFullYear() === eDate.getFullYear() && 
-                                                   expDate.getMonth() === eDate.getMonth();
-                                        }
-                                        // Fallback to title/date/amount matching (for legacy entries)
-                                        return e.title === exp.title && 
-                                               e.date === exp.date && 
-                                               Math.abs(e.amount - exp.amount) < 0.01;
-                                    });
-                                    
-                                    // Calculate next payment count for display
-                                    let displayDescription = exp.description || '';
-                                    if (exp.recurringId) {
-                                        const recurring = window.DB.recurringExpenses.find(r => String(r.id) === String(exp.recurringId));
-                                        if (recurring && recurring.addedToExpenses) {
-                                            const nextPaymentNumber = recurring.addedToExpenses.length + 1;
-                                            // Update description to show next payment count if it contains a pattern like "3/6"
-                                            displayDescription = displayDescription.replace(/(\d+)\/(\d+)/, (match, current, total) => {
-                                                return `${nextPaymentNumber}/${total}`;
-                                            });
-                                        }
-                                    }
-                                    
-                                    return `
-                                    <div class="flex justify-between items-center py-1.5 px-2 bg-blue-50 rounded border border-blue-100">
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium text-gray-800 truncate">${Utils.escapeHtml(exp.title)}</p>
-                                            <p class="text-xs text-gray-500">${displayDescription ? Utils.escapeHtml(displayDescription) + ' • ' : ''}${Utils.formatDate(exp.date)}</p>
-                                        </div>
-                                        <div class="flex items-center gap-2 ml-2">
-                                            <span class="text-sm font-semibold text-blue-700">${Utils.formatCurrency(exp.amount)}</span>
-                                            ${!existsInExpenses ? `
-                                                <button onclick="Expenses.addRecurringExpenseById('${exp.recurringId}', '${exp.date}'); event.stopPropagation();" 
-                                                        class="px-2 py-0.5 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors flex items-center gap-1" 
-                                                        title="Add to Expenses">
-                                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
-                                                    </svg>
-                                                    Add
-                                                </button>
-                                            ` : `
-                                                <span class="text-xs text-green-600 font-medium">✓ Added</span>
-                                            `}
-                                        </div>
-                                    </div>
-                                `}).join('')}
-                            </div>
-                        ` : ''}
-                        
-                        <!-- Tab Content: Completed -->
-                        ${completedRecurring.length > 0 ? `
-                            <div id="recurring-content-completed" class="space-y-1.5 hidden">
-                                ${completedRecurring.map(exp => `
-                                    <div class="flex justify-between items-center py-1.5 px-2 bg-green-50 rounded border border-green-100">
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium text-gray-700 truncate">${Utils.escapeHtml(exp.title)}</p>
-                                            <p class="text-xs text-gray-500">${Utils.formatDate(exp.date)}</p>
-                                        </div>
-                                        <span class="text-sm font-semibold text-green-700 ml-2">${Utils.formatCurrency(exp.amount)}</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        ` : ''}
+                    <div class="space-y-2 mt-2">
+                        ${pendingRecurring.map(exp => this._renderPendingRecurringCard(exp)).join('')}
                     </div>
                 </details>
             `;
         }
-        
-        // Check if multi-month view
-        const useMonthGrouping = this.isMultiMonth();
-        
-        if (useMonthGrouping) {
-            // Group by month and render with expand/collapse
-            const monthGroups = this.groupByMonth(paginatedExpenses);
-            
-            list.innerHTML += monthGroups.map(group => {
+
+        // The timeline shows every expense in range (recurring rows carry a 🔁 badge
+        // inline, so no separate pill filter is needed).
+        const toRender = filteredExpenses;
+
+        if (toRender.length === 0) {
+            html += `<p class="text-gray-500 text-center py-8 text-sm">No expenses found for the selected filters.</p>`;
+            return html;
+        }
+
+        // Timeline: month-grouped when the range spans months, else date-grouped
+        if (this.isMultiMonth()) {
+            const monthGroups = this.groupByMonth(toRender);
+            html += monthGroups.map(group => {
                 const isExpanded = this.expandedMonths.has(group.key);
                 return `
-                    <div class="mb-4 bg-white rounded-xl border border-purple-300 overflow-hidden">
-                        <!-- Month Header -->
-                        <div class="p-4 bg-gradient-to-r from-purple-200 to-pink-200 cursor-pointer hover:from-purple-300 hover:to-pink-300 transition-all"
+                    <div class="mb-4 bg-white rounded-2xl border border-purple-200 overflow-hidden shadow-sm">
+                        <div class="p-4 bg-gradient-to-r from-purple-100 to-pink-100 cursor-pointer hover:from-purple-200 hover:to-pink-200 transition-all"
                              onclick="Expenses.toggleMonth('${group.key}')">
                             <div class="flex justify-between items-center">
                                 <div class="flex items-center gap-3">
@@ -1522,37 +1628,230 @@ const Expenses = {
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <p class="text-xl font-bold text-purple-900">${Utils.formatCurrency(group.total)}</p>
-                                    <p class="text-xs text-purple-600">${isExpanded ? 'Click to collapse' : 'Click to expand'}</p>
+                                    <p class="text-xl font-bold text-purple-900 tabular-nums">₹${Utils.formatIndianNumber(group.total)}</p>
+                                    <p class="text-xs text-purple-600">${isExpanded ? 'Tap to collapse' : 'Tap to expand'}</p>
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Month Expenses (Collapsible) -->
-                        ${isExpanded ? `
-                            <div class="p-3 space-y-2 bg-purple-50">
-                                ${this.renderGroupedByDate(group.expenses)}
-                            </div>
-                        ` : ''}
+                        ${isExpanded ? `<div class="p-3 space-y-2 bg-purple-50/50">${this.renderGroupedByDate(group.expenses)}</div>` : ''}
                     </div>
                 `;
             }).join('');
         } else {
-            // Render grouped by date for single month
-            list.innerHTML += this.renderGroupedByDate(paginatedExpenses);
+            html += this.renderGroupedByDate(toRender);
         }
-        
-        // Restore recurring tab state after re-rendering (if there are recurring expenses)
-        if (totalRecurring > 0 && this.currentRecurringTab === 'completed') {
-            setTimeout(() => {
-                this.switchRecurringTab('completed');
-            }, 0);
-        }
-        
-        // Enable/disable filter and toggle buttons based on expenses existence
-        this.updateControlsState();
+
+        return html;
     },
-    
+
+    /**
+     * Render Calendar view — a month grid of spend, mirroring the verified Recurring
+     * calendar math. Cells show category dots for days with expenses; tapping a day
+     * reveals that day's transactions below. Uses actual expense date (not budget month).
+     * Sourced from the same filtered set as the summary (actual-date-in-month + search),
+     * so the grid, the day panel, and the summary card can never disagree.
+     */
+    _renderCalendarView(filteredExpenses = null) {
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+        const today = new Date();
+        const isCurrentMonth = this.calYear === today.getFullYear() && this.calMonth === today.getMonth() + 1;
+        const todayDate = today.getDate();
+
+        // Build day map for the browsed month from actual expense dates. Fall back to the
+        // full store if a caller invokes us without the pre-filtered set (defensive).
+        const source = filteredExpenses || window.DB.expenses;
+        const dayMap = {};
+        source.forEach(e => {
+            const d = new Date(e.date);
+            if (d.getFullYear() === this.calYear && d.getMonth() + 1 === this.calMonth) {
+                const day = d.getDate();
+                if (!dayMap[day]) dayMap[day] = [];
+                dayMap[day].push(e);
+            }
+        });
+
+        let html = `<div id="expenses-cal-view">`;
+        html += `
+            <div class="flex items-center justify-between mb-3">
+                <button class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center" onclick="Expenses.calPrevMonth()" aria-label="Previous month">
+                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <div class="flex items-center gap-3">
+                    <h2 class="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">${monthNames[this.calMonth - 1]} ${this.calYear}</h2>
+                    <button class="px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-semibold hover:bg-purple-200" onclick="Expenses.calToday()">Today</button>
+                </div>
+                <button class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center" onclick="Expenses.calNextMonth()" aria-label="Next month">
+                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+            </div>
+        `;
+
+        const firstDay = new Date(this.calYear, this.calMonth - 1, 1).getDay();
+        const daysInMonth = new Date(this.calYear, this.calMonth, 0).getDate();
+
+        html += `
+            <div class="mb-4">
+                <div class="bg-purple-50/50 rounded-2xl p-3">
+                    <div class="grid grid-cols-7 gap-1 mb-2">
+                        ${dayNames.map(d => `<div class="text-center text-xs font-semibold text-gray-500">${d}</div>`).join('')}
+                    </div>
+                    <div class="grid grid-cols-7 gap-1">
+        `;
+
+        for (let i = 0; i < firstDay; i++) {
+            html += `<div style="aspect-ratio: 1;"></div>`;
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const items = dayMap[day] || [];
+            const isTodayCell = isCurrentMonth && day === todayDate;
+            const isSelected = day === this.calSelectedDay;
+            // Day total mirrors the summary/detail-panel rule (loan EMIs only when toggled on).
+            const dayAmount = items.reduce((sum, e) => (this.includeLoansInTotal || !this.isLoanEMIExpense(e)) ? sum + e.amount : sum, 0);
+
+            let cellClass = 'rounded-lg flex flex-col items-center justify-center font-medium transition-colors cursor-pointer';
+            if (isSelected) {
+                cellClass += ' bg-gradient-to-br from-purple-600 to-pink-600 text-white';
+            } else if (isTodayCell) {
+                cellClass += ' ring-2 ring-purple-500 text-gray-700 hover:bg-purple-100';
+            } else {
+                cellClass += ' text-gray-700 hover:bg-purple-100';
+            }
+
+            const dayLabel = `Select day ${day}${items.length ? `, ${items.length} expense${items.length > 1 ? 's' : ''} totalling ₹${Utils.formatIndianNumber(dayAmount)}` : ''}`;
+            html += `<button style="aspect-ratio: 1; position: relative;" class="${cellClass}" onclick="Expenses.calSelectDay(${day})" aria-label="${dayLabel}">`;
+            html += `<span class="text-sm leading-none">${day}</span>`;
+            // Compact spend total under the date (e.g. ₹2.2k) — a glanceable amount that
+            // replaces the old category dots. Exact figures live in the detail panel below.
+            if (dayAmount > 0) {
+                html += `<span class="leading-none mt-0.5 tabular-nums ${isSelected ? 'text-white/90' : 'text-purple-600'}" style="font-size: 9px;">₹${Utils.formatCompactNumber(dayAmount)}</span>`;
+            }
+            html += `</button>`;
+        }
+
+        html += `
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Selected-day detail panel
+        const dayItems = (dayMap[this.calSelectedDay] || []).slice().sort((a, b) => {
+            return new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime();
+        });
+        const dayOfWeek = new Date(this.calYear, this.calMonth - 1, this.calSelectedDay).getDay();
+        const dayNamesLong = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayTotal = dayItems.reduce((sum, e) => this.includeLoansInTotal || !this.isLoanEMIExpense(e) ? sum + e.amount : sum, 0);
+
+        html += `<div>`;
+        html += `<div class="mb-2 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-700">${isCurrentMonth && this.calSelectedDay === todayDate ? 'Today • ' : ''}${dayNamesLong[dayOfWeek]}, ${this.calSelectedDay} ${monthNames[this.calMonth - 1]}</h3>
+            ${dayItems.length ? `<div class="text-xs font-bold text-purple-600 tabular-nums">₹${Utils.formatIndianNumber(dayTotal)}</div>` : ''}
+        </div>`;
+
+        if (dayItems.length === 0) {
+            html += `<div class="bg-gray-50 rounded-xl p-8 text-center"><div class="text-4xl mb-2">📅</div><div class="text-sm text-gray-500">No expenses this day</div></div>`;
+        } else {
+            html += `<div class="space-y-2">${dayItems.map(e => this._renderExpenseCard(e)).join('')}</div>`;
+        }
+        html += `</div></div>`;
+
+        return html;
+    },
+
+    /**
+     * Point the active date range at the currently-browsed calendar month
+     * (1st → last day). Keeps the summary card and the calendar grid in lockstep so
+     * paging prev/next months re-totals the summary. Also updates the header filter
+     * label so it reads the browsed month (e.g. "July 2026") rather than a stale preset.
+     */
+    _syncRangeToCalendarMonth() {
+        const y = this.calYear;
+        const m = this.calMonth;
+        const lastDay = new Date(y, m, 0).getDate();
+        this.startDate = `${y}-${String(m).padStart(2, '0')}-01`;
+        this.endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+        const monthLabel = new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        const filterLabel = document.getElementById('date-filter-label');
+        const filterLabelInfo = document.getElementById('date-filter-label-info');
+        if (filterLabel) filterLabel.textContent = monthLabel;
+        if (filterLabelInfo) filterLabelInfo.textContent = monthLabel;
+    },
+
+    // Calendar month navigation (mirrors RecurringExpenses)
+    calPrevMonth() {
+        if (this.calMonth === 1) { this.calMonth = 12; this.calYear--; } else { this.calMonth--; }
+        this.calSelectedDay = 1;
+        this.render();
+    },
+    calNextMonth() {
+        if (this.calMonth === 12) { this.calMonth = 1; this.calYear++; } else { this.calMonth++; }
+        this.calSelectedDay = 1;
+        this.render();
+    },
+    calToday() {
+        const t = new Date();
+        this.calYear = t.getFullYear();
+        this.calMonth = t.getMonth() + 1;
+        this.calSelectedDay = t.getDate();
+        this.render();
+    },
+    calSelectDay(day) {
+        this.calSelectedDay = day;
+        this.render();
+    },
+
+    /**
+     * Render a single modernized expense card (category avatar + title + chips + amount).
+     * Shared by the calendar day panel and the list timeline.
+     */
+    _renderExpenseCard(expense) {
+        const expDateObj = new Date(expense.date);
+        const bm = this.getExpenseBudgetMonth(expense);
+        const trackedBadge = (bm.month !== (expDateObj.getMonth() + 1) || bm.year !== expDateObj.getFullYear())
+            ? `<span class="text-[11px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">tracked in ${new Date(bm.year, bm.month - 1, 1).toLocaleDateString('en-US', { month: 'short' })}</span>`
+            : '';
+        const isRecurring = expense.isRecurring || expense.category === 'emi';
+        const eventChip = expense.event ? `<span class="text-[11px] bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded flex items-center gap-0.5">🎉 ${Utils.escapeHtml(expense.event)}</span>` : '';
+        return `
+            <div class="p-3 bg-white rounded-xl border border-purple-100 hover:bg-purple-50 transition-all">
+                <div class="flex items-start gap-3">
+                    <div onclick="Expenses.showExpenseDetails(${expense.id})" class="cursor-pointer">${this._categoryAvatar(expense.category)}</div>
+                    <div onclick="Expenses.showExpenseDetails(${expense.id})" class="flex-1 min-w-0 cursor-pointer">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            ${expense.paymentMethod ? this.getPaymentMethodIcon(expense.paymentMethod) : ''}
+                            <h4 class="font-semibold text-purple-800 text-sm" title="${Utils.escapeHtml(expense.title || expense.description || '')}">${Utils.escapeHtml(this.truncateName(expense.title || expense.description, 22))}</h4>
+                            <span class="text-xs bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                ${isRecurring ? '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>' : ''}
+                                <span>${Utils.escapeHtml(this.formatCategoryDisplay(expense.category))}</span>
+                            </span>
+                            ${eventChip}
+                            ${trackedBadge}
+                        </div>
+                        <div class="flex items-center justify-between mt-1">
+                            <div class="min-w-0 flex-1">
+                                ${expense.description ? `<p class="text-xs text-gray-600 truncate">${Utils.escapeHtml(expense.description)}</p>` : ''}
+                                ${expense.suggestedCard && !expense.paymentMethod ? `<p class="text-xs text-green-600">💳 ${Utils.escapeHtml(expense.suggestedCard)}</p>` : ''}
+                                ${this.getFullDetailsLink(expense)}
+                            </div>
+                            <p class="text-base font-bold text-purple-700 tabular-nums ml-3 flex-shrink-0">₹${Utils.formatIndianNumber(parseFloat(expense.amount))}</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1 flex-shrink-0">
+                        <button onclick="openExpenseModal(${expense.id})" class="text-green-600 hover:text-green-800 p-1.5" title="Edit" aria-label="Edit expense">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        </button>
+                        <button onclick="Expenses.deleteWithConfirm(${expense.id})" class="text-red-500 hover:text-red-700 p-1.5" title="Delete" aria-label="Delete expense">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
     /**
      * Render expenses grouped by date
      */
@@ -1613,63 +1912,13 @@ const Expenses = {
                             <span class="font-bold text-sm text-purple-900 tabular-nums">₹${Utils.formatIndianNumber(dayTotal)}</span>
                         </div>
                     </summary>
-                    <div class="border-l border-r border-b border-purple-200">
-                        ${dayExpenses.map((expense, expIndex) => {
-                            const isAutoRecurring = this.isAutoRecurringExpense(expense);
-                            const isLast = expIndex === dayExpenses.length - 1;
-                            // If the budget (tracking) month differs from the expense date's
-                            // month, surface a small cue so the divergence isn't invisible.
-                            const expDateObj = new Date(expense.date);
-                            const bm = this.getExpenseBudgetMonth(expense);
-                            const trackedBadge = (bm.month !== (expDateObj.getMonth() + 1) || bm.year !== expDateObj.getFullYear())
-                                ? `<span class="text-[11px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">tracked in ${new Date(bm.year, bm.month - 1, 1).toLocaleDateString('en-US', { month: 'short' })}</span>`
-                                : '';
-                            return `
-                            <div class="p-3 bg-white hover:bg-purple-50 transition-all ${!isLast ? 'border-b border-purple-100' : ''}">
-                                <!-- Top Row: Title with Category + Actions -->
-                                <div class="flex justify-between items-start mb-1">
-                                    <div onclick="Expenses.showExpenseDetails(${expense.id})" class="flex-1 flex items-center gap-2 flex-wrap cursor-pointer">
-                                        ${expense.paymentMethod ? this.getPaymentMethodIcon(expense.paymentMethod) : ''}
-                                        <h4 class="font-semibold text-purple-800 text-sm" title="${Utils.escapeHtml(expense.title || expense.description || '')}">${Utils.escapeHtml(this.truncateName(expense.title || expense.description, 22))}</h4>
-                                        <span class="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded flex items-center gap-1">
-                                            ${(expense.isRecurring || expense.category === 'emi') ? '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>' : ''}
-                                            <span>${Utils.escapeHtml(this.formatCategoryDisplay(expense.category))}</span>
-                                        </span>
-                                        ${trackedBadge}
-                                    </div>
-                                    <div class="flex gap-1">
-                                        <button onclick="openExpenseModal(${expense.id})" class="text-green-600 hover:text-green-800 p-2" title="Edit" aria-label="Edit expense">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                            </svg>
-                                        </button>
-                                        <button onclick="Expenses.deleteWithConfirm(${expense.id})" class="text-red-500 hover:text-red-700 p-2" title="Delete" aria-label="Delete expense">
-                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <!-- Bottom Row: Description + Amount -->
-                                <div onclick="Expenses.showExpenseDetails(${expense.id})" class="flex justify-between items-start cursor-pointer">
-                                    <div class="flex-1">
-                                        ${expense.description ? `<p class="text-xs text-gray-600">${Utils.escapeHtml(expense.description)}</p>` : '<p class="text-xs text-gray-400 italic">No description</p>'}
-                                        ${expense.suggestedCard && !expense.paymentMethod ? `<p class="text-xs text-green-600 mt-1">💳 ${Utils.escapeHtml(expense.suggestedCard)}</p>` : ''}
-                                        ${this.getFullDetailsLink(expense)}
-                                    </div>
-                                    <div class="text-right ml-4">
-                                        <p class="text-base font-bold text-purple-700 tabular-nums">₹${Utils.formatIndianNumber(parseFloat(expense.amount))}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                        }).join('')}
+                    <div class="p-2 space-y-2 border-l border-r border-b border-purple-200 rounded-b-xl bg-purple-50/30">
+                        ${dayExpenses.map(expense => this._renderExpenseCard(expense)).join('')}
                     </div>
                 </details>
             `;
         }).join('');
-        
+
         return html;
     },
     
@@ -1737,48 +1986,6 @@ const Expenses = {
         this.delete(id);
         this.render();
         Utils.showSuccess('Expense deleted');
-    },
-    
-    /**
-     * Switch between Upcoming and Completed tabs in recurring expenses
-     */
-    switchRecurringTab(tab) {
-        // Store current tab
-        this.currentRecurringTab = tab;
-        
-        // Tab buttons
-        const upcomingTab = document.getElementById('recurring-tab-upcoming');
-        const completedTab = document.getElementById('recurring-tab-completed');
-        
-        // Tab contents
-        const upcomingContent = document.getElementById('recurring-content-upcoming');
-        const completedContent = document.getElementById('recurring-content-completed');
-        
-        if (tab === 'upcoming') {
-            // Activate upcoming tab
-            if (upcomingTab) {
-                upcomingTab.className = 'flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-blue-500 text-blue-600';
-            }
-            if (completedTab) {
-                completedTab.className = 'flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
-            }
-            
-            // Show upcoming content
-            if (upcomingContent) upcomingContent.classList.remove('hidden');
-            if (completedContent) completedContent.classList.add('hidden');
-        } else if (tab === 'completed') {
-            // Activate completed tab
-            if (upcomingTab) {
-                upcomingTab.className = 'flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700';
-            }
-            if (completedTab) {
-                completedTab.className = 'flex-1 px-3 py-2 text-xs font-semibold transition-colors border-b-2 border-green-500 text-green-600';
-            }
-            
-            // Show completed content
-            if (upcomingContent) upcomingContent.classList.add('hidden');
-            if (completedContent) completedContent.classList.remove('hidden');
-        }
     },
     
     /**
