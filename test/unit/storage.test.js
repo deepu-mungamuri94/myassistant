@@ -696,6 +696,8 @@ describe('Storage Module', () => {
         });
 
         it('returns "cancelled" when user cancels native share', async () => {
+            // Android's Share plugin REJECTS with "Share canceled" on cancel — it does
+            // not resolve with a null activityType.
             window.Capacitor = {
                 isNativePlatform: vi.fn(() => true),
                 Plugins: {
@@ -703,7 +705,7 @@ describe('Storage Module', () => {
                         writeFile: vi.fn(async () => ({ uri: 'file://backup.enc' }))
                     },
                     Share: {
-                        share: vi.fn(async () => ({ activityType: null }))
+                        share: vi.fn(async () => { throw new Error('Share canceled'); })
                     }
                 }
             };
@@ -711,6 +713,26 @@ describe('Storage Module', () => {
             const result = await Storage.exportData();
 
             expect(result).toBe('cancelled');
+        });
+
+        it('returns true on successful native share (Android resolves with empty activityType)', async () => {
+            // Regression: Android resolves with activityType === '' on success. This must
+            // NOT be misread as a cancellation — otherwise Drive export gives no feedback.
+            window.Capacitor = {
+                isNativePlatform: vi.fn(() => true),
+                Plugins: {
+                    Filesystem: {
+                        writeFile: vi.fn(async () => ({ uri: 'file://backup.enc' }))
+                    },
+                    Share: {
+                        share: vi.fn(async () => ({ activityType: '' }))
+                    }
+                }
+            };
+
+            const result = await Storage.exportData();
+
+            expect(result).toBe(true);
         });
 
         it('shows loading indicators during export', async () => {

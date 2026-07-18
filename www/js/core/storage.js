@@ -268,13 +268,11 @@ const Storage = {
                     });
                     
                     console.log('✅ Share completed:', shareResult);
-                    
-                    // Check if user cancelled the share
-                    if (shareResult.activityType === null || shareResult.activityType === undefined) {
-                        console.log('ℹ️ User cancelled the share dialog');
-                        return 'cancelled';
-                    }
-                    
+                    // NOTE: On Android, Share.share() resolves with activityType === ''
+                    // on success and REJECTS ("Share canceled") when the user backs out —
+                    // so a resolved promise here always means success. (Do NOT treat an
+                    // empty-string activityType as a cancellation.)
+
                     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                     console.log('✅ ENCRYPTED BACKUP SHARED');
                     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -285,13 +283,21 @@ const Storage = {
                     
                     return true;
                 } catch (capacitorError) {
-                    console.error('❌ Native export failed:', capacitorError);
-                    console.error('Error details:', JSON.stringify(capacitorError, null, 2));
-                    
                     if (window.Loading) {
                         window.Loading.hide();
                     }
-                    
+
+                    // The Share plugin REJECTS with "Share canceled" when the user
+                    // dismisses the share sheet — this is a normal cancel, not a failure.
+                    const msg = (capacitorError && capacitorError.message) || '';
+                    if (/cancel/i.test(msg)) {
+                        console.log('ℹ️ User cancelled the share dialog');
+                        return 'cancelled';
+                    }
+
+                    console.error('❌ Native export failed:', capacitorError);
+                    console.error('Error details:', JSON.stringify(capacitorError, null, 2));
+
                     // Show detailed error
                     if (window.Utils) {
                         window.Utils.showError(

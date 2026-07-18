@@ -671,10 +671,22 @@ const Navigation = {
      * Export data
      */
     async exportData() {
-        const success = await window.Storage.exportData();
-        if (success) {
+        const result = await window.Storage.exportData();
+        if (result === 'cancelled') {
+            // User dismissed the share sheet — close silently, no error.
             this.closeExportModal();
+            return;
         }
+        if (result) {
+            this.closeExportModal();
+            if (window.Utils) {
+                window.Utils.showSuccess(
+                    '✅ Backup exported!\n🔐 Keep your master password safe — you\'ll need it to restore.',
+                    4000
+                );
+            }
+        }
+        // On failure (result === false) Storage already surfaced an error toast.
     },
 
     /**
