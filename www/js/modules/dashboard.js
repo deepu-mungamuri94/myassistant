@@ -650,7 +650,7 @@ const Dashboard = {
                     label: 'Recurring',
                     value: recurringPercent,
                     amount: `₹${Utils.formatIndianNumber(recurringExpenses)}`,
-                    c1: '#f97316', c2: '#f59e0b',
+                    c1: '#ea580c', c2: '#d97706',
                     onclick: `Dashboard.showMonthList('recurring', ${targetYear}, ${targetMonth})`
                 })}
                 ${this._renderMeter({
@@ -665,7 +665,7 @@ const Dashboard = {
                     value: regularPercent,
                     prefix: isProjected ? '~' : '',
                     amount: `${isProjected ? '~' : ''}₹${Utils.formatIndianNumber(regularExpenses)}`,
-                    c1: '#14b8a6', c2: '#0d9488',
+                    c1: '#0d9488', c2: '#0f766e',
                     status: isProjected ? '<span class="text-[11px] text-teal-600 font-semibold">est.</span>' : '',
                     onclick: `Dashboard.showMonthList('regular', ${targetYear}, ${targetMonth})`
                 })}
@@ -7945,35 +7945,49 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                 </div>
                 ${paySchedule === 'last_week' ? `<p class="text-[10px] text-gray-400 mt-1 mb-2">Compared with ${incomeData.monthName} ${incomeData.year} income</p>` : '<div class="mb-3"></div>'}
                 
-                <!-- Breakdown meters -->
-                <div class="grid grid-cols-3 gap-2 max-w-full">
-                    ${this._renderMeter({
-                        label: 'Expenses',
-                        value: hasIncomeData ? expensesPercent : 'N/A',
-                        amount: `₹${Utils.formatIndianNumber(Math.round(expenses))}`,
-                        c1: '#ef4444', c2: '#dc2626',
-                        onclick: `Dashboard.showMonthlyBreakdownList('expenses')`
-                    })}
-                    ${this._renderMeter({
-                        label: 'Investments',
-                        value: hasIncomeData ? investmentsPercent : 'N/A',
-                        amount: `₹${Utils.formatIndianNumber(Math.round(investments))}`,
-                        c1: '#06b6d4', c2: '#0891b2',
-                        onclick: `Dashboard.showMonthlyBreakdownList('investments')`
-                    })}
-                    ${this._renderMeter({
-                        label: 'Balance',
-                        value: hasIncomeData ? balancePercent : 'N/A',
-                        // Balance can be negative — clamp the ring at 0 but keep the real number.
-                        pct: hasIncomeData ? Math.max(0, parseFloat(balancePercent)) : 0,
-                        // Don't rely on grey color alone — flag a negative balance with a text cue.
-                        status: hasIncomeData && balance < 0 ? '<span class="text-[11px] text-gray-600 font-semibold">▼ shortfall</span>' : '',
-                        amount: hasIncomeData ? `₹${Utils.formatIndianNumber(Math.round(balance))}` : 'No income data',
-                        c1: hasIncomeData && balance >= 0 ? '#22c55e' : '#9ca3af',
-                        c2: hasIncomeData && balance >= 0 ? '#16a34a' : '#6b7280',
-                        // Tapping the dial shows the same explainer the old "i" badge did.
-                        onclick: `Dashboard.showTooltip(event, '${hasIncomeData ? 'Balance: Income - (Expenses + Investments)' : 'No income data for ' + incomeData.monthName + ' ' + incomeData.year}')`
-                    })}
+                <!-- Breakdown Cards -->
+                <div class="grid grid-cols-3 gap-3 max-w-full">
+                    <div onclick="Dashboard.showMonthlyBreakdownList('expenses')" class="bg-gradient-to-br from-red-500 to-red-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
+                        <div class="text-xs opacity-90 leading-tight">Expenses</div>
+                        <div class="flex-1 flex items-center justify-center">
+                            ${hasIncomeData
+                                ? `<div class="text-3xl font-bold">${expensesPercent}<span class="text-lg opacity-80">%</span></div>`
+                                : `<div class="text-xl font-bold opacity-70">N/A</div>`
+                            }
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(expenses))}</div>
+                            <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
+                        </div>
+                    </div>
+
+                    <div onclick="Dashboard.showMonthlyBreakdownList('investments')" class="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg p-3 text-white shadow-lg relative flex flex-col cursor-pointer hover:shadow-xl transition-shadow active:scale-95">
+                        <div class="text-xs opacity-90 leading-tight">Investments</div>
+                        <div class="flex-1 flex items-center justify-center">
+                            ${hasIncomeData
+                                ? `<div class="text-3xl font-bold">${investmentsPercent}<span class="text-lg opacity-80">%</span></div>`
+                                : `<div class="text-xl font-bold opacity-70">N/A</div>`
+                            }
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="text-xs opacity-90">₹${Utils.formatIndianNumber(Math.round(investments))}</div>
+                            <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">›</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-br ${hasIncomeData && balance >= 0 ? 'from-green-500 to-emerald-600' : 'from-gray-500 to-gray-600'} rounded-lg p-3 text-white shadow-lg relative flex flex-col">
+                        <div class="text-xs opacity-90 leading-tight">Balance</div>
+                        <div class="flex-1 flex items-center justify-center">
+                            ${hasIncomeData
+                                ? `<div class="text-3xl font-bold">${balancePercent}<span class="text-lg opacity-80">%</span></div>`
+                                : `<div class="text-xl font-bold opacity-70">N/A</div>`
+                            }
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="text-xs opacity-90 truncate">${hasIncomeData ? '₹' + Utils.formatIndianNumber(Math.round(balance)) : 'No income data'}</div>
+                            <button onclick="event.stopPropagation(); Dashboard.showTooltip(event, '${hasIncomeData ? 'Balance: Income - (Expenses + Investments)' : 'No income data for ' + incomeData.monthName + ' ' + incomeData.year}')" class="w-4 h-4 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[10px] font-bold transition-all flex-shrink-0">i</button>
+                        </div>
+                    </div>
                 </div>
                 ${this._renderEndOfMonthAdvice({ filterMonth, expenseYear, expenseMonth, hasIncomeData, balance })}
             </div>
@@ -8200,8 +8214,8 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
                     {
                         label: 'Investments',
                         data: data.map(d => Math.round(d.investments)),
-                        borderColor: '#06b6d4',  // cyan-500 — matches Investments circle
-                        backgroundColor: 'rgba(6, 182, 212, 0.08)',
+                        borderColor: '#4f46e5',  // indigo-600 — matches Investments card/meter
+                        backgroundColor: 'rgba(79, 70, 229, 0.08)',
                         tension: 0.35,
                         borderWidth: borderWidth,
                         pointRadius: pointRadius,
