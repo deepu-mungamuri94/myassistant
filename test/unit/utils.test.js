@@ -226,4 +226,40 @@ describe('Utils Module', () => {
       expect(roundTrip("a\\'b")).toBe("a\\'b");
     });
   });
+
+  describe('generateId', () => {
+    it('returns a number', () => {
+      const id = Utils.generateId();
+      expect(typeof id).toBe('number');
+      expect(Number.isFinite(id)).toBe(true);
+    });
+
+    it('returns strictly-increasing values across rapid successive calls', () => {
+      // Call generateId 1000 times in a tight loop with no delay.
+      // Under the old implementation (plain Date.now()), calls within the same
+      // millisecond would return identical values, causing collisions.
+      // The hardened implementation with _lastId monotonic guard ensures every
+      // call returns a strictly greater value than the previous.
+      const ids = [];
+      for (let i = 0; i < 1000; i++) {
+        ids.push(Utils.generateId());
+      }
+
+      for (let i = 1; i < ids.length; i++) {
+        expect(ids[i]).toBeGreaterThan(ids[i - 1]);
+      }
+    });
+
+    it('never returns duplicate ids', () => {
+      // Generate 1000 ids and collect them in a Set.
+      // If any duplicates exist, Set size will be less than 1000.
+      const ids = [];
+      for (let i = 0; i < 1000; i++) {
+        ids.push(Utils.generateId());
+      }
+
+      const uniqueIds = new Set(ids);
+      expect(uniqueIds.size).toBe(1000);
+    });
+  });
 });

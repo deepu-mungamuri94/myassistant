@@ -302,10 +302,26 @@ const Utils = {
     },
 
     /**
-     * Generate unique ID
+     * Monotonic guard for generateId(). Date.now() alone collides when two
+     * IDs are minted in the same millisecond (e.g. the recurring-expense
+     * auto-add loop creating several expenses back-to-back). Two records with
+     * the same id make find(e => e.id === id) return the wrong one, so
+     * edit/view/delete on the 2nd item silently act on the 1st.
+     */
+    _lastId: 0,
+
+    /**
+     * Generate a unique, strictly-increasing numeric ID.
+     * Uses Date.now() but bumps past _lastId so same-millisecond calls never
+     * collide. Stays a Number for backward compatibility with existing IDs.
      */
     generateId() {
-        return Date.now();
+        let id = Date.now();
+        if (id <= this._lastId) {
+            id = this._lastId + 1;
+        }
+        this._lastId = id;
+        return id;
     },
 
     /**

@@ -830,4 +830,206 @@ describe('Storage Module', () => {
             expect(flushSpy).toHaveBeenCalled();
         });
     });
+
+    describe('_repairDuplicateIds() - duplicate id healing', () => {
+        let idCounter;
+
+        beforeEach(() => {
+            // Add generateId mock to window.Utils (returns unique increasing values)
+            idCounter = 900000;
+            window.Utils.generateId = vi.fn(() => ++idCounter);
+        });
+
+        it('reassigns colliding expense ids (CORE regression test)', () => {
+            // Simulate two recurring expenses auto-added in the same millisecond
+            window.DB.expenses = [
+                { id: 100, title: 'amma', amount: 10000 },
+                { id: 100, title: 'wife', amount: 10000 }
+            ];
+
+            Storage._repairDuplicateIds();
+
+            // Both expenses should now have DIFFERENT ids
+            expect(window.DB.expenses[0].id).toBe(100);
+            expect(window.DB.expenses[1].id).toBe(900001);
+            // Titles unchanged - proving they're independently addressable
+            expect(window.DB.expenses[0].title).toBe('amma');
+            expect(window.DB.expenses[1].title).toBe('wife');
+            expect(window.Utils.generateId).toHaveBeenCalled();
+        });
+
+        it('no-op when all ids unique (does not call save or generateId)', () => {
+            window.DB.expenses = [
+                { id: 1, title: 'a', amount: 100 },
+                { id: 2, title: 'b', amount: 200 },
+                { id: 3, title: 'c', amount: 300 }
+            ];
+
+            const saveSpy = vi.spyOn(Storage, 'save');
+
+            Storage._repairDuplicateIds();
+
+            expect(window.DB.expenses[0].id).toBe(1);
+            expect(window.DB.expenses[1].id).toBe(2);
+            expect(window.DB.expenses[2].id).toBe(3);
+            expect(window.Utils.generateId).not.toHaveBeenCalled();
+            expect(saveSpy).not.toHaveBeenCalled();
+        });
+
+        it('preserves id type (string stays string)', () => {
+            window.DB.expenses = [
+                { id: '5', title: 'first', amount: 100 },
+                { id: '5', title: 'second', amount: 200 }
+            ];
+
+            Storage._repairDuplicateIds();
+
+            expect(window.DB.expenses[0].id).toBe('5');
+            expect(typeof window.DB.expenses[1].id).toBe('string');
+            expect(window.DB.expenses[1].id).toBe('900001');
+        });
+
+        it('cross-collection independence (expense id 100 and card id 100 do not collide)', () => {
+            window.DB.expenses = [{ id: 100, title: 'expense', amount: 100 }];
+            window.DB.cards = [{ id: 100, name: 'card' }];
+
+            Storage._repairDuplicateIds();
+
+            // Both should keep id 100 (they're in different collections)
+            expect(window.DB.expenses[0].id).toBe(100);
+            expect(window.DB.cards[0].id).toBe(100);
+            expect(window.Utils.generateId).not.toHaveBeenCalled();
+        });
+
+        it('handles duplicates across 3+ items (all three get distinct ids)', () => {
+            window.DB.expenses = [
+                { id: 100, title: 'first', amount: 100 },
+                { id: 100, title: 'second', amount: 200 },
+                { id: 100, title: 'third', amount: 300 }
+            ];
+
+            Storage._repairDuplicateIds();
+
+            const ids = window.DB.expenses.map(e => e.id);
+            const uniqueIds = new Set(ids);
+            expect(uniqueIds.size).toBe(3);
+            expect(ids[0]).toBe(100);
+            expect(ids[1]).toBe(900001);
+            expect(ids[2]).toBe(900002);
+        });
+
+        it('calls save() when repairs happen', () => {
+            window.DB.expenses = [
+                { id: 100, title: 'first', amount: 100 },
+                { id: 100, title: 'second', amount: 200 }
+            ];
+
+            const saveSpy = vi.spyOn(Storage, 'save');
+
+            Storage._repairDuplicateIds();
+
+            expect(saveSpy).toHaveBeenCalled();
+        });
+
+        it('load() invokes repair and heals duplicates', () => {
+            const stored = {
+                expenses: [
+                    { id: 100, title: 'amma', amount: 10000 },
+                    { id: 100, title: 'wife', amount: 10000 }
+                ],
+                cards: [],
+                settings: {},
+                security: { masterPassword: 'test123' }
+            };
+            window.localStorage.getItem.mockReturnValue(JSON.stringify(stored));
+
+            const result = Storage.load();
+
+            expect(result).toBe(true);
+            // Duplicates should be healed
+            expect(window.DB.expenses[0].id).toBe(100);
+            expect(window.DB.expenses[1].id).toBe(900001);
+            expect(window.DB.expenses[0].title).toBe('amma');
+            expect(window.DB.expenses[1].title).toBe('wife');
+        });
+
+        it('handles numeric 5 and string "5" as collision', () => {
+            window.DB.expenses = [
+                { id: 5, title: 'numeric', amount: 100 },
+                { id: '5', title: 'string', amount: 200 }
+            ];
+
+            Storage._repairDuplicateIds();
+
+            // Should detect collision and reassign the second one
+            expect(window.DB.expenses[0].id).toBe(5);
+            expect(window.DB.expenses[1].id).toBe('900001');
+            expect(typeof window.DB.expenses[1].id).toBe('string');
+        });
+
+        it('does not throw when window.DB is missing or collections are not arrays', () => {
+            window.DB = null;
+
+            expect(() => Storage._repairDuplicateIds()).not.toThrow();
+
+            window.DB = { expenses: 'not-an-array' };
+
+            expect(() => Storage._repairDuplicateIds()).not.toThrow();
+        });
+
+        it('scans all expected collections', () => {
+            // Set up duplicates across multiple collections
+            window.DB.credentials = [{ id: 1 }, { id: 1 }];
+            window.DB.cards = [{ id: 2 }, { id: 2 }];
+            window.DB.expenses = [{ id: 3 }, { id: 3 }];
+            window.DB.portfolioInvestments = [{ id: 4 }, { id: 4 }];
+            window.DB.monthlyInvestments = [{ id: 5 }, { id: 5 }];
+            window.DB.recurringExpenses = [{ id: 6 }, { id: 6 }];
+            window.DB.sips = [{ id: 7 }, { id: 7 }];
+            window.DB.plans = [{ id: 8 }, { id: 8 }];
+            window.DB.loans = [{ id: 9 }, { id: 9 }];
+            window.DB.moneyLent = [{ id: 10 }, { id: 10 }];
+            window.DB.additionalIncome = [{ id: 11 }, { id: 11 }];
+            window.DB.cardBills = [{ id: 12 }, { id: 12 }];
+            window.DB.cardGroups = [{ id: 13 }, { id: 13 }];
+
+            Storage._repairDuplicateIds();
+
+            // All second items should have been reassigned
+            expect(window.DB.credentials[1].id).toBe(900001);
+            expect(window.DB.cards[1].id).toBe(900002);
+            expect(window.DB.expenses[1].id).toBe(900003);
+            expect(window.DB.portfolioInvestments[1].id).toBe(900004);
+            expect(window.DB.monthlyInvestments[1].id).toBe(900005);
+            expect(window.DB.recurringExpenses[1].id).toBe(900006);
+            expect(window.DB.sips[1].id).toBe(900007);
+            expect(window.DB.plans[1].id).toBe(900008);
+            expect(window.DB.loans[1].id).toBe(900009);
+            expect(window.DB.moneyLent[1].id).toBe(900010);
+            expect(window.DB.additionalIncome[1].id).toBe(900011);
+            expect(window.DB.cardBills[1].id).toBe(900012);
+            expect(window.DB.cardGroups[1].id).toBe(900013);
+        });
+
+        it('guards against fresh id itself colliding', () => {
+            window.DB.expenses = [
+                { id: 100, title: 'first' },
+                { id: 100, title: 'second' }
+            ];
+
+            // Mock generateId to return an id that already exists, then a unique one
+            let callCount = 0;
+            window.Utils.generateId = vi.fn(() => {
+                callCount++;
+                // First call returns 100 (collides), second call returns 900001 (unique)
+                return callCount === 1 ? 100 : 900001;
+            });
+
+            Storage._repairDuplicateIds();
+
+            // Should have called generateId twice to avoid collision
+            expect(window.Utils.generateId).toHaveBeenCalledTimes(2);
+            expect(window.DB.expenses[1].id).toBe(900001);
+        });
+    });
 });

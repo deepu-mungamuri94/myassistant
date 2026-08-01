@@ -153,12 +153,75 @@ const Storage = {
                 const loaded = JSON.parse(stored);
                 // Object.assign merges ALL properties, including future fields
                 Object.assign(window.DB, loaded);
+                // Heal any duplicate IDs left by the old Date.now()-only
+                // generateId() (same-millisecond collisions made edit/view/
+                // delete on one record act on another). See Utils.generateId.
+                this._repairDuplicateIds();
                 return true;
             }
         } catch (e) {
             console.error('Load error:', e);
         }
         return false;
+    },
+
+    /**
+     * One-time healer for duplicate record IDs.
+     *
+     * The old Utils.generateId() returned Date.now() with no monotonic guard,
+     * so records created in the same millisecond (notably several recurring
+     * expenses auto-added on the same date) ended up sharing an id. Because
+     * lookups use find(e => e.id === id), the 2nd+ record with a colliding id
+     * became unreachable — edit/view/delete on it silently hit the 1st record.
+     *
+     * This scans every id-bearing collection and reassigns fresh unique ids to
+     * later duplicates. IDs are never referenced as foreign keys by other
+     * records (links point outward via recurringId/loanId/suggestedCard), so
+     * reassignment is safe. Runs on every load but only writes when it finds a
+     * collision, so it is a no-op for healthy data.
+     */
+    _repairDuplicateIds() {
+        try {
+            const DB = window.DB;
+            if (!DB) return;
+            // Every top-level array whose items carry an `id`.
+            const collections = [
+                'credentials', 'cards', 'expenses', 'portfolioInvestments',
+                'monthlyInvestments', 'recurringExpenses', 'sips', 'plans',
+                'loans', 'moneyLent', 'additionalIncome', 'cardBills', 'cardGroups'
+            ];
+            const seen = new Set();
+            let repaired = 0;
+            collections.forEach((key) => {
+                const list = DB[key];
+                if (!Array.isArray(list)) return;
+                list.forEach((item) => {
+                    if (!item || item.id === undefined || item.id === null) return;
+                    // Normalize so numeric 5 and string "5" count as the same id.
+                    const seenKey = `${key}:${item.id}`;
+                    if (seen.has(seenKey)) {
+                        const wasString = typeof item.id === 'string';
+                        let fresh = window.Utils ? window.Utils.generateId() : Date.now();
+                        // Guard against the fresh id itself colliding.
+                        while (seen.has(`${key}:${fresh}`)) {
+                            fresh = window.Utils ? window.Utils.generateId() : fresh + 1;
+                        }
+                        item.id = wasString ? String(fresh) : fresh;
+                        seen.add(`${key}:${item.id}`);
+                        repaired++;
+                    } else {
+                        seen.add(seenKey);
+                    }
+                });
+            });
+            if (repaired > 0) {
+                console.warn(`🩹 Repaired ${repaired} duplicate record id(s).`);
+                // Persist the healed ids so the fix sticks across reloads.
+                if (typeof this.save === 'function') this.save();
+            }
+        } catch (e) {
+            console.error('Duplicate-id repair failed:', e);
+        }
     },
 
     /**

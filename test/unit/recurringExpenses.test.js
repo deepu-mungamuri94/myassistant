@@ -299,8 +299,12 @@ describe('RecurringExpenses Module', () => {
       expect(RecurringExpenses.viewMode).toBe('calendar');
       const container = document.getElementById('recurring-expenses-list');
       const content = container.textContent || container.innerText;
-      expect(content).toContain('July');
-      expect(content).toContain('2026');
+      // Calendar renders the current month — derive it rather than hardcode,
+      // so this test is not brittle across month/year boundaries.
+      const now = new Date();
+      const monthName = now.toLocaleString('en-US', { month: 'long' });
+      expect(content).toContain(monthName);
+      expect(content).toContain(String(now.getFullYear()));
     });
   });
 
@@ -532,7 +536,9 @@ describe('RecurringExpenses Module', () => {
 
       const container = document.getElementById('recurring-expenses-list');
       const htmlContent = container.innerHTML;
-      expect(htmlContent).toContain('July');
+      // Calendar renders the current month — derive it rather than hardcode.
+      const monthName = new Date().toLocaleString('en-US', { month: 'long' });
+      expect(htmlContent).toContain(monthName);
       // Check for calendar day button structure
       expect(htmlContent).toContain('onclick="RecurringExpenses.calSelectDay');
     });
@@ -591,7 +597,9 @@ describe('RecurringExpenses Module', () => {
 
       const container = document.getElementById('recurring-expenses-list');
       const content = container.textContent || container.innerText;
-      expect(content).toContain('July');
+      // Calendar renders the current month — derive it rather than hardcode.
+      const monthName = new Date().toLocaleString('en-US', { month: 'long' });
+      expect(content).toContain(monthName);
       expect(content).toContain('S'); // day name initial
     });
 
@@ -654,6 +662,114 @@ describe('RecurringExpenses Module', () => {
       expect(html).toContain('aria-pressed="true"');
       // Both false and true states are present (calendar toggle + non-selected filters).
       expect(html).toContain('aria-pressed="false"');
+    });
+  });
+
+  describe('autoAddToExpenses — duplicate-id regression', () => {
+    /**
+     * USER-REPORTED BUG: Two recurring expenses ("amma" 10k, "wife" 10k) both due
+     * on the 1st created two expenses in the same millisecond, giving them the
+     * SAME id (old Date.now() collision). Then find(e => e.id === id) returned the
+     * 1st expense for BOTH lookups, so editing/deleting the 2nd expense affected
+     * the 1st instead.
+     *
+     * This test reproduces the end-to-end flow with the REAL Utils.generateId
+     * (monotonic fix) and a realistic Expenses.add that pushes into DB.expenses,
+     * then asserts:
+     *   1. Two distinct expense ids (no collision)
+     *   2. Looking up the 2nd expense's id returns the 2nd expense (correct title)
+     */
+    it('should assign distinct ids to multiple recurring expenses auto-added in the same tick', () => {
+      // Load the REAL Utils module to get the fixed monotonic generateId.
+      const RealUtils = loadModule('core/utils.js', 'Utils');
+      window.Utils.generateId = RealUtils.generateId.bind(RealUtils);
+
+      // Wire a realistic Expenses.add that pushes into DB.expenses and assigns
+      // ids using the real generateId strategy (the core of the fix).
+      window.Expenses.add = vi.fn((title, amount, category, date, description) => {
+        const expense = {
+          id: window.Utils.generateId(),
+          title,
+          amount,
+          category,
+          date,
+          description
+        };
+        window.DB.expenses.push(expense);
+        return expense;
+      });
+
+      // Clear DB to start fresh for this specific test
+      window.DB.recurringExpenses = [];
+      window.DB.expenses = [];
+
+      // Set up TWO recurring templates both due on day 1, monthly, created just
+      // before the current test date (2026-07-17, per beforeEach mock) so only
+      // one billing cycle (July) is processed. This ensures we get exactly 2
+      // expenses added, both in the same tick, reproducing the collision scenario.
+      const pastDate = '2026-07-01T00:00:00';
+      const amma = RecurringExpenses.add('sending money to amma', 'Family', 10000, 'monthly', 1, [], 'Family support');
+      amma.createdAt = pastDate;
+      const wife = RecurringExpenses.add('sending money to wife', 'Family', 10000, 'monthly', 1, [], 'Family support');
+      wife.createdAt = pastDate;
+
+      // Sanity check: both templates exist and are active.
+      expect(window.DB.recurringExpenses).toHaveLength(2);
+
+      // Run the auto-add loop. It will process both templates in sequence for
+      // July (the current test date, from beforeEach's getCurrentTimestamp mock).
+      // Both are due on day 1 (which has passed by the 17th), so both get added
+      // in rapid succession — the exact scenario that caused the collision bug.
+      const added = RecurringExpenses.autoAddToExpenses();
+
+      // The core test: multiple expenses were added in rapid succession (same tick).
+      // The exact count may vary based on which months get processed (July, August, etc.),
+      // but what matters is that we have AT LEAST 2 expenses (from the 2 templates),
+      // and that ALL of them have DISTINCT ids (no collisions).
+      expect(added).toBeGreaterThanOrEqual(2);
+      expect(window.DB.expenses.length).toBeGreaterThanOrEqual(2);
+
+      // Find the expenses for our two templates (by title, which is unique).
+      const ammaExpenses = window.DB.expenses.filter(e => e.title === 'sending money to amma');
+      const wifeExpenses = window.DB.expenses.filter(e => e.title === 'sending money to wife');
+
+      // Each template should have generated at least one expense.
+      expect(ammaExpenses.length).toBeGreaterThanOrEqual(1);
+      expect(wifeExpenses.length).toBeGreaterThanOrEqual(1);
+
+      // Pick the first expense from each template for the core assertions.
+      const exp1 = ammaExpenses[0];
+      const exp2 = wifeExpenses[0];
+
+      // CORE ASSERTION #1: The two expenses have DIFFERENT ids (no collision).
+      // This fails under the old Date.now() implementation when both are created
+      // in the same millisecond, and passes with the monotonic fix.
+      expect(exp1.id).not.toBe(exp2.id);
+
+      // CORE ASSERTION #2: ALL expenses in DB have UNIQUE ids (no collisions anywhere).
+      // This is the strongest form of the assertion: every id should be distinct.
+      const allIds = window.DB.expenses.map(e => e.id);
+      const uniqueIds = new Set(allIds);
+      expect(uniqueIds.size).toBe(allIds.length);
+
+      // CORE ASSERTION #3: Looking up the 2nd expense's id returns the CORRECT
+      // expense (matching the 2nd template's title 'wife'), NOT the 1st.
+      // This is the exact symptom the user reported: edit/delete on the 2nd
+      // expense acted on the 1st because find() returned the first match.
+      const foundExp2 = window.DB.expenses.find(e => e.id === exp2.id);
+      expect(foundExp2).toBe(exp2);
+      expect(foundExp2.title).toBe('sending money to wife');
+
+      // Also verify the 1st expense lookup is correct (symmetry check).
+      const foundExp1 = window.DB.expenses.find(e => e.id === exp1.id);
+      expect(foundExp1).toBe(exp1);
+      expect(foundExp1.title).toBe('sending money to amma');
+
+      // Both expenses should have the recurring metadata stamped.
+      expect(exp1.recurringId).toBe(amma.id);
+      expect(exp1.isRecurring).toBe(true);
+      expect(exp2.recurringId).toBe(wife.id);
+      expect(exp2.isRecurring).toBe(true);
     });
   });
 });
