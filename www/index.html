@@ -5947,7 +5947,188 @@ Technical: ${error.stack ? error.stack.split('\n')[0] : 'No stack trace'}
                 </svg>
             `;
         }
-        
+
+        // ---- Investment payment method picker ----
+        // Reuses the shared #payment-method-modal (same as expenses/recurring),
+        // writing into the investment-scoped hidden inputs. Only credit-card
+        // picks later affect a card's outstanding (see Investments save/edit).
+        window.openInvestmentPaymentMethodModal = function() {
+            const listEl = document.getElementById('payment-method-list');
+            if (!listEl) return;
+            let html = '';
+
+            // Quick Pay: None + Cash
+            html += `
+                <div class="p-3 border-b border-gray-200">
+                    <div class="text-xs font-semibold text-gray-500 uppercase mb-3">Quick Pay</div>
+                    <div class="grid grid-cols-4 gap-2" style="max-width: 280px;">
+                        <div onclick="selectInvestmentPaymentMethod(null)" class="flex flex-col items-center cursor-pointer hover:opacity-70 transition-opacity">
+                            <div class="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mb-1">
+                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </div>
+                            <span class="text-[10px] text-gray-500">None</span>
+                        </div>
+                        <div onclick="selectInvestmentPaymentMethod({type: 'cash'})" class="flex flex-col items-center cursor-pointer hover:opacity-70 transition-opacity">
+                            <img src="assets/icons/cash.svg" class="w-12 h-12 rounded-xl shadow-md mb-1" alt="Cash">
+                            <span class="text-[10px] text-gray-600">Cash</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // UPI
+            html += `
+                <div class="p-3 border-b border-gray-200">
+                    <div class="text-xs font-semibold text-gray-500 uppercase mb-3">UPI</div>
+                    <div class="grid grid-cols-4 gap-2" style="max-width: 280px;">
+                        <div onclick="selectInvestmentPaymentMethod({type: 'upi', id: 'phonepe'})" class="flex flex-col items-center cursor-pointer hover:opacity-70 transition-opacity">
+                            <img src="assets/icons/phonepe.webp" class="w-12 h-12 rounded-xl shadow-md mb-1" alt="PhonePe">
+                            <span class="text-[10px] text-gray-600">PhonePe</span>
+                        </div>
+                        <div onclick="selectInvestmentPaymentMethod({type: 'upi', id: 'gpay'})" class="flex flex-col items-center cursor-pointer hover:opacity-70 transition-opacity">
+                            <img src="assets/icons/gpay.webp" class="w-12 h-12 rounded-xl shadow-md mb-1" alt="Google Pay">
+                            <span class="text-[10px] text-gray-600">GPay</span>
+                        </div>
+                        <div onclick="selectInvestmentPaymentMethod({type: 'upi', id: 'paytm'})" class="flex flex-col items-center cursor-pointer hover:opacity-70 transition-opacity">
+                            <img src="assets/icons/paytm.webp" class="w-12 h-12 rounded-xl shadow-md mb-1" alt="Paytm">
+                            <span class="text-[10px] text-gray-600">Paytm</span>
+                        </div>
+                        <div onclick="selectInvestmentPaymentMethod({type: 'upi', id: 'other'})" class="flex flex-col items-center cursor-pointer hover:opacity-70 transition-opacity">
+                            <img src="assets/icons/upi.svg" class="w-12 h-12 rounded-xl shadow-md mb-1" alt="Other UPI">
+                            <span class="text-[10px] text-gray-600">Other</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Credit Cards (collapsible)
+            const creditCards = (window.DB.cards || []).filter(c => c.cardType === 'credit' && !c.isPlaceholder);
+            if (creditCards.length > 0) {
+                html += `
+                <details class="mt-2">
+                    <summary class="px-3 py-3 bg-gray-50 text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100 flex items-center justify-between rounded-lg mx-2">
+                        <span>💳 Credit Cards (${creditCards.length})</span>
+                        <svg class="w-4 h-4 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </summary>
+                    <div class="mt-1">`;
+                creditCards.forEach(card => {
+                    const cardName = card.nickname || card.name || 'Credit Card';
+                    const last4 = card.lastFourDigits || card.cardNumber?.slice(-4) || '••••';
+                    html += `
+                        <div onclick="selectInvestmentPaymentMethod({type: 'credit_card', id: '${card.id}', name: '${Utils.escapeHtml(cardName)}', last4: '${last4}'})" class="p-3 border-b border-gray-100 flex items-center gap-3 cursor-pointer hover:bg-indigo-50 transition-colors">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md">
+                                <span class="text-white text-lg">💳</span>
+                            </div>
+                            <div class="flex-1">
+                                <span class="font-medium text-indigo-700">${Utils.escapeHtml(cardName)}</span>
+                                <span class="text-xs text-gray-500 ml-2">•••• ${last4}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div></details>`;
+            }
+
+            // Debit Cards (collapsible)
+            const debitCards = (window.DB.cards || []).filter(c => c.cardType === 'debit' && !c.isPlaceholder);
+            if (debitCards.length > 0) {
+                html += `
+                <details class="mt-2 mb-2">
+                    <summary class="px-3 py-3 bg-gray-50 text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100 flex items-center justify-between rounded-lg mx-2">
+                        <span>💳 Debit Cards (${debitCards.length})</span>
+                        <svg class="w-4 h-4 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </summary>
+                    <div class="mt-1">`;
+                debitCards.forEach(card => {
+                    const cardName = card.nickname || card.name || 'Debit Card';
+                    const last4 = card.lastFourDigits || card.cardNumber?.slice(-4) || '••••';
+                    html += `
+                        <div onclick="selectInvestmentPaymentMethod({type: 'debit_card', id: '${card.id}', name: '${Utils.escapeHtml(cardName)}', last4: '${last4}'})" class="p-3 border-b border-gray-100 flex items-center gap-3 cursor-pointer hover:bg-teal-50 transition-colors">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-md">
+                                <span class="text-white text-lg">💳</span>
+                            </div>
+                            <div class="flex-1">
+                                <span class="font-medium text-teal-700">${Utils.escapeHtml(cardName)}</span>
+                                <span class="text-xs text-gray-500 ml-2">•••• ${last4}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div></details>`;
+            }
+
+            listEl.innerHTML = html;
+            document.getElementById('payment-method-modal').classList.remove('hidden');
+        }
+
+        window.selectInvestmentPaymentMethod = function(method) {
+            const clearBtn = '<span class="text-gray-500">Select payment method</span><svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>';
+            if (method) {
+                document.getElementById('investment-payment-method-type').value = method.type;
+                document.getElementById('investment-payment-method-id').value = method.id || '';
+                document.getElementById('investment-payment-method-name').value = method.name || '';
+                document.getElementById('investment-payment-method-last4').value = method.last4 || '';
+                updateInvestmentPaymentMethodDisplay(method);
+            } else {
+                document.getElementById('investment-payment-method-type').value = '';
+                document.getElementById('investment-payment-method-id').value = '';
+                document.getElementById('investment-payment-method-name').value = '';
+                document.getElementById('investment-payment-method-last4').value = '';
+                document.getElementById('investment-payment-method-btn').innerHTML = clearBtn;
+            }
+            closePaymentMethodModal();
+        }
+
+        window.updateInvestmentPaymentMethodDisplay = function(method) {
+            const btn = document.getElementById('investment-payment-method-btn');
+            if (!btn) return;
+            if (!method || !method.type) {
+                btn.innerHTML = '<span class="text-gray-500">Select payment method</span><svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>';
+                return;
+            }
+
+            let iconHtml = '';
+            let label = '';
+            let colorClass = 'text-gray-700';
+
+            switch(method.type) {
+                case 'cash':
+                    iconHtml = '<img src="assets/icons/cash.svg" class="w-8 h-8 rounded-lg">';
+                    label = 'Cash';
+                    colorClass = 'text-green-700';
+                    break;
+                case 'upi':
+                    if (method.id === 'phonepe') { iconHtml = '<img src="assets/icons/phonepe.webp" class="w-8 h-8 rounded-lg">'; label = 'PhonePe'; colorClass = 'text-purple-700'; }
+                    else if (method.id === 'gpay') { iconHtml = '<img src="assets/icons/gpay.webp" class="w-8 h-8 rounded-lg">'; label = 'Google Pay'; colorClass = 'text-blue-700'; }
+                    else if (method.id === 'paytm') { iconHtml = '<img src="assets/icons/paytm.webp" class="w-8 h-8 rounded-lg">'; label = 'Paytm'; colorClass = 'text-blue-700'; }
+                    else { iconHtml = '<img src="assets/icons/upi.svg" class="w-8 h-8 rounded-lg">'; label = 'Other UPI'; colorClass = 'text-green-700'; }
+                    break;
+                case 'credit_card':
+                    iconHtml = '<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center"><span class="text-white text-sm">💳</span></div>';
+                    label = method.name || 'Credit Card';
+                    if (method.last4) label += ` •••• ${method.last4}`;
+                    colorClass = 'text-indigo-700';
+                    break;
+                case 'debit_card':
+                    iconHtml = '<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center"><span class="text-white text-sm">💳</span></div>';
+                    label = method.name || 'Debit Card';
+                    if (method.last4) label += ` •••• ${method.last4}`;
+                    colorClass = 'text-teal-700';
+                    break;
+                default:
+                    iconHtml = '<div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center"><span>💳</span></div>';
+                    label = method.type;
+            }
+
+            btn.innerHTML = `<div class="flex items-center gap-2">${iconHtml}<span class="font-medium text-sm ${colorClass}">${Utils.escapeHtml(label)}</span></div><svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>`;
+        }
+
         window.updateRecurringFrequency = function() {
             const frequency = document.getElementById('recurring-modal-frequency').value;
             const monthsSection = document.getElementById('recurring-months-section');
