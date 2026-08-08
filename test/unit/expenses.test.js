@@ -836,6 +836,57 @@ describe('Expenses Module', () => {
     });
   });
 
+  describe('_getPendingRecurring() with dismissed items', () => {
+    beforeEach(() => {
+      // Mock getRecurringExpenses to return controlled data
+      Expenses.getRecurringExpenses = vi.fn(() => ({
+        upcoming: [
+          { title: 'Netflix', amount: 499, date: '2024-01-15', category: 'Entertainment', recurringId: 'rec-1', description: '' },
+          { title: 'Spotify', amount: 199, date: '2024-01-20', category: 'Entertainment', recurringId: 'rec-2', description: '' }
+        ],
+        completed: []
+      }));
+    });
+
+    it('should include dismissed items with dismissed flag', () => {
+      window.DB.dismissedRecurringExpenses = [
+        { recurringId: 'rec-1', date: '2024-01-15', title: 'Netflix', amount: 499 }
+      ];
+
+      const pending = Expenses._getPendingRecurring();
+
+      expect(pending).toHaveLength(2);
+      const netflix = pending.find(e => e.title === 'Netflix');
+      const spotify = pending.find(e => e.title === 'Spotify');
+      expect(netflix.dismissed).toBe(true);
+      expect(spotify.dismissed).toBeUndefined();
+    });
+
+    it('should sort dismissed items after non-dismissed', () => {
+      window.DB.dismissedRecurringExpenses = [
+        { recurringId: 'rec-1', date: '2024-01-15', title: 'Netflix', amount: 499 }
+      ];
+
+      const pending = Expenses._getPendingRecurring();
+
+      expect(pending[0].title).toBe('Spotify');
+      expect(pending[1].title).toBe('Netflix');
+      expect(pending[1].dismissed).toBe(true);
+    });
+
+    it('should still exclude items that exist in expenses', () => {
+      window.DB.expenses = [
+        { title: 'Netflix', date: '2024-01-15', amount: 499, recurringId: 'rec-1' }
+      ];
+      window.DB.dismissedRecurringExpenses = [];
+
+      const pending = Expenses._getPendingRecurring();
+
+      expect(pending).toHaveLength(1);
+      expect(pending[0].title).toBe('Spotify');
+    });
+  });
+
   describe('getAll()', () => {
     it('should return all expenses', () => {
       Expenses.add('Expense1', 100, 'Food', '2024-01-10');

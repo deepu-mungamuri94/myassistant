@@ -1517,9 +1517,7 @@ const Expenses = {
      */
     _getPendingRecurring() {
         const { upcoming } = this.getRecurringExpenses();
-        return upcoming.filter(exp => {
-            // Skip if the user dismissed this occurrence
-            if (this.isDismissed(exp.title, exp.date, exp.amount, exp.recurringId || null)) return false;
+        const filtered = upcoming.filter(exp => {
             // Skip if an equivalent expense already exists (by recurringId within the
             // month, else title/date/amount) — mirrors the old existsInExpenses check.
             const exists = window.DB.expenses.find(e => {
@@ -1529,7 +1527,20 @@ const Expenses = {
                 }
                 return e.title === exp.title && e.date === exp.date && Math.abs(e.amount - exp.amount) < 0.01;
             });
-            return !exists;
+            if (exists) return false;
+
+            // Tag dismissed items (they remain visible but get visual distinction)
+            if (this.isDismissed(exp.title, exp.date, exp.amount, exp.recurringId || null)) {
+                exp.dismissed = true;
+            }
+            return true;
+        });
+
+        // Sort: non-dismissed first, dismissed at the end
+        return filtered.sort((a, b) => {
+            if (a.dismissed && !b.dismissed) return 1;
+            if (!a.dismissed && b.dismissed) return -1;
+            return 0;
         });
     },
 
@@ -1557,11 +1568,18 @@ const Expenses = {
                     Add
                 </button>`
             : `<span class="px-2 py-1 bg-amber-100 text-amber-700 text-[11px] font-medium rounded-lg flex-shrink-0" title="Auto-added on its due date">🔁 auto</span>`;
+
+        // Visual distinction for dismissed items: amber border + dismissed badge
+        const borderClass = exp.dismissed ? 'border-amber-300 bg-amber-50/30' : 'border-purple-300 bg-white';
+        const dismissedBadge = exp.dismissed
+            ? `<span class="ml-1.5 px-1.5 py-0.5 bg-amber-100 text-amber-600 text-[10px] font-medium rounded">dismissed</span>`
+            : '';
+
         return `
-            <div class="flex items-center gap-3 p-3 bg-white rounded-xl border border-dashed border-purple-300">
+            <div class="flex items-center gap-3 p-3 rounded-xl border border-dashed ${borderClass}">
                 ${this._categoryAvatar(exp.category)}
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-semibold text-gray-800 truncate">${Utils.escapeHtml(exp.title)}</p>
+                    <p class="text-sm font-semibold text-gray-800 truncate">${Utils.escapeHtml(exp.title)}${dismissedBadge}</p>
                     <p class="text-xs text-gray-500 truncate">${displayDescription ? Utils.escapeHtml(displayDescription) + ' • ' : ''}Due ${Utils.formatDate(exp.date)}</p>
                 </div>
                 <div class="text-right flex items-center gap-2">
