@@ -72,9 +72,16 @@ describe('AI provider implementations (real files, mocked fetch)', () => {
       expect(lastFetch.body.model).toBe('gpt-4o-mini');
     });
 
-    it('Groq uses llama-3.3-70b-versatile by default', async () => {
+    it('Groq uses openai/gpt-oss-120b by default (NOT the retired llama-3.3-70b-versatile model)', async () => {
       await GroqAI.call('hi');
-      expect(lastFetch.body.model).toBe('llama-3.3-70b-versatile');
+      expect(lastFetch.body.model).toBe('openai/gpt-oss-120b');
+      expect(lastFetch.body.model).not.toBe('llama-3.3-70b-versatile');
+    });
+
+    it('Groq honors a user-configured model override', async () => {
+      window.DB.settings.groqModel = 'openai/gpt-oss-20b';
+      await GroqAI.call('hi');
+      expect(lastFetch.body.model).toBe('openai/gpt-oss-20b');
     });
 
     it('Perplexity uses sonar-pro by default (NOT the retired llama-3.1-sonar model)', async () => {

@@ -376,7 +376,7 @@ const Navigation = {
             
             // Set models (with defaults)
             if (geminiModelInput) geminiModelInput.value = window.DB.settings.geminiModel || 'gemini-2.5-flash-lite';
-            if (groqModelInput) groqModelInput.value = window.DB.settings.groqModel || 'llama-3.3-70b-versatile';
+            if (groqModelInput) groqModelInput.value = window.DB.settings.groqModel || 'openai/gpt-oss-120b';
             if (chatGptModelInput) chatGptModelInput.value = window.DB.settings.chatGptModel || 'gpt-4o-mini';
             if (perplexityModelInput) perplexityModelInput.value = window.DB.settings.perplexityModel || 'sonar-pro';
             
@@ -504,7 +504,7 @@ const Navigation = {
             window.DB.settings.geminiModel = geminiModelInput.value.trim() || 'gemini-2.5-flash-lite';
         }
         if (groqModelInput) {
-            window.DB.settings.groqModel = groqModelInput.value.trim() || 'llama-3.3-70b-versatile';
+            window.DB.settings.groqModel = groqModelInput.value.trim() || 'openai/gpt-oss-120b';
         }
         if (chatGptModelInput) {
             window.DB.settings.chatGptModel = chatGptModelInput.value.trim() || 'gpt-4o-mini';
@@ -572,7 +572,7 @@ const Navigation = {
         const priorityOrder = window.DB.settings.priorityOrder || ['groq', 'gemini', 'chatgpt', 'perplexity'];
         const providerNames = {
             'gemini': 'Google Gemini',
-            'groq': 'Groq (Llama 3.3)',
+            'groq': 'Groq (GPT-OSS 120B)',
             'chatgpt': 'OpenAI ChatGPT',
             'perplexity': 'Perplexity AI'
         };

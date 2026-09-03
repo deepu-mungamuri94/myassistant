@@ -1,14 +1,23 @@
 /**
  * Groq AI Provider
- * Uses Llama 3.3 70B Versatile model for fast, efficient AI responses
+ * Uses OpenAI GPT-OSS 120B (openai/gpt-oss-120b) model for fast, efficient AI responses
  * Groq offers high rate limits and low latency
+ *
+ * NOTE: the previous default, llama-3.3-70b-versatile, was deprecated by Groq
+ * (removed from the free/developer tier; full shutdown 08/16/26) and now returns
+ * "the model does not exist or you do not have access to it." openai/gpt-oss-120b
+ * is Groq's recommended production replacement. Stale persisted values are healed
+ * on load by Storage._migrateDeprecatedAIModels().
  */
 
 const GroqAI = {
     name: 'Groq',
-    
+
+    // Groq's recommended production replacement for the retired llama-3.3-70b-versatile.
+    DEFAULT_MODEL: 'openai/gpt-oss-120b',
+
     /**
-     * Call Groq API with Llama 3.3 70B model
+     * Call Groq API
      * @param {string} userMessage - The user's question/prompt
      * @param {string} systemInstructions - System instructions for the AI
      * @param {Array} conversationHistory - Previous messages for context
@@ -16,7 +25,7 @@ const GroqAI = {
      */
     async call(userMessage, systemInstructions = '', conversationHistory = []) {
         const apiKey = window.DB.groqApiKey;
-        const model = window.DB.settings.groqModel || 'llama-3.3-70b-versatile';
+        const model = window.DB.settings.groqModel || this.DEFAULT_MODEL;
         
         if (!apiKey) {
             throw new Error('Groq API key not configured. Please add it in Settings.');
@@ -30,7 +39,7 @@ const GroqAI = {
                 systemMessage = window.AIProvider.getSystemInstruction(systemInstructions);
                 // Build a compact text representation. Pretty-printed JSON balloons token
                 // count by ~30% (quotes, indentation, escaping) which can blow past Groq's
-                // 12k TPM limit on llama-3.3-70b-versatile for users with many cards.
+                // per-minute token limits for users with many cards.
                 systemMessage += '\n\nContext Data:\n' + window.AIProvider.formatContextText(systemInstructions);
             } else if (typeof systemInstructions === 'string') {
                 systemMessage = systemInstructions;
@@ -58,7 +67,7 @@ const GroqAI = {
                 content: userMessage
             });
             
-            console.log('🚀 Calling Groq API with Llama 3.3 70B...');
+            console.log(`🚀 Calling Groq API (${model})...`);
             
             const response = await window.AIProvider.fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',

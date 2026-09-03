@@ -157,6 +157,10 @@ const Storage = {
                 // generateId() (same-millisecond collisions made edit/view/
                 // delete on one record act on another). See Utils.generateId.
                 this._repairDuplicateIds();
+                // Rewrite any AI model IDs the provider has since deprecated,
+                // so a persisted stale value doesn't override the new default
+                // (Object.assign above restores whatever was last saved).
+                this._migrateDeprecatedAIModels();
                 return true;
             }
         } catch (e) {
@@ -221,6 +225,58 @@ const Storage = {
             }
         } catch (e) {
             console.error('Duplicate-id repair failed:', e);
+        }
+    },
+
+    /**
+     * One-time healer for AI model IDs a provider has retired.
+     *
+     * settings.<provider>Model is persisted in localStorage, and load()'s
+     * Object.assign(window.DB, loaded) restores it verbatim — so bumping the
+     * code default alone does NOT fix an existing user; their saved value keeps
+     * overriding it. This rewrites any known-dead model ID to its current
+     * replacement so both new and existing installs converge on a working model.
+     *
+     * Notably: Groq removed llama-3.3-70b-versatile / llama-3.1-8b-instant from
+     * the free tier (shutdown 08/16/26), which surfaced to users as
+     * "Groq (llama-3.3-70b-versatile): the model does not exist or you do not
+     * have access to it." openai/gpt-oss-120b is Groq's recommended production
+     * replacement.
+     *
+     * Map only IDs verified as retired — leave user-set custom models alone.
+     * Runs on every load but only writes when it actually rewrites something,
+     * so it is a no-op for healthy/current data.
+     */
+    _migrateDeprecatedAIModels() {
+        try {
+            const settings = window.DB && window.DB.settings;
+            if (!settings) return;
+            // settingsKey -> { deprecated model id -> replacement id }
+            const migrations = {
+                groqModel: {
+                    'llama-3.3-70b-versatile': 'openai/gpt-oss-120b',
+                    'llama-3.1-8b-instant': 'openai/gpt-oss-120b',
+                    // Legacy example ID that used to ship as a placeholder.
+                    'mixtral-8x7b-32768': 'openai/gpt-oss-120b'
+                }
+            };
+            let migrated = 0;
+            Object.keys(migrations).forEach((settingsKey) => {
+                const current = settings[settingsKey];
+                if (typeof current !== 'string') return;
+                const replacement = migrations[settingsKey][current.trim()];
+                if (replacement && replacement !== current) {
+                    console.warn(`🔀 Migrating deprecated AI model ${settingsKey}: "${current}" → "${replacement}"`);
+                    settings[settingsKey] = replacement;
+                    migrated++;
+                }
+            });
+            if (migrated > 0 && typeof this.save === 'function') {
+                // Persist so the fix sticks and we don't re-migrate every load.
+                this.save();
+            }
+        } catch (e) {
+            console.error('AI model migration failed:', e);
         }
     },
 

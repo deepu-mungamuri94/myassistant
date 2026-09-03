@@ -1032,4 +1032,109 @@ describe('Storage Module', () => {
             expect(window.DB.expenses[1].id).toBe(900001);
         });
     });
+
+    describe('_migrateDeprecatedAIModels() - retired model healing', () => {
+        beforeEach(() => {
+            window.DB.settings = {};
+        });
+
+        it('rewrites the deprecated Groq llama-3.3-70b-versatile to openai/gpt-oss-120b', () => {
+            window.DB.settings.groqModel = 'llama-3.3-70b-versatile';
+
+            Storage._migrateDeprecatedAIModels();
+
+            expect(window.DB.settings.groqModel).toBe('openai/gpt-oss-120b');
+        });
+
+        it('rewrites the deprecated llama-3.1-8b-instant to openai/gpt-oss-120b', () => {
+            window.DB.settings.groqModel = 'llama-3.1-8b-instant';
+
+            Storage._migrateDeprecatedAIModels();
+
+            expect(window.DB.settings.groqModel).toBe('openai/gpt-oss-120b');
+        });
+
+        it('rewrites the legacy mixtral-8x7b-32768 placeholder to openai/gpt-oss-120b', () => {
+            window.DB.settings.groqModel = 'mixtral-8x7b-32768';
+
+            Storage._migrateDeprecatedAIModels();
+
+            expect(window.DB.settings.groqModel).toBe('openai/gpt-oss-120b');
+        });
+
+        it('trims whitespace when matching a deprecated model id', () => {
+            window.DB.settings.groqModel = '  llama-3.3-70b-versatile  ';
+
+            Storage._migrateDeprecatedAIModels();
+
+            expect(window.DB.settings.groqModel).toBe('openai/gpt-oss-120b');
+        });
+
+        it('persists the migration via save() so it sticks across reloads', () => {
+            window.DB.settings.groqModel = 'llama-3.3-70b-versatile';
+            const saveSpy = vi.spyOn(Storage, 'save');
+
+            Storage._migrateDeprecatedAIModels();
+
+            expect(saveSpy).toHaveBeenCalledTimes(1);
+        });
+
+        it('leaves the current model untouched and does not write', () => {
+            window.DB.settings.groqModel = 'openai/gpt-oss-120b';
+            const saveSpy = vi.spyOn(Storage, 'save');
+
+            Storage._migrateDeprecatedAIModels();
+
+            expect(window.DB.settings.groqModel).toBe('openai/gpt-oss-120b');
+            expect(saveSpy).not.toHaveBeenCalled();
+        });
+
+        it('leaves a user-set custom model untouched', () => {
+            window.DB.settings.groqModel = 'openai/gpt-oss-20b';
+            const saveSpy = vi.spyOn(Storage, 'save');
+
+            Storage._migrateDeprecatedAIModels();
+
+            expect(window.DB.settings.groqModel).toBe('openai/gpt-oss-20b');
+            expect(saveSpy).not.toHaveBeenCalled();
+        });
+
+        it('does not touch other providers (gemini/chatgpt/perplexity)', () => {
+            window.DB.settings.geminiModel = 'gemini-2.5-flash-lite';
+            window.DB.settings.chatGptModel = 'gpt-4o-mini';
+            window.DB.settings.perplexityModel = 'sonar-pro';
+            window.DB.settings.groqModel = 'llama-3.3-70b-versatile';
+
+            Storage._migrateDeprecatedAIModels();
+
+            expect(window.DB.settings.geminiModel).toBe('gemini-2.5-flash-lite');
+            expect(window.DB.settings.chatGptModel).toBe('gpt-4o-mini');
+            expect(window.DB.settings.perplexityModel).toBe('sonar-pro');
+        });
+
+        it('is a no-op when settings is missing', () => {
+            window.DB.settings = undefined;
+
+            expect(() => Storage._migrateDeprecatedAIModels()).not.toThrow();
+        });
+
+        it('is a no-op when groqModel is unset', () => {
+            const saveSpy = vi.spyOn(Storage, 'save');
+
+            Storage._migrateDeprecatedAIModels();
+
+            expect(saveSpy).not.toHaveBeenCalled();
+        });
+
+        it('runs automatically from load() and heals a persisted stale model', () => {
+            const stored = {
+                settings: { groqModel: 'llama-3.3-70b-versatile' }
+            };
+            window.localStorage.getItem.mockReturnValue(JSON.stringify(stored));
+
+            Storage.load();
+
+            expect(window.DB.settings.groqModel).toBe('openai/gpt-oss-120b');
+        });
+    });
 });

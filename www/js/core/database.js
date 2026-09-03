@@ -46,7 +46,7 @@ const DB = {
         perplexityApiKey: '',
         // Model IDs for each provider (can be updated by user)
         geminiModel: 'gemini-2.5-flash-lite',
-        groqModel: 'llama-3.3-70b-versatile',
+        groqModel: 'openai/gpt-oss-120b',
         chatGptModel: 'gpt-4o-mini',
         perplexityModel: 'sonar-pro',
         // Priority order for AI fallback (Groq is FIXED at #1 for chat, rest is configurable)
