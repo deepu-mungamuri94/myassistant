@@ -83,7 +83,55 @@ describe('AI provider implementations (real files, mocked fetch)', () => {
       await GroqAI.call('hi');
       expect(lastFetch.body.model).toBe('openai/gpt-oss-20b');
     });
+  });
 
+  describe('Groq reasoning-model request shape', () => {
+    // gpt-oss models spend output tokens on hidden reasoning BEFORE the answer.
+    // The old max_tokens:2048 could be fully consumed by reasoning, returning
+    // empty content — so the request must use the non-deprecated
+    // max_completion_tokens with a larger budget and cap reasoning effort.
+    it('sends max_completion_tokens (not the deprecated max_tokens)', async () => {
+      await GroqAI.call('hi');
+      expect(lastFetch.body.max_completion_tokens).toBe(8192);
+      expect(lastFetch.body).not.toHaveProperty('max_tokens');
+    });
+
+    it('sets reasoning_effort=low for gpt-oss models', async () => {
+      await GroqAI.call('hi'); // default model is openai/gpt-oss-120b
+      expect(lastFetch.body.reasoning_effort).toBe('low');
+    });
+
+    it('omits reasoning_effort for a non-gpt-oss model (avoids 400 on plain models)', async () => {
+      window.DB.settings.groqModel = 'llama-3.1-8b-instant';
+      await GroqAI.call('hi');
+      expect(lastFetch.body).not.toHaveProperty('reasoning_effort');
+    });
+
+    it('does NOT send reasoning_format (unsupported for gpt-oss)', async () => {
+      await GroqAI.call('hi');
+      expect(lastFetch.body).not.toHaveProperty('reasoning_format');
+    });
+
+    it('throws a distinct truncation error on empty content + finish_reason=length', async () => {
+      global.fetch = vi.fn(async () =>
+        jsonResponse({ choices: [{ message: { content: '' }, finish_reason: 'length' }] }));
+      await expect(GroqAI.call('hi')).rejects.toThrow(/truncated \(finish_reason=length\)/i);
+    });
+
+    it('salvages message.reasoning when content is empty (truncated mid-answer)', async () => {
+      global.fetch = vi.fn(async () =>
+        jsonResponse({ choices: [{ message: { content: '', reasoning: 'partial insight text' }, finish_reason: 'length' }] }));
+      await expect(GroqAI.call('hi')).resolves.toBe('partial insight text');
+    });
+
+    it('strips a leading <think>…</think> wrapper from the answer', async () => {
+      global.fetch = vi.fn(async () =>
+        jsonResponse({ choices: [{ message: { content: '<think>deliberating…</think>\n\nHere is the answer.' } }] }));
+      await expect(GroqAI.call('hi')).resolves.toBe('Here is the answer.');
+    });
+  });
+
+  describe('model IDs on the wire (Perplexity)', () => {
     it('Perplexity uses sonar-pro by default (NOT the retired llama-3.1-sonar model)', async () => {
       await Perplexity.call('hi');
       expect(lastFetch.body.model).toBe('sonar-pro');

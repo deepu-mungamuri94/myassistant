@@ -8,6 +8,12 @@
  * "the model does not exist or you do not have access to it." openai/gpt-oss-120b
  * is Groq's recommended production replacement. Stale persisted values are healed
  * on load by Storage._migrateDeprecatedAIModels().
+ *
+ * gpt-oss is a REASONING model: it spends output tokens on a hidden chain-of-
+ * thought before the visible answer. The request therefore uses
+ * max_completion_tokens (not the deprecated max_tokens) with a generous budget
+ * and reasoning_effort:'low', so reasoning can't starve the answer and leave
+ * content empty (which previously surfaced as "empty or malformed response").
  */
 
 const GroqAI = {
@@ -68,21 +74,39 @@ const GroqAI = {
             });
             
             console.log(`🚀 Calling Groq API (${model})...`);
-            
+
+            // Build the request body. gpt-oss models are REASONING models: they
+            // spend output tokens on an internal chain-of-thought BEFORE the
+            // visible answer, and both share the same completion-token budget.
+            const requestBody = {
+                model: model,
+                messages: messages,
+                temperature: 0.7,
+                // max_tokens is deprecated on Groq in favor of max_completion_tokens.
+                // The old 2048 cap could be entirely consumed by reasoning tokens on a
+                // large prompt (like the dashboard's multi-section insights request),
+                // leaving content empty with finish_reason="length". 8192 leaves ample
+                // room for the ~600-word structured answer plus reasoning, and is well
+                // under gpt-oss-120b's 65,536 output limit.
+                max_completion_tokens: 8192,
+                top_p: 0.9,
+                stream: false
+            };
+            // Cap reasoning spend on gpt-oss so the budget goes to the answer, not the
+            // (hidden) chain-of-thought. reasoning_effort is only valid for gpt-oss
+            // models — guard on the id so a user-configured non-reasoning Groq model
+            // isn't rejected with a 400. (Groq's default effort is "medium".)
+            if (/gpt-oss/i.test(model)) {
+                requestBody.reasoning_effort = 'low';
+            }
+
             const response = await window.AIProvider.fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${apiKey}`
                 },
-                body: JSON.stringify({
-                    model: model,
-                    messages: messages,
-                    temperature: 0.7,
-                    max_tokens: 2048,
-                    top_p: 0.9,
-                    stream: false
-                })
+                body: JSON.stringify(requestBody)
             });
             
             if (!response.ok) {
@@ -100,11 +124,32 @@ const GroqAI = {
             
             const data = await response.json();
             console.log('✅ Groq API response received');
-            
-            const content = data?.choices?.[0]?.message?.content;
+
+            const choice = data?.choices?.[0];
+            let content = choice?.message?.content;
+
+            // Reasoning models (gpt-oss) put the final answer in message.content, but if
+            // the completion is truncated mid-thought the answer never lands there while
+            // message.reasoning holds partial thinking. Salvage that rather than failing.
+            if ((typeof content !== 'string' || content.trim() === '') &&
+                typeof choice?.message?.reasoning === 'string' && choice.message.reasoning.trim() !== '') {
+                content = choice.message.reasoning;
+            }
+
             if (typeof content !== 'string' || content.trim() === '') {
+                // finish_reason === 'length' means the output token budget was exhausted
+                // (for reasoning models, usually consumed by the hidden chain-of-thought).
+                // Surface that distinctly — and with a retriable marker so provider.js
+                // falls through to the next provider instead of aborting the chain.
+                if (choice?.finish_reason === 'length') {
+                    throw new Error(`Groq (${model}): output truncated (finish_reason=length) — raise max_completion_tokens or lower reasoning_effort`);
+                }
                 throw new Error(`Groq (${model}): empty or malformed response`);
             }
+
+            // gpt-oss with reasoning_format 'raw' can wrap thinking in a leading
+            // <think>…</think> block; strip it defensively so the user sees only the answer.
+            content = content.replace(/^\s*<think>[\s\S]*?<\/think>\s*/i, '').trim();
 
             return content;
             

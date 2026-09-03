@@ -454,17 +454,37 @@ Style (formatted for a mobile screen):
     },
 
     /**
+     * Check if a provider returned an empty / truncated completion. This happens
+     * with reasoning models (e.g. Groq's gpt-oss) when the output-token budget is
+     * consumed by the hidden chain-of-thought before the visible answer, leaving
+     * content='' with finish_reason='length'. It's a per-provider quirk, not a
+     * fatal request error, so it should hand off to the next provider rather than
+     * abort the whole chain (Groq is #1 in the default priority order).
+     */
+    isEmptyResponseError(error) {
+        const errorMsg = (error.message || error.toString() || '').toLowerCase();
+        return (
+            errorMsg.includes('empty or malformed response') ||
+            errorMsg.includes('finish_reason=length') ||
+            errorMsg.includes('output truncated')
+        );
+    },
+
+    /**
      * Errors that warrant trying the next provider rather than failing hard:
-     * rate/capacity limits, network timeouts, and transient network failures.
+     * rate/capacity limits, network timeouts, transient network failures, and
+     * empty/truncated completions.
      */
     isRetriableError(error) {
-        return this.isRateLimitError(error) || this.isTimeoutError(error) || this.isNetworkError(error);
+        return this.isRateLimitError(error) || this.isTimeoutError(error) ||
+               this.isNetworkError(error) || this.isEmptyResponseError(error);
     },
 
     /** Human-readable reason for a retriable failure, for logs/toasts. */
     retriableReason(error) {
         if (this.isRateLimitError(error)) return 'rate limit';
         if (this.isTimeoutError(error)) return 'timeout';
+        if (this.isEmptyResponseError(error)) return 'empty response';
         return 'network error';
     },
 

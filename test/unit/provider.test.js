@@ -323,6 +323,20 @@ describe('AIProvider', () => {
     });
   });
 
+  describe('isEmptyResponseError', () => {
+    it('should be true for an empty/malformed completion', () => {
+      expect(AIProvider.isEmptyResponseError(new Error('Groq (openai/gpt-oss-120b): empty or malformed response'))).toBe(true);
+    });
+
+    it('should be true for a finish_reason=length truncation', () => {
+      expect(AIProvider.isEmptyResponseError(new Error('Groq (openai/gpt-oss-120b): output truncated (finish_reason=length) — raise max_completion_tokens'))).toBe(true);
+    });
+
+    it('should be false for unrelated errors', () => {
+      expect(AIProvider.isEmptyResponseError(new Error('Invalid API key'))).toBe(false);
+    });
+  });
+
   describe('isRetriableError', () => {
     it('should be true for rate limit errors', () => {
       expect(AIProvider.isRetriableError(new Error('429 Too Many Requests'))).toBe(true);
@@ -336,16 +350,25 @@ describe('AIProvider', () => {
       expect(AIProvider.isRetriableError(new Error('Failed to fetch'))).toBe(true);
     });
 
+    // A reasoning model returning an empty/truncated answer (e.g. Groq gpt-oss
+    // burning its budget on hidden reasoning) must fall through to the next
+    // provider, not abort the chain — Groq is #1 in the default priority order.
+    it('should be true for empty/truncated completions', () => {
+      expect(AIProvider.isRetriableError(new Error('Groq (openai/gpt-oss-120b): empty or malformed response'))).toBe(true);
+      expect(AIProvider.isRetriableError(new Error('Groq (openai/gpt-oss-120b): output truncated (finish_reason=length)'))).toBe(true);
+    });
+
     it('should be false for auth/other errors', () => {
       expect(AIProvider.isRetriableError(new Error('Invalid API key'))).toBe(false);
     });
   });
 
   describe('retriableReason', () => {
-    it('labels rate limits, timeouts, and network failures distinctly', () => {
+    it('labels rate limits, timeouts, network, and empty-response failures distinctly', () => {
       expect(AIProvider.retriableReason(new Error('429 Too Many Requests'))).toBe('rate limit');
       expect(AIProvider.retriableReason(new Error('Request timed out after 30s'))).toBe('timeout');
       expect(AIProvider.retriableReason(new Error('Failed to fetch'))).toBe('network error');
+      expect(AIProvider.retriableReason(new Error('Groq (m): empty or malformed response'))).toBe('empty response');
     });
   });
 
