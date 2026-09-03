@@ -96,9 +96,17 @@ describe('AI provider implementations (real files, mocked fetch)', () => {
       expect(lastFetch.body).not.toHaveProperty('max_tokens');
     });
 
-    it('sets reasoning_effort=low for gpt-oss models', async () => {
+    it('sets reasoning_effort=medium on the first gpt-oss attempt (NOT the empty-content-prone low)', async () => {
       await GroqAI.call('hi'); // default model is openai/gpt-oss-120b
-      expect(lastFetch.body.reasoning_effort).toBe('low');
+      expect(lastFetch.body.reasoning_effort).toBe('medium');
+      expect(lastFetch.body.reasoning_effort).not.toBe('low');
+    });
+
+    it('always sends a system message (even with no context) — mitigates the Harmony empty-final-channel bug', async () => {
+      await GroqAI.call('hi'); // no systemInstructions passed
+      const roles = lastFetch.body.messages.map((m) => m.role);
+      expect(roles[0]).toBe('system');
+      expect(lastFetch.body.messages[0].content).toMatch(/respond directly/i);
     });
 
     it('omits reasoning_effort for a non-gpt-oss model (avoids 400 on plain models)', async () => {
@@ -128,6 +136,45 @@ describe('AI provider implementations (real files, mocked fetch)', () => {
       global.fetch = vi.fn(async () =>
         jsonResponse({ choices: [{ message: { content: '<think>deliberating…</think>\n\nHere is the answer.' } }] }));
       await expect(GroqAI.call('hi')).resolves.toBe('Here is the answer.');
+    });
+
+    // The Harmony empty-final-channel bug is non-deterministic: a retry at higher
+    // effort often lands the answer that the first attempt dropped. gpt-oss should
+    // escalate medium → high before giving up (and falling through to Gemini).
+    it('retries at reasoning_effort=high when the first gpt-oss attempt returns empty content', async () => {
+      const efforts = [];
+      global.fetch = vi.fn(async (url, options) => {
+        const effort = JSON.parse(options.body).reasoning_effort;
+        efforts.push(effort);
+        // First attempt (medium): both content and reasoning empty → the bug.
+        if (effort === 'medium') {
+          return jsonResponse({ choices: [{ message: { content: '' }, finish_reason: 'stop' }] });
+        }
+        // Retry at high: the answer lands.
+        return jsonResponse({ choices: [{ message: { content: 'recovered answer' } }] });
+      });
+      await expect(GroqAI.call('hi')).resolves.toBe('recovered answer');
+      expect(efforts).toEqual(['medium', 'high']);
+    });
+
+    it('gives up (throws empty) after the full effort ladder returns empty content', async () => {
+      const efforts = [];
+      global.fetch = vi.fn(async (url, options) => {
+        efforts.push(JSON.parse(options.body).reasoning_effort);
+        return jsonResponse({ choices: [{ message: { content: '' }, finish_reason: 'stop' }] });
+      });
+      await expect(GroqAI.call('hi')).rejects.toThrow(/empty or malformed/i);
+      expect(efforts).toEqual(['medium', 'high']); // tried both, then bailed
+    });
+
+    it('does NOT retry a non-empty error (e.g. truncation) at higher effort', async () => {
+      const efforts = [];
+      global.fetch = vi.fn(async (url, options) => {
+        efforts.push(JSON.parse(options.body).reasoning_effort);
+        return jsonResponse({ choices: [{ message: { content: '' }, finish_reason: 'length' }] });
+      });
+      await expect(GroqAI.call('hi')).rejects.toThrow(/truncated/i);
+      expect(efforts).toEqual(['medium']); // truncation bubbles up immediately, no escalation
     });
   });
 
