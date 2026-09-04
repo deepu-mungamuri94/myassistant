@@ -380,20 +380,89 @@ Style (formatted for a mobile screen):
     },
 
     /**
-     * Call a specific provider
+     * Call a specific provider.
+     * @param {object} [options] - forwarded to the provider. Currently supports
+     *   options.jsonSchema = { name, schema } to request schema-constrained JSON
+     *   output. Threads through every provider so a schema applies to whichever
+     *   provider the fallback chain lands on.
      */
-    async callProvider(provider, prompt, context) {
+    async callProvider(provider, prompt, context, options = {}) {
         switch(provider) {
             case 'gemini':
-                return await window.GeminiAI.call(prompt, context);
+                return await window.GeminiAI.call(prompt, context, options);
             case 'groq':
-                return await window.GroqAI.call(prompt, context);
+                // Groq's signature is call(userMessage, systemInstructions,
+                // conversationHistory, options) — context maps to
+                // systemInstructions, history stays empty, options is 4th.
+                return await window.GroqAI.call(prompt, context, [], options);
             case 'chatgpt':
-                return await window.ChatGPT.call(prompt, context);
+                return await window.ChatGPT.call(prompt, context, options);
             case 'perplexity':
-                return await window.Perplexity.call(prompt, context);
+                return await window.Perplexity.call(prompt, context, options);
             default:
                 throw new Error(`Unknown AI provider: ${provider}`);
+        }
+    },
+
+    /**
+     * Build an OpenAI-compatible response_format block for schema-constrained
+     * JSON output. Used byte-identically by Groq, ChatGPT, and Perplexity.
+     * @param {{name: string, schema: object}} jsonSchema
+     * @param {{strict?: boolean}} [opts] - strict:true for OpenAI/Groq (which
+     *   support constrained decoding); omit strict for Perplexity (unsupported).
+     */
+    buildOpenAIResponseFormat(jsonSchema, opts = {}) {
+        if (!jsonSchema || !jsonSchema.schema) return undefined;
+        const block = {
+            type: 'json_schema',
+            json_schema: {
+                name: jsonSchema.name || 'response',
+                schema: jsonSchema.schema
+            }
+        };
+        if (opts.strict) {
+            block.json_schema.strict = true;
+        }
+        return block;
+    },
+
+    /**
+     * Log prompt-cache utilization from a provider response, so caching can be
+     * verified from device/console logs. Providers with automatic prefix caching
+     * (Groq, OpenAI, Gemini) report how many prompt tokens were served from cache;
+     * a non-zero `cached` on repeat queries confirms the cacheable-prefix ordering
+     * is working. Purely diagnostic — never throws, never alters the response.
+     *
+     * @param {string} provider - label for the log line (e.g. 'Groq')
+     * @param {object} data - the parsed JSON response body
+     */
+    logCacheUsage(provider, data) {
+        try {
+            let cached, prompt, reports = false;
+            if (data && data.usageMetadata) {
+                // Gemini: usageMetadata.cachedContentTokenCount (implicit caching).
+                // promptTokenCount already INCLUDES the cached tokens.
+                cached = data.usageMetadata.cachedContentTokenCount;
+                prompt = data.usageMetadata.promptTokenCount;
+                reports = true;
+            } else if (data && data.usage && data.usage.prompt_tokens_details) {
+                // OpenAI / Groq (OpenAI-compatible): usage.prompt_tokens_details.cached_tokens.
+                // The presence of prompt_tokens_details is what distinguishes a
+                // caching-capable provider from one (e.g. Perplexity) that reports
+                // plain usage.prompt_tokens but never caches — so we only log here.
+                cached = data.usage.prompt_tokens_details.cached_tokens;
+                prompt = data.usage.prompt_tokens;
+                reports = true;
+            }
+            // Skip providers that don't report cache-capable prompt usage
+            // (Perplexity, or any malformed/absent usage block).
+            if (reports && typeof prompt === 'number') {
+                const c = typeof cached === 'number' ? cached : 0;
+                const pct = prompt > 0 ? Math.round((c / prompt) * 100) : 0;
+                console.log(`💾 ${provider} prompt-cache: ${c}/${prompt} tokens cached (${pct}%)`);
+            }
+        } catch (e) {
+            // diagnostics must never break a successful call
         }
     },
 
@@ -491,8 +560,10 @@ Style (formatted for a mobile screen):
     /**
      * Call AI with automatic fallback on rate limits (3-level retry)
      * Uses user-defined priority order from settings
+     * @param {object} [options] - forwarded to every provider attempt. Supports
+     *   options.jsonSchema = { name, schema } for schema-constrained JSON output.
      */
-    async call(prompt, context = null) {
+    async call(prompt, context = null, options = {}) {
         // CONSENT GATE (single choke point): the first time any AI feature runs,
         // ensure the user has agreed to send a financial summary to the selected
         // third-party provider. If they decline, abort cleanly — no provider is
@@ -517,8 +588,11 @@ Style (formatted for a mobile screen):
         const priorityOrder = window.DB.settings.priorityOrder || ['groq', 'gemini', 'chatgpt', 'perplexity'];
         const providerOrder = priorityOrder.filter(p => availableProviders.includes(p));
         
-        // Limit to 3 attempts
-        const maxAttempts = Math.min(3, providerOrder.length);
+        // Try every configured provider in priority order before giving up.
+        // (This was previously capped at 3, which silently made the 4th provider
+        // — Perplexity, last in the default order — unreachable even when the
+        // first three all failed.)
+        const maxAttempts = providerOrder.length;
         
         console.log(`🤖 AI Call - Available providers: ${availableProviders.join(', ')}`);
         console.log(`📋 Priority order (max ${maxAttempts} attempts): ${providerOrder.slice(0, maxAttempts).join(' → ')}`);
@@ -537,8 +611,8 @@ Style (formatted for a mobile screen):
             try {
                 console.log(`🔄 Attempt ${i + 1}/${maxAttempts}: Using ${currentProvider.toUpperCase()} (Priority #${i + 1})`);
                 
-                const result = await this.callProvider(currentProvider, prompt, context);
-                
+                const result = await this.callProvider(currentProvider, prompt, context, options);
+
                 // Success!
                 if (i > 0) {
                     // Fallback was used

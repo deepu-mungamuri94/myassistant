@@ -12,6 +12,56 @@ const QueryEngine = {
     },
 
     /**
+     * JSON Schema for the phase-1 query envelope, passed to the AI provider as a
+     * structured-output constraint. This guarantees the model returns a parseable
+     * object with valid `aggregation`/`groupBy` enums — eliminating the "no JSON
+     * found" and invalid-enum failure modes that regex extraction couldn't catch.
+     *
+     * `filterCode` is intentionally an unconstrained string: it holds JavaScript
+     * that autoCorrectQuery()/validateQueryCode() still repair and sandbox before
+     * execution — a schema can't validate JS grammar, only that the field is text.
+     *
+     * Shape targets the STRICTEST provider dialect (OpenAI/Groq strict mode): every
+     * property is listed in `required`, optionals are nullable type-unions, and
+     * additionalProperties is false. This block is also handed to Gemini's
+     * responseSchema on the rare fallback path; Gemini's OpenAPI subset tolerates
+     * the extra keys, and autoCorrectQuery/parseAIQuery remain the safety net
+     * regardless of which provider produced the envelope.
+     *
+     * @param {'expenses'|'investments'} mode
+     */
+    getQueryEnvelopeSchema(mode) {
+        const isExpenses = mode === 'expenses';
+        const groupByEnum = isExpenses
+            ? ['category', 'month', 'year', 'event']
+            : ['type', 'goal', 'currency'];
+        const aggFieldEnum = isExpenses
+            ? ['amount', 'id']
+            : ['amount', 'quantity'];
+        return {
+            name: `${mode}_query`,
+            schema: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                    operation: { type: 'string', enum: ['filter'] },
+                    filterCode: {
+                        type: 'string',
+                        description: 'A JavaScript Array.filter arrow function, e.g. "e => e.amount > 5000"'
+                    },
+                    aggregation: { type: 'string', enum: ['sum', 'count', 'average', 'group', 'none'] },
+                    // Nullable so "no field" is expressible; enum lists the valid
+                    // fields but null is always allowed via the type union.
+                    aggregationField: { type: ['string', 'null'], enum: [...aggFieldEnum, null] },
+                    groupBy: { type: ['string', 'null'], enum: [...groupByEnum, null] },
+                    explanation: { type: 'string' }
+                },
+                required: ['operation', 'filterCode', 'aggregation', 'aggregationField', 'groupBy', 'explanation']
+            }
+        };
+    },
+
+    /**
      * Generate metadata for expenses
      */
     generateExpensesMetadata() {
@@ -354,21 +404,52 @@ Important Rules:
      * Validate and sanitize query code
      */
     validateQueryCode(code) {
-        // Dangerous patterns to block
+        // Text-blocklist gate — works together with strict-mode execution in
+        // executeQuery, but the two layers cover DIFFERENT escapes and neither
+        // is a full backstop for the other:
+        //   • Strict mode makes `this` undefined, killing `this.fetch`-style
+        //     escapes — but it does NOT stop a Function-constructor reached via
+        //     the prototype chain (`x.constructor.constructor(...)`), because a
+        //     Function-minted body is its own sloppy global scope.
+        //   • The blocklist is therefore the SOLE defense against the
+        //     constructor/prototype-chain escape — hence `constructor`,
+        //     `prototype`, bracket-string-concat, and the outer-realm globals
+        //     are all blocked here. Both layers must hold.
         const dangerousPatterns = [
             /eval\s*\(/gi,
             /Function\s*\(/gi,
-            /window\./gi,
-            /document\./gi,
+            /window\b/gi,           // window., window[...] — any access
+            /document\b/gi,
             /localStorage/gi,
             /sessionStorage/gi,
             /fetch\s*\(/gi,
             /XMLHttpRequest/gi,
-            /import\s+/gi,
+            /import\s*[\s("']/gi,   // static `import x` and dynamic `import(...)`
             /require\s*\(/gi,
             /process\./gi,
-            /__proto__/gi
-            // Removed 'constructor' and 'prototype' as they might appear in legitimate code
+            /__proto__/gi,
+            // Globals that reach the outer realm without the word "window".
+            /\bglobalThis\b/gi,
+            /\bself\b/gi,
+            /\bReflect\b/gi,
+            /\bProxy\b/gi,
+            // `constructor` in ANY member-access position. The classic sandbox
+            // escape is `x.constructor.constructor("return this")()` — reaching
+            // the Function constructor via the prototype chain, which STRICT MODE
+            // CANNOT stop (a Function-constructor-minted body is its own sloppy
+            // top-level scope). It's reachable dotted (`.constructor`) OR
+            // bracket-quoted (`["constructor"]`), so both forms are blocked.
+            // A real expense/investment filter never touches `.constructor`.
+            /\bconstructor\b/gi,
+            // Prototype-pollution vectors (mutating shared prototypes of the
+            // live DB objects). __proto__ is already blocked above.
+            /\bprototype\b/gi,
+            /setPrototypeOf/gi,
+            // Computed member access built from string concatenation
+            // (e['fe'+'tch'], x["con"+"structor"]) — the classic way to evade a
+            // literal-text blocklist. A legitimate filter never needs to assemble
+            // a property name from pieces, so reject any `[` … `+` … `]` access.
+            /\[[^\]]*\+[^\]]*\]/g
         ];
 
         for (const pattern of dangerousPatterns) {
@@ -444,13 +525,22 @@ Important Rules:
             let filterFn;
             const code = queryObj.filterCode.trim();
             
+            // SECURITY (layer 1 of 2): every generated function body is prefixed
+            // with "use strict". In sloppy mode an unbound call (filterFn(item)
+            // below) binds `this` to the global object, so AI-authored code like
+            // `e => this.fetch(...)` could reach window/fetch/localStorage.
+            // Strict mode makes `this` undefined instead, closing that escape
+            // class (the arrow body inherits the enclosing strict context).
+            // NOTE: strict mode does NOT stop the Function-constructor escape
+            // via the prototype chain (`x.constructor.constructor(...)`) — that
+            // is blocked by validateQueryCode (layer 2), which runs before this.
             // Check if code already has arrow function
             if (code.includes('=>')) {
                 // Code is already a complete arrow function like "e => e.amount > 1000"
                 console.log(`📝 Using complete arrow function: ${code}`);
                 try {
                     // Create a function that returns the arrow function, then call it
-                    filterFn = new Function(`return (${code})`)();
+                    filterFn = new Function(`"use strict"; return (${code})`)();
                 } catch (syntaxError) {
                     console.error('❌ Syntax error with arrow function:', syntaxError);
                     console.error('   Code:', code);
@@ -460,14 +550,14 @@ Important Rules:
                 // Code is just the condition like "amount > 1000", wrap it
                 console.log(`📝 Creating filter function: ${itemName} => ${code}`);
                 try {
-                    filterFn = new Function(itemName, `return ${code}`);
+                    filterFn = new Function(itemName, `"use strict"; return ${code}`);
                 } catch (syntaxError) {
                     console.error('❌ Syntax error creating filter function:', syntaxError);
                     console.error('   Attempted code:', `${itemName} => ${code}`);
-                    
+
                     // Try one more time with parentheses around the code
                     try {
-                        filterFn = new Function(itemName, `return (${code})`);
+                        filterFn = new Function(itemName, `"use strict"; return (${code})`);
                         console.log('✅ Fixed by adding parentheses');
                     } catch (secondError) {
                         throw new Error(`Invalid filter code syntax: ${syntaxError.message}`);

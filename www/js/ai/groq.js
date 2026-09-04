@@ -37,7 +37,7 @@ const GroqAI = {
      * @param {Array} conversationHistory - Previous messages for context
      * @returns {Promise<string>} - AI response text
      */
-    async call(userMessage, systemInstructions = '', conversationHistory = []) {
+    async call(userMessage, systemInstructions = '', conversationHistory = [], options = {}) {
         const apiKey = window.DB.groqApiKey;
         const model = window.DB.settings.groqModel || this.DEFAULT_MODEL;
         
@@ -95,12 +95,20 @@ const GroqAI = {
             // blank. Non-gpt-oss Groq models make a single plain attempt.
             const effortLadder = isGptOss ? ['medium', 'high'] : [null];
 
+            // Schema-constrained JSON output. gpt-oss-120b/20b support strict mode.
+            // NOTE: a schema does NOT prevent the empty-final-channel bug — a
+            // constrained decode can still exhaust the token budget on reasoning —
+            // so the effort ladder + reasoning-salvage below stay in force.
+            const responseFormat = (options.jsonSchema && window.AIProvider && window.AIProvider.buildOpenAIResponseFormat)
+                ? window.AIProvider.buildOpenAIResponseFormat(options.jsonSchema, { strict: true })
+                : undefined;
+
             let lastEmptyErr = null;
             for (let i = 0; i < effortLadder.length; i++) {
                 const effort = effortLadder[i];
                 console.log(`🚀 Calling Groq API (${model})${effort ? ` [reasoning_effort=${effort}, attempt ${i + 1}/${effortLadder.length}]` : ''}...`);
                 try {
-                    return await this._request(apiKey, model, messages, effort);
+                    return await this._request(apiKey, model, messages, effort, responseFormat);
                 } catch (error) {
                     // Only an empty/blank answer is worth retrying with more effort;
                     // rate limits, HTTP errors, and truncation bubble up immediately
@@ -130,9 +138,11 @@ const GroqAI = {
      * @param {string} model
      * @param {Array} messages
      * @param {string|null} reasoningEffort - 'medium'/'high' for gpt-oss, null to omit
+     * @param {object} [responseFormat] - OpenAI-style response_format block for
+     *   schema-constrained JSON output (undefined for freeform text).
      * @returns {Promise<string>} the answer text (throws on empty/error)
      */
-    async _request(apiKey, model, messages, reasoningEffort) {
+    async _request(apiKey, model, messages, reasoningEffort, responseFormat) {
         const requestBody = {
             model: model,
             messages: messages,
@@ -148,6 +158,11 @@ const GroqAI = {
         // configured non-reasoning Groq model isn't rejected with a 400.
         if (reasoningEffort) {
             requestBody.reasoning_effort = reasoningEffort;
+        }
+        // Structured-output request (schema-constrained decoding). Groq forbids
+        // combining this with streaming/tool-use, neither of which we send here.
+        if (responseFormat) {
+            requestBody.response_format = responseFormat;
         }
 
         const response = await window.AIProvider.fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
@@ -173,6 +188,9 @@ const GroqAI = {
         }
 
         const data = await response.json();
+        if (window.AIProvider && window.AIProvider.logCacheUsage) {
+            window.AIProvider.logCacheUsage(`Groq (${model})`, data);
+        }
         const choice = data?.choices?.[0];
         let content = choice?.message?.content;
 

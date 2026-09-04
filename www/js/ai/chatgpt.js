@@ -9,18 +9,18 @@ const ChatGPT = {
     /**
      * Call ChatGPT API
      */
-    async call(prompt, context = null) {
+    async call(prompt, context = null, options = {}) {
         const apiKey = window.DB.settings.chatGptApiKey;
         const model = window.DB.settings.chatGptModel || 'gpt-4o-mini';
-        
+
         if (!apiKey) {
             throw new Error('Please configure your ChatGPT API key in Settings');
         }
-        
+
         // Get smart system instructions
         let systemMessage = window.AIProvider ? window.AIProvider.getSystemInstruction(context) : 'You are a helpful financial assistant.';
         let userMessage = prompt;
-        
+
         if (context) {
             // Use compact text formatting (saves ~30% tokens vs pretty JSON)
             const ctxText = window.AIProvider && window.AIProvider.formatContextText
@@ -29,26 +29,35 @@ const ChatGPT = {
             systemMessage += '\n\nContext Data:\n' + ctxText;
             userMessage = `User Query: ${prompt}\n\nProvide helpful insights based on the context data provided in the system message.`;
         }
-        
+
+        const requestBody = {
+            model: model,
+            messages: [
+                {
+                    role: 'system',
+                    content: systemMessage
+                },
+                {
+                    role: 'user',
+                    content: userMessage
+                }
+            ]
+        };
+
+        // Schema-constrained JSON output. gpt-4o-mini (and later) supports strict
+        // mode, which guarantees the response parses against the schema.
+        if (options.jsonSchema && window.AIProvider && window.AIProvider.buildOpenAIResponseFormat) {
+            const rf = window.AIProvider.buildOpenAIResponseFormat(options.jsonSchema, { strict: true });
+            if (rf) requestBody.response_format = rf;
+        }
+
         const response = await window.AIProvider.fetchWithTimeout(this.API_ENDPOINT, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`
             },
-            body: JSON.stringify({
-                model: model,
-                messages: [
-                    {
-                        role: 'system',
-                        content: systemMessage
-                    },
-                    {
-                        role: 'user',
-                        content: userMessage
-                    }
-                ]
-            })
+            body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
@@ -58,6 +67,9 @@ const ChatGPT = {
         }
 
         const data = await response.json();
+        if (window.AIProvider && window.AIProvider.logCacheUsage) {
+            window.AIProvider.logCacheUsage(`ChatGPT (${model})`, data);
+        }
         // Guard against malformed responses instead of throwing a raw TypeError.
         const content = data?.choices?.[0]?.message?.content;
         if (typeof content !== 'string' || content.trim() === '') {

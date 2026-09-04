@@ -35,10 +35,20 @@ describe('AI provider implementations (real files, mocked fetch)', () => {
     window.AIProvider = {
       getSystemInstruction: () => 'system',
       formatContextText: (ctx) => JSON.stringify(ctx),
-      fetchWithTimeout: (url, opts) => fetch(url, opts),
+      fetchWithTimeout: (url, opts, timeoutMs) => { lastFetch.timeoutMs = timeoutMs; return fetch(url, opts); },
+      // Mirror the real helper so providers can build an OpenAI-shape
+      // response_format block from a jsonSchema option.
+      buildOpenAIResponseFormat: (jsonSchema, opts = {}) => {
+        if (!jsonSchema || !jsonSchema.schema) return undefined;
+        const block = { type: 'json_schema', json_schema: { name: jsonSchema.name || 'response', schema: jsonSchema.schema } };
+        if (opts.strict) block.json_schema.strict = true;
+        return block;
+      },
+      // Spy target: providers call this on the success path to log cache usage.
+      logCacheUsage: vi.fn(),
     };
 
-    lastFetch = { url: null, options: null, body: null };
+    lastFetch = { url: null, options: null, body: null, timeoutMs: undefined };
     global.fetch = vi.fn(async (url, options) => {
       lastFetch.url = url;
       lastFetch.options = options;
@@ -299,6 +309,130 @@ describe('AI provider implementations (real files, mocked fetch)', () => {
       const spy = vi.spyOn(window.AIProvider, 'fetchWithTimeout');
       await ChatGPT.call('hi');
       expect(spy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // Prompt-cache verification: on the success path each caching-capable provider
+  // hands its parsed response to AIProvider.logCacheUsage so cache hits can be
+  // confirmed from logs. The response body must reach the helper intact.
+  describe('cache-usage logging on success', () => {
+    it('ChatGPT passes the parsed response (with usage) to logCacheUsage', async () => {
+      global.fetch = vi.fn(async () =>
+        jsonResponse({ choices: [{ message: { content: 'ok' } }], usage: { prompt_tokens: 100, prompt_tokens_details: { cached_tokens: 80 } } }));
+      await ChatGPT.call('hi');
+      expect(window.AIProvider.logCacheUsage).toHaveBeenCalledWith(
+        expect.stringContaining('ChatGPT'),
+        expect.objectContaining({ usage: expect.objectContaining({ prompt_tokens: 100 }) })
+      );
+    });
+
+    it('Groq passes the parsed response to logCacheUsage', async () => {
+      global.fetch = vi.fn(async () =>
+        jsonResponse({ choices: [{ message: { content: 'ok' } }], usage: { prompt_tokens: 200, prompt_tokens_details: { cached_tokens: 150 } } }));
+      await GroqAI.call('hi');
+      expect(window.AIProvider.logCacheUsage).toHaveBeenCalledWith(
+        expect.stringContaining('Groq'),
+        expect.objectContaining({ usage: expect.objectContaining({ prompt_tokens: 200 }) })
+      );
+    });
+
+    it('Gemini passes the parsed response (with usageMetadata) to logCacheUsage', async () => {
+      global.fetch = vi.fn(async () =>
+        jsonResponse({ candidates: [{ content: { parts: [{ text: 'gemini ok' }] } }], usageMetadata: { promptTokenCount: 300, cachedContentTokenCount: 250 } }));
+      await GeminiAI.call('hi');
+      expect(window.AIProvider.logCacheUsage).toHaveBeenCalledWith(
+        expect.stringContaining('Gemini'),
+        expect.objectContaining({ usageMetadata: expect.objectContaining({ cachedContentTokenCount: 250 }) })
+      );
+    });
+  });
+
+  // Structured outputs: a jsonSchema option must land on the wire in the correct
+  // per-provider shape. OpenAI/Groq use strict json_schema; Perplexity omits
+  // strict; Gemini uses generationConfig.responseSchema (and drops google_search).
+  describe('structured outputs (jsonSchema option on the wire)', () => {
+    const SCHEMA = { name: 'q', schema: { type: 'object', properties: { a: { type: 'string' } }, required: ['a'], additionalProperties: false } };
+
+    it('ChatGPT sends response_format json_schema with strict:true', async () => {
+      await ChatGPT.call('hi', null, { jsonSchema: SCHEMA });
+      expect(lastFetch.body.response_format).toEqual({
+        type: 'json_schema',
+        json_schema: { name: 'q', strict: true, schema: SCHEMA.schema },
+      });
+    });
+
+    it('ChatGPT omits response_format when no jsonSchema is given', async () => {
+      await ChatGPT.call('hi');
+      expect(lastFetch.body).not.toHaveProperty('response_format');
+    });
+
+    it('Groq (gpt-oss) sends response_format json_schema with strict:true', async () => {
+      await GroqAI.call('hi', '', [], { jsonSchema: SCHEMA });
+      expect(lastFetch.body.response_format).toEqual({
+        type: 'json_schema',
+        json_schema: { name: 'q', strict: true, schema: SCHEMA.schema },
+      });
+    });
+
+    it('Groq still escalates the effort ladder WITH a schema (schema does not fix empty-content)', async () => {
+      const efforts = [];
+      global.fetch = vi.fn(async (url, options) => {
+        const b = JSON.parse(options.body);
+        efforts.push(b.reasoning_effort);
+        // Schema is present on every attempt.
+        expect(b.response_format.json_schema.strict).toBe(true);
+        if (b.reasoning_effort === 'medium') {
+          return jsonResponse({ choices: [{ message: { content: '' }, finish_reason: 'stop' }] });
+        }
+        return jsonResponse({ choices: [{ message: { content: '{"a":"ok"}' } }] });
+      });
+      await expect(GroqAI.call('hi', '', [], { jsonSchema: SCHEMA })).resolves.toBe('{"a":"ok"}');
+      expect(efforts).toEqual(['medium', 'high']);
+    });
+
+    it('Perplexity sends response_format json_schema WITHOUT strict (unsupported)', async () => {
+      await Perplexity.call('hi', null, { jsonSchema: SCHEMA });
+      expect(lastFetch.body.response_format).toEqual({
+        type: 'json_schema',
+        json_schema: { name: 'q', schema: SCHEMA.schema },
+      });
+      expect(lastFetch.body.response_format.json_schema).not.toHaveProperty('strict');
+      // Keeps its search grounding alongside the schema.
+      expect(lastFetch.body.search_domain_filter).toBeTruthy();
+    });
+
+    it('Perplexity uses a longer 60s timeout for a schema request (cold-start compile)', async () => {
+      await Perplexity.call('hi', null, { jsonSchema: SCHEMA });
+      expect(lastFetch.timeoutMs).toBe(60000);
+    });
+
+    it('Perplexity uses the default timeout (undefined → provider default) with no schema', async () => {
+      await Perplexity.call('hi');
+      expect(lastFetch.timeoutMs).toBeUndefined();
+    });
+
+    it('Gemini uses generationConfig.responseSchema (NOT response_format)', async () => {
+      await GeminiAI.call('hi', null, { jsonSchema: SCHEMA });
+      expect(lastFetch.body.generationConfig).toEqual({
+        responseMimeType: 'application/json',
+        responseSchema: SCHEMA.schema,
+      });
+      expect(lastFetch.body).not.toHaveProperty('response_format');
+    });
+
+    it('Gemini drops the google_search tool when a schema is requested (2.5 mutual exclusion)', async () => {
+      // A system instruction mentioning "official" would normally attach the tool.
+      window.AIProvider.getSystemInstruction = () => 'Search the official site';
+      await GeminiAI.call('hi', null, { jsonSchema: SCHEMA });
+      expect(lastFetch.body).not.toHaveProperty('tools');
+      expect(lastFetch.body.generationConfig.responseSchema).toEqual(SCHEMA.schema);
+    });
+
+    it('Gemini STILL attaches google_search when NO schema is requested', async () => {
+      window.AIProvider.getSystemInstruction = () => 'Search the official site';
+      await GeminiAI.call('hi');
+      expect(lastFetch.body.tools).toEqual([{ google_search: {} }]);
+      expect(lastFetch.body).not.toHaveProperty('generationConfig');
     });
   });
 });

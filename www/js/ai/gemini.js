@@ -7,19 +7,19 @@ const GeminiAI = {
     /**
      * Call Gemini AI API
      */
-    async call(prompt, context = null) {
+    async call(prompt, context = null, options = {}) {
         const apiKey = window.DB.settings.geminiApiKey;
         const model = window.DB.settings.geminiModel || 'gemini-2.5-flash-lite';
-        
+
         if (!apiKey) {
             throw new Error('Please configure your Gemini API key in Settings');
         }
-        
+
         const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        
+
         let fullPrompt = prompt;
         let systemInstruction = window.AIProvider.getSystemInstruction(context);
-        
+
         // Check if context has system_instruction (for CardAdvisor-style prompts)
         if (context && context.system_instruction) {
             systemInstruction = context.system_instruction;
@@ -27,7 +27,7 @@ const GeminiAI = {
         } else if (context) {
             fullPrompt = this.formatPromptWithContext(prompt, context);
         }
-        
+
         const payload = {
             contents: [{
                 parts: [{ text: fullPrompt }]
@@ -38,9 +38,23 @@ const GeminiAI = {
                 }]
             }
         };
-        
-        // Add Google Search tool for comprehensive data fetching
-        if (systemInstruction.includes('Search') || systemInstruction.includes('official')) {
+
+        // Schema-constrained JSON output. Gemini uses its own generationConfig
+        // (responseMimeType + responseSchema, OpenAPI-subset dialect) rather than
+        // the OpenAI-style response_format. IMPORTANT: on 2.5 models structured
+        // output and the google_search tool are mutually exclusive, so when a
+        // schema is requested we do NOT attach the search tool below.
+        const wantsSchema = !!(options.jsonSchema && options.jsonSchema.schema);
+        if (wantsSchema) {
+            payload.generationConfig = {
+                responseMimeType: 'application/json',
+                responseSchema: options.jsonSchema.schema
+            };
+        }
+
+        // Add Google Search tool for comprehensive data fetching — but never
+        // together with a response schema (unsupported on 2.5-series models).
+        if (!wantsSchema && (systemInstruction.includes('Search') || systemInstruction.includes('official'))) {
             payload.tools = [{ "google_search": {} }];
         }
         
@@ -64,6 +78,9 @@ const GeminiAI = {
         }
 
         const data = await response.json();
+        if (window.AIProvider && window.AIProvider.logCacheUsage) {
+            window.AIProvider.logCacheUsage(`Gemini (${model})`, data);
+        }
         // Guard against malformed / safety-blocked responses (no candidates,
         // or a candidate with no text part) instead of throwing a raw TypeError.
         // Join across ALL parts: with google_search grounding the answer can be

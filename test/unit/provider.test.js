@@ -117,7 +117,8 @@ describe('AIProvider', () => {
     it('should call primary provider (first in priorityOrder)', async () => {
       const result = await AIProvider.call('test prompt');
       expect(result).toBe('gemini response');
-      expect(window.GeminiAI.call).toHaveBeenCalledWith('test prompt', null);
+      // options ({}) threads through as the 3rd arg for gemini/chatgpt/perplexity.
+      expect(window.GeminiAI.call).toHaveBeenCalledWith('test prompt', null, {});
     });
 
     it('should fall back to next provider on rate limit error', async () => {
@@ -135,25 +136,30 @@ describe('AIProvider', () => {
       expect(window.GroqAI.call).not.toHaveBeenCalled();
     });
 
-    it('should attempt max 3 providers', async () => {
-      window.GeminiAI.call.mockRejectedValueOnce(new Error('rate limit'));
-      window.GroqAI.call.mockRejectedValueOnce(new Error('quota exceeded'));
-      const result = await AIProvider.call('test prompt');
-      expect(result).toBe('chatgpt response');
-      expect(window.GeminiAI.call).toHaveBeenCalledTimes(1);
-      expect(window.GroqAI.call).toHaveBeenCalledTimes(1);
-      expect(window.ChatGPT.call).toHaveBeenCalledTimes(1);
-      expect(window.Perplexity.call).not.toHaveBeenCalled();
-    });
-
-    it('should throw when all providers exhausted', async () => {
+    it('reaches the 4th provider when the first three fail retriably (no 3-attempt cap)', async () => {
+      // Regression guard: maxAttempts was Math.min(3, …), which silently made
+      // the 4th provider (Perplexity, last in the default order) unreachable.
       window.GeminiAI.call.mockRejectedValueOnce(new Error('rate limit'));
       window.GroqAI.call.mockRejectedValueOnce(new Error('quota exceeded'));
       window.ChatGPT.call.mockRejectedValueOnce(new Error('429 too many requests'));
+      const result = await AIProvider.call('test prompt');
+      expect(result).toBe('perplexity response');
+      expect(window.GeminiAI.call).toHaveBeenCalledTimes(1);
+      expect(window.GroqAI.call).toHaveBeenCalledTimes(1);
+      expect(window.ChatGPT.call).toHaveBeenCalledTimes(1);
+      expect(window.Perplexity.call).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw when ALL FOUR providers are exhausted', async () => {
+      window.GeminiAI.call.mockRejectedValueOnce(new Error('rate limit'));
+      window.GroqAI.call.mockRejectedValueOnce(new Error('quota exceeded'));
+      window.ChatGPT.call.mockRejectedValueOnce(new Error('429 too many requests'));
+      window.Perplexity.call.mockRejectedValueOnce(new Error('rate limit exceeded'));
       await expect(AIProvider.call('test prompt')).rejects.toThrow('All AI providers failed');
       expect(window.GeminiAI.call).toHaveBeenCalledTimes(1);
       expect(window.GroqAI.call).toHaveBeenCalledTimes(1);
       expect(window.ChatGPT.call).toHaveBeenCalledTimes(1);
+      expect(window.Perplexity.call).toHaveBeenCalledTimes(1);
     });
 
     it('should throw when no providers configured', async () => {
@@ -178,7 +184,22 @@ describe('AIProvider', () => {
     it('should pass context to provider', async () => {
       const context = { mode: 'general' };
       await AIProvider.call('test prompt', context);
-      expect(window.GeminiAI.call).toHaveBeenCalledWith('test prompt', context);
+      expect(window.GeminiAI.call).toHaveBeenCalledWith('test prompt', context, {});
+    });
+
+    it('should thread a jsonSchema option through to the provider', async () => {
+      const jsonSchema = { name: 'q', schema: { type: 'object' } };
+      await AIProvider.call('test prompt', null, { jsonSchema });
+      expect(window.GeminiAI.call).toHaveBeenCalledWith('test prompt', null, { jsonSchema });
+    });
+
+    it('should thread options through the fallback loop to the next provider', async () => {
+      // Gemini (primary) fails retriably; options must reach the Groq fallback too.
+      window.GeminiAI.call.mockRejectedValueOnce(new Error('429 rate limit exceeded'));
+      const jsonSchema = { name: 'q', schema: { type: 'object' } };
+      await AIProvider.call('test prompt', null, { jsonSchema });
+      // Groq gets options as the 4th arg (3rd is conversationHistory).
+      expect(window.GroqAI.call).toHaveBeenCalledWith('test prompt', null, [], { jsonSchema });
     });
 
     it('should respect custom priorityOrder', async () => {
@@ -420,7 +441,7 @@ describe('AIProvider', () => {
     it('should use gemini first for web search', async () => {
       const result = await AIProvider.callWithWebSearch('search query');
       expect(result).toBe('gemini response');
-      expect(window.GeminiAI.call).toHaveBeenCalledWith('search query', null);
+      expect(window.GeminiAI.call).toHaveBeenCalledWith('search query', null, {});
     });
 
     it('should fall back to perplexity on rate limit', async () => {
@@ -440,7 +461,7 @@ describe('AIProvider', () => {
     it('should pass context to provider', async () => {
       const context = { mode: 'general' };
       await AIProvider.callWithWebSearch('search query', context);
-      expect(window.GeminiAI.call).toHaveBeenCalledWith('search query', context);
+      expect(window.GeminiAI.call).toHaveBeenCalledWith('search query', context, {});
     });
 
     it('should throw non-rate-limit errors immediately', async () => {
@@ -455,25 +476,31 @@ describe('AIProvider', () => {
     it('should dispatch to GeminiAI', async () => {
       const result = await AIProvider.callProvider('gemini', 'test', null);
       expect(result).toBe('gemini response');
-      expect(window.GeminiAI.call).toHaveBeenCalledWith('test', null);
+      expect(window.GeminiAI.call).toHaveBeenCalledWith('test', null, {});
     });
 
-    it('should dispatch to GroqAI', async () => {
+    it('should dispatch to GroqAI (options is the 4th arg; history stays 3rd)', async () => {
       const result = await AIProvider.callProvider('groq', 'test', null);
       expect(result).toBe('groq response');
-      expect(window.GroqAI.call).toHaveBeenCalledWith('test', null);
+      expect(window.GroqAI.call).toHaveBeenCalledWith('test', null, [], {});
     });
 
     it('should dispatch to ChatGPT', async () => {
       const result = await AIProvider.callProvider('chatgpt', 'test', null);
       expect(result).toBe('chatgpt response');
-      expect(window.ChatGPT.call).toHaveBeenCalledWith('test', null);
+      expect(window.ChatGPT.call).toHaveBeenCalledWith('test', null, {});
     });
 
     it('should dispatch to Perplexity', async () => {
       const result = await AIProvider.callProvider('perplexity', 'test', null);
       expect(result).toBe('perplexity response');
-      expect(window.Perplexity.call).toHaveBeenCalledWith('test', null);
+      expect(window.Perplexity.call).toHaveBeenCalledWith('test', null, {});
+    });
+
+    it('should forward options to the dispatched provider', async () => {
+      const jsonSchema = { name: 'q', schema: { type: 'object' } };
+      await AIProvider.callProvider('chatgpt', 'test', null, { jsonSchema });
+      expect(window.ChatGPT.call).toHaveBeenCalledWith('test', null, { jsonSchema });
     });
 
     it('should throw on unknown provider', async () => {
@@ -797,6 +824,68 @@ describe('AIProvider', () => {
       const preamble = AIProvider.getTodayPreamble();
       expect(preamble).toContain('last month');
       expect(preamble).toContain('this quarter');
+    });
+  });
+
+  // Prompt-cache verification: logCacheUsage reads the per-provider usage block
+  // and logs how many prompt tokens were served from cache. It must be a safe,
+  // diagnostic-only helper — never throw, and stay silent for providers that
+  // don't report cache-capable usage (Perplexity).
+  describe('logCacheUsage', () => {
+    let logSpy;
+    beforeEach(() => {
+      logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    });
+    afterEach(() => {
+      logSpy.mockRestore();
+    });
+
+    const lastCacheLine = () => {
+      const call = logSpy.mock.calls.reverse().find(c => String(c[0]).includes('prompt-cache'));
+      return call ? String(call[0]) : null;
+    };
+
+    it('logs OpenAI/Groq cached_tokens from usage.prompt_tokens_details', () => {
+      AIProvider.logCacheUsage('Groq (gpt-oss-120b)', {
+        usage: { prompt_tokens: 4641, prompt_tokens_details: { cached_tokens: 4608 } },
+      });
+      const line = lastCacheLine();
+      expect(line).toContain('Groq (gpt-oss-120b)');
+      expect(line).toContain('4608/4641');
+      expect(line).toContain('99%'); // 4608/4641 ≈ 99%
+    });
+
+    it('logs Gemini cachedContentTokenCount from usageMetadata', () => {
+      AIProvider.logCacheUsage('Gemini (gemini-2.5-flash-lite)', {
+        usageMetadata: { promptTokenCount: 2000, cachedContentTokenCount: 1500 },
+      });
+      const line = lastCacheLine();
+      expect(line).toContain('Gemini');
+      expect(line).toContain('1500/2000');
+      expect(line).toContain('75%');
+    });
+
+    it('reports 0% (not a crash) when a caching-capable provider served nothing from cache', () => {
+      AIProvider.logCacheUsage('ChatGPT (gpt-4o-mini)', {
+        usage: { prompt_tokens: 1200, prompt_tokens_details: { cached_tokens: 0 } },
+      });
+      const line = lastCacheLine();
+      expect(line).toContain('0/1200');
+      expect(line).toContain('0%');
+    });
+
+    it('stays SILENT for Perplexity (usage.prompt_tokens but no prompt_tokens_details)', () => {
+      AIProvider.logCacheUsage('Perplexity (sonar-pro)', {
+        usage: { prompt_tokens: 900, completion_tokens: 300, total_tokens: 1200 },
+      });
+      expect(lastCacheLine()).toBeNull();
+    });
+
+    it('stays silent (and never throws) on a missing/empty usage block', () => {
+      expect(() => AIProvider.logCacheUsage('X', {})).not.toThrow();
+      expect(() => AIProvider.logCacheUsage('X', null)).not.toThrow();
+      expect(() => AIProvider.logCacheUsage('X', undefined)).not.toThrow();
+      expect(lastCacheLine()).toBeNull();
     });
   });
 });

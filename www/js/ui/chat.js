@@ -171,9 +171,14 @@ const Chat = {
         const phase1Prompt = this.buildPhase1Prompt(userQuery, mode, metadataContext);
         
         try {
-            // Call AI to get query
-            const aiQueryResponse = await window.AIProvider.call(phase1Prompt, null);
-            
+            // Call AI to get query. Request schema-constrained JSON so the query
+            // envelope (operation/filterCode/aggregation/…) comes back parseable
+            // with valid enums, whichever provider the fallback chain lands on.
+            const jsonSchema = window.QueryEngine.getQueryEnvelopeSchema
+                ? window.QueryEngine.getQueryEnvelopeSchema(mode)
+                : undefined;
+            const aiQueryResponse = await window.AIProvider.call(phase1Prompt, null, jsonSchema ? { jsonSchema } : {});
+
             // Parse query from AI response
             const queryObj = window.QueryEngine.parseAIQuery(aiQueryResponse);
             
@@ -224,17 +229,22 @@ const Chat = {
         // Always include full metadata for each query (chat queries are independent)
         const datasetName = mode === 'expenses' ? 'expenses' : 'investments';
         const todayIso = new Date().toISOString().split('T')[0];
+        // Prompt ordering is cache-aware: the large, byte-identical prefix
+        // (dataset structure + task instructions) comes FIRST so providers with
+        // automatic prefix caching (Groq/OpenAI/Gemini) can reuse it across
+        // queries; the only volatile part — the user's question — is placed LAST.
+        // Reordering must NOT change the content, only its position.
         return `Today's date: ${todayIso}. Use it to interpret relative phrases ("last month", "this quarter", "this year").
 
 I have a ${datasetName} dataset with the following structure:
 
 ${JSON.stringify(metadataContext, null, 2)}
 
-User Query: "${userQuery}"
+Your task: Generate a JavaScript query to answer the user's question. ${metadataContext.queryInstructions}
 
-Your task: Generate a JavaScript query to answer this question. ${metadataContext.queryInstructions}
+Return ONLY a JSON object, no extra text or explanation outside the JSON.
 
-Return ONLY a JSON object, no extra text or explanation outside the JSON.`;
+User Query: "${userQuery}"`;
     },
 
     /**
@@ -304,15 +314,14 @@ Return ONLY a JSON object, no extra text or explanation outside the JSON.`;
         // bullets, no tables, grounded numbers, a short action block. ₹ amounts
         // are auto-highlighted by AIRenderer, so we DON'T bold them (avoids
         // double-emphasis) — but we DO bold percentages and labels.
-        return `Today's date: ${todayIso}.${profileBlock}
-
-User asked: "${userQuery}"
-
-I executed a query on my ${datasetName} database and got these results:
-
-${resultSummary}${queryExplanation}
-
-Write a clear analysis that directly answers the question, formatted for a mobile screen.
+        //
+        // Prompt ordering is cache-aware: the FORMAT/style block and analysis
+        // guidance are byte-identical across queries (per mode), so they come
+        // FIRST to form a cacheable prefix; the volatile parts — the user's
+        // question, the query results, the profile snapshot, and the
+        // zero-results caveat — are placed LAST. Reordering must NOT change the
+        // content, only its position.
+        const formatGuidance = `Write a clear analysis that directly answers the user's question, formatted for a mobile screen.
 
 FORMAT:
 - Group with \`###\` headers, each led by a relevant emoji. Put a blank line before every header.
@@ -322,8 +331,17 @@ FORMAT:
 - ${analysisGuidance}
 - End with a \`### 🎯 Next steps\` block: 1–3 concrete actions, each with a ₹ amount and a one-line why. Omit only if there's genuinely nothing actionable.
 
-Use only figures present in the results above — never invent, round, or recompute totals. A value of ₹0 means zero, not missing.
-${zeroResults ? `\nIMPORTANT: Zero results were found. Do NOT invent numbers. Tell the user honestly "No matching ${datasetName} found." Then suggest 2-3 alternative search terms, broader date ranges, or related categories they could try.` : ''}`;
+Use only figures present in the results below — never invent, round, or recompute totals. A value of ₹0 means zero, not missing.`;
+
+        return `${formatGuidance}
+
+Today's date: ${todayIso}.${profileBlock}
+
+User asked: "${userQuery}"
+
+I executed a query on my ${datasetName} database and got these results:
+
+${resultSummary}${queryExplanation}${zeroResults ? `\n\nIMPORTANT: Zero results were found. Do NOT invent numbers. Tell the user honestly "No matching ${datasetName} found." Then suggest 2-3 alternative search terms, broader date ranges, or related categories they could try.` : ''}`;
     },
 
     /**
