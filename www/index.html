@@ -37,6 +37,15 @@
         details.salary-year-group:not([open]) .chevron {
             transform: rotate(-90deg);
         }
+
+        /* Horizontal date strip: hide the scrollbar but keep it scrollable, and
+           smooth-scroll when the nav chevrons call scrollBy/scrollIntoView. */
+        .schedule-date-strip {
+            scroll-behavior: smooth;
+            -ms-overflow-style: none;  /* IE/Edge */
+            scrollbar-width: none;     /* Firefox */
+        }
+        .schedule-date-strip::-webkit-scrollbar { display: none; } /* WebKit */
     </style>
     
     <!-- Lets status-bar's internal `import ... from '@capacitor/core'` resolve to our local copy -->
@@ -383,7 +392,20 @@
                         <p class="text-[10px] opacity-70 group-hover:opacity-90">Smart recommendations</p>
                     </div>
                 </button>
-                
+
+                <!-- Schedule -->
+                <button onclick="Navigation.navigateTo('schedule'); Navigation.closeMenu();" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-violet-500 hover:to-fuchsia-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-violet-400 to-fuchsia-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
+                        <svg class="w-3.5 h-3.5 text-white group-hover:text-violet-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <span class="font-bold text-sm">Schedule</span>
+                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Calendar, routines & reminders</p>
+                    </div>
+                </button>
+
                 <!-- Section Header -->
                 <div class="pt-2 pb-0.5">
                     <div class="flex items-center px-2">
@@ -864,9 +886,30 @@
                 <input type="text" id="credentials-search" placeholder="🔍 Search credentials..." class="w-full p-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" oninput="searchCredentials()">
             </div>
         </div>
-        
+
+        <!-- SCHEDULE VIEW
+             Sized to exactly the space below the fixed header (matching the
+             content wrapper's margin-top) so the PAGE never scrolls — only the
+             hourly timeline inside #schedule-content scrolls. This prevents the
+             "empty page still scrolls" problem (was caused by pb-32 + a fixed
+             100vh-based grid height overflowing the viewport). -->
+        <div id="schedule-view" class="hidden">
+            <div class="px-3 pt-3 flex flex-col overflow-hidden"
+                 style="height: calc(100vh - 3.5rem - max(1rem, env(safe-area-inset-top)));">
+                <!-- Bottom-anchored layout, top→bottom: calendar space (timeline,
+                     scrolls) with the + button floating at its bottom-right (above
+                     the dates, no overlap), then the month date strip, then the
+                     month button. All rendered by Schedule.render(). A flex column
+                     so the calendar space (flex-1) absorbs the remaining height and
+                     the strip + month button sit at the bottom. -->
+                <div id="schedule-content" class="flex flex-col flex-1 min-h-0">
+                    <!-- Schedule day view renders here -->
+                </div>
+            </div>
+        </div>
+
     </div>
-    
+
     <!-- AI SETTINGS MODAL -->
     <div id="ai-settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) Navigation.closeAISettings()">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col">
@@ -3697,15 +3740,40 @@
                 <div class="w-14 h-14 mx-auto bg-amber-100 rounded-full flex items-center justify-center mb-3 text-2xl">🔑</div>
                 <h2 class="text-lg font-bold text-gray-800">Forgot your PIN?</h2>
             </div>
-            <p class="text-sm text-gray-600 leading-relaxed mb-3">
-                For your security, your data is encrypted with your PIN. It <strong>can't be unlocked or recovered</strong> without it — not even by us.
-            </p>
+
+            <!-- FINGERPRINT RESET (preferred, no data loss). Shown only when
+                 biometric is enabled — populated by showForgotPin(). Lets a
+                 verified user re-key the PIN in place. -->
+            <div id="forgot-pin-biometric-section" class="hidden">
+                <p class="text-sm text-gray-600 leading-relaxed mb-3">
+                    Good news — you can reset your PIN with your <strong>fingerprint</strong>, without losing any data.
+                </p>
+                <div class="space-y-3 mb-4">
+                    <input type="password" id="forgot-pin-new" inputmode="numeric" maxlength="4"
+                           class="w-full px-4 py-3 border-2 border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-2xl tracking-widest font-bold"
+                           placeholder="New PIN">
+                    <input type="password" id="forgot-pin-new-confirm" inputmode="numeric" maxlength="4"
+                           class="w-full px-4 py-3 border-2 border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-2xl tracking-widest font-bold"
+                           placeholder="Confirm new PIN">
+                </div>
+                <button onclick="forgotPinBiometricReset()" class="w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11V7a5 5 0 0110 0v4m-9 0h8a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z"/></svg>
+                    Reset PIN with fingerprint
+                </button>
+                <div class="my-4 flex items-center gap-3 text-xs text-gray-400">
+                    <span class="flex-1 h-px bg-gray-200"></span>OR<span class="flex-1 h-px bg-gray-200"></span>
+                </div>
+            </div>
+
+            <!-- DATA-WIPE FALLBACK. The PIN gates the UI; on-device data is not
+                 encrypted with it, so this erase-and-restart path is a last
+                 resort only for users without biometric (or a backup). -->
             <p class="text-sm text-gray-600 leading-relaxed mb-4">
-                Your options:
+                No fingerprint set up? Then you'll need to start fresh:
             </p>
             <ul class="text-sm text-gray-600 space-y-2 mb-5 list-disc pl-5">
-                <li>If you have a <strong>backup file</strong> (or a Google Drive backup), you can start fresh and restore it from Settings → Import.</li>
-                <li>Otherwise, you'll need to <strong>reset the app</strong> and set a new PIN. This erases the data on this device.</li>
+                <li>If you have a <strong>backup file</strong> (or a Google Drive backup), reset the app and restore it from Settings → Import.</li>
+                <li>Otherwise, resetting sets a new PIN but <strong>erases the data on this device</strong>.</li>
             </ul>
             <button onclick="forgotPinReset()" class="w-full px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-bold hover:shadow-lg transition-all">
                 Reset app &amp; set a new PIN
@@ -3732,6 +3800,13 @@
                     <input type="password" id="change-current-pin" inputmode="numeric" maxlength="4"
                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-2xl tracking-widest font-bold"
                            placeholder="••••">
+                    <!-- Forgot-current-PIN recovery: only meaningful when biometric
+                         is enabled. Lets a verified user set a new PIN without the
+                         old one, preserving all data. Toggled by openChangePinModal(). -->
+                    <button type="button" id="reset-pin-biometric-link" onclick="resetPinWithBiometric()"
+                            class="hidden mt-2 text-sm text-indigo-600 hover:text-indigo-800 underline underline-offset-2 font-medium">
+                        Forgot your current PIN? Reset with fingerprint
+                    </button>
                 </div>
                 
                 <div>
@@ -4073,6 +4148,8 @@
     <script src="js/core/security.js"></script>
     <script src="js/core/loading.js"></script>
     <script src="js/core/stockapi.js"></script>
+    <!-- Local-notifications wrapper for Schedule reminders (safe no-op on web). -->
+    <script src="js/core/notifications.js"></script>
 
     <!-- AI data-sharing consent gate. Depends on DB, Storage, and Utils (all
          loaded above) and drives the shared #custom-confirm-modal. AIProvider.call
@@ -4105,6 +4182,8 @@
     <script src="js/modules/income.js"></script>
     <script src="js/modules/recurringExpenses.js"></script>
     <script src="js/modules/events.js"></script>
+    <!-- Schedule (calendar): depends on Utils, Storage, DB, and Notifications above. -->
+    <script src="js/modules/schedule.js"></script>
     <script src="js/modules/loans.js"></script>
     <script src="js/modules/moneyLent.js"></script>
     <script src="js/modules/investments.js"></script>
@@ -7932,7 +8011,15 @@ Technical: ${error.stack ? error.stack.split('\n')[0] : 'No stack trace'}
             document.getElementById('change-current-pin').value = '';
             document.getElementById('change-new-pin').value = '';
             document.getElementById('change-confirm-pin').value = '';
-            
+
+            // Offer the fingerprint reset path only when biometric is enabled —
+            // that's the only way to prove identity without the old PIN.
+            const resetLink = document.getElementById('reset-pin-biometric-link');
+            if (resetLink) {
+                const canReset = !!(window.DB.security && window.DB.security.biometricEnabled);
+                resetLink.classList.toggle('hidden', !canReset);
+            }
+
             // Show change PIN modal
             document.getElementById('change-pin-modal').classList.remove('hidden');
         }
@@ -8007,7 +8094,56 @@ Technical: ${error.stack ? error.stack.split('\n')[0] : 'No stack trace'}
                 console.error('Change PIN failed:', error);
             }
         }
-        
+
+        /**
+         * Recovery path for a forgotten current PIN: prove identity with the
+         * fingerprint, then set the new PIN without needing the old one. Uses
+         * the New/Confirm fields already in the Change PIN modal so the user
+         * still explicitly chooses (and confirms) the replacement PIN.
+         */
+        async function resetPinWithBiometric() {
+            const newPin = document.getElementById('change-new-pin').value;
+            const confirmPin = document.getElementById('change-confirm-pin').value;
+
+            if (!newPin || newPin.length !== 4) {
+                window.Utils.showError('Enter your new 4-digit PIN in the field below first');
+                document.getElementById('change-new-pin').focus();
+                return;
+            }
+            if (newPin !== confirmPin) {
+                window.Utils.showError('New PIN and confirmation do not match');
+                document.getElementById('change-confirm-pin').focus();
+                return;
+            }
+
+            try {
+                if (window.Loading) {
+                    window.Loading.show('Verifying fingerprint...');
+                }
+
+                // Prompts for biometric; throws on cancel/failure.
+                await window.Security.resetPinWithBiometric(newPin);
+
+                if (window.Loading) {
+                    window.Loading.hide();
+                }
+
+                closeChangePinModal();
+                window.Utils.showSuccess('✅ PIN reset successfully!');
+
+                document.getElementById('change-current-pin').value = '';
+                document.getElementById('change-new-pin').value = '';
+                document.getElementById('change-confirm-pin').value = '';
+            } catch (error) {
+                if (window.Loading) {
+                    window.Loading.hide();
+                }
+                // Biometric cancel throws too — keep the message generic/friendly.
+                window.Utils.showError('❌ ' + (error.message || 'Fingerprint verification failed'));
+                console.error('Reset PIN via biometric failed:', error);
+            }
+        }
+
         /**
          * Handle PIN input with auto-focus on next field
          */
@@ -8366,25 +8502,41 @@ Technical: ${error.stack ? error.stack.split('\n')[0] : 'No stack trace'}
                 }
             } catch (error) {
                 Loading.hide();
-                console.error('❌ Biometric unlock error:', error);
-                console.error('Error type:', error.constructor.name);
-                console.error('Error message:', error.message);
-                console.error('Error code:', error.code);
-                console.error('Full error object:', JSON.stringify(error, null, 2));
-                
-                // Only show error if unlock modal is still visible
-                // (If user logged in with PIN already, modal would be hidden)
+                console.log('ℹ️ Biometric unlock not completed:', error && (error.code || error.message));
+
+                // Only surface anything if the unlock modal is still up (if the
+                // user already got in via PIN, the modal is hidden — say nothing).
                 const unlockModal = document.getElementById('security-unlock-modal');
                 const isModalVisible = unlockModal && !unlockModal.classList.contains('hidden');
-                
-                if (isModalVisible) {
-                if (error.message && error.message.includes('cancelled')) {
-                    Utils.showInfo('Biometric cancelled. Use PIN instead.');
+                if (!isModalVisible) return;
+
+                // Tapping "Use PIN" (the prompt's cancel button) is a normal
+                // choice, not a failure. The @aparajita plugin reports it via an
+                // error CODE (userCancel/userFallback/systemCancel/appCancel);
+                // the message text is OEM-dependent and not reliably "cancelled",
+                // which is why the old message-substring check flashed a scary
+                // red error. Treat all benign/opt-out codes as silent — the PIN
+                // box is already visible underneath — and just focus it.
+                const BENIGN_CANCEL_CODES = new Set([
+                    'userCancel', 'userFallback', 'systemCancel', 'appCancel',
+                    'biometryNotAvailable', 'biometryNotEnrolled',
+                    'passcodeNotSet', 'noDeviceCredential'
+                ]);
+                const code = error && error.code;
+                const isBenign = BENIGN_CANCEL_CODES.has(code) ||
+                    (error && typeof error.message === 'string' &&
+                     /cancel/i.test(error.message)); // legacy/web fallback
+
+                if (isBenign) {
+                    // No toast — silently fall back to PIN entry.
+                    const pinInput = document.getElementById('security-unlock-pin');
+                    if (pinInput) pinInput.focus();
                 } else {
-                    Utils.showError(`Biometric failed: ${error.message || error.code || 'Unknown error'}. Use PIN instead.`);
-                    }
-                } else {
-                    console.log('ℹ️ Unlock modal already closed (user logged in with PIN), skipping error message');
+                    // A real, unexpected failure (e.g. hardware error, lockout).
+                    console.error('❌ Biometric unlock error:', error);
+                    Utils.showError('Fingerprint unavailable. Please enter your PIN.');
+                    const pinInput = document.getElementById('security-unlock-pin');
+                    if (pinInput) pinInput.focus();
                 }
             }
         }
@@ -8484,20 +8636,77 @@ Technical: ${error.stack ? error.stack.split('\n')[0] : 'No stack trace'}
         window.skipAIKeysSetup = skipAIKeysSetup;
         
         /**
-         * Forgot-PIN flow shown from the unlock screen. Just reveals the help
-         * modal that explains recovery options (data is encrypted behind the
-         * PIN, so it can't be decrypted without it).
+         * Forgot-PIN flow shown from the unlock screen. Reveals the recovery
+         * modal. When biometric is enabled, surfaces the in-place fingerprint
+         * reset (no data loss); otherwise only the erase-and-restart fallback is
+         * shown. Clears any stale input each time it opens.
          */
         function showForgotPin() {
+            const bioSection = document.getElementById('forgot-pin-biometric-section');
+            if (bioSection) {
+                const canReset = !!(window.DB.security && window.DB.security.biometricEnabled);
+                bioSection.classList.toggle('hidden', !canReset);
+            }
+            const newInput = document.getElementById('forgot-pin-new');
+            const confirmInput = document.getElementById('forgot-pin-new-confirm');
+            if (newInput) newInput.value = '';
+            if (confirmInput) confirmInput.value = '';
+
             document.getElementById('forgot-pin-modal').classList.remove('hidden');
         }
 
         /**
-         * Last resort from the locked screen: wipe the encrypted data blob (which
+         * Recover a forgotten PIN from the locked screen using biometric — the
+         * data-preserving path. Verifies the fingerprint (via
+         * Security.resetPinWithBiometric), sets the chosen new PIN, then boots
+         * the app. On-device data is not encrypted with the PIN, so nothing is
+         * lost by re-keying it.
+         */
+        async function forgotPinBiometricReset() {
+            const newPin = document.getElementById('forgot-pin-new').value;
+            const confirmPin = document.getElementById('forgot-pin-new-confirm').value;
+
+            if (!newPin || newPin.length !== 4) {
+                window.Utils.showError('Enter a new 4-digit PIN');
+                document.getElementById('forgot-pin-new').focus();
+                return;
+            }
+            if (newPin !== confirmPin) {
+                window.Utils.showError('New PIN and confirmation do not match');
+                document.getElementById('forgot-pin-new-confirm').focus();
+                return;
+            }
+
+            try {
+                if (window.Loading) window.Loading.show('Verifying fingerprint...');
+
+                // Prompts for biometric; throws on cancel/failure.
+                await window.Security.resetPinWithBiometric(newPin);
+
+                if (window.Loading) window.Loading.hide();
+
+                document.getElementById('forgot-pin-modal').classList.add('hidden');
+                document.getElementById('security-unlock-modal').classList.add('hidden');
+                document.getElementById('forgot-pin-new').value = '';
+                document.getElementById('forgot-pin-new-confirm').value = '';
+
+                window.Utils.showSuccess('✅ PIN reset! Your data is intact.');
+
+                // resetPinWithBiometric already marked us unlocked; boot the app.
+                setTimeout(() => { window.App.init(); }, 300);
+            } catch (error) {
+                if (window.Loading) window.Loading.hide();
+                window.Utils.showError('❌ ' + (error.message || 'Fingerprint verification failed'));
+                console.error('Forgot-PIN biometric reset failed:', error);
+            }
+        }
+
+        /**
+         * Last resort from the locked screen: wipe the stored data blob (which
          * also holds the PIN hash) and reload so the user lands on fresh setup.
-         * Confirmed first. This is the only way out for a truly forgotten PIN —
-         * the data can't be decrypted without it, so there's nothing to preserve
-         * here beyond any backup the user already has elsewhere.
+         * Confirmed first. This is only for a truly forgotten PIN with no
+         * biometric — there's nothing to preserve here beyond any backup the
+         * user already has elsewhere.
          */
         async function forgotPinReset() {
             let ok = true;
@@ -8522,12 +8731,14 @@ Technical: ${error.stack ? error.stack.split('\n')[0] : 'No stack trace'}
         // Make security functions globally accessible
         window.showForgotPin = showForgotPin;
         window.forgotPinReset = forgotPinReset;
+        window.forgotPinBiometricReset = forgotPinBiometricReset;
         window.setupSecurity = setupSecurity;
         window.unlockWithPin = unlockWithPin;
         window.unlockWithBiometric = unlockWithBiometric;
         window.checkBiometricAvailability = checkBiometricAvailability;
         window.openChangePinModal = openChangePinModal;
         window.closeChangePinModal = closeChangePinModal;
+        window.resetPinWithBiometric = resetPinWithBiometric;
         window.changePin = changePin;
         window.showMasterPasswordSetup = showMasterPasswordSetup;
         window.completeMasterPasswordSetup = completeMasterPasswordSetup;

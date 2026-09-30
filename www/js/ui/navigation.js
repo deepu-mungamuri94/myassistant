@@ -70,6 +70,11 @@ const Navigation = {
                 title: 'Dashboard',
                 bgClass: 'bg-gradient-to-r from-blue-600 to-cyan-600'
             },
+            schedule: {
+                icon: '<svg class="w-6 h-6 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>',
+                title: 'Schedule',
+                bgClass: 'bg-gradient-to-r from-violet-600 to-fuchsia-600'
+            },
             chat: {
                 icon: '<svg class="w-6 h-6 text-white mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"/><path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z"/></svg>',
                 title: 'AI Advisor',
@@ -126,10 +131,10 @@ const Navigation = {
             'bg-gradient-to-r',
             // All "from-" colors
             'from-blue-600', 'from-purple-600', 'from-green-600', 'from-orange-600',
-            'from-slate-600', 'from-yellow-600', 'from-teal-600', 'from-indigo-600',
+            'from-slate-600', 'from-yellow-600', 'from-teal-600', 'from-indigo-600', 'from-violet-600',
             // All "to-" colors
             'to-cyan-600', 'to-pink-600', 'to-emerald-600', 'to-amber-600',
-            'to-blue-600', 'to-indigo-600', 'to-orange-600', 'to-gray-600', 'to-purple-600', 'to-rose-600'
+            'to-blue-600', 'to-indigo-600', 'to-orange-600', 'to-gray-600', 'to-purple-600', 'to-rose-600', 'to-fuchsia-600'
         );
         
         // Add new gradient classes
@@ -146,6 +151,9 @@ const Navigation = {
         switch(view) {
             case 'dashboard':
                 if (window.Dashboard) window.Dashboard.render();
+                break;
+            case 'schedule':
+                if (window.Schedule) window.Schedule.render();
                 break;
             case 'credentials':
                 if (window.Credentials) window.Credentials.render();
@@ -934,6 +942,7 @@ const Navigation = {
                 investments: [],
                 monthlyInvestments: [],
                 recurringExpenses: [],
+                scheduleEvents: [],
                 loans: [],
                 income: null,
                 dismissedRecurringExpenses: [],

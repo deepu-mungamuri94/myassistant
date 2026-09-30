@@ -254,14 +254,104 @@ const Security = {
         if (lock > 0) {
             sec.pinLockoutUntil = Date.now() + lock;
         }
-        window.Storage.save();
+        // Durable: lockout state must survive an immediate reload (App.init()
+        // re-reads storage right after biometric login), or a debounced write
+        // gets clobbered and the counter/lockout silently reverts.
+        this._persistNow();
     },
 
     _recordPinSuccess() {
         const sec = window.DB.security;
         sec.failedPinAttempts = 0;
         sec.pinLockoutUntil = 0;
+        this._persistNow();
+    },
+
+    /**
+     * Self-heal a lockout whose window has fully elapsed.
+     *
+     * failedPinAttempts is persisted and, historically, only ever reset on a
+     * *correct* PIN. That made it a monotonic counter: once you crossed the
+     * threshold, the lockout timestamp would move into the past overnight (so
+     * getLockoutRemainingMs() reads 0 and you're allowed to type), but the
+     * counter was still high — so the very first wrong entry the next day
+     * jumped straight back over the threshold and re-triggered (and escalated)
+     * the lockout. That's the "the wait time shows up again tomorrow" bug.
+     *
+     * Once the penalty has been served (pinLockoutUntil is set but now in the
+     * past), clear the streak so the next attempt starts from a clean slate.
+     * The escalating backoff still throttles a rapid burst of guesses within a
+     * single streak; it just no longer accumulates across sessions/days. This
+     * is the right trade-off here: the PIN gates the UI only (on-device data is
+     * not encrypted with it), so legitimate-user recoverability wins over
+     * theoretical brute-force hardening.
+     */
+    _maybeResetExpiredLockout() {
+        const sec = window.DB.security;
+        if (!sec) return;
+        if (sec.pinLockoutUntil && sec.pinLockoutUntil <= Date.now()) {
+            sec.failedPinAttempts = 0;
+            sec.pinLockoutUntil = 0;
+            this._persistNow();
+        }
+    },
+
+    /**
+     * Persist a security credential change durably (synchronously).
+     *
+     * Storage.save() is debounced 500ms. That is fine for ordinary data, but a
+     * PIN hash is a credential that MUST be on disk before anything reloads
+     * storage — otherwise the write is still buffered when a later
+     * Storage.load() (e.g. App.init() re-reading localStorage right after a
+     * login-screen reset) overwrites the new hash in memory with the stale disk
+     * value, silently reverting the PIN to the old one. flush() forces the
+     * pending write out now. save() is still called first to preserve the
+     * dirty-flag contract (and so environments/tests without flush() degrade to
+     * the debounced write).
+     */
+    _persistNow() {
+        if (!window.Storage) return;
         window.Storage.save();
+        if (typeof window.Storage.flush === 'function') {
+            window.Storage.flush();
+        }
+    },
+
+    /**
+     * Write a new PIN (salted PBKDF2) and clear any lockout state.
+     * Shared by changePin and the biometric-based reset so the hashing scheme
+     * stays in one place. Persisted synchronously (see _persistNow).
+     */
+    async _writeNewPin(pin) {
+        const sec = window.DB.security;
+        sec.pinSalt = window.Crypto.randomSaltBase64(16);
+        sec.pinHash = await this._hashPinV2(pin, sec.pinSalt);
+        sec.pinVersion = 2;
+        sec.failedPinAttempts = 0;
+        sec.pinLockoutUntil = 0;
+        this._persistNow();
+    },
+
+    /**
+     * Compare a candidate PIN against the stored hash, migrating a legacy
+     * unsalted hash to the salted scheme on a match. Pure check: no lockout
+     * enforcement and no attempt-counter side effects — callers decide whether
+     * this attempt should count toward the login brute-force lockout.
+     */
+    async _pinMatches(pin) {
+        const sec = window.DB.security;
+        if (sec.pinVersion === 2 && sec.pinSalt) {
+            return (await this._hashPinV2(pin, sec.pinSalt)) === sec.pinHash;
+        }
+        // Legacy unsalted SHA-256 path
+        const ok = (await this.hashPin(pin)) === sec.pinHash;
+        if (ok) {
+            // Migrate to salted PBKDF2 transparently
+            sec.pinSalt = window.Crypto.randomSaltBase64(16);
+            sec.pinHash = await this._hashPinV2(pin, sec.pinSalt);
+            sec.pinVersion = 2;
+        }
+        return ok;
     },
 
     /**
@@ -279,7 +369,7 @@ const Security = {
         sec.isSetup = true;
         sec.failedPinAttempts = 0;
         sec.pinLockoutUntil = 0;
-        window.Storage.save();
+        this._persistNow();
 
         console.log('✅ PIN setup successfully');
     },
@@ -289,26 +379,16 @@ const Security = {
      * upgrades old unsalted PINs to the salted scheme on first successful entry.
      */
     async verifyPin(pin) {
-        // Hard stop while locked out.
+        // If a previous lockout has fully elapsed, forgive the streak first so
+        // a served penalty doesn't make the next single wrong entry re-lock.
+        this._maybeResetExpiredLockout();
+
+        // Hard stop while still locked out.
         if (this.getLockoutRemainingMs() > 0) {
             return false;
         }
 
-        const sec = window.DB.security;
-        let ok = false;
-
-        if (sec.pinVersion === 2 && sec.pinSalt) {
-            ok = (await this._hashPinV2(pin, sec.pinSalt)) === sec.pinHash;
-        } else {
-            // Legacy unsalted SHA-256 path
-            ok = (await this.hashPin(pin)) === sec.pinHash;
-            if (ok) {
-                // Migrate to salted PBKDF2 transparently
-                sec.pinSalt = window.Crypto.randomSaltBase64(16);
-                sec.pinHash = await this._hashPinV2(pin, sec.pinSalt);
-                sec.pinVersion = 2;
-            }
-        }
+        const ok = await this._pinMatches(pin);
 
         if (ok) {
             this._recordPinSuccess();
@@ -430,6 +510,11 @@ const Security = {
             // The plugin throws on failure/cancel, so reaching here means success
             this.isUnlocked = true;
             this.updateSession(); // Set session on successful authentication
+            // A verified identity clears any PIN-failure lockout streak: the
+            // user proved who they are, so stale failed attempts shouldn't keep
+            // penalizing PIN entry (this is what let a forgotten-PIN + working
+            // fingerprint still get stuck behind a login lockout).
+            this._recordPinSuccess();
             console.log('✅ Biometric authentication successful!');
             return true;
         } catch (error) {
@@ -472,20 +557,38 @@ const Security = {
         if (!isValid) {
             throw new Error('Current PIN is incorrect');
         }
-        
+
         if (!newPin || newPin.length < 4) {
             throw new Error('New PIN must be at least 4 digits');
         }
-        
-        const sec = window.DB.security;
-        sec.pinSalt = window.Crypto.randomSaltBase64(16);
-        sec.pinHash = await this._hashPinV2(newPin, sec.pinSalt);
-        sec.pinVersion = 2;
-        sec.failedPinAttempts = 0;
-        sec.pinLockoutUntil = 0;
-        window.Storage.save();
-        
+
+        await this._writeNewPin(newPin);
         console.log('✅ PIN changed successfully');
+    },
+
+    /**
+     * Reset the PIN when the user can't recall the old one but CAN prove
+     * identity with biometric. This is the recovery path for a forgotten PIN
+     * that preserves all data (on-device data is not encrypted with the PIN, so
+     * there is nothing to lose by re-keying it).
+     *
+     * Re-authenticates with biometric right here so a stale unlock session
+     * can't be used to silently re-PIN the app; throws if biometric is not
+     * enabled/available or the user cancels/fails.
+     */
+    async resetPinWithBiometric(newPin) {
+        if (!newPin || newPin.length < 4) {
+            throw new Error('New PIN must be at least 4 digits');
+        }
+        if (!window.DB.security || !window.DB.security.biometricEnabled) {
+            throw new Error('Biometric authentication is not enabled');
+        }
+
+        // Throws on cancel/failure — only proceed on a verified identity.
+        await this.authenticateWithBiometric();
+
+        await this._writeNewPin(newPin);
+        console.log('✅ PIN reset via biometric');
     },
     
     /**

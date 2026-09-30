@@ -60,4 +60,15 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+
+    <!--
+        Exact alarms for Schedule reminders. @capacitor/local-notifications
+        schedules with allowWhileIdle (exact) so a "30 min before" reminder fires
+        on time instead of being batched by Doze. Android 12 (API 31) gates exact
+        alarms behind SCHEDULE_EXACT_ALARM; Android 13+ (API 33) offers the softer
+        USE_EXACT_ALARM, which suits a calendar/reminder app and needs no runtime
+        grant. POST_NOTIFICATIONS is merged from the plugin manifest.
+    -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 </manifest>

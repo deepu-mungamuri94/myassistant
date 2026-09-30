@@ -11,6 +11,16 @@ const DB = {
     monthlyInvestments: [], // Monthly investment tracking (id, name, type, goal, quantity, price, currency, amount, date, description)
     sharePrices: [], // Share price tracking (name, price, currency, active, lastUpdated)
     recurringExpenses: [], // Custom recurring expenses (LIC, insurance, etc.)
+    // Calendar / Schedule events, organized by life-domain type.
+    // NOTE: distinct from the `Events` module, which only tags expenses (expense.event = "Goa Trip").
+    // Event shape: { id, title, type 'personal'|'health'|'finance'|'social'|'travel'|'other',
+    //   date 'YYYY-MM-DD', startTime 'HH:MM'|null, endTime 'HH:MM'|null,
+    //   allDay, location, notes, recurrence:{ frequency 'none'|'daily'|'weekly'|'monthly'|'yearly',
+    //   interval, daysOfWeek:[0-6], endDate|null, exceptions:['YYYY-MM-DD'] },
+    //   reminder:{ enabled, offsets:[minutesBefore...], minutesBefore }, notificationIds:[], createdAt }
+    //   reminder.offsets is a sorted list — an event can remind at several offsets
+    //   (e.g. [30, 1440] = 30 min AND 1 day before). minutesBefore mirrors offsets[0] for legacy readers.
+    scheduleEvents: [],
     sips: [], // Planned monthly SIPs: { id, name, amount, active, createdAt }. Tracked as a plan only; actual buys are added under portfolioInvestments / monthlyInvestments.
     plans: [], // Future planned expenses: { id, name, description, amount, plannedOn, completedOn, status, createdAt }
     loans: [], // Loan tracking

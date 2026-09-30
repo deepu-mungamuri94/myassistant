@@ -44,7 +44,15 @@ const App = {
             if (window.Cards && typeof window.Cards.migrateCardBills === 'function') {
                 window.Cards.migrateCardBills();
             }
-            
+
+            // Seed the Schedule module's current day and re-queue reminders for
+            // upcoming events. Runs on every launch (recurring events need their
+            // future occurrences re-scheduled beyond the last horizon); safe no-op
+            // on web / when the notifications plugin is unavailable.
+            if (window.Schedule && typeof window.Schedule.init === 'function') {
+                window.Schedule.init();
+            }
+
             // Check security status FIRST
             const isSecuritySetup = window.Security && window.Security.isSetup();
             

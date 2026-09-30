@@ -34,9 +34,12 @@ describe('Security Module', () => {
       }
     };
 
-    // Mock Storage
+    // Mock Storage. flush() is the synchronous durable-write path credential
+    // changes rely on (see Security._persistNow) — the debounced save() alone
+    // can be clobbered by a reload right after a PIN reset.
     window.Storage = {
-      save: vi.fn()
+      save: vi.fn(),
+      flush: vi.fn()
     };
 
     // Mock Crypto utilities
@@ -273,6 +276,76 @@ describe('Security Module', () => {
       expect(window.DB.security.failedPinAttempts).toBe(5);
       expect(window.DB.security.pinLockoutUntil).toBeGreaterThan(startTime);
       expect(Security.getLockoutRemainingMs()).toBe(30000);
+
+      vi.useRealTimers();
+    });
+
+    // Regression: the "the wait time comes back the next day" bug. The streak
+    // used to only reset on a correct PIN, so once a served lockout's timestamp
+    // slid into the past, the counter was still >= threshold and the very first
+    // wrong entry re-locked (and escalated) immediately.
+    it('forgives the streak once a lockout has fully elapsed', async () => {
+      vi.useFakeTimers();
+      const startTime = Date.now();
+      vi.setSystemTime(startTime);
+
+      await Security.setupPin('1234');
+
+      // Trigger a lockout (5 failures → 30s).
+      for (let i = 0; i < 5; i++) {
+        await Security.verifyPin('9999');
+      }
+      expect(window.DB.security.failedPinAttempts).toBe(5);
+      expect(Security.getLockoutRemainingMs()).toBe(30000);
+
+      // Serve the penalty (simulates "come back later / next day").
+      vi.advanceTimersByTime(31000);
+
+      // A single wrong entry now must NOT immediately re-lock — the streak was
+      // forgiven, so this counts as attempt #1, well under the threshold.
+      const result = await Security.verifyPin('8888');
+      expect(result).toBe(false);
+      expect(window.DB.security.failedPinAttempts).toBe(1);
+      expect(Security.getLockoutRemainingMs()).toBe(0);
+
+      vi.useRealTimers();
+    });
+
+    it('does not forgive the streak while the lockout is still active', async () => {
+      vi.useFakeTimers();
+      const startTime = Date.now();
+      vi.setSystemTime(startTime);
+
+      await Security.setupPin('1234');
+      for (let i = 0; i < 5; i++) {
+        await Security.verifyPin('9999');
+      }
+
+      // Still inside the 30s window — attempts stay counted, lockout intact.
+      vi.advanceTimersByTime(10000);
+      expect(Security.getLockoutRemainingMs()).toBe(20000);
+      expect(window.DB.security.failedPinAttempts).toBe(5);
+
+      vi.useRealTimers();
+    });
+
+    it('_maybeResetExpiredLockout clears an elapsed lockout only', () => {
+      vi.useFakeTimers();
+      const now = Date.now();
+      vi.setSystemTime(now);
+
+      // Active lockout: untouched.
+      window.DB.security.failedPinAttempts = 7;
+      window.DB.security.pinLockoutUntil = now + 5000;
+      Security._maybeResetExpiredLockout();
+      expect(window.DB.security.failedPinAttempts).toBe(7);
+      expect(window.DB.security.pinLockoutUntil).toBe(now + 5000);
+
+      // Elapsed lockout: cleared.
+      window.DB.security.pinLockoutUntil = now - 1;
+      Security._maybeResetExpiredLockout();
+      expect(window.DB.security.failedPinAttempts).toBe(0);
+      expect(window.DB.security.pinLockoutUntil).toBe(0);
 
       vi.useRealTimers();
     });
@@ -541,6 +614,12 @@ describe('Security Module', () => {
       expect(result).toBe(true);
     });
 
+    it('flushes the new PIN to disk synchronously', async () => {
+      window.Storage.flush.mockClear();
+      await Security.changePin('1234', '5678');
+      expect(window.Storage.flush).toHaveBeenCalled();
+    });
+
     it('rejects change with incorrect old PIN', async () => {
       await expect(Security.changePin('9999', '5678')).rejects.toThrow('Current PIN is incorrect');
     });
@@ -573,6 +652,106 @@ describe('Security Module', () => {
 
       expect(window.DB.security.failedPinAttempts).toBe(0);
       expect(window.DB.security.pinLockoutUntil).toBe(0);
+    });
+  });
+
+  // ========== Biometric reset / lockout interaction Tests ==========
+  describe('biometric authentication', () => {
+    beforeEach(async () => {
+      await Security.setupPin('1234');
+      window.DB.security.biometricEnabled = true;
+
+      // Mock a native Capacitor biometric plugin that succeeds by default.
+      window.Capacitor = {
+        isNativePlatform: () => true,
+        Plugins: {
+          BiometricAuthNative: {
+            internalAuthenticate: vi.fn(async () => ({}))
+          }
+        }
+      };
+    });
+
+    it('clears a PIN-failure lockout streak on successful biometric auth', async () => {
+      vi.useFakeTimers();
+      const now = Date.now();
+      vi.setSystemTime(now);
+
+      // Build up a lockout via wrong PINs.
+      for (let i = 0; i < 5; i++) {
+        await Security.verifyPin('9999');
+      }
+      expect(window.DB.security.failedPinAttempts).toBe(5);
+      expect(Security.getLockoutRemainingMs()).toBeGreaterThan(0);
+
+      // Fingerprint proves identity → streak + lockout wiped.
+      await Security.authenticateWithBiometric();
+      expect(window.DB.security.failedPinAttempts).toBe(0);
+      expect(window.DB.security.pinLockoutUntil).toBe(0);
+
+      vi.useRealTimers();
+    });
+
+    describe('resetPinWithBiometric', () => {
+      it('sets a new PIN after biometric verification', async () => {
+        await Security.resetPinWithBiometric('5678');
+
+        expect(window.DB.security.pinHash).toBe('hex-hash-5678');
+        expect(window.DB.security.pinVersion).toBe(2);
+        expect(window.DB.security.failedPinAttempts).toBe(0);
+        expect(window.DB.security.pinLockoutUntil).toBe(0);
+
+        // New PIN verifies; there is no dependency on the old one.
+        expect(await Security.verifyPin('5678')).toBe(true);
+      });
+
+      it('flushes the new PIN to disk synchronously (survives immediate reload)', async () => {
+        window.Storage.flush.mockClear();
+        await Security.resetPinWithBiometric('5678');
+        // Regression: a debounced-only save was still buffered when App.init()
+        // reloaded storage, reverting the hash to the old PIN. Must flush now.
+        expect(window.Storage.flush).toHaveBeenCalled();
+      });
+
+      it('clears an existing lockout so the new PIN works immediately', async () => {
+        vi.useFakeTimers();
+        const now = Date.now();
+        vi.setSystemTime(now);
+
+        for (let i = 0; i < 5; i++) {
+          await Security.verifyPin('9999');
+        }
+        expect(Security.getLockoutRemainingMs()).toBeGreaterThan(0);
+
+        await Security.resetPinWithBiometric('5678');
+        expect(Security.getLockoutRemainingMs()).toBe(0);
+        expect(await Security.verifyPin('5678')).toBe(true);
+
+        vi.useRealTimers();
+      });
+
+      it('rejects when biometric is not enabled', async () => {
+        window.DB.security.biometricEnabled = false;
+        await expect(Security.resetPinWithBiometric('5678'))
+          .rejects.toThrow('Biometric authentication is not enabled');
+      });
+
+      it('rejects a new PIN shorter than 4 digits', async () => {
+        await expect(Security.resetPinWithBiometric('12'))
+          .rejects.toThrow('New PIN must be at least 4 digits');
+      });
+
+      it('does not change the PIN if biometric verification fails', async () => {
+        window.Capacitor.Plugins.BiometricAuthNative.internalAuthenticate =
+          vi.fn(async () => { throw new Error('User cancelled'); });
+
+        const originalHash = window.DB.security.pinHash;
+        await expect(Security.resetPinWithBiometric('5678')).rejects.toThrow();
+
+        // Old PIN untouched, new PIN never set.
+        expect(window.DB.security.pinHash).toBe(originalHash);
+        expect(await Security.verifyPin('1234')).toBe(true);
+      });
     });
   });
 
