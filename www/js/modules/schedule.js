@@ -103,6 +103,31 @@ const Schedule = {
         }
     },
 
+    /**
+     * Deep-link entry point: show the schedule on a given day and open that
+     * event's detail. Called when the user taps a reminder notification (after
+     * the login gate). Tolerates a missing/deleted event (just lands on the day)
+     * and a missing date (falls back to the event's own date, else today).
+     * @param {string} eventId
+     * @param {string|null} occurrenceDate 'YYYY-MM-DD' of the tapped occurrence
+     */
+    openEvent(eventId, occurrenceDate) {
+        const ev = this.getById(eventId);
+        this.curDate = occurrenceDate || (ev && ev.date) || this._todayStr();
+        this._pickerOpen = false;
+
+        if (window.Navigation && typeof window.Navigation.navigateTo === 'function') {
+            window.Navigation.navigateTo('schedule');
+        } else {
+            this.render();
+        }
+        // Open the detail form after the view has painted (navigateTo also calls
+        // render()); only if the event still exists.
+        if (ev) {
+            setTimeout(() => this.openForm(eventId), 60);
+        }
+    },
+
     // ==================== DATA / CRUD ====================
 
     getAll() {

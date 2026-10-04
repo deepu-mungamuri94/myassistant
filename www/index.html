@@ -410,34 +410,93 @@
                 <div class="pt-2 pb-0.5">
                     <div class="flex items-center px-2">
                         <div class="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                        <p class="text-[8px] text-gray-500 font-semibold uppercase px-2 tracking-wide">Health</p>
+                        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                    </div>
+                </div>
+
+                <!-- Personal Care -->
+                <button onclick="Navigation.navigateTo('personalcare')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-rose-500 hover:to-pink-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
+                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-rose-400 to-pink-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
+                        <svg class="w-3.5 h-3.5 text-white group-hover:text-rose-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 2a1 1 0 00-1 1v3H5a3 3 0 00-3 3v9a3 3 0 003 3h14a3 3 0 003-3v-9a3 3 0 00-3-3h-3V3a1 1 0 00-1-1H9z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11v4m-2-2h4"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <span class="font-bold text-sm">Personal Care</span>
+                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Medicines & skincare</p>
+                    </div>
+                </button>
+
+                <!-- Section Header -->
+                <div class="pt-2 pb-0.5">
+                    <div class="flex items-center px-2">
+                        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
                         <p class="text-[8px] text-gray-500 font-semibold uppercase px-2 tracking-wide">Financial</p>
                         <div class="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
                     </div>
                 </div>
-                
-                <!-- Income -->
-                <button onclick="Navigation.navigateTo('income')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-green-500 hover:to-emerald-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
-                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-green-400 to-emerald-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
-                        <span class="text-base font-bold text-white group-hover:text-green-500 transition-colors">₹</span>
-                    </div>
-                    <div class="flex-1">
-                        <span class="font-bold text-sm">Income</span>
-                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Salary/Earnings</p>
-                    </div>
-                </button>
-                
-                <!-- Expenses -->
-                <button onclick="Navigation.navigateTo('expenses')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
-                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-purple-400 to-pink-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
-                        <svg class="w-3.5 h-3.5 text-white group-hover:text-purple-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-                        </svg>
-                    </div>
-                    <div class="flex-1">
-                        <span class="font-bold text-sm">Expenses</span>
-                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Track spending</p>
-                    </div>
-                </button>
+
+                <!-- Income / Expenses (paired single-line row) -->
+                <div class="grid grid-cols-2 gap-1.5">
+                    <button onclick="Navigation.navigateTo('income')" class="group flex items-center gap-1.5 p-1.5 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-green-500 hover:to-emerald-500 hover:text-white rounded-xl transition-all duration-300 hover:shadow-md border border-gray-100 hover:border-transparent min-w-0">
+                        <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-green-400 to-emerald-400 group-hover:from-white group-hover:to-white flex items-center justify-center flex-shrink-0 transition-all duration-300">
+                            <span class="text-xs font-bold text-white group-hover:text-green-500 transition-colors">₹</span>
+                        </div>
+                        <span class="font-bold text-xs truncate">Income</span>
+                    </button>
+                    <button onclick="Navigation.navigateTo('expenses')" class="group flex items-center gap-1.5 p-1.5 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white rounded-xl transition-all duration-300 hover:shadow-md border border-gray-100 hover:border-transparent min-w-0">
+                        <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-purple-400 to-pink-400 group-hover:from-white group-hover:to-white flex items-center justify-center flex-shrink-0 transition-all duration-300">
+                            <svg class="w-3 h-3 text-white group-hover:text-purple-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
+                        </div>
+                        <span class="font-bold text-xs truncate">Expenses</span>
+                    </button>
+                </div>
+
+                <!-- Loans / Lent Out (paired single-line row) -->
+                <div class="grid grid-cols-2 gap-1.5">
+                    <button onclick="Navigation.navigateTo('loans', 'borrowed')" class="group flex items-center gap-1.5 p-1.5 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-blue-500 hover:to-indigo-500 hover:text-white rounded-xl transition-all duration-300 hover:shadow-md border border-gray-100 hover:border-transparent min-w-0">
+                        <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-400 group-hover:from-white group-hover:to-white flex items-center justify-center flex-shrink-0 transition-all duration-300">
+                            <svg class="w-3 h-3 text-white group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                            </svg>
+                        </div>
+                        <span class="font-bold text-xs truncate">Loans</span>
+                    </button>
+                    <button onclick="Navigation.navigateTo('loans', 'lentout')" class="group flex items-center gap-1.5 p-1.5 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-teal-500 hover:to-cyan-500 hover:text-white rounded-xl transition-all duration-300 hover:shadow-md border border-gray-100 hover:border-transparent min-w-0">
+                        <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-teal-400 to-cyan-400 group-hover:from-white group-hover:to-white flex items-center justify-center flex-shrink-0 transition-all duration-300">
+                            <svg class="w-3 h-3 text-white group-hover:text-teal-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m3.236 1.236l1.414-1.414m0 0l2.121-2.121m-2.121 2.121L8.5 13.5m9.5 2V19a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2h2"/>
+                            </svg>
+                        </div>
+                        <span class="font-bold text-xs truncate">Lent Out</span>
+                    </button>
+                </div>
+
+                <!-- Credit Cards / Debit Cards (paired single-line row) -->
+                <div class="grid grid-cols-2 gap-1.5">
+                    <button onclick="Navigation.navigateTo('cards', 'credit')" class="group flex items-center gap-1.5 p-1.5 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-indigo-500 hover:to-purple-500 hover:text-white rounded-xl transition-all duration-300 hover:shadow-md border border-gray-100 hover:border-transparent min-w-0">
+                        <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-400 group-hover:from-white group-hover:to-white flex items-center justify-center flex-shrink-0 transition-all duration-300">
+                            <svg class="w-3 h-3 text-white group-hover:text-indigo-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
+                                <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <span class="font-bold text-xs truncate">Credit Cards</span>
+                    </button>
+                    <button onclick="Navigation.navigateTo('cards', 'debit')" class="group flex items-center gap-1.5 p-1.5 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-slate-500 hover:to-gray-600 hover:text-white rounded-xl transition-all duration-300 hover:shadow-md border border-gray-100 hover:border-transparent min-w-0">
+                        <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-slate-400 to-gray-500 group-hover:from-white group-hover:to-white flex items-center justify-center flex-shrink-0 transition-all duration-300">
+                            <svg class="w-3 h-3 text-white group-hover:text-slate-600 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
+                                <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <span class="font-bold text-xs truncate">Debit Cards</span>
+                    </button>
+                </div>
 
                 <!-- Plans -->
                 <button onclick="Navigation.navigateTo('plans')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-orange-500 hover:to-amber-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
@@ -464,61 +523,7 @@
                         <p class="text-[10px] opacity-70 group-hover:opacity-90">Auto expenses</p>
                     </div>
                 </button>
-                
-                <!-- Loans -->
-                <button onclick="Navigation.navigateTo('loans', 'borrowed')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-blue-500 hover:to-indigo-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
-                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
-                        <svg class="w-3.5 h-3.5 text-white group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-                        </svg>
-                    </div>
-                    <div class="flex-1">
-                        <span class="font-bold text-sm">Loans</span>
-                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Borrowings</p>
-                    </div>
-                </button>
-                
-                <!-- Lent Out -->
-                <button onclick="Navigation.navigateTo('loans', 'lentout')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-teal-500 hover:to-cyan-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
-                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
-                        <svg class="w-3.5 h-3.5 text-white group-hover:text-teal-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m3.236 1.236l1.414-1.414m0 0l2.121-2.121m-2.121 2.121L8.5 13.5m9.5 2V19a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2h2"/>
-                        </svg>
-                    </div>
-                    <div class="flex-1">
-                        <span class="font-bold text-sm">Lent Out</span>
-                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Lendings</p>
-                    </div>
-                </button>
-                
-                <!-- Credit Cards -->
-                <button onclick="Navigation.navigateTo('cards', 'credit')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-indigo-500 hover:to-purple-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
-                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
-                        <svg class="w-3.5 h-3.5 text-white group-hover:text-indigo-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
-                            <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/>
-                        </svg>
-                    </div>
-                    <div class="flex-1">
-                        <span class="font-bold text-sm">Credit Cards</span>
-                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Credit cards</p>
-                    </div>
-                </button>
-                
-                <!-- Debit Cards -->
-                <button onclick="Navigation.navigateTo('cards', 'debit')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-slate-500 hover:to-gray-600 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
-                    <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-slate-400 to-gray-500 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
-                        <svg class="w-3.5 h-3.5 text-white group-hover:text-slate-600 transition-colors" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
-                            <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/>
-                        </svg>
-                    </div>
-                    <div class="flex-1">
-                        <span class="font-bold text-sm">Debit Cards</span>
-                        <p class="text-[10px] opacity-70 group-hover:opacity-90">Debit cards</p>
-                    </div>
-                </button>
-                
+
                 <!-- Investments -->
                 <button onclick="Navigation.navigateTo('investments')" class="group w-full flex items-center p-2 text-left text-gray-700 bg-white hover:bg-gradient-to-r hover:from-yellow-500 hover:to-orange-500 hover:text-white rounded-2xl transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5 border border-gray-100 hover:border-transparent">
                     <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-400 group-hover:from-white group-hover:to-white flex items-center justify-center mr-2 transition-all duration-300 shadow-md">
@@ -531,7 +536,7 @@
                         <p class="text-[10px] opacity-70 group-hover:opacity-90">Portfolio tracker</p>
                     </div>
                 </button>
-                
+
                 <!-- Section Header -->
                 <div class="pt-2 pb-0.5">
                     <div class="flex items-center px-2">
@@ -592,6 +597,7 @@
                                 <option value="general">💬 General</option>
                                 <option value="expenses">📊 Expenses</option>
                                 <option value="investments">💰 Investments</option>
+                                <option value="personal_care">🧴 Personal Care</option>
                             </select>
                         </div>
                         <button onclick="Chat.clear()" class="px-2 py-1 bg-white hover:bg-purple-100 text-purple-700 rounded-lg transition-all duration-200 text-xs font-medium flex items-center gap-1 border-2 border-purple-300" title="Clear chat">
@@ -775,7 +781,58 @@
                 </div>
             </div>
         </div>
-        
+
+        <!-- PERSONAL CARE VIEW -->
+        <div id="personalcare-view" class="hidden">
+            <div class="px-3 pt-2 pb-24">
+                <!-- Floating + Buttons (Top Right) -->
+                <button id="personalcare-add-item-btn" onclick="PersonalCare.openModal()" class="fixed right-4 bottom-20 bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Item" aria-label="Add Item">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+                <button id="personalcare-add-routine-btn" onclick="PersonalCare.openRoutineModal()" class="hidden fixed right-4 bottom-20 bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-30 hover:scale-110" title="Add Routine" aria-label="Add Routine">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+
+                <!-- Items / Routines Tabs -->
+                <div class="bg-white rounded-xl border-2 border-rose-200 overflow-hidden mb-3">
+                    <div class="flex justify-evenly">
+                        <button onclick="PersonalCare.switchTab('items')" id="personalcare-tab-items"
+                                class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-rose-500 text-rose-600 flex items-center justify-center gap-2">
+                            Items
+                        </button>
+                        <button onclick="PersonalCare.switchTab('routines')" id="personalcare-tab-routines"
+                                class="flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center justify-center gap-2">
+                            Routines
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Items Tab Content -->
+                <div id="personalcare-items-content">
+                    <!-- Category filter dropdown — filled by PersonalCare.render() -->
+                    <select id="personalcare-filter-select" onchange="PersonalCare.setFilter(this.value)" class="w-full p-2 mb-3 border border-gray-300 rounded-lg bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-rose-500">
+                        <option value="all">All Categories</option>
+                    </select>
+
+                    <!-- Items List (grouped by category) -->
+                    <div id="personalcare-list">
+                        <!-- Items will be rendered here -->
+                    </div>
+                </div>
+
+                <!-- Routines Tab Content -->
+                <div id="personalcare-routines-content" class="hidden">
+                    <div id="personalcare-routines-list">
+                        <!-- Routines will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- LOANS VIEW -->
         <div id="loans-view" class="hidden">
             <div class="px-3 pt-2 pb-24">
@@ -895,7 +952,7 @@
              100vh-based grid height overflowing the viewport). -->
         <div id="schedule-view" class="hidden">
             <div class="px-3 pt-3 flex flex-col overflow-hidden"
-                 style="height: calc(100vh - 3.5rem - max(1rem, env(safe-area-inset-top)));">
+                 style="height: calc(100vh - 3.5rem - max(1rem, env(safe-area-inset-top))); height: calc(100dvh - 3.5rem - max(1rem, env(safe-area-inset-top)));">
                 <!-- Bottom-anchored layout, top→bottom: calendar space (timeline,
                      scrolls) with the + button floating at its bottom-right (above
                      the dates, no overlap), then the month date strip, then the
@@ -2038,6 +2095,133 @@
             <div class="flex gap-2">
                 <button onclick="Plans.closeModal()" class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all font-semibold">Cancel</button>
                 <button onclick="Plans.saveFromModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:shadow-lg transition-all font-semibold">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Personal Care Modal (Add/Edit medicine or skincare item) -->
+    <div id="personalcare-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) PersonalCare.closeModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <h2 id="personalcare-modal-title" class="text-2xl font-bold mb-4 bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent">Add Item</h2>
+
+            <input type="hidden" id="personalcare-modal-id">
+
+            <div class="mb-3">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Product Name <span class="text-red-500">*</span></label>
+                <input type="text" id="personalcare-modal-name" list="personalcare-name-list" oninput="PersonalCare.onNameInput(this.value)" placeholder="e.g., Benadryl Cold, Crocin, Cetaphil Moisturizer" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500">
+                <datalist id="personalcare-name-list"></datalist>
+            </div>
+
+            <div class="mb-3">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Category <span class="text-red-500">*</span></label>
+                <select id="personalcare-modal-category" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white">
+                    <option value="cold_flu">Cold & Flu</option>
+                    <option value="fever">Fever</option>
+                    <option value="skin_care">Skin Care</option>
+                    <option value="baby_care">Baby Care</option>
+                    <option value="first_aid">First Aid</option>
+                    <option value="other">Other</option>
+                </select>
+                <p class="text-[11px] text-gray-500 mt-1">Auto-filled from the last time you added this product.</p>
+            </div>
+
+            <div class="mb-3">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Uses / Purpose</label>
+                <input type="text" id="personalcare-modal-uses" placeholder="e.g., Runny nose, sneezing, body ache" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Person</label>
+                    <input type="text" id="personalcare-modal-person" list="personalcare-person-list" placeholder="e.g., Mom" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500">
+                    <datalist id="personalcare-person-list"></datalist>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Age</label>
+                    <input type="number" id="personalcare-modal-age" placeholder="e.g., 32" min="0" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Price</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">₹</span>
+                        <input type="number" id="personalcare-modal-price" placeholder="e.g., 120" step="0.01" min="0" class="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Date</label>
+                    <input type="date" id="personalcare-modal-date" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Description / Notes</label>
+                <textarea id="personalcare-modal-description" placeholder="Dosage, brand, where purchased, etc." rows="2" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none"></textarea>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="PersonalCare.closeModal()" class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all font-semibold">Cancel</button>
+                <button onclick="PersonalCare.saveFromModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all font-semibold">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Personal Care Routine Modal (Add routine, e.g. "Skincare") -->
+    <div id="personalcare-routine-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) PersonalCare.closeRoutineModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent">Add Routine</h2>
+            <div class="mb-4">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Routine Name <span class="text-red-500">*</span></label>
+                <input type="text" id="personalcare-routine-modal-name" placeholder="e.g., Skincare" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500">
+            </div>
+            <div class="flex gap-2">
+                <button onclick="PersonalCare.closeRoutineModal()" class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all font-semibold">Cancel</button>
+                <button onclick="PersonalCare.saveRoutineModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all font-semibold">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Personal Care Section Modal (Add section/heading, e.g. "Morning") -->
+    <div id="personalcare-section-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) PersonalCare.closeSectionModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent">Add Section</h2>
+            <input type="hidden" id="personalcare-section-modal-routine-id">
+            <div class="mb-4">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Section Name <span class="text-red-500">*</span></label>
+                <input type="text" id="personalcare-section-modal-heading" placeholder="e.g., Morning, Afternoon, Night" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500">
+            </div>
+            <div class="flex gap-2">
+                <button onclick="PersonalCare.closeSectionModal()" class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all font-semibold">Cancel</button>
+                <button onclick="PersonalCare.saveSectionModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all font-semibold">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Personal Care Routine Item Modal (Add a numbered flow step to a section) -->
+    <div id="personalcare-item-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) PersonalCare.closeRoutineItemModal()">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <h2 class="text-2xl font-bold mb-4 bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent">Add Step</h2>
+            <input type="hidden" id="personalcare-item-modal-routine-id">
+            <input type="hidden" id="personalcare-item-modal-section-id">
+            <div class="mb-3">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Step Title <span class="text-red-500">*</span></label>
+                <input type="text" id="personalcare-item-modal-title" list="personalcare-routine-product-list" placeholder="e.g., Body Wash, Face Hydration & SPF" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500">
+                <datalist id="personalcare-routine-product-list"></datalist>
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Tag <span class="text-gray-400 text-xs">(optional sub-label)</span></label>
+                <input type="text" id="personalcare-item-modal-tag" placeholder="e.g., Target dark joints (1-2 mins)" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Description <span class="text-gray-400 text-xs">(optional)</span></label>
+                <textarea id="personalcare-item-modal-description" rows="3" placeholder="e.g., Lather the Be Bodywise 5% AHA BHA Body Wash over your body in the shower..." class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"></textarea>
+                <p class="text-[11px] text-gray-500 mt-1">Wrap text in **double asterisks** to bold it (e.g. product names).</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="PersonalCare.closeRoutineItemModal()" class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all font-semibold">Cancel</button>
+                <button onclick="PersonalCare.saveRoutineItemModal()" class="flex-1 px-4 py-2 bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all font-semibold">Save</button>
             </div>
         </div>
     </div>
@@ -4179,6 +4363,7 @@
     <script src="js/modules/smsBills.js"></script>
     <script src="js/modules/expenses.js"></script>
     <script src="js/modules/plans.js"></script>
+    <script src="js/modules/personalCare.js"></script>
     <script src="js/modules/income.js"></script>
     <script src="js/modules/recurringExpenses.js"></script>
     <script src="js/modules/events.js"></script>

@@ -25,6 +25,9 @@ const DB = {
     plans: [], // Future planned expenses: { id, name, description, amount, plannedOn, completedOn, status, createdAt }
     loans: [], // Loan tracking
     moneyLent: [], // Money lent to others tracking
+    personalCareItems: [], // Medicine / skincare catalog: { id, name, category 'cold_flu'|'fever'|'skin_care'|'baby_care'|'first_aid'|'other', description, uses, price, currency, person, age, date, createdAt }
+    personalCareRoutines: [], // Customizable routines (e.g. Skincare): { id, name, sections: [{ id, heading, items: [{ id, title, tag, description }] }], createdAt }
+    // Each item renders as a numbered step: title (bold), tag (optional italic sub-label e.g. "Target dark joints (1-2 mins)"), description (optional instructional paragraph)
     income: null, // Income and payslip data
     salaries: [], // Actual salary tracking (month, year, amount) - factual bank credits
     additionalIncome: [], // Additional income entries (id, month, year, amount, source, createdAt)

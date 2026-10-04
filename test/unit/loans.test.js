@@ -121,5 +121,72 @@ describe('Loans Module', () => {
 
       vi.useRealTimers();
     });
+
+    it('counts the final EMI as paid on the closure day (24/24, 0 remaining)', () => {
+      // 24-month loan, first EMI 2024-10-07 → last (24th) EMI 2026-09-07.
+      // On 2026-10-01 all 24 EMIs are done.
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-10-01'));
+      const r = Loans.calculateRemaining('2024-10-07', 500000, 10, 24);
+      expect(r.emisPaid).toBe(24);
+      expect(r.emisRemaining).toBe(0);
+      expect(r.remainingBalance).toBe(0);
+      vi.useRealTimers();
+    });
+  });
+
+  describe('calculateClosureDate', () => {
+    it('returns the date of the LAST EMI (first + tenure-1 months), not one past it', () => {
+      // First EMI 2024-10-07, 24 months → 24th EMI on 2026-09-07.
+      const closure = Loans.calculateClosureDate('2024-10-07', 24);
+      expect(closure.getFullYear()).toBe(2026);
+      expect(closure.getMonth()).toBe(8); // September (0-indexed)
+      expect(closure.getDate()).toBe(7);
+    });
+
+    it('a single-EMI loan closes on its first EMI date', () => {
+      const closure = Loans.calculateClosureDate('2026-05-10', 1);
+      expect(closure.getFullYear()).toBe(2026);
+      expect(closure.getMonth()).toBe(4); // May
+      expect(closure.getDate()).toBe(10);
+    });
+  });
+
+  describe('hasEmiDueInMonth', () => {
+    // 24-month loan, first EMI 2024-10-07 → EMIs fall Oct 2024 … Sep 2026.
+    const first = '2024-10-07';
+    const tenure = 24;
+
+    it('is true for a month within the schedule', () => {
+      expect(Loans.hasEmiDueInMonth(first, tenure, 2026, 8)).toBe(true); // Sep 2026 = last EMI
+    });
+
+    it('is false for the month AFTER the final EMI (the reported bug)', () => {
+      // The loan is done after Sep 2026 — October 2026 must NOT carry an EMI.
+      expect(Loans.hasEmiDueInMonth(first, tenure, 2026, 9)).toBe(false); // Oct 2026
+      expect(Loans.hasEmiDueInMonth(first, tenure, 2026, 10)).toBe(false); // Nov 2026
+    });
+
+    it('is false before the loan has started', () => {
+      expect(Loans.hasEmiDueInMonth(first, tenure, 2024, 8)).toBe(false); // Sep 2024
+    });
+
+    it('is true for the first EMI month', () => {
+      expect(Loans.hasEmiDueInMonth(first, tenure, 2024, 9)).toBe(true); // Oct 2024
+    });
+  });
+
+  describe('emisPaidAsOf', () => {
+    it('counts EMIs paid up to a reference date (not yet reached the day)', () => {
+      // first EMI 15th; on the 10th of a later month that month's EMI isn't paid.
+      expect(Loans.emisPaidAsOf('2024-01-15', 12, new Date('2024-03-10'))).toBe(2);
+      // On/after the 15th it counts.
+      expect(Loans.emisPaidAsOf('2024-01-15', 12, new Date('2024-03-15'))).toBe(3);
+    });
+
+    it('never exceeds tenure or goes negative', () => {
+      expect(Loans.emisPaidAsOf('2024-01-15', 12, new Date('2030-01-01'))).toBe(12);
+      expect(Loans.emisPaidAsOf('2024-01-15', 12, new Date('2020-01-01'))).toBe(0);
+    });
   });
 });

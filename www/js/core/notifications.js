@@ -176,7 +176,12 @@ const Notifications = {
                     // `body` in a smaller, lighter style, matching the requested look.
                     title: this._notificationTitle(event, start, fireAt),
                     body: this._notificationBody(event),
-                    schedule: { at: fireAt, allowWhileIdle: true }
+                    schedule: { at: fireAt, allowWhileIdle: true },
+                    // Carry the event id + occurrence date so tapping the
+                    // notification can deep-link to that event on its day. The
+                    // notificationId hash is one-way, so these MUST ride along in
+                    // extra for the tap handler to recover them.
+                    extra: { eventId: String(event.id), occurrenceDate: date }
                 });
             });
         });
@@ -204,6 +209,55 @@ const Notifications = {
             await plugin.cancel({ notifications: notificationIds.map(id => ({ id })) });
         } catch (e) {
             console.warn('Failed to cancel notifications:', e);
+        }
+    },
+
+    /**
+     * Register the "notification tapped" listener so a reminder deep-links to
+     * its event. Called once from App.init(). The tap can arrive BEFORE the app
+     * is unlocked (cold start from a notification), so we stash the target in
+     * `_pendingDeepLink` and let App apply it after the login gate via
+     * applyPendingDeepLink(). Safe no-op without the plugin (web/tests).
+     */
+    async initDeepLinking() {
+        const plugin = this._plugin();
+        if (!plugin || typeof plugin.addListener !== 'function') return;
+        try {
+            await plugin.addListener('localNotificationActionPerformed', (action) => {
+                const extra = action && action.notification && action.notification.extra;
+                if (!extra || !extra.eventId) return;
+                this._pendingDeepLink = {
+                    eventId: String(extra.eventId),
+                    occurrenceDate: extra.occurrenceDate || null
+                };
+                // If the app is already unlocked/running, apply immediately.
+                this.applyPendingDeepLink();
+            });
+        } catch (e) {
+            console.warn('Failed to register notification tap listener:', e);
+        }
+    },
+
+    /**
+     * Apply a stashed notification deep-link, if any — but only once the app is
+     * past the lock screen (so we never flash an event behind the PIN prompt).
+     * Idempotent: clears the pending link once consumed. Called both from the
+     * tap listener (warm) and from App after a successful unlock (cold start).
+     */
+    applyPendingDeepLink() {
+        const link = this._pendingDeepLink;
+        if (!link) return;
+        // Gate on the security lock: defer until unlocked.
+        if (window.Security && window.Security.isSetup && window.Security.isSetup()
+            && !window.Security.isUnlocked) {
+            return;
+        }
+        if (!window.Schedule || typeof window.Schedule.openEvent !== 'function') return;
+        this._pendingDeepLink = null;
+        try {
+            window.Schedule.openEvent(link.eventId, link.occurrenceDate);
+        } catch (e) {
+            console.warn('Failed to apply notification deep-link:', e);
         }
     },
 

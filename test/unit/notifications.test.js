@@ -260,6 +260,68 @@ describe('Notifications Module', () => {
     });
   });
 
+  describe('deep-linking (notification tap)', () => {
+    let scheduled, listeners;
+    beforeEach(() => {
+      scheduled = [];
+      listeners = {};
+      window.Capacitor = {
+        isNativePlatform: () => true,
+        Plugins: {
+          LocalNotifications: {
+            requestPermissions: async () => ({ display: 'granted' }),
+            schedule: async ({ notifications }) => { scheduled = notifications; },
+            cancel: async () => {},
+            addListener: async (name, cb) => { listeners[name] = cb; }
+          }
+        }
+      };
+      Notifications = loadModule('core/notifications.js', 'Notifications');
+      // Minimal Schedule + Security stubs on window.
+      window.Schedule = { openEvent: vi.fn() };
+      delete window.Security;
+    });
+
+    it('attaches eventId + occurrenceDate to each notification extra', async () => {
+      const event = { id: 77, title: 'Vaccine', type: 'health', allDay: false, startTime: '09:00', reminder: { offsets: [0] } };
+      await Notifications.scheduleForEvent(event, ['2126-01-01']);
+      expect(scheduled[0].extra).toEqual({ eventId: '77', occurrenceDate: '2126-01-01' });
+    });
+
+    it('registers a localNotificationActionPerformed listener', async () => {
+      await Notifications.initDeepLinking();
+      expect(typeof listeners.localNotificationActionPerformed).toBe('function');
+    });
+
+    it('routes a tap to Schedule.openEvent with the extra payload', async () => {
+      await Notifications.initDeepLinking();
+      listeners.localNotificationActionPerformed({
+        notification: { extra: { eventId: '77', occurrenceDate: '2126-01-01' } }
+      });
+      expect(window.Schedule.openEvent).toHaveBeenCalledWith('77', '2126-01-01');
+    });
+
+    it('defers the deep-link while the app is locked, then applies when unlocked', async () => {
+      window.Security = { isSetup: () => true, isUnlocked: false };
+      await Notifications.initDeepLinking();
+      listeners.localNotificationActionPerformed({
+        notification: { extra: { eventId: '9', occurrenceDate: '2126-02-02' } }
+      });
+      // Locked → not yet applied, but stashed.
+      expect(window.Schedule.openEvent).not.toHaveBeenCalled();
+      // Unlock and re-apply.
+      window.Security.isUnlocked = true;
+      Notifications.applyPendingDeepLink();
+      expect(window.Schedule.openEvent).toHaveBeenCalledWith('9', '2126-02-02');
+    });
+
+    it('ignores a tap with no extra payload', async () => {
+      await Notifications.initDeepLinking();
+      listeners.localNotificationActionPerformed({ notification: {} });
+      expect(window.Schedule.openEvent).not.toHaveBeenCalled();
+    });
+  });
+
   describe('_relativeDayLabel()', () => {
     it('labels same day / next day / previous day', () => {
       const base = new Date(2026, 6, 4, 9, 0); // Jul 4 2026, 09:00

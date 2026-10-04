@@ -53,6 +53,17 @@ const App = {
                 window.Schedule.init();
             }
 
+            // Register the notification-tap deep-link listener once. A cold start
+            // from a tapped reminder stashes the target; it's applied below after
+            // the login gate (see applyPendingDeepLink). Idempotent / safe no-op.
+            if (window.Notifications && typeof window.Notifications.initDeepLinking === 'function'
+                && !window.Notifications._deepLinkWired) {
+                window.Notifications._deepLinkWired = true;
+                window.Notifications.initDeepLinking().catch((e) => {
+                    console.warn('Notification deep-link init failed:', e);
+                });
+            }
+
             // Check security status FIRST
             const isSecuritySetup = window.Security && window.Security.isSetup();
             
@@ -124,9 +135,15 @@ const App = {
             
             // App is unlocked, continue normal initialization
             console.log('✅ App unlocked - continuing initialization');
-            
+
             // Navigate to default view (Dashboard)
             window.Navigation.navigateTo('dashboard');
+
+            // If the app was opened by tapping a reminder notification, deep-link
+            // to that event now that we're past the lock screen. No-op otherwise.
+            if (window.Notifications && typeof window.Notifications.applyPendingDeepLink === 'function') {
+                setTimeout(() => window.Notifications.applyPendingDeepLink(), 100);
+            }
             
             // Clear chat history on app start for clean slate
             // (Prevents mode mismatch issues when reopening app)

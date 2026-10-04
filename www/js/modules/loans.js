@@ -358,34 +358,74 @@ const Loans = {
     },
     
     /**
-     * Calculate loan closure date
+     * Calculate loan closure date — the date of the FINAL EMI, after which the
+     * loan is fully settled. With a monthly schedule the first EMI is at month
+     * offset 0 and the Nth (last) at offset tenure-1, so the loan closes at
+     * firstEmiDate + (tenure - 1) months. (Previously this added the full
+     * `tenure`, landing one month PAST the last payment — a loan whose 24th EMI
+     * fell on Oct 7 displayed a Nov 7 closure and lingered as "active".)
      */
     calculateClosureDate(firstEmiDate, tenure) {
-        const startDate = new Date(firstEmiDate);
-        const closureDate = new Date(startDate);
-        closureDate.setMonth(closureDate.getMonth() + tenure);
+        const closureDate = new Date(firstEmiDate);
+        closureDate.setMonth(closureDate.getMonth() + Math.max(0, tenure - 1));
         return closureDate;
     },
     
     /**
+     * How many EMIs have been paid as of a given reference date (default: now).
+     * An EMI is counted as paid once its due day in the month has arrived.
+     *   months between first-EMI month and ref month (inclusive of the first),
+     *   minus 1 if we haven't yet reached the due-day-of-month in the ref month.
+     * Clamped to [0, tenure]. Factored out so date math lives in ONE place.
+     */
+    emisPaidAsOf(firstEmiDate, tenure, refDate) {
+        const ref = refDate ? new Date(refDate) : new Date();
+        const startDate = new Date(firstEmiDate);
+
+        let monthsElapsed = (ref.getFullYear() - startDate.getFullYear()) * 12
+                          + (ref.getMonth() - startDate.getMonth()) + 1;
+
+        // Not yet reached the EMI day within the reference month → one fewer paid.
+        if (ref.getDate() < startDate.getDate()) {
+            monthsElapsed--;
+        }
+
+        if (monthsElapsed < 0) monthsElapsed = 0;
+        if (monthsElapsed > tenure) monthsElapsed = tenure;
+        return monthsElapsed;
+    },
+
+    /**
+     * Whether a loan still has an EMI DUE in the given calendar month (0-indexed
+     * month). Used by the dashboard's monthly/next-month projections: a loan
+     * whose final EMI already fell in an earlier month must NOT be projected
+     * into later months. True iff the number of EMIs paid by the END of the
+     * target month is less than the tenure (i.e. an unpaid EMI lands on or
+     * before that month's due day) AND the loan has started by then.
+     */
+    hasEmiDueInMonth(firstEmiDate, tenure, year, monthIndex) {
+        const startDate = new Date(firstEmiDate);
+        const firstEmiMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+        const targetMonthStart = new Date(year, monthIndex, 1);
+        if (firstEmiMonth > targetMonthStart) return false; // not started yet
+
+        // Count of EMIs whose due month is <= the target month. The due months
+        // run start, start+1, ... start+(tenure-1); the Nth (1-indexed) falls in
+        // target month when monthsBetween(start, target) == N-1.
+        const monthsBetween = (year - startDate.getFullYear()) * 12
+                            + (monthIndex - startDate.getMonth());
+        // monthsBetween is 0 for the first EMI month. The loan's last EMI is at
+        // index tenure-1; it's still due this month or later iff monthsBetween
+        // <= tenure - 1.
+        return monthsBetween <= (tenure - 1);
+    },
+
+    /**
      * Calculate remaining balance and EMIs
      */
     calculateRemaining(firstEmiDate, principal, annualRate, tenure) {
-        const today = new Date();
-        const startDate = new Date(firstEmiDate);
-        
-        // Calculate months elapsed (including start month)
-        let monthsElapsed = (today.getFullYear() - startDate.getFullYear()) * 12 
-                          + (today.getMonth() - startDate.getMonth()) + 1;
-        
-        // If today's date is before the EMI date in the month, subtract 1
-        if (today.getDate() < startDate.getDate()) {
-            monthsElapsed--;
-        }
-        
-        // Ensure non-negative
-        if (monthsElapsed < 0) monthsElapsed = 0;
-        if (monthsElapsed > tenure) monthsElapsed = tenure;
+        // Months elapsed = EMIs paid as of today (single source of truth).
+        const monthsElapsed = this.emisPaidAsOf(firstEmiDate, tenure);
         
         const remainingTenure = tenure - monthsElapsed;
         

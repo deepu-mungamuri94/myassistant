@@ -233,6 +233,32 @@ Style (formatted for a mobile screen):
 - For specific tax/legal questions, add a brief disclaimer: "This is general guidance, not professional tax advice."
 - If you're not sure about a specific Indian regulation, say so rather than guessing.`;
 
+            case 'personal_care':
+                return `You are a knowledgeable personal care, health, and skincare advisor for a household (adults, kids, elders).
+
+${preamble}
+
+You have access to:
+- The user's PERSONAL CARE CATALOG: medicines/products they've bought (name, category, uses, who it's for, age, price, date purchased).
+- The user's custom ROUTINES: step-by-step skincare/health routines (e.g. "Morning Flow", "Night Flow") made of numbered steps, each with a title, optional tag, and optional description.
+
+Your capabilities:
+- Answer general health/skincare/medicine questions using your own knowledge (e.g. "Vitamin D3 dosage for kids", "can elders take this, if not what's an alternative", "cough and cold remedy for a baby and dosage").
+- When the catalog has an item relevant to the question, reference it directly by name (e.g. "You already have X in your catalog — here's how to use it...") instead of suggesting something generic.
+- When asked to review or improve a routine (e.g. "is my skincare routine good enough for my skin condition?"), evaluate the ROUTINES data against what the user describes about their skin/health and suggest concrete changes — add/remove/reorder steps, swap a product class, adjust timing.
+- If the catalog/routines don't contain something relevant to the question, say so plainly and still answer from general knowledge — never pretend an item exists that isn't listed.
+- For infants/children, always include age-appropriate dosage guidance when you have it, and flag anything needing a doctor/pediatrician's confirmation.
+
+SAFETY:
+- This is general information, not professional medical advice. For medicine dosing — especially for babies, children, or chronic conditions — add a brief reminder to confirm with a doctor or pharmacist, particularly if symptoms are severe or persistent.
+- Never guess an exact medicine dose for an infant under 3 months — tell the user to consult a pediatrician immediately instead.
+
+FORMATTING (mobile screen):
+- Be concise. Use \`###\` headers with a relevant emoji for sections, blank line before each.
+- Bullet points only — NO tables, NO code blocks, NO LaTeX.
+- **Bold** key terms (dosage amounts, frequency, product names) for scannability.
+- End with a short "### 💡 Suggestion" block only when there's a concrete, actionable next step.`;
+
             default:
                 return `You are a helpful financial assistant.\n\n${preamble}\n\nUse Indian Rupee (₹) for all amounts.`;
         }
@@ -294,6 +320,22 @@ Style (formatted for a mobile screen):
                     `${inv.type || ''} | ${inv.name || ''} | goal=${inv.goal || ''} | ₹${Math.round(inv.amount || 0)}`
                 );
                 return `${snap}${head}\n${rows.join('\n')}`;
+            }
+            if (mode === 'personal_care' && Array.isArray(ctx.items)) {
+                const itemLines = ctx.items.map(i =>
+                    `- ${i.name} | category=${i.category || ''} | for=${i.person || ''}${i.age != null ? ` (age ${i.age})` : ''} | uses: ${i.uses || 'n/a'}${i.description ? ` | notes: ${i.description}` : ''}`
+                );
+                const routineLines = (ctx.routines || []).flatMap(r => {
+                    const header = [`\nROUTINE: ${r.name}`];
+                    const sectionLines = (r.sections || []).flatMap(s => {
+                        const stepLines = (s.items || []).map((it, idx) =>
+                            `    ${idx + 1}. ${it.title}${it.tag ? ` (${it.tag})` : ''}${it.description ? ` — ${it.description}` : ''}`
+                        );
+                        return [`  Section: ${s.heading}`, ...stepLines];
+                    });
+                    return [...header, ...sectionLines];
+                });
+                return `${snap}PERSONAL CARE CATALOG (${ctx.items.length} items):\n${itemLines.join('\n')}\n${routineLines.join('\n')}`;
             }
             if (mode === 'general') {
                 return `${snap}${ctx.message || 'General assistant.'}`;
@@ -877,6 +919,30 @@ Style (formatted for a mobile screen):
                     };
                 }
                 
+            case 'personal_care':
+                return {
+                    mode: 'personal_care',
+                    items: (window.DB.personalCareItems || []).map(i => ({
+                        name: i.name,
+                        category: i.category,
+                        description: i.description,
+                        uses: i.uses,
+                        person: i.person,
+                        age: i.age
+                    })),
+                    routines: (window.DB.personalCareRoutines || []).map(r => ({
+                        name: r.name,
+                        sections: (r.sections || []).map(s => ({
+                            heading: s.heading,
+                            items: (s.items || []).map(it => ({
+                                title: it.title,
+                                tag: it.tag,
+                                description: it.description
+                            }))
+                        }))
+                    }))
+                };
+
             default:
                 return { mode: 'unknown' };
         }

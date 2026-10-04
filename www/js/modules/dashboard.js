@@ -3934,20 +3934,20 @@ const Dashboard = {
             
             // Calculate remaining EMIs and EMI amount
             if (window.Loans) {
-                const remaining = window.Loans.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
-                
                 // Calculate EMI amount if not stored
                 let emiAmount = loan.emi;
                 if (!emiAmount && loan.amount && loan.interestRate && loan.tenure) {
                     emiAmount = window.Loans.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
                 }
-                
-                if (remaining.emisRemaining > 0 && emiAmount) {
+
+                // Count only loans with an EMI genuinely due THIS month (not just
+                // "EMIs remain" — the last EMI may have already fallen earlier).
+                if (window.Loans.hasEmiDueInMonth(loan.firstEmiDate, loan.tenure, currentYear, currentMonth) && emiAmount) {
                     total += parseFloat(emiAmount);
                 }
             }
         });
-        
+
         // Add active credit card EMIs
         cards.forEach((card, i) => {
             // Skip debit cards
@@ -4046,19 +4046,19 @@ const Dashboard = {
             
             // Calculate remaining EMIs
             if (window.Loans) {
-                const remaining = window.Loans.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
-                
                 let emiAmount = loan.emi;
                 if (!emiAmount && loan.amount && loan.interestRate && loan.tenure) {
                     emiAmount = window.Loans.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
                 }
-                
-                if (remaining.emisRemaining > 0 && emiAmount) {
+
+                // Only count the loan when an EMI is actually due in the target
+                // month (handles a loan that already made its final payment).
+                if (window.Loans.hasEmiDueInMonth(loan.firstEmiDate, loan.tenure, year, targetMonth) && emiAmount) {
                     total += parseFloat(emiAmount);
                 }
             }
         });
-        
+
         // Add active credit card EMIs
         cards.forEach(card => {
             if (card.cardType === 'debit') return;
@@ -6704,18 +6704,22 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
             const firstDate = new Date(loan.firstEmiDate);
             const firstEmiMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
             const targetMonthStart = new Date(year, targetMonth, 1);
-            
+
             if (firstEmiMonth > targetMonthStart) return;
-            
+
             if (window.Loans) {
                 const remaining = window.Loans.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
-                
+
                 let emiAmount = loan.emi;
                 if (!emiAmount && loan.amount && loan.interestRate && loan.tenure) {
                     emiAmount = window.Loans.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
                 }
-                
-                if (remaining.emisRemaining > 0 && emiAmount) {
+
+                // Project this loan into the target month only if an EMI is
+                // actually DUE that month — not merely if EMIs remain today. A
+                // loan whose final EMI already fell (e.g. last EMI in October)
+                // must not appear in November's projection.
+                if (window.Loans.hasEmiDueInMonth(loan.firstEmiDate, loan.tenure, year, targetMonth) && emiAmount) {
                     // EMI due date is same day of month as first EMI
                     const emiDueDay = firstDate.getDate();
                     const emiDueDate = new Date(year, targetMonth, emiDueDay);
@@ -7187,13 +7191,13 @@ For each ₹ amount you wrote, ask: can a reader find this exact number in the d
             
             if (window.Loans) {
                 const remaining = window.Loans.calculateRemaining(loan.firstEmiDate, loan.amount, loan.interestRate, loan.tenure);
-                
+
                 let emiAmount = loan.emi;
                 if (!emiAmount && loan.amount && loan.interestRate && loan.tenure) {
                     emiAmount = window.Loans.calculateEMI(loan.amount, loan.interestRate, loan.tenure);
                 }
-                
-                if (remaining.emisRemaining > 0 && emiAmount) {
+
+                if (window.Loans.hasEmiDueInMonth(loan.firstEmiDate, loan.tenure, currentYear, currentMonth) && emiAmount) {
                     const emiDay = firstDate.getDate();
                     
                     // Format: BankName: LoanType

@@ -121,17 +121,22 @@ const Navigation = {
                 icon: '<svg class="w-6 h-6 text-white mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>',
                 title: 'Credentials',
                 bgClass: 'bg-gradient-to-r from-blue-600 to-cyan-600'
+            },
+            personalcare: {
+                icon: '<svg class="w-6 h-6 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 2a1 1 0 00-1 1v3H5a3 3 0 00-3 3v9a3 3 0 003 3h14a3 3 0 003-3v-9a3 3 0 00-3-3h-3V3a1 1 0 00-1-1H9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11v4m-2-2h4"/></svg>',
+                title: 'Personal Care',
+                bgClass: 'bg-gradient-to-r from-rose-600 to-pink-600'
             }
         };
 
         const config = pageConfig[view] || pageConfig.dashboard;
-        
+
         // Update header background - remove ALL possible gradient classes first
         header.classList.remove(
             'bg-gradient-to-r',
             // All "from-" colors
             'from-blue-600', 'from-purple-600', 'from-green-600', 'from-orange-600',
-            'from-slate-600', 'from-yellow-600', 'from-teal-600', 'from-indigo-600', 'from-violet-600',
+            'from-slate-600', 'from-yellow-600', 'from-teal-600', 'from-indigo-600', 'from-violet-600', 'from-rose-600',
             // All "to-" colors
             'to-cyan-600', 'to-pink-600', 'to-emerald-600', 'to-amber-600',
             'to-blue-600', 'to-indigo-600', 'to-orange-600', 'to-gray-600', 'to-purple-600', 'to-rose-600', 'to-fuchsia-600'
@@ -178,6 +183,9 @@ const Navigation = {
                 break;
             case 'investments':
                 if (window.Investments) window.Investments.render();
+                break;
+            case 'personalcare':
+                if (window.PersonalCare) window.PersonalCare.render();
                 break;
         }
     },

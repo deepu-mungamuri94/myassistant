@@ -31,9 +31,15 @@ body {
     min-height: 100vh;
     overflow-x: hidden;
     max-width: 100vw;
-    /* Safe area for status bar and notches */
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
+    /* Safe-area insets are intentionally NOT applied on <body>. The fixed header
+       clears the status-bar inset via its own `padding-top: max(1rem, inset-top)`,
+       and the shared content wrapper (the single parent of every *-view) offsets
+       by `margin-top: calc(3.5rem + max(1rem, inset-top))` at the top and
+       `padding-bottom: env(safe-area-inset-bottom)` at the bottom. Repeating
+       either inset on <body> double-counts it — on notched/real phones that
+       surfaced as a large phantom gap under the header (most visible on the
+       Schedule page, where it shoved the fixed-height day view past the viewport
+       and forced page scroll, pushing the month bar below the nav). */
 }
 
 /* ========================================

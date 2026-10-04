@@ -19,7 +19,9 @@ describe('AIProvider', () => {
       additionalIncome: [],
       sips: [],
       plans: [],
-      portfolioInvestments: []
+      portfolioInvestments: [],
+      personalCareItems: [],
+      personalCareRoutines: []
     };
 
     window.GeminiAI = { call: vi.fn(async () => 'gemini response') };
@@ -668,6 +670,32 @@ describe('AIProvider', () => {
       const context = AIProvider.prepareContext('invalid');
       expect(context.mode).toBe('unknown');
     });
+
+    it('should return personal_care context with items and routines', () => {
+      window.DB.personalCareItems = [
+        { name: 'Vitamin D3', category: 'other', description: 'For bone health', uses: 'Daily supplement', person: 'Kid', age: 8 }
+      ];
+      window.DB.personalCareRoutines = [
+        {
+          name: 'Skincare',
+          sections: [
+            { heading: 'Morning', items: [{ title: 'Body Wash', tag: 'Target dark joints', description: 'Lather **Be Bodywise**.' }] }
+          ]
+        }
+      ];
+      const context = AIProvider.prepareContext('personal_care');
+      expect(context.mode).toBe('personal_care');
+      expect(context.items).toHaveLength(1);
+      expect(context.items[0]).toMatchObject({ name: 'Vitamin D3', person: 'Kid', age: 8 });
+      expect(context.routines).toHaveLength(1);
+      expect(context.routines[0].sections[0].items[0]).toMatchObject({ title: 'Body Wash' });
+    });
+
+    it('should return empty items/routines arrays for personal_care when DB is empty', () => {
+      const context = AIProvider.prepareContext('personal_care');
+      expect(context.items).toEqual([]);
+      expect(context.routines).toEqual([]);
+    });
   });
 
   describe('formatContextText', () => {
@@ -768,6 +796,31 @@ describe('AIProvider', () => {
       const text = AIProvider.formatContextText(ctx);
       expect(text).toContain('benefits not yet fetched');
     });
+
+    it('should format personal_care context with items and routine steps', () => {
+      const ctx = {
+        mode: 'personal_care',
+        items: [
+          { name: 'Vitamin D3', category: 'other', person: 'Kid', age: 8, uses: 'Daily supplement' }
+        ],
+        routines: [
+          {
+            name: 'Skincare',
+            sections: [
+              { heading: 'Morning', items: [{ title: 'Body Wash', tag: 'Target dark joints', description: 'Lather it on.' }] }
+            ]
+          }
+        ]
+      };
+      const text = AIProvider.formatContextText(ctx);
+      expect(text).toContain('PERSONAL CARE CATALOG');
+      expect(text).toContain('Vitamin D3');
+      expect(text).toContain('age 8');
+      expect(text).toContain('ROUTINE: Skincare');
+      expect(text).toContain('Section: Morning');
+      expect(text).toContain('Body Wash');
+      expect(text).toContain('Target dark joints');
+    });
   });
 
   describe('getSystemInstruction', () => {
@@ -801,6 +854,14 @@ describe('AIProvider', () => {
       const instruction = AIProvider.getSystemInstruction({ mode: 'general' });
       expect(instruction).toContain('personal finance assistant');
       expect(instruction).toContain('Indian context');
+    });
+
+    it('should return personal care instruction for personal_care mode', () => {
+      const instruction = AIProvider.getSystemInstruction({ mode: 'personal_care' });
+      expect(instruction).toContain('personal care, health, and skincare advisor');
+      expect(instruction).toContain('PERSONAL CARE CATALOG');
+      expect(instruction).toContain('ROUTINES');
+      expect(instruction).toContain('doctor');
     });
   });
 

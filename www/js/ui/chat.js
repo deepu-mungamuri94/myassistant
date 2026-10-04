@@ -79,7 +79,10 @@ const Chat = {
             }
             return;
         }
-        
+
+        // personal_care has no empty-state guard — unlike cards/expenses/investments,
+        // it's useful even with zero catalog items/routines (general health Q&A still works).
+
         // Add user message
         this.addMessage('user', message);
         if (input) input.value = '';
@@ -735,6 +738,28 @@ ${resultSummary}${queryExplanation}${zeroResults ? `\n\nIMPORTANT: Zero results 
 
                     <p class="text-xs text-gray-400 mt-2">
                         💼 Analyzing ${investmentCount} investments
+                    </p>
+                </div>`;
+        } else if (mode === 'personal_care') {
+            const itemCount = (window.DB.personalCareItems || []).length;
+            const routineCount = (window.DB.personalCareRoutines || []).length;
+            welcomeHTML = `
+                <div class="text-center text-gray-500 text-sm px-4">
+                    <p class="text-lg mb-3">🧴 <strong>Personal Care Advisor</strong></p>
+                    <p class="mb-2">Ask about medicines, skincare, dosages, or your routines!</p>
+
+                    <div class="bg-rose-50 p-3 rounded-lg text-left mb-3">
+                        <p class="text-xs font-semibold text-rose-800 mb-2">💡 Try asking:</p>
+                        <ul class="text-xs space-y-1 text-rose-700">
+                            <li>• "Vitamin D3 uses for kids — can elders take it too?"</li>
+                            <li>• "Baby has cough and cold, what to use and dosage?"</li>
+                            <li>• "Is my skincare routine good for oily skin?"</li>
+                            <li>• "What's an alternative to Crocin for my toddler?"</li>
+                        </ul>
+                    </div>
+
+                    <p class="text-xs text-gray-400 mt-2">
+                        🗂️ ${itemCount} catalog items, ${routineCount} routines
                     </p>
                 </div>`;
         } else if (mode === 'general') {
