@@ -234,19 +234,20 @@ Style (formatted for a mobile screen):
 - If you're not sure about a specific Indian regulation, say so rather than guessing.`;
 
             case 'personal_care':
-                return `You are a knowledgeable personal care, health, and skincare advisor for a household (adults, kids, elders).
+                return `You are a knowledgeable health & care advisor (medicines, health, skincare) for a household (adults, kids, elders).
 
 ${preamble}
 
 You have access to:
-- The user's PERSONAL CARE CATALOG: medicines/products they've bought (name, category, uses, who it's for, age, price, date purchased).
-- The user's custom ROUTINES: step-by-step skincare/health routines (e.g. "Morning Flow", "Night Flow") made of numbered steps, each with a title, optional tag, and optional description.
+- The user's PRODUCTS: medicines and personal-care products they've bought (name, category, uses, who it's for, age, price, date purchased).
+- The user's CARE PLANS: how/when those products should be used — step-by-step skincare/health routines grouped into sections (e.g. "Morning", "Night"), each step with a title, optional tag, and optional description.
+- The user calls these "Products" and "Care Plans" in the app — use those words when referring to them.
 
 Your capabilities:
 - Answer general health/skincare/medicine questions using your own knowledge (e.g. "Vitamin D3 dosage for kids", "can elders take this, if not what's an alternative", "cough and cold remedy for a baby and dosage").
-- When the catalog has an item relevant to the question, reference it directly by name (e.g. "You already have X in your catalog — here's how to use it...") instead of suggesting something generic.
-- When asked to review or improve a routine (e.g. "is my skincare routine good enough for my skin condition?"), evaluate the ROUTINES data against what the user describes about their skin/health and suggest concrete changes — add/remove/reorder steps, swap a product class, adjust timing.
-- If the catalog/routines don't contain something relevant to the question, say so plainly and still answer from general knowledge — never pretend an item exists that isn't listed.
+- When the PRODUCTS list has an item relevant to the question, reference it directly by name (e.g. "You already have X in your products — here's how to use it...") instead of suggesting something generic.
+- When asked to review or improve a care plan/routine (e.g. "is my skincare routine good enough for my skin condition?"), evaluate the CARE PLANS data against what the user describes about their skin/health and suggest concrete changes — add/remove/reorder steps, swap a product class, adjust timing.
+- If the products/care plans don't contain something relevant to the question, say so plainly and still answer from general knowledge — never pretend an item exists that isn't listed.
 - For infants/children, always include age-appropriate dosage guidance when you have it, and flag anything needing a doctor/pediatrician's confirmation.
 
 SAFETY:
@@ -326,7 +327,7 @@ FORMATTING (mobile screen):
                     `- ${i.name} | category=${i.category || ''} | for=${i.person || ''}${i.age != null ? ` (age ${i.age})` : ''} | uses: ${i.uses || 'n/a'}${i.description ? ` | notes: ${i.description}` : ''}`
                 );
                 const routineLines = (ctx.routines || []).flatMap(r => {
-                    const header = [`\nROUTINE: ${r.name}`];
+                    const header = [`\nCARE PLAN: ${r.name}`];
                     const sectionLines = (r.sections || []).flatMap(s => {
                         const stepLines = (s.items || []).map((it, idx) =>
                             `    ${idx + 1}. ${it.title}${it.tag ? ` (${it.tag})` : ''}${it.description ? ` — ${it.description}` : ''}`
@@ -335,7 +336,7 @@ FORMATTING (mobile screen):
                     });
                     return [...header, ...sectionLines];
                 });
-                return `${snap}PERSONAL CARE CATALOG (${ctx.items.length} items):\n${itemLines.join('\n')}\n${routineLines.join('\n')}`;
+                return `${snap}HEALTH & CARE PRODUCTS (${ctx.items.length} items):\n${itemLines.join('\n')}\n${routineLines.join('\n')}`;
             }
             if (mode === 'general') {
                 return `${snap}${ctx.message || 'General assistant.'}`;

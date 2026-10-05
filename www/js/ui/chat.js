@@ -745,21 +745,21 @@ ${resultSummary}${queryExplanation}${zeroResults ? `\n\nIMPORTANT: Zero results 
             const routineCount = (window.DB.personalCareRoutines || []).length;
             welcomeHTML = `
                 <div class="text-center text-gray-500 text-sm px-4">
-                    <p class="text-lg mb-3">🧴 <strong>Personal Care Advisor</strong></p>
-                    <p class="mb-2">Ask about medicines, skincare, dosages, or your routines!</p>
+                    <p class="text-lg mb-3">🧴 <strong>Health & Care Advisor</strong></p>
+                    <p class="mb-2">Ask about medicines, skincare, dosages, or your care plans!</p>
 
                     <div class="bg-rose-50 p-3 rounded-lg text-left mb-3">
                         <p class="text-xs font-semibold text-rose-800 mb-2">💡 Try asking:</p>
                         <ul class="text-xs space-y-1 text-rose-700">
                             <li>• "Vitamin D3 uses for kids — can elders take it too?"</li>
                             <li>• "Baby has cough and cold, what to use and dosage?"</li>
-                            <li>• "Is my skincare routine good for oily skin?"</li>
+                            <li>• "Is my skincare plan good for oily skin?"</li>
                             <li>• "What's an alternative to Crocin for my toddler?"</li>
                         </ul>
                     </div>
 
                     <p class="text-xs text-gray-400 mt-2">
-                        🗂️ ${itemCount} catalog items, ${routineCount} routines
+                        🗂️ ${itemCount} products, ${routineCount} care plans
                     </p>
                 </div>`;
         } else if (mode === 'general') {

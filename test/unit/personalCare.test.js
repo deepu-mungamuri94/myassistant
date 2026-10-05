@@ -27,8 +27,67 @@ describe('PersonalCare Module', () => {
 
     PersonalCare.expandedCategories.clear();
     PersonalCare.expandedRoutines.clear();
+    PersonalCare.expandedSections.clear();
     PersonalCare.activeFilter = 'all';
     PersonalCare.activeTab = 'items';
+    PersonalCare.searchTerm = '';
+  });
+
+  describe('collapsed by default', () => {
+    const openTag = (html, cls) => {
+      const m = html.match(new RegExp('<details class="' + cls + '[^"]*"([^>]*)>'));
+      return m ? m[1] : null;
+    };
+    const routine = {
+      id: 'r1', name: 'Skincare',
+      sections: [{ id: 's1', heading: 'Morning', items: [{ id: 'i1', title: 'Wash' }] }]
+    };
+
+    let list;
+    beforeEach(() => {
+      list = { innerHTML: '' };
+      document.getElementById = vi.fn((id) => (id === 'personalcare-list' ? list : null));
+      window.DB.personalCareItems = [{ id: '1', name: 'Crocin', category: 'fever' }];
+    });
+
+    it('should render category groups collapsed', () => {
+      PersonalCare.renderItemsList();
+      const attrs = openTag(list.innerHTML, 'personalcare-category-group');
+      expect(attrs).not.toBeNull();
+      expect(attrs).not.toMatch(/(^|\s)open(\s|$)/);
+      expect(attrs).toContain("setCategoryOpen('fever', this.open)");
+    });
+
+    it('should keep a category open once the user opens it', () => {
+      PersonalCare.setCategoryOpen('fever', true);
+      PersonalCare.renderItemsList();
+      expect(openTag(list.innerHTML, 'personalcare-category-group')).toMatch(/(^|\s)open(\s|$)/);
+      PersonalCare.setCategoryOpen('fever', false);
+      PersonalCare.renderItemsList();
+      expect(openTag(list.innerHTML, 'personalcare-category-group')).not.toMatch(/(^|\s)open(\s|$)/);
+    });
+
+    it('should open groups while searching so matches are visible', () => {
+      PersonalCare.searchTerm = 'cro';
+      PersonalCare.renderItemsList();
+      expect(openTag(list.innerHTML, 'personalcare-category-group')).toMatch(/(^|\s)open(\s|$)/);
+    });
+
+    it('should render routine cards and sections collapsed, showing only titles', () => {
+      const html = PersonalCare._renderRoutineCard(routine);
+      expect(openTag(html, 'personalcare-routine-group')).not.toMatch(/(^|\s)open(\s|$)/);
+      expect(openTag(html, 'personalcare-routine-section')).not.toMatch(/(^|\s)open(\s|$)/);
+      expect(html).toContain('Morning');
+      expect(html).toContain('1 step');
+    });
+
+    it('should remember an opened section', () => {
+      PersonalCare.toggleSection('r1', 's1', true);
+      expect(openTag(PersonalCare._renderRoutineSection(routine, routine.sections[0]), 'personalcare-routine-section'))
+        .toMatch(/(^|\s)open(\s|$)/);
+      PersonalCare.toggleSection('r1', 's1', false);
+      expect(PersonalCare.expandedSections.has('r1:s1')).toBe(false);
+    });
   });
 
   describe('add()', () => {
@@ -334,6 +393,11 @@ describe('PersonalCare Module', () => {
       expect(window.DB.personalCareItems).toHaveLength(0);
     });
 
+    it('should expand the saved item\'s category so it stays visible', () => {
+      PersonalCare.saveFromModal();
+      expect(PersonalCare.expandedCategories.has(window.DB.personalCareItems[0].category)).toBe(true);
+    });
+
     it('should add a new item when id is empty', () => {
       PersonalCare.saveFromModal();
 
@@ -348,7 +412,7 @@ describe('PersonalCare Module', () => {
         date: '2024-06-01',
         description: 'Take at night'
       });
-      expect(window.Utils.showSuccess).toHaveBeenCalledWith('Item added');
+      expect(window.Utils.showSuccess).toHaveBeenCalledWith('Product added');
     });
 
     it('should update an existing item when id is present', () => {
@@ -358,7 +422,7 @@ describe('PersonalCare Module', () => {
       PersonalCare.saveFromModal();
 
       expect(window.DB.personalCareItems[0].name).toBe('Benadryl');
-      expect(window.Utils.showSuccess).toHaveBeenCalledWith('Item updated');
+      expect(window.Utils.showSuccess).toHaveBeenCalledWith('Product updated');
     });
 
     it('should treat empty price as null', () => {
@@ -402,8 +466,8 @@ describe('PersonalCare Module', () => {
       await PersonalCare.handleDelete('item-1');
 
       expect(window.Utils.confirm).toHaveBeenCalledWith(
-        'This will permanently delete this item. Are you sure?',
-        'Delete Item'
+        'This will permanently delete this product. Are you sure?',
+        'Delete Product'
       );
     });
 
@@ -413,7 +477,7 @@ describe('PersonalCare Module', () => {
       await PersonalCare.handleDelete('item-1');
 
       expect(window.DB.personalCareItems).toHaveLength(0);
-      expect(window.Utils.showSuccess).toHaveBeenCalledWith('Item deleted');
+      expect(window.Utils.showSuccess).toHaveBeenCalledWith('Product deleted');
       expect(PersonalCare.render).toHaveBeenCalled();
     });
 
@@ -525,7 +589,7 @@ describe('PersonalCare Module', () => {
         await PersonalCare.handleDeleteRoutine('r1');
 
         expect(window.DB.personalCareRoutines).toHaveLength(0);
-        expect(window.Utils.showSuccess).toHaveBeenCalledWith('Routine deleted');
+        expect(window.Utils.showSuccess).toHaveBeenCalledWith('Care plan deleted');
       });
 
       it('should not delete the routine when cancelled', async () => {
@@ -583,6 +647,12 @@ describe('PersonalCare Module', () => {
         expect(window.DB.personalCareRoutines[0].sections[0].items).toHaveLength(0);
       });
 
+      it('should expand the routine and section so the new step is visible', () => {
+        PersonalCare.saveRoutineItemModal();
+        expect(PersonalCare.expandedRoutines.has('r1')).toBe(true);
+        expect(PersonalCare.expandedSections.has('r1:s1')).toBe(true);
+      });
+
       it('should add a step with title, tag, and description', () => {
         PersonalCare.saveRoutineItemModal();
 
@@ -593,6 +663,519 @@ describe('PersonalCare Module', () => {
         });
         expect(window.Utils.showSuccess).toHaveBeenCalledWith('Step added');
       });
+
+      it('should update the existing step in place when an item id is set', () => {
+        window.DB.personalCareRoutines[0].sections[0].items = [
+          { id: 'i1', title: 'Old', tag: 'old tag', description: 'old desc' },
+          { id: 'i2', title: 'Second', tag: '', description: '' }
+        ];
+        elements['personalcare-item-modal-item-id'] = { value: 'i1' };
+        elements['personalcare-item-modal-tag'].value = '';
+
+        PersonalCare.saveRoutineItemModal();
+
+        const items = window.DB.personalCareRoutines[0].sections[0].items;
+        expect(items).toHaveLength(2);
+        expect(items[0]).toEqual({ id: 'i1', title: 'Body Wash', tag: '', description: 'Lather the **Body Wash** over your body.' });
+        expect(window.Utils.showSuccess).toHaveBeenCalledWith('Step updated');
+      });
+    });
+
+    describe('openRoutineItemModal() edit mode', () => {
+      let elements;
+
+      beforeEach(() => {
+        elements = {
+          'personalcare-item-modal-routine-id': { value: '' },
+          'personalcare-item-modal-section-id': { value: '' },
+          'personalcare-item-modal-item-id': { value: '' },
+          'personalcare-item-modal-title': { value: '' },
+          'personalcare-item-modal-tag': { value: '' },
+          'personalcare-item-modal-description': { value: '' },
+          'personalcare-item-modal-heading-text': { textContent: '' },
+          'personalcare-item-modal': { classList: { add: vi.fn(), remove: vi.fn() } }
+        };
+        document.getElementById = vi.fn((id) => elements[id]);
+        window.DB.personalCareRoutines = [{
+          id: 'r1', name: 'Skincare',
+          sections: [{ id: 's1', heading: 'Morning', items: [{ id: 'i1', title: 'Body Wash', tag: 'T', description: 'D' }] }]
+        }];
+      });
+
+      it('should prefill fields and show "Edit Step" when an item id is given', () => {
+        PersonalCare.openRoutineItemModal('r1', 's1', 'i1');
+
+        expect(elements['personalcare-item-modal-item-id'].value).toBe('i1');
+        expect(elements['personalcare-item-modal-title'].value).toBe('Body Wash');
+        expect(elements['personalcare-item-modal-tag'].value).toBe('T');
+        expect(elements['personalcare-item-modal-description'].value).toBe('D');
+        expect(elements['personalcare-item-modal-heading-text'].textContent).toBe('Edit Step');
+      });
+
+      it('should clear fields and show "Add Step" when no item id is given', () => {
+        elements['personalcare-item-modal-item-id'].value = 'stale';
+
+        PersonalCare.openRoutineItemModal('r1', 's1');
+
+        expect(elements['personalcare-item-modal-item-id'].value).toBe('');
+        expect(elements['personalcare-item-modal-title'].value).toBe('');
+        expect(elements['personalcare-item-modal-heading-text'].textContent).toBe('Add Step');
+      });
+    });
+
+    describe('updateRoutine() / updateRoutineSection()', () => {
+      beforeEach(() => {
+        window.DB.personalCareRoutines = [{ id: 'r1', name: 'Skincare', sections: [{ id: 's1', heading: 'Morning', items: [] }] }];
+      });
+
+      it('should rename a routine', () => {
+        PersonalCare.updateRoutine('r1', 'Body Care');
+        expect(window.DB.personalCareRoutines[0].name).toBe('Body Care');
+        expect(window.Storage.save).toHaveBeenCalled();
+      });
+
+      it('should rename a section', () => {
+        PersonalCare.updateRoutineSection('r1', 's1', 'Night');
+        expect(window.DB.personalCareRoutines[0].sections[0].heading).toBe('Night');
+      });
+
+      it('should return null for unknown ids', () => {
+        expect(PersonalCare.updateRoutine('nope', 'X')).toBeNull();
+        expect(PersonalCare.updateRoutineSection('r1', 'nope', 'X')).toBeNull();
+        expect(PersonalCare.updateRoutineItem('r1', 's1', 'nope', 'X')).toBeNull();
+      });
+    });
+
+    describe('saveRoutineModal() / saveSectionModal() edit mode', () => {
+      let elements;
+
+      beforeEach(() => {
+        elements = {
+          'personalcare-routine-modal-id': { value: 'r1' },
+          'personalcare-routine-modal-name': { value: 'Body Care' },
+          'personalcare-routine-modal': { classList: { add: vi.fn(), remove: vi.fn() } },
+          'personalcare-section-modal-routine-id': { value: 'r1' },
+          'personalcare-section-modal-section-id': { value: 's1' },
+          'personalcare-section-modal-heading': { value: 'Night' },
+          'personalcare-section-modal': { classList: { add: vi.fn(), remove: vi.fn() } }
+        };
+        document.getElementById = vi.fn((id) => elements[id]);
+        window.DB.personalCareRoutines = [{ id: 'r1', name: 'Skincare', sections: [{ id: 's1', heading: 'Morning', items: [] }] }];
+        PersonalCare.render = vi.fn();
+      });
+
+      it('should rename the routine instead of adding a new one', () => {
+        PersonalCare.saveRoutineModal();
+        expect(window.DB.personalCareRoutines).toHaveLength(1);
+        expect(window.DB.personalCareRoutines[0].name).toBe('Body Care');
+        expect(window.Utils.showSuccess).toHaveBeenCalledWith('Care plan updated');
+      });
+
+      it('should rename the section instead of adding a new one', () => {
+        PersonalCare.saveSectionModal();
+        const sections = window.DB.personalCareRoutines[0].sections;
+        expect(sections).toHaveLength(1);
+        expect(sections[0].heading).toBe('Night');
+        expect(window.Utils.showSuccess).toHaveBeenCalledWith('Section updated');
+      });
+    });
+  });
+
+  describe('renderFilters()', () => {
+    let select, wrap;
+    const makeClassList = () => {
+      const set = new Set(['hidden']);
+      return { toggle: (c, on) => (on ? set.add(c) : set.delete(c)), contains: (c) => set.has(c) };
+    };
+    beforeEach(() => {
+      select = { innerHTML: '', value: '', classList: makeClassList() };
+      wrap = { classList: makeClassList() };
+      document.getElementById = vi.fn((id) => ({
+        'personalcare-filter-select': select,
+        'personalcare-filter-wrap': wrap
+      })[id] || null);
+      window.DB.personalCareItems = [
+        { id: '1', name: 'A', category: 'fever' },
+        { id: '2', name: 'B', category: 'fever' },
+        { id: '3', name: 'C', category: 'fever' },
+        { id: '4', name: 'D', category: 'skin_care' }
+      ];
+    });
+
+    it('should list All (category count) then each used category with its item count', () => {
+      PersonalCare.renderFilters();
+      expect(select.innerHTML).toContain('<option value="all" selected>All (2)</option>');
+      expect(select.innerHTML).toContain('<option value="fever">🌡️ Fever (3)</option>');
+      expect(select.innerHTML).toContain('<option value="skin_care">🧴 Skin Care (1)</option>');
+      expect(select.innerHTML).not.toContain('Cold & Flu');
+      expect(select.value).toBe('all');
+      expect(wrap.classList.contains('hidden')).toBe(false);
+    });
+
+    it('should mark the active category as selected and tint the dropdown', () => {
+      PersonalCare.activeFilter = 'fever';
+      PersonalCare.renderFilters();
+      expect(select.innerHTML).toContain('<option value="fever" selected>');
+      expect(select.value).toBe('fever');
+      expect(select.classList.contains('bg-rose-50')).toBe(true);
+    });
+
+    it('should reset an active filter whose category no longer has items', () => {
+      PersonalCare.activeFilter = 'baby_care';
+      PersonalCare.renderFilters();
+      expect(PersonalCare.activeFilter).toBe('all');
+      expect(select.value).toBe('all');
+    });
+
+    it('should hide the dropdown when there are no items', () => {
+      select.innerHTML = 'stale';
+      window.DB.personalCareItems = [];
+      PersonalCare.renderFilters();
+      expect(select.innerHTML).toBe('');
+      expect(wrap.classList.contains('hidden')).toBe(true);
+    });
+  });
+
+  describe('setSearch()', () => {
+    let list;
+    beforeEach(() => {
+      list = { innerHTML: '' };
+      document.getElementById = vi.fn((id) => (id === 'personalcare-list' ? list : null));
+      PersonalCare.activeFilter = 'all';
+      window.DB.personalCareItems = [
+        { id: '1', name: 'Crocin', category: 'fever', uses: 'Fever, headache', person: 'Mom' },
+        { id: '2', name: 'Cetaphil', category: 'skin_care', uses: 'Dry skin', person: 'Baby' }
+      ];
+    });
+
+    afterEach(() => { PersonalCare.searchTerm = ''; });
+
+    it('should filter items by name case-insensitively', () => {
+      PersonalCare.setSearch('  crocin ');
+      expect(PersonalCare.searchTerm).toBe('crocin');
+      expect(list.innerHTML).toContain('Crocin');
+      expect(list.innerHTML).not.toContain('Cetaphil');
+    });
+
+    it('should match on uses and person too', () => {
+      PersonalCare.setSearch('dry');
+      expect(list.innerHTML).toContain('Cetaphil');
+      PersonalCare.setSearch('mom');
+      expect(list.innerHTML).toContain('Crocin');
+      expect(list.innerHTML).not.toContain('Cetaphil');
+    });
+
+    it('should show a no-matches state when nothing matches', () => {
+      PersonalCare.setSearch('zzz');
+      expect(list.innerHTML).toContain('No matches');
+    });
+  });
+
+  describe('_formatDate()', () => {
+    it('should format ISO dates as "D Mon YYYY"', () => {
+      expect(PersonalCare._formatDate('2026-03-12')).toBe('12 Mar 2026');
+      expect(PersonalCare._formatDate('2026-12-01')).toBe('1 Dec 2026');
+    });
+
+    it('should return empty for missing dates and pass through unparseable ones', () => {
+      expect(PersonalCare._formatDate('')).toBe('');
+      expect(PersonalCare._formatDate(null)).toBe('');
+      expect(PersonalCare._formatDate('soon')).toBe('soon');
+    });
+  });
+
+  describe('renderSummary()', () => {
+    let summary;
+    beforeEach(() => {
+      summary = { innerHTML: 'stale' };
+      document.getElementById = vi.fn((id) => (id === 'personalcare-summary' ? summary : null));
+    });
+
+    it('should be empty when there are no items or routines', () => {
+      window.DB.personalCareItems = [];
+      window.DB.personalCareRoutines = [];
+      PersonalCare.renderSummary();
+      expect(summary.innerHTML).toBe('');
+    });
+
+    it('should count items, distinct people (case-insensitive) and routines', () => {
+      window.DB.personalCareItems = [
+        { id: '1', name: 'A', person: 'Mom' },
+        { id: '2', name: 'B', person: 'mom ' },
+        { id: '3', name: 'C', person: 'Baby' },
+        { id: '4', name: 'D' }
+      ];
+      window.DB.personalCareRoutines = [{ id: 'r1', name: 'Skincare', sections: [] }];
+      PersonalCare.renderSummary();
+      const html = summary.innerHTML.replace(/\s+/g, ' ');
+      expect(html).toMatch(/>4<\/p> <p[^>]*>Products</);
+      expect(html).toMatch(/>2<\/p> <p[^>]*>People</);
+      expect(html).toMatch(/>1<\/p> <p[^>]*>Care Plan</);
+    });
+  });
+
+  describe('routine rendering', () => {
+    const routine = {
+      id: 'r1',
+      name: 'Skincare',
+      sections: [
+        { id: 's1', heading: 'Morning', items: [{ id: 'i1', title: 'Wash', tag: '1 min', description: 'Use **Cetaphil**' }] },
+        { id: 's2', heading: 'Night', items: [] }
+      ]
+    };
+
+    it('should show section and step counts in the card header', () => {
+      const html = PersonalCare._renderRoutineCard(routine);
+      expect(html).toContain('2 sections · 1 step');
+      expect(html).toContain('Add section');
+    });
+
+    it('should label an empty routine', () => {
+      const html = PersonalCare._renderRoutineCard({ id: 'r2', name: 'New', sections: [] });
+      expect(html).toContain('Empty — tap to start');
+    });
+
+    it('should make each step tappable to edit and render bold descriptions', () => {
+      const html = PersonalCare._renderRoutineSection(routine, routine.sections[0]);
+      expect(html).toContain("PersonalCare.openRoutineItemModal('r1', 's1', 'i1')");
+      expect(html).toContain('<strong>Cetaphil</strong>');
+      expect(html).toContain('Add step');
+    });
+
+    it('should pick a section emoji from its heading', () => {
+      expect(PersonalCare._sectionIcon('Morning')).toBe('☀️');
+      expect(PersonalCare._sectionIcon('Afternoon touch-up')).toBe('🌤️');
+      expect(PersonalCare._sectionIcon('Night')).toBe('🌙');
+      expect(PersonalCare._sectionIcon('Weekly')).toBe('📅');
+      expect(PersonalCare._sectionIcon('Anything')).toBe('✨');
+      expect(PersonalCare._sectionIcon(undefined)).toBe('✨');
+    });
+
+    it('should show the empty state when there are no routines', () => {
+      const list = { innerHTML: '' };
+      document.getElementById = vi.fn((id) => (id === 'personalcare-routines-list' ? list : null));
+      window.DB.personalCareRoutines = [];
+      PersonalCare.renderRoutinesList();
+      expect(list.innerHTML).toContain('No care plans yet');
+    });
+  });
+
+  describe('delete from edit modals', () => {
+    let fields;
+    const makeEl = (value = '') => ({ value, classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() } });
+
+    beforeEach(() => {
+      window.DB.personalCareRoutines = [{
+        id: 'r1', name: 'Skincare',
+        sections: [{ id: 's1', heading: 'Morning', items: [{ id: 'i1', title: 'Wash' }, { id: 'i2', title: 'SPF' }] }]
+      }];
+      fields = {};
+      document.getElementById = vi.fn((id) => {
+        if (!fields[id]) fields[id] = makeEl();
+        return fields[id];
+      });
+      window.Utils.confirm = vi.fn().mockResolvedValue(true);
+      vi.spyOn(PersonalCare, 'render').mockImplementation(() => {});
+    });
+
+    it('should show the delete button only in edit mode', () => {
+      PersonalCare.openRoutineItemModal('r1', 's1', 'i1');
+      expect(fields['personalcare-item-modal-delete'].classList.toggle).toHaveBeenLastCalledWith('hidden', false);
+      PersonalCare.openRoutineItemModal('r1', 's1');
+      expect(fields['personalcare-item-modal-delete'].classList.toggle).toHaveBeenLastCalledWith('hidden', true);
+    });
+
+    it('should delete the step being edited after confirmation', async () => {
+      PersonalCare.openRoutineItemModal('r1', 's1', 'i1');
+      await PersonalCare.deleteFromRoutineItemModal();
+      const items = window.DB.personalCareRoutines[0].sections[0].items;
+      expect(items.map(i => i.id)).toEqual(['i2']);
+      expect(window.Utils.showSuccess).toHaveBeenCalledWith('Step deleted');
+    });
+
+    it('should not delete when the user cancels', async () => {
+      window.Utils.confirm.mockResolvedValue(false);
+      PersonalCare.openRoutineItemModal('r1', 's1', 'i1');
+      await PersonalCare.deleteFromRoutineItemModal();
+      expect(window.DB.personalCareRoutines[0].sections[0].items).toHaveLength(2);
+    });
+
+    it('should delete the section being edited', async () => {
+      PersonalCare.openSectionModal('r1', 's1');
+      await PersonalCare.deleteFromSectionModal();
+      expect(window.DB.personalCareRoutines[0].sections).toHaveLength(0);
+      expect(window.Utils.showSuccess).toHaveBeenCalledWith('Section deleted');
+    });
+
+    it('should delete the routine being edited', async () => {
+      PersonalCare.openRoutineModal('r1');
+      await PersonalCare.deleteFromRoutineModal();
+      expect(window.DB.personalCareRoutines).toHaveLength(0);
+      expect(window.Utils.showSuccess).toHaveBeenCalledWith('Care plan deleted');
+    });
+
+    it('should do nothing in add mode (no id)', async () => {
+      PersonalCare.openRoutineModal();
+      await PersonalCare.deleteFromRoutineModal();
+      expect(window.Utils.confirm).not.toHaveBeenCalled();
+      expect(window.DB.personalCareRoutines).toHaveLength(1);
+    });
+  });
+});
+
+describe('PersonalCare suggestion dropdowns & age autofill', () => {
+  let PersonalCare;
+  let els;
+  const makeEl = (value = '') => ({
+    value,
+    innerHTML: '',
+    classList: {
+      _hidden: true,
+      add(c) { if (c === 'hidden') this._hidden = true; },
+      remove(c) { if (c === 'hidden') this._hidden = false; },
+      toggle(c, force) { if (c === 'hidden') this._hidden = force === undefined ? !this._hidden : force; },
+      contains(c) { return c === 'hidden' && this._hidden; }
+    }
+  });
+
+  beforeEach(() => {
+    global.window = global.window || {};
+    window.DB = {
+      personalCareItems: [
+        { id: '1', name: 'Crocin', category: 'fever', person: 'Baby', age: 1, date: '2025-01-15' },
+        { id: '2', name: 'Cetaphil', category: 'skin_care', person: 'mom', age: 30, date: '2024-06-01' },
+        { id: '3', name: 'Calpol', category: 'fever', person: 'Mom', age: 31, date: '2025-06-01' },
+        { id: '4', name: 'Vicks', category: 'cold_flu', person: 'Dad', date: '2025-02-01' }
+      ],
+      personalCareRoutines: []
+    };
+    window.Storage = { save: vi.fn() };
+    window.Utils = {
+      escapeHtml: (s) => String(s),
+      escapeJsAttr: (s) => String(s),
+      showSuccess: vi.fn(),
+      showError: vi.fn(),
+      formatLocalDate: () => '2026-10-04',
+      generateId: () => 'id'
+    };
+    els = {};
+    global.document = global.document || {};
+    document.getElementById = vi.fn((id) => {
+      if (!els[id]) els[id] = makeEl();
+      return els[id];
+    });
+    PersonalCare = loadModule('modules/personalCare.js', 'PersonalCare');
+  });
+
+  describe('getPersonNameSuggestions()', () => {
+    it('should de-duplicate case-insensitively keeping the most recent spelling', () => {
+      expect(PersonalCare.getPersonNameSuggestions()).toEqual(['Baby', 'Dad', 'Mom']);
+    });
+  });
+
+  describe('getAgeForPerson()', () => {
+    const today = new Date(2026, 9, 4); // 4 Oct 2026
+
+    it('should roll the latest recorded age forward by whole years elapsed', () => {
+      expect(PersonalCare.getAgeForPerson('Baby', today)).toBe(2); // 1 on 2025-01-15
+      expect(PersonalCare.getAgeForPerson('mom', today)).toBe(32); // latest: 31 on 2025-06-01
+    });
+
+    it('should not count a year before the anniversary has passed', () => {
+      expect(PersonalCare.getAgeForPerson('Mom', new Date(2026, 4, 31))).toBe(31);
+    });
+
+    it('should return null for unknown people or people with no recorded age', () => {
+      expect(PersonalCare.getAgeForPerson('Grandpa', today)).toBeNull();
+      expect(PersonalCare.getAgeForPerson('Dad', today)).toBeNull();
+      expect(PersonalCare.getAgeForPerson('', today)).toBeNull();
+    });
+
+    it('should use the recorded age as-is when the item has no date', () => {
+      window.DB.personalCareItems = [{ person: 'Nani', age: 70 }];
+      expect(PersonalCare.getAgeForPerson('Nani', today)).toBe(70);
+    });
+  });
+
+  describe('showSuggestions()', () => {
+    it('should list all people on empty focus with their age hint', () => {
+      PersonalCare.showSuggestions('person', '');
+      const box = els['personalcare-person-suggestions'];
+      expect(box.classList.contains('hidden')).toBe(false);
+      expect(box.innerHTML).toContain("selectSuggestion('person', 'Baby')");
+      expect(box.innerHTML).toContain("selectSuggestion('person', 'Dad')");
+      expect(box.innerHTML).toMatch(/Mom<\/span>\s*<span[^>]*>\d+ y/);
+    });
+
+    it('should filter product names and show the category hint', () => {
+      PersonalCare.showSuggestions('name', 'c');
+      const html = els['personalcare-name-suggestions'].innerHTML;
+      expect(html).toContain('Crocin');
+      expect(html).toContain('🌡️ Fever');
+      expect(html).toContain('Vicks'); // "c" appears inside "Vicks"
+      // Prefix matches rank before substring matches
+      expect(html.indexOf('Vicks')).toBeGreaterThan(html.indexOf('Calpol'));
+    });
+
+    it('should hide when nothing matches or the only match is already typed', () => {
+      PersonalCare.showSuggestions('name', 'zzz');
+      expect(els['personalcare-name-suggestions'].classList.contains('hidden')).toBe(true);
+      PersonalCare.showSuggestions('name', 'crocin');
+      expect(els['personalcare-name-suggestions'].classList.contains('hidden')).toBe(true);
+    });
+
+    it('should suggest product names for routine step titles', () => {
+      PersonalCare.showSuggestions('step', 'ceta');
+      expect(els['personalcare-step-suggestions'].innerHTML).toContain('Cetaphil');
+    });
+  });
+
+  describe('selectSuggestion()', () => {
+    it('should fill the name and auto-detect the category', () => {
+      PersonalCare.selectSuggestion('name', 'Cetaphil');
+      expect(els['personalcare-modal-name'].value).toBe('Cetaphil');
+      expect(els['personalcare-modal-category'].value).toBe('skin_care');
+      expect(els['personalcare-name-suggestions'].classList.contains('hidden')).toBe(true);
+    });
+
+    it('should fill the person and their age from history, overwriting any age', () => {
+      els['personalcare-modal-age'] = makeEl('99');
+      PersonalCare.selectSuggestion('person', 'Baby');
+      expect(els['personalcare-modal-person'].value).toBe('Baby');
+      expect(Number(els['personalcare-modal-age'].value)).toBeGreaterThanOrEqual(1);
+      expect(els['personalcare-modal-age'].value).not.toBe('99');
+      expect(els['personalcare-age-hint'].classList.contains('hidden')).toBe(false);
+    });
+  });
+
+  describe('onPersonInput()', () => {
+    it('should fill an empty age when a known person is typed', () => {
+      PersonalCare.onPersonInput('dad'); // no age on record
+      expect(els['personalcare-modal-age'].value).toBe('');
+      PersonalCare.onPersonInput('baby');
+      expect(els['personalcare-modal-age'].value).not.toBe('');
+    });
+
+    it('should never overwrite an age the user typed by hand', () => {
+      els['personalcare-modal-age'] = makeEl('5');
+      PersonalCare.onAgeInput();
+      PersonalCare.onPersonInput('Mom');
+      expect(els['personalcare-modal-age'].value).toBe('5');
+    });
+
+    it('should clear an auto-filled age when the name no longer matches', () => {
+      PersonalCare.onPersonInput('Mom');
+      expect(els['personalcare-modal-age'].value).not.toBe('');
+      PersonalCare.onPersonInput('Momx');
+      expect(els['personalcare-modal-age'].value).toBe('');
+      expect(els['personalcare-age-hint'].classList.contains('hidden')).toBe(true);
+    });
+
+    it('should update an auto-filled age when switching to another known person', () => {
+      PersonalCare.onPersonInput('Mom');
+      const momAge = els['personalcare-modal-age'].value;
+      PersonalCare.onPersonInput('Baby');
+      expect(els['personalcare-modal-age'].value).not.toBe(momAge);
     });
   });
 });

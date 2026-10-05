@@ -124,7 +124,7 @@ const Navigation = {
             },
             personalcare: {
                 icon: '<svg class="w-6 h-6 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 2a1 1 0 00-1 1v3H5a3 3 0 00-3 3v9a3 3 0 003 3h14a3 3 0 003-3v-9a3 3 0 00-3-3h-3V3a1 1 0 00-1-1H9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11v4m-2-2h4"/></svg>',
-                title: 'Personal Care',
+                title: 'Health & Care',
                 bgClass: 'bg-gradient-to-r from-rose-600 to-pink-600'
             }
         };

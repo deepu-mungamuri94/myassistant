@@ -813,10 +813,10 @@ describe('AIProvider', () => {
         ]
       };
       const text = AIProvider.formatContextText(ctx);
-      expect(text).toContain('PERSONAL CARE CATALOG');
+      expect(text).toContain('HEALTH & CARE PRODUCTS');
       expect(text).toContain('Vitamin D3');
       expect(text).toContain('age 8');
-      expect(text).toContain('ROUTINE: Skincare');
+      expect(text).toContain('CARE PLAN: Skincare');
       expect(text).toContain('Section: Morning');
       expect(text).toContain('Body Wash');
       expect(text).toContain('Target dark joints');
@@ -858,9 +858,10 @@ describe('AIProvider', () => {
 
     it('should return personal care instruction for personal_care mode', () => {
       const instruction = AIProvider.getSystemInstruction({ mode: 'personal_care' });
-      expect(instruction).toContain('personal care, health, and skincare advisor');
-      expect(instruction).toContain('PERSONAL CARE CATALOG');
-      expect(instruction).toContain('ROUTINES');
+      expect(instruction).toContain('health & care advisor');
+      expect(instruction).toContain("user's PRODUCTS");
+      expect(instruction).toContain('CARE PLANS');
+      expect(instruction).toContain('"Products" and "Care Plans"');
       expect(instruction).toContain('doctor');
     });
   });
